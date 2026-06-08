@@ -1,0 +1,19 @@
+/* ─── 슬라이딩 스위치(패널 헤더 등) ─── */
+
+/** 비활성 트랙: 라이트는 은은한 슬레이트 필, 다크는 밝은 필로 대비 확보 */
+.moa-sliding-toggle--off {
+  background-color: rgb(15 23 42 / 10%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%);
+}
+
+.dark .moa-sliding-toggle--off {
+  background-color: rgb(255 255 255 / 14%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    0 0 0 1px rgb(255 255 255 / 6%);
+}
+
+.moa-sliding-toggle--on {
+  background: var(--moa-point-color);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%);
+}

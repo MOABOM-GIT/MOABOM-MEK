@@ -1,0 +1,24 @@
+{
+    "_meta": {
+        "version": "0.2.3",
+        "description": "Moabom XSS 보안 가드 플러그인 환경설정"
+    },
+    "defaults": {
+        "enabled": true,
+        "console_masking_enabled": true,
+        "dom_guard_enabled": true,
+        "security_headers_enabled": true,
+        "csp_report_only_enabled": true,
+        "trusted_types_enabled": true,
+        "login_selector_hint": "",
+        "register_selector_hint": ""
+    },
+    "frontend_schema": {
+        "enabled": { "expose": true },
+        "console_masking_enabled": { "expose": true },
+        "dom_guard_enabled": { "expose": true },
+        "trusted_types_enabled": { "expose": true },
+        "login_selector_hint": { "expose": false },
+        "register_selector_hint": { "expose": false }
+    }
+}

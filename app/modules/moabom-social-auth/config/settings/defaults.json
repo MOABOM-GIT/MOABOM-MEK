@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "SNS 로그인 모듈 환경설정",
+    "categories": ["providers"]
+  },
+  "defaults": {
+    "providers": {
+      "google_enabled": true,
+      "google_use_master_defaults": true,
+      "google_client_id": "",
+      "google_client_secret": "",
+      "google_redirect_uri": "",
+      "google_request_auth_time": false,
+      "broker_enabled": false,
+      "broker_host": "",
+      "broker_scheme": "https",
+      "broker_state_ttl_seconds": 300,
+      "kakao_enabled": true,
+      "kakao_use_master_defaults": true,
+      "kakao_client_id": "",
+      "kakao_client_secret": "",
+      "kakao_use_client_secret": true,
+      "kakao_redirect_uri": "",
+      "naver_enabled": true,
+      "naver_use_master_defaults": true,
+      "naver_client_id": "",
+      "naver_client_secret": "",
+      "naver_redirect_uri": ""
+    }
+  },
+  "frontend_schema": {
+    "providers": {
+      "expose": true,
+      "fields": {
+        "google_enabled": { "expose": true },
+        "kakao_enabled": { "expose": true },
+        "naver_enabled": { "expose": true }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "admin": {
+    "settings": {
+      "title": "我的页面设置",
+      "description": "管理我的页面菜单以及客户可选择的主题、背景和环境选项。",
+      "save": "保存",
+      "save_error": "保存我的页面设置失败。",
+      "menus": "菜单配置",
+      "menus_description": "管理我的页面左侧菜单的显示与默认排序。",
+      "appearance": "主题与背景",
+      "appearance_description": "管理客户在网站我的页面中可见的主题、强调色和首页背景。不影响管理后台界面样式。",
+      "appearance_customer_palette_title": "强调色设置",
+      "add_point_color": "添加颜色",
+      "remove_point_color": "删除此颜色",
+      "themes_allowlist_title": "允许的主题",
+      "preferences": "系统选项",
+      "preferences_description": "管理客户在我的页面中可见的语言和效果选项。",
+      "menu_enabled": "显示",
+      "guest_enabled": "允许访客",
+      "theme_enabled": "允许",
+      "language_enabled": "允许",
+      "user_editable": "允许用户修改",
+      "home_background_upload_title": "已上传的首页背景",
+      "home_background_upload_description": "注册的图片会在我的页面中供客户选择。缩略图顺序即显示顺序。",
+      "languages_title": "语言选项显示",
+      "languages_description": "仅勾选的语言会出现在我的页面语言选择器中。默认语言由客户选择或浏览器语言检测决定。",
+      "system_options_title": "效果选项",
+      "system_options_description": "默认值仅适用于尚未保存个人设置的客户。关闭用户修改后，客户无法在我的页面中更改该选项。",
+      "option_default_value": "默认值"
+    }
+  }
+}

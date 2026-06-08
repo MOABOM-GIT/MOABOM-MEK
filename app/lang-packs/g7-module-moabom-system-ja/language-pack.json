@@ -1,0 +1,30 @@
+{
+    "identifier": "g7-module-moabom-system-ja",
+    "namespace": "g7",
+    "vendor": "moabom",
+    "name": {
+        "ko": "G7 모듈 (moabom-system) 일본어 언어팩",
+        "en": "G7 module (moabom-system) Japanese language pack",
+        "ja": "G7 モジュール (moabom-system) 日本語 言語パック"
+    },
+    "description": {
+        "ko": "Moabom 시스템 모듈 관리자·마이페이지 설정 화면 일본어 번역",
+        "en": "Japanese translations for Moabom system module admin and My Page settings",
+        "ja": "Moabom システムモジュールの管理画面・マイページ設定の日本語翻訳"
+    },
+    "version": "1.0.0-beta.1",
+    "license": "MIT",
+    "scope": "module",
+    "target_identifier": "moabom-system",
+    "locale": "ja",
+    "locale_name": "Japanese",
+    "locale_native_name": "日本語",
+    "text_direction": "ltr",
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "requires": {
+        "target_version": ">=0.6.0",
+        "depends_on_core_locale": true
+    },
+    "github_url": "",
+    "github_changelog_url": ""
+}

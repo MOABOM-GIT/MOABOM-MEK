@@ -1,0 +1,30 @@
+{
+    "identifier": "g7-core-zh",
+    "namespace": "g7",
+    "vendor": "moabom",
+    "name": {
+        "ko": "G7 코어 중국어 언어팩",
+        "en": "G7 core Chinese language pack",
+        "zh": "G7 核心中文语言包"
+    },
+    "description": {
+        "ko": "G7 코어 중국어 언어팩 (번들) — supported_locales 에 zh 등록",
+        "en": "G7 core Chinese language pack (bundled) — registers zh in supported_locales",
+        "zh": "G7 核心中文语言包（捆绑）"
+    },
+    "version": "1.0.0-beta.1",
+    "license": "MIT",
+    "scope": "core",
+    "target_identifier": null,
+    "locale": "zh",
+    "locale_name": "Chinese",
+    "locale_native_name": "中文",
+    "text_direction": "ltr",
+    "g7_version": ">=7.0.0-beta.5",
+    "requires": {
+        "target_version": null,
+        "depends_on_core_locale": false
+    },
+    "github_url": "",
+    "github_changelog_url": ""
+}

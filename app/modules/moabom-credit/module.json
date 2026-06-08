@@ -1,0 +1,21 @@
+{
+    "identifier": "moabom-credit",
+    "vendor": "moabom",
+    "name": {
+        "ko": "크레딧",
+        "en": "Credit"
+    },
+    "version": "0.1.6",
+    "license": "MIT",
+    "description": {
+        "ko": "마이페이지 크레딧 잔액과 내역을 제공하는 모듈",
+        "en": "Credit balance and transaction history module for My Page"
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {
+            "moabom-system": ">=0.6.10"
+        },
+        "plugins": {}
+    }
+}

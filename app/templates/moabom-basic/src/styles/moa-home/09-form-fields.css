@@ -1,0 +1,145 @@
+/* ─── 모아봄 폼 필드 (단일 라인 높이 = .moa-btn-{xl|large|medium|sm|xs} min-height) ─── */
+
+.moa-field {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: 400;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.moa-field:disabled {
+  cursor: not-allowed;
+}
+
+.moa-field:focus,
+.moa-field:focus-visible {
+  outline: 2px solid var(--moa-point-color);
+  outline-offset: -2px;
+  box-shadow: var(--moa-point-fill-shadow);
+}
+
+input.moa-field.moa-field--xl,
+button.moa-field.moa-field--xl,
+select.moa-field.moa-field--xl {
+  height: 3.25rem;
+  min-height: 3.25rem;
+  padding-left: 1.35rem;
+  padding-right: 1.35rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+input.moa-field.moa-field--large,
+button.moa-field.moa-field--large,
+select.moa-field.moa-field--large {
+  height: 2.9rem;
+  min-height: 2.9rem;
+  padding-left: 1.15rem;
+  padding-right: 1.15rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+input.moa-field.moa-field--medium,
+button.moa-field.moa-field--medium,
+select.moa-field.moa-field--medium {
+  height: 2.45rem;
+  min-height: 2.45rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.9rem;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+input.moa-field.moa-field--sm,
+button.moa-field.moa-field--sm,
+select.moa-field.moa-field--sm {
+  height: 2rem;
+  min-height: 2rem;
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+input.moa-field.moa-field--xs,
+button.moa-field.moa-field--xs,
+select.moa-field.moa-field--xs {
+  height: 1.65rem;
+  min-height: 1.65rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+textarea.moa-field.moa-field--textarea.moa-field--xl {
+  height: auto;
+  min-height: 3.25rem;
+  padding: 0.65rem 1.35rem;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+textarea.moa-field.moa-field--textarea.moa-field--large {
+  height: auto;
+  min-height: 2.9rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+textarea.moa-field.moa-field--textarea.moa-field--medium {
+  height: auto;
+  min-height: 2.45rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.9rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+textarea.moa-field.moa-field--textarea.moa-field--sm {
+  height: auto;
+  min-height: 2rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+textarea.moa-field.moa-field--textarea.moa-field--xs {
+  height: auto;
+  min-height: 1.65rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/**
+ * 재사용 필드 표면(`glass-sm` + `.moa-field`): 배경만 `--moa-field-reuse-surface-bg`
+ * (`.moa-btn-primary-outline` 기본 배경과 동일, `01-tokens.css`). 테두리·인셋 그림자는 `glass-sm` 유지.
+ */
+input.moa-field.glass-sm,
+select.moa-field.glass-sm,
+button.moa-field.glass-sm,
+textarea.moa-field.glass-sm {
+  background-color: var(--moa-field-reuse-surface-bg);
+}

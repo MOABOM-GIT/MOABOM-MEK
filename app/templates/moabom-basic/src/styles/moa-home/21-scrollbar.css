@@ -1,0 +1,17 @@
+/* ─── 스크롤바 ─── */
+
+/* MOABOM 커스텀 스크롤바 */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--moa-point-color) 22%, transparent);
+  border-radius: 4px;
+}
+

@@ -1,0 +1,52 @@
+body.lock-scroll {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100dvh;
+}
+
+.moa-profile-status,
+.moa-status-dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+}
+
+.moa-profile-status {
+  width: 14px;
+  height: 14px;
+}
+
+.moa-status-dot {
+  width: 12px;
+  height: 12px;
+}
+
+.moa-status-online {
+  background: #10b981;
+  animation: moaStatusPulse 2s infinite;
+}
+
+.moa-status-online::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid #10b981;
+  border-radius: inherit;
+  opacity: 0;
+  animation: moaStatusRing 2s infinite;
+}
+
+.moa-status-idle {
+  background: #f59e0b;
+}
+
+.moa-status-mobile {
+  background: #8b5cf6;
+}
+
+.moa-status-offline {
+  background: #9ca3af;
+}

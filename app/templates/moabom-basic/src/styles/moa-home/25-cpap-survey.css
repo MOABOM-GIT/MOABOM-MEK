@@ -1,0 +1,259 @@
+/** CPAP 피팅 앱 — 고정 스테이지 + 상·하단 오버레이 (페이지 전환 시 레이아웃 변동 없음) */
+.moa-shell-app-window.moa-cpap-fit-app {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.moa-cpap-fit-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.moa-cpap-fit-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 5.25rem 0.75rem 0.75rem;
+}
+
+/**
+ * 창 본문 컨테이너 기준 반응형 — `.moa-app-window-viewport` (container-type: size).
+ * 뷰포트 @media 가 아닌 창 폭이 줄면 모바일 레이아웃 적용.
+ */
+@container (max-width: 63.99rem) {
+  .moa-cpap-fit-survey-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .moa-cpap-choice-age.moa-cpap-choice-options {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex-flow: row wrap;
+    overflow-x: visible;
+  }
+
+  .moa-cpap-choice-age.moa-cpap-choice-options > .moa-btn {
+    min-width: 0;
+    flex: unset;
+    width: 100%;
+  }
+
+  .moa-cpap-result-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .moa-cpap-result-actions-retry {
+    margin-left: 0;
+  }
+}
+
+@container (max-width: 39.99rem) {
+  .moa-cpap-fit-scroll {
+    padding: 8rem 0.75rem 0.75rem;
+  }
+
+  .moa-cpap-fit-overlay-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .moa-cpap-process-steps {
+    justify-content: flex-start;
+  }
+}
+
+.moa-cpap-fit-video,
+.moa-cpap-fit-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.moa-cpap-fit-canvas {
+  pointer-events: none;
+}
+
+.moa-cpap-fit-video {
+  transform: scaleX(-1);
+}
+
+.moa-cpap-fit-canvas {
+  transform: scaleX(-1);
+}
+
+.moa-cpap-fit-overlay-top {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  margin: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  pointer-events: auto;
+}
+
+.moa-cpap-fit-overlay-bottom {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  pointer-events: none;
+}
+
+.moa-cpap-fit-overlay-bottom > * {
+  pointer-events: auto;
+}
+
+.moa-cpap-fit-countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgb(0 0 0 / 30%);
+  pointer-events: none;
+}
+
+.moa-cpap-fit-guide {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgb(0 0 0 / 25%);
+  pointer-events: none;
+}
+
+.moa-cpap-fit-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.moa-cpap-fit-dock-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.moa-cpap-fit-dock-progress-track {
+  height: 0.625rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(15 23 42 / 12%);
+}
+
+.dark .moa-cpap-fit-dock-progress-track {
+  background: rgb(255 255 255 / 15%);
+}
+
+.moa-cpap-fit-dock-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--moa-point-color);
+  transition: width 0.2s ease;
+}
+
+.moa-cpap-result-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.moa-cpap-result-actions > .moa-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.moa-cpap-result-actions-retry {
+  margin-left: auto;
+  flex: 1 1 0;
+  max-width: none;
+}
+
+/** 선호 마스크 복수선택 */
+.moa-cpap-mask-option-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.moa-cpap-mask-option-grid > .moa-cpap-mask-option-btn {
+  display: flex;
+  width: 100%;
+  min-height: unset;
+  height: auto;
+  padding: 0.75rem 1.25rem;
+  gap: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.moa-cpap-mask-option-grid > .moa-cpap-mask-option-btn .moa-cpap-mask-option-body {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.moa-cpap-mask-option-grid > .moa-cpap-mask-option-btn[aria-pressed='true'] .moa-cpap-mask-option-desc {
+  color: rgb(255 255 255 / 70%);
+}
+
+.moa-cpap-process-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.moa-cpap-process-step-detail::before {
+  content: ' ';
+}
+
+/** 창 폭 480px 이하 — STEP 버튼에서 설명 라벨(설문·스캔·결과) 숨김 */
+@container (max-width: 30rem) {
+  .moa-cpap-process-step-detail {
+    display: none;
+  }
+}
+
+.moa-cpap-latest-card--clickable {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.moa-cpap-latest-card--clickable:hover {
+  opacity: 0.92;
+}
+
+.moa-cpap-latest-card--clickable:focus-visible {
+  outline: 2px solid var(--moa-point-color);
+  outline-offset: 2px;
+}

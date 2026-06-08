@@ -1,0 +1,578 @@
+{
+  "site_name": "Moabom",
+  "home": {
+    "title": "홈"
+  },
+  "auth": {
+    "login": "로그인",
+    "logout": "로그아웃",
+    "register": "회원가입",
+    "email": "이메일",
+    "password": "비밀번호",
+    "login_button": "로그인",
+    "register_button": "회원가입",
+    "no_account": "계정이 없으신가요?",
+    "have_account": "이미 계정이 있으신가요?"
+  },
+  "errors": {
+    "404_title": "페이지를 찾을 수 없습니다",
+    "404_message": "요청하신 페이지가 존재하지 않습니다.",
+    "403_title": "접근 권한이 없습니다",
+    "403_message": "이 페이지에 접근할 권한이 없습니다.",
+    "500_title": "서버 오류",
+    "500_message": "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    "go_home": "홈으로 돌아가기"
+  },
+  "mypage": {
+    "settings": "환경 설정",
+    "language": "언어",
+    "theme": "화면 테마",
+    "point_color": "포인트 컬러",
+    "system_options": "시스템 옵션"
+  },
+  "moa_mypage": {
+    "common": {
+      "user_fallback": "사용자",
+      "cancel": "취소",
+      "close": "닫기",
+      "login_required_hint": "로그인 후 이용"
+    },
+    "tabs": {
+      "profile": {
+        "label": "프로필 설정",
+        "desc": "닉네임과 소개 관리"
+      },
+      "settings": {
+        "label": "환경 설정",
+        "desc": "언어와 화면 옵션"
+      },
+      "credit": {
+        "label": "크레딧",
+        "desc": "잔액과 사용 내역"
+      },
+      "library": {
+        "label": "앱 보관함",
+        "desc": "보관한 앱 관리"
+      },
+      "activity": {
+        "label": "내 활동",
+        "desc": "글·댓글·반응"
+      },
+      "account": {
+        "label": "계정 관리",
+        "desc": "정보와 보안 관리"
+      },
+      "subscription": {
+        "label": "구독 관리",
+        "desc": "플랜과 결제 관리"
+      }
+    },
+    "settings_ui": {
+      "section_language": "언어",
+      "section_theme": "화면 테마",
+      "section_font_size": "글자 크기",
+      "font_size_level_aria": "글자 크기 {level}단계",
+      "section_point_color": "포인트 컬러",
+      "section_background": "홈 배경",
+      "background_empty": "등록된 홈 배경이 없습니다.",
+      "section_system_options": "시스템 옵션",
+      "theme_aria": "{label} 테마 선택",
+      "theme_title": "{label} 테마",
+      "color_aria": "{color} 선택",
+      "custom_color_aria": "사용자 지정 포인트 컬러 선택",
+      "bg_thumb_aria": "홈 배경 {n}번 적용",
+      "point_custom_label": "직접 지정",
+      "point_preset": {
+        "main": "메인",
+        "naver": "네이버",
+        "reference": "레퍼런스",
+        "sky": "하늘",
+        "cyan": "시안",
+        "orange": "오렌지",
+        "pink": "핑크",
+        "red": "레드",
+        "dark_blue": "다크블루"
+      }
+    },
+    "lang_names": {
+      "ko": "한국어",
+      "en": "English",
+      "ja": "日本語",
+      "zh": "中文"
+    },
+    "themes": {
+      "light": "라이트",
+      "dark": "다크",
+      "flat_light": "플랫 라이트",
+      "flat_dark": "플랫 다크"
+    },
+    "system_options": {
+      "sound": "사운드 효과",
+      "animation": "애니메이션",
+      "haptic": "햅틱 피드백",
+      "toast": "토스트 알림",
+      "weather": "날씨 효과"
+    },
+    "weather_status": {
+      "format": "{condition} · {temp}°C",
+      "loading": "날씨 정보 불러오는 중",
+      "clear": "맑음",
+      "partly_cloudy": "구름 조금",
+      "overcast": "흐림",
+      "fog": "안개",
+      "drizzle": "이슬비",
+      "rain": "비",
+      "freezing_rain": "어는 비",
+      "snow": "눈",
+      "rain_showers": "소나기",
+      "snow_showers": "소낙눈",
+      "thunderstorm": "뇌우",
+      "thunderstorm_hail": "우박 뇌우",
+      "unknown": "알 수 없음"
+    },
+    "profile": {
+      "avatar_alt": "{name} 프로필 사진",
+      "image_change": "이미지 변경",
+      "image_changing": "변경 중…",
+      "loading": "프로필을 불러오는 중입니다…",
+      "nickname": "닉네임",
+      "bio": "한줄 소개",
+      "save": "프로필 저장",
+      "saving": "저장 중…"
+    },
+    "credit": {
+      "amount_unit": "{amount} 크레딧",
+      "balance_label": "보유 크레딧",
+      "total_earned": "총 적립",
+      "total_used": "총 사용",
+      "attendance": "출석체크",
+      "attendance_loading": "출석체크 중…",
+      "recent_title": "최근 내역",
+      "loading_short": "불러오는 중",
+      "loading_rows": "크레딧 내역을 불러오는 중입니다.",
+      "empty": "아직 크레딧 내역이 없습니다.",
+      "transaction_fallback": "크레딧 거래"
+    },
+    "library": {
+      "created_title": "내가 만든 앱",
+      "created_guest_msg": "로그인 후 이용할 수 있습니다.",
+      "created_empty": "내가 만든 앱이 없습니다.",
+      "created_loading": "앱 목록을 불러오는 중…",
+      "edit_app": "앱 편집",
+      "recent_title": "최근 실행 앱",
+      "recent_empty": "최근 실행한 앱이 없습니다.",
+      "favorites_title": "즐겨찾기 앱",
+      "favorites_empty": "즐겨찾기한 앱이 없습니다.",
+      "app_info_fallback": "앱 정보"
+    },
+    "activity": {
+      "stat_posts": "글",
+      "stat_comments": "댓글",
+      "stat_interactions": "받은 반응",
+      "filter_all": "전체",
+      "filter_posts": "작성글",
+      "filter_comments": "작성댓글",
+      "filter_interactions": "받은 반응",
+      "likes_notice": "추천/좋아요 받은 기록은 게시판 모듈의 추천 데이터가 연결되면 이 영역에 함께 표시됩니다.",
+      "admin_session_notice": "관리자 계정으로 로그인되어 있습니다. 아래 활동은 현재 로그인한 회원 기준으로 표시됩니다.",
+      "loading": "내 활동을 불러오는 중입니다.",
+      "empty": "아직 표시할 활동이 없습니다."
+    },
+    "subscription": {
+      "title": "MOA PRO+",
+      "period": "구독 기간: 2026.04.01 ~ 2026.12.31",
+      "manage": "구독 관리"
+    },
+    "account": {
+      "section_basic_title": "기본 계정 정보",
+      "section_basic_desc": "이름, 이메일, 휴대폰 번호를 관리할 수 있습니다. 저장하면 회원 정보에 바로 반영됩니다.",
+      "loading": "계정 정보를 불러오는 중입니다…",
+      "name": "이름",
+      "email": "이메일",
+      "email_synthetic_hint": "이메일이 아직 등록되지 않았습니다. 실제 이메일을 입력해 두면 알림과 계정 복구에 사용할 수 있습니다.",
+      "mobile": "휴대폰 번호",
+      "mobile_placeholder": "010-0000-0000",
+      "save_account": "계정 정보 저장",
+      "section_security_title": "계정 보안",
+      "section_security_desc": "비밀번호 변경과 회원 탈퇴는 현재 비밀번호 확인 후 진행됩니다.",
+      "change_password": "비밀번호 변경",
+      "withdraw": "탈퇴",
+      "panel_password_title": "비밀번호 변경",
+      "panel_withdraw_title": "회원 탈퇴",
+      "panel_password_desc_sns": "{provider} SNS 가입자입니다. 이 화면에서는 비밀번호를 변경할 수 없습니다.",
+      "panel_password_desc_local": "먼저 현재 비밀번호를 확인한 뒤 새 비밀번호를 입력해 주세요.",
+      "panel_withdraw_desc_sns": "{provider} SNS 가입자입니다. 탈퇴를 확정하면 계정은 복구하기 어렵습니다.",
+      "panel_withdraw_desc_local": "현재 비밀번호 확인 후 탈퇴를 확정할 수 있습니다. 탈퇴 후 계정은 복구하기 어렵습니다.",
+      "sns_no_password_note": "{provider} SNS로 가입한 계정은 별도 비밀번호를 사용하지 않습니다. 로그인은 기존 SNS 계정으로 계속 이용해 주세요.",
+      "current_password": "현재 비밀번호",
+      "current_password_placeholder": "현재 비밀번호를 입력하세요",
+      "verify_password": "비밀번호 확인",
+      "verifying": "확인 중…",
+      "new_password": "새 비밀번호",
+      "new_password_placeholder": "8자 이상 입력하세요",
+      "new_password_confirm": "새 비밀번호 확인",
+      "new_password_confirm_placeholder": "새 비밀번호를 한 번 더 입력하세요",
+      "changing_password": "변경 중…",
+      "withdraw_processing": "탈퇴 처리 중…",
+      "withdraw_confirm": "회원 탈퇴",
+      "withdraw_warning_sns": "{provider} SNS 가입 계정입니다. 탈퇴하면 SNS 연결과 로그인 세션이 종료되고 계정 정보가 탈퇴 처리됩니다.",
+      "withdraw_warning_local": "탈퇴하면 로그인 세션이 종료되고 계정 정보가 탈퇴 처리됩니다."
+    },
+    "social": {
+      "naver": "네이버",
+      "kakao": "카카오",
+      "google": "구글",
+      "facebook": "페이스북",
+      "apple": "애플"
+    },
+    "api": {
+      "auth_required": "로그인이 필요합니다.",
+      "image_load_failed": "이미지를 불러오지 못했습니다.",
+      "image_edit_unavailable": "이미지 편집을 사용할 수 없습니다.",
+      "image_convert_failed": "이미지 변환에 실패했습니다."
+    },
+    "msg": {
+      "profile_load_failed": "프로필 정보를 불러오지 못했습니다. 다시 로그인해 주세요.",
+      "credit_load_failed": "크레딧 정보를 불러오지 못했습니다.",
+      "activity_load_failed": "내 활동을 불러오지 못했습니다.",
+      "email_missing_field": "이메일 정보를 불러오지 못했습니다. 계정 관리에서 이메일을 확인해 주세요.",
+      "email_missing_toast": "계정 정보를 불러온 뒤 다시 저장해 주세요.",
+      "save_failed": "저장에 실패했습니다.",
+      "profile_saved": "프로필이 저장되었습니다.",
+      "attendance_failed": "출석체크에 실패했습니다.",
+      "attendance_success": "출석체크 크레딧이 적립되었습니다.",
+      "password_verify_failed": "비밀번호 확인에 실패했습니다.",
+      "password_verified": "비밀번호가 확인되었습니다.",
+      "password_change_failed": "비밀번호 변경에 실패했습니다.",
+      "password_changed": "비밀번호가 변경되었습니다.",
+      "withdraw_failed": "회원 탈퇴에 실패했습니다.",
+      "withdraw_success": "회원 탈퇴가 완료되었습니다.",
+      "avatar_failed": "프로필 사진 변경에 실패했습니다.",
+      "avatar_success": "프로필 사진이 변경되었습니다.",
+      "avatar_failed_generic": "프로필 사진 변경에 실패했습니다."
+    }
+  },
+  "moa_shell": {
+    "common": {
+      "user_fallback": "사용자",
+      "app_description_fallback": "앱 설명",
+      "badge_urgent": "긴급",
+      "badge_event": "이벤트"
+    },
+    "nav": {
+      "launcher": "모든앱",
+      "economy": "랭킹",
+      "myapp": "마이앱",
+      "notice": "공지"
+    },
+    "left": {
+      "close_panel": "좌측 패널 닫기",
+      "tabs_basic_apps": "기본앱",
+      "tabs_user_apps": "유저앱",
+      "tabs_rank_apps": "앱 순위",
+      "tabs_rank_users": "유저 랭킹",
+      "tabs_favorites": "즐겨찾기",
+      "tabs_my_apps": "마이앱",
+      "tabs_notices": "공지사항",
+      "tabs_updates": "업데이트",
+      "empty_favorites": "즐겨찾기한 앱이 없습니다",
+      "empty_myapps": "등록된 앱이 없습니다",
+      "creator_badge": "Lv.{level} Creator"
+    },
+    "right": {
+      "close_panel": "우측 패널 닫기",
+      "profile_action_profile": "프로필",
+      "profile_action_settings": "설정",
+      "profile_action_credit": "크레딧",
+      "profile_action_logout": "로그아웃",
+      "tab_connect": "접속자",
+      "tab_friend": "친구",
+      "tab_alarm": "알림",
+      "online_summary": "현재 42명 활동 중",
+      "friends_summary": "내 친구 12명",
+      "mark_all_read": "모두 읽음 처리",
+      "admin_mode": "관리자 모드",
+      "avatar_alt": "{name} 프로필 사진"
+    },
+    "center": {
+      "edit_mode_title": "앱 편집 모드",
+      "create_app_title": "AI 앱 만들기",
+      "create_app_desc": "프롬프트로 웹앱 만들기",
+      "terms": "이용약관",
+      "privacy": "개인정보처리방침",
+      "locale_settings_aria": "언어 및 환경설정",
+      "copyright": "© 2026 SMARTCARE360. All rights reserved.",
+      "legal_page_loading": "불러오는 중…",
+      "legal_page_error": "페이지를 불러오지 못했습니다. sirsoft-page 모듈에서 해당 슬러그가 발행되었는지 확인해 주세요.",
+      "legal_page_empty": "등록된 내용이 없습니다.",
+      "legal_page_retry": "다시 시도",
+      "toggle_left_panel_on": "좌측 패널 닫기",
+      "toggle_left_panel_off": "좌측 패널 열기",
+      "toggle_right_panel_on": "우측 패널 닫기",
+      "toggle_right_panel_off": "우측 패널 열기"
+    },
+    "modes": {
+      "apps": { "name": "SMARTCARE APPS", "desc": "다양한 앱을 탐색하세요" },
+      "sites": { "name": "SMARTCARE SITES", "desc": "웹사이트 모음" },
+      "work": { "name": "SMARTCARE WORK", "desc": "업무용 도구 모음" }
+    },
+    "auth_windows": {
+      "login": "로그인",
+      "register": "회원가입",
+      "forgot_password": "비밀번호 찾기",
+      "reset_password": "비밀번호 재설정"
+    },
+    "window": {
+      "favorite_add": "즐겨찾기 추가",
+      "favorite_remove": "즐겨찾기 해제",
+      "placeholder_content": "앱 콘텐츠가 여기에 표시됩니다.",
+      "app_loading": "앱을 불러오는 중…",
+      "app_loading_aria": "앱을 준비하는 중입니다. 화면이 바뀔 때까지 잠시만 기다려 주세요.",
+      "remove_app_aria": "{name} 앱 삭제"
+    },
+    "login_prompt": {
+      "title_line1": "건강 관리의",
+      "title_line2": "새로운 기준.",
+      "desc_line1": "로그인하고 더 스마트한",
+      "desc_line2": "건강관리를 시작해 보세요.",
+      "email_login": "이메일로 로그인",
+      "sns_label": "SNS",
+      "social_google": "구글로 계속하기",
+      "social_naver": "네이버로 계속하기",
+      "social_kakao": "카카오로 계속하기"
+    },
+    "home": {
+      "toast_already_logged_in": "이미 로그인되어 있습니다.",
+      "toast_max_windows": "윈도우는 최대 {max}개까지 열 수 있습니다. 사용하지 않는 창을 닫고 다시 열어주세요.",
+      "toast_max_taskbar": "최소화 버튼은 최대 {max}개까지 보관할 수 있습니다. 사용하지 않는 창을 먼저 열거나 닫아주세요.",
+      "toast_app_added": "앱이 추가되었습니다.",
+      "toast_app_already": "이미 추가된 앱입니다.",
+      "sns_login_success": "SNS 로그인되었습니다.",
+      "sns_login_failed": "SNS 로그인에 실패했습니다.",
+      "sns_exchange_invalid": "SNS 로그인 응답이 올바르지 않습니다."
+    },
+    "pwa": {
+      "update": {
+        "message": "플랫폼이 업데이트 되었습니다.",
+        "cta": "다시 불러오기"
+      }
+    }
+  },
+  "moa_apps": {
+    "create-app": {
+      "name": "AI 앱 만들기",
+      "description": "프롬프트로 웹앱 만들기"
+    },
+    "cpap-mask": {
+      "name": "마스크 피팅",
+      "description": "얼굴 측정으로 양압기 마스크 추천"
+    }
+  },
+  "moa_apps_ai": {
+    "title": "AI 앱 만들기",
+    "description": "원하는 앱을 설명하면 HTML 웹앱 미리보기를 생성합니다.",
+    "field_title": "앱 제목",
+    "field_title_placeholder": "예: 수면 리포트 대시보드",
+    "field_type": "앱 유형",
+    "field_model": "AI 모델",
+    "field_prompt": "프롬프트",
+    "field_prompt_placeholder": "만들고 싶은 앱의 화면, 기능, 색감, 동작을 구체적으로 적어주세요.",
+    "field_modify_placeholder": "현재 미리보기에서 바꾸고 싶은 부분을 적어주세요.",
+    "types": {
+      "general": "일반 앱",
+      "3d": "3D 장면",
+      "game": "게임",
+      "dataviz": "데이터 시각화"
+    },
+    "models": {
+      "claude_sonnet": "Claude Sonnet 4",
+      "gpt4o": "GPT-4o",
+      "gemini_flash": "Gemini 2.5 Flash"
+    },
+    "generate": "생성",
+    "modify": "수정 적용",
+    "generating": "생성 중…",
+    "save": "저장",
+    "saving": "저장 중…",
+    "save_success": "생성 앱을 저장했습니다.",
+    "update": "수정 저장",
+    "update_success": "생성 앱을 수정했습니다.",
+    "editing_saved_app": "저장된 앱을 편집 중입니다.",
+    "preview_title": "생성 앱 미리보기",
+    "viewer_loading": "저장된 앱을 불러오는 중…",
+    "viewer_error": "저장된 앱을 불러오지 못했습니다.",
+    "viewer_empty": "표시할 앱 HTML이 없습니다.",
+    "preview_empty_title": "아직 생성된 앱이 없습니다",
+    "preview_empty_description": "프롬프트를 입력하고 생성 버튼을 눌러 미리보기를 확인하세요.",
+    "notice_fallback": "AI provider 설정 전까지 기본 미리보기가 표시됩니다.",
+    "error_generate": "앱 생성에 실패했습니다.",
+    "error_save": "생성 앱 저장에 실패했습니다.",
+    "validation": {
+      "prompt_required": "프롬프트를 입력해주세요.",
+      "title_required": "앱 제목을 입력해주세요.",
+      "html_required": "저장할 생성 HTML이 없습니다."
+    }
+  },
+  "moa_apps_cpap": {
+    "title": "양압기 마스크 피팅",
+    "description": "카메라와 설문 정보를 바탕으로 마스크 타입을 추천합니다.",
+    "hero": {
+      "badge": "AI 마스크 피팅",
+      "title": "30초면 끝나는 마스크 피팅",
+      "description": "아래에서 해당하는 항목만 골라 주세요. 버튼을 누르면 얼굴에 맞는 양압기 마스크를 추천해 드립니다.",
+      "privacy": "스캔 영상은 기기에서만 처리하며 서버에 저장하지 않습니다."
+    },
+    "survey_hint": "해당하는 것만 탭해서 선택하세요",
+    "steps": {
+      "survey": "설문",
+      "camera": "스캔",
+      "result": "결과"
+    },
+    "camera_ready_badge": "스캔 카메라 준비 완료",
+    "camera_idle_badge": "얼굴 스캔 시작 시 AI 로드",
+    "camera_loading_badge": "스캔 카메라 준비 중…",
+    "common": {
+      "yes": "예",
+      "no": "아니오"
+    },
+    "profile": {
+      "gender": "성별",
+      "gender_male": "남성",
+      "gender_female": "여성",
+      "age": "연령대",
+      "age_20s": "20대",
+      "age_30s": "30대",
+      "age_40s": "40대",
+      "age_50s": "50대",
+      "age_60s+": "60대+",
+      "tossing": "수면중 뒤척임",
+      "pressure": "양압기 압력 (cmH2O)",
+      "mouth_breathing": "수면 중 구강호흡",
+      "preferred_types": "선호 마스크 타입 (복수선택)"
+    },
+    "level": {
+      "low": "적음",
+      "medium": "보통",
+      "high": "많음"
+    },
+    "pressure_level": {
+      "low": "10 이하",
+      "medium": "10-15",
+      "high": "15 이상"
+    },
+    "mask_type": {
+      "nasal": {
+        "title": "나잘 (코만 덮음)",
+        "desc": "청장년층에 적합"
+      },
+      "pillow": {
+        "title": "필로우 (콧구멍만)",
+        "desc": "가볍고 편안함, 저압력용"
+      },
+      "full": {
+        "title": "풀페이스 (코+입)",
+        "desc": "구강호흡자, 중노년층"
+      }
+    },
+    "start": "얼굴 스캔 시작",
+    "start_cta": "얼굴 스캔 시작",
+    "result_badge": "AI 맞춤 추천",
+    "reasons_title": "추천 이유",
+    "measurements_title": "스캔 데이터",
+    "latest_empty_hint": "첫 스캔을 시작해 보세요",
+    "latest_date": "스캔일",
+    "mediapipe_loading": "얼굴 스캔 준비 중…",
+    "mediapipe_ready": "얼굴 스캔 준비 완료",
+    "mediapipe_error": "얼굴 스캔을 준비하지 못했습니다.",
+    "camera_starting": "카메라를 여는 중…",
+    "camera_ready": "얼굴이 화면 중앙에 오도록 맞춰주세요.",
+    "camera_error": "카메라를 시작할 수 없습니다.",
+    "cancel": "취소",
+    "measure": "스캔",
+    "measurement_video_required": "카메라 영상이 준비되지 않았습니다.",
+    "measurement_data_error": "스캔 데이터가 부족합니다. 다시 시도해주세요.",
+    "measurement_starting": "스캔을 시작합니다.",
+    "guide_front": "카메라를 정면으로 봐주세요.",
+    "guide_front_checking": "정면 확인 중… {count}/20",
+    "guide_turn_side": "측면 스캔",
+    "guide_turn_side_detail": "고개를 천천히 옆으로 돌려주세요.",
+    "scanning_front": "정면 스캔 중…",
+    "scanning_profile": "측면 스캔 중…",
+    "scan_progress": "{progress}% 완료",
+    "face_not_detected": "얼굴이 감지되지 않습니다.",
+    "measurement_complete": "스캔이 완료되었습니다.",
+    "result_recommendation": "추천 마스크",
+    "result_confidence": "신뢰도 {confidence}%",
+    "result_tips": "피팅 팁",
+    "measurements": {
+      "faceWidth": "얼굴 폭",
+      "faceLength": "얼굴 길이",
+      "noseWidth": "코 폭",
+      "philtrumLength": "인중 길이",
+      "mouthWidth": "입 폭",
+      "bridgeWidth": "미간 너비"
+    },
+    "save": "스캔 결과 저장",
+    "saving": "저장 중…",
+    "save_success": "스캔 결과를 저장했습니다.",
+    "save_error": "스캔 결과 저장에 실패했습니다.",
+    "retry": "다시 스캔",
+    "latest_title": "최근 스캔 결과",
+    "export_pdf": "PDF 저장",
+    "view_recommended_mask": "추천 마스크 보기",
+    "pdf_title": "양압기 마스크 피팅 스캔 결과",
+    "latest_empty": "저장된 스캔 결과가 없습니다.",
+    "result_empty_title": "스캔 결과가 없습니다",
+    "result_empty_detail": "측정한 값이 없습니다. 얼굴 스캔을 진행해 주세요."
+  },
+  "moa_auth": {
+    "title_login": "로그인",
+    "title_register": "회원가입",
+    "title_forgot_password": "비밀번호 찾기",
+    "title_reset_password": "비밀번호 재설정",
+    "desc_login": "로그인하시고 모든 서비스를 스마트하게 이용해 보세요.",
+    "desc_register": "회원가입하시고 모든 서비스를 스마트하게 이용해 보세요.",
+    "desc_forgot_password": "가입한 이메일로 비밀번호 재설정 링크를 보내드립니다.",
+    "desc_reset_password": "메일로 받은 링크를 확인한 뒤 새 비밀번호를 입력하세요.",
+    "email": "이메일",
+    "password": "비밀번호",
+    "password_confirm": "비밀번호 확인",
+    "name": "이름",
+    "nickname": "닉네임",
+    "language": "언어",
+    "login_button": "로그인",
+    "login_submitting": "로그인 중…",
+    "register_button": "회원가입",
+    "register_submitting": "가입 중…",
+    "forgot_password_link": "비밀번호를 잊으셨나요?",
+    "forgot_submit_button": "재설정 링크 받기",
+    "forgot_submitting": "메일 발송 중…",
+    "reset_token_label": "재설정 토큰",
+    "new_password_label": "새 비밀번호",
+    "new_password_confirm_label": "새 비밀번호 확인",
+    "reset_submit_button": "비밀번호 변경",
+    "reset_submitting": "변경 중…",
+    "back_to_login": "로그인으로 돌아가기",
+    "no_account": "계정이 없으신가요?",
+    "have_account": "이미 계정이 있으신가요?",
+    "name_placeholder": "이름을 입력하세요",
+    "nickname_placeholder": "닉네임을 입력하세요 (선택)",
+    "agree_terms": "이용약관에 동의합니다.",
+    "agree_privacy": "개인정보처리방침에 동의합니다.",
+    "sns_divider": "SNS",
+    "social_google_short": "구글",
+    "social_naver_short": "네이버",
+    "social_kakao_short": "카카오",
+    "login_unavailable": "인증 모듈을 불러오지 못했습니다.",
+    "login_success": "로그인되었습니다.",
+    "login_failed": "로그인에 실패했습니다.",
+    "register_failed": "회원가입에 실패했습니다.",
+    "register_success": "회원가입이 완료되었습니다.",
+    "err_forgot_send_failed": "비밀번호 재설정 메일 발송에 실패했습니다.",
+    "msg_forgot_sent": "비밀번호 재설정 링크를 이메일로 보냈습니다.",
+    "err_forgot_failed_generic": "비밀번호 재설정 메일 발송에 실패했습니다.",
+    "err_reset_token_invalid": "비밀번호 재설정 링크가 유효하지 않습니다.",
+    "err_reset_failed": "비밀번호 재설정에 실패했습니다.",
+    "msg_reset_success": "비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요."
+  }
+}

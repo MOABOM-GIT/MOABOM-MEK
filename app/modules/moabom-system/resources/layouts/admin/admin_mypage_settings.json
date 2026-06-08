@@ -1,0 +1,886 @@
+{
+  "version": "1.0.0",
+  "layout_name": "admin_mypage_settings",
+  "permissions": [
+    "moabom-system.settings.read"
+  ],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-system.admin.settings.title",
+    "description": "$t:moabom-system.admin.settings.description"
+  },
+  "computed": {
+    "isReadOnly": "{{!!settings?.data && settings?.data?.abilities?.can_update !== true}}",
+    "pointColorPresetsSafe": "{{Array.isArray(_local?.form?.appearance?.point_color_presets) ? _local.form.appearance.point_color_presets : []}}"
+  },
+  "transition_overlay": {
+    "target": "mypage_settings_tab_content",
+    "fallback_target": "right_content_area",
+    "wait_for": ["settings"]
+  },
+  "initLocal": {
+    "isSaving": false,
+    "errors": null
+  },
+  "data_sources": [
+    {
+      "id": "settings",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-system/admin/settings",
+      "method": "GET",
+      "loading_strategy": "blocking",
+      "auto_fetch": true,
+      "auth_required": true,
+      "initLocal": "form",
+      "refetchOnMount": true,
+      "errorHandling": {
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "id": "mypage_settings_content",
+        "type": "basic",
+        "name": "Div",
+        "dataKey": "form",
+        "trackChanges": true,
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "id": "page_header",
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-system.admin.settings.title",
+              "description": "$t:moabom-system.admin.settings.description"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "if": "{{_local.hasChanges}}",
+                "props": {
+                  "className": "flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": {
+                      "name": "circle-dot",
+                      "size": "xs"
+                    }
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "text": "저장하지 않은 변경사항이 있습니다."
+                  }
+                ]
+              },
+              {
+                "id": "save_button",
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "disabled": "{{_computed.isReadOnly || !_local.hasChanges || _local.isSaving}}",
+                  "className": "px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "sequence",
+                    "params": {
+                      "actions": [
+                        {
+                          "handler": "setState",
+                          "params": {
+                            "target": "local",
+                            "isSaving": true,
+                            "errors": null
+                          }
+                        },
+                        {
+                          "handler": "apiCall",
+                          "auth_required": true,
+                          "target": "/api/modules/moabom-system/admin/settings",
+                          "params": {
+                            "method": "PUT",
+                            "body": "{{(() => ({ mypage: _local.form?.mypage ?? {}, appearance: _local.form?.appearance ?? {}, preferences: _local.form?.preferences ?? {} }))()}}"
+                          },
+                          "onSuccess": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "hasChanges": false
+                              }
+                            },
+                            {
+                              "handler": "refetchDataSource",
+                              "params": {
+                                "dataSourceId": "settings"
+                              }
+                            }
+                          ],
+                          "onError": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "errors": "{{error.errors ?? error.message ?? '$t:moabom-system.admin.settings.save_error'}}"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "text": "{{_local.isSaving ? '$t:common.saving' : '$t:common.save'}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "readonly_banner",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_computed.isReadOnly}}",
+            "props": {
+              "className": "mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "flex items-center gap-3"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": {
+                      "name": "lock",
+                      "className": "w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0"
+                    }
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "text-sm text-yellow-800 dark:text-yellow-200"
+                    },
+                    "text": "마이페이지 설정 조회 권한만 있어 수정할 수 없습니다."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "validation_error",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!!_local.errors}}",
+            "props": {
+              "className": "mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "flex gap-3"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": {
+                      "name": "triangle-exclamation",
+                      "className": "w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+                    }
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "text-sm text-red-700 dark:text-red-300"
+                    },
+                    "text": "{{typeof _local.errors === 'string' ? _local.errors : '$t:moabom-system.admin.settings.save_error'}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tab_navigation",
+            "type": "composite",
+            "name": "TabNavigation",
+            "props": {
+              "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 pt-2",
+              "tabs": [
+                {
+                  "id": "menus",
+                  "label": "$t:moabom-system.admin.settings.menus"
+                },
+                {
+                  "id": "appearance",
+                  "label": "$t:moabom-system.admin.settings.appearance"
+                },
+                {
+                  "id": "preferences",
+                  "label": "$t:moabom-system.admin.settings.preferences"
+                }
+              ],
+              "activeTabId": "{{_global.activeMoabomSystemSettingsTab || 'menus'}}",
+              "variant": "default"
+            },
+            "actions": [
+              {
+                "event": "onTabChange",
+                "type": "change",
+                "handler": "setState",
+                "params": {
+                  "target": "global",
+                  "activeMoabomSystemSettingsTab": "{{$args[0]}}"
+                }
+              }
+            ]
+          },
+          {
+            "id": "mypage_settings_tab_content",
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-6"
+            },
+            "children": [
+              {
+                "id": "menus_panel",
+                "type": "basic",
+                "name": "Div",
+                "if": "{{(_global.activeMoabomSystemSettingsTab || 'menus') === 'menus'}}",
+                "props": {
+                  "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "px-5 py-4 border-b border-gray-200 dark:border-gray-700"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": {
+                          "className": "text-base font-semibold text-gray-900 dark:text-white"
+                        },
+                        "text": "$t:moabom-system.admin.settings.menus"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "mt-1 text-sm text-gray-500 dark:text-gray-400"
+                        },
+                        "text": "$t:moabom-system.admin.settings.menus_description"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "menus_list",
+                    "type": "composite",
+                    "name": "SortableMypageMenuList",
+                    "props": {
+                      "menus": "{{_local.form?.mypage?.menus ?? []}}",
+                      "readOnly": "{{_computed.isReadOnly}}",
+                      "className": "p-4 space-y-2"
+                    },
+                    "actions": [
+                      {
+                        "event": "onMenusChange",
+                        "handler": "setState",
+                        "params": {
+                          "target": "local",
+                          "form.mypage.menus": "{{$args[0]}}",
+                          "hasChanges": true
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "appearance_panel",
+                "type": "basic",
+                "name": "Div",
+                "if": "{{_global.activeMoabomSystemSettingsTab === 'appearance'}}",
+                "props": {
+                  "className": "flex flex-col gap-6"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "grid grid-cols-1 xl:grid-cols-2 gap-6"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                          "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "H3",
+                            "props": {
+                              "className": "text-base font-semibold text-gray-900 dark:text-white"
+                            },
+                            "text": "$t:moabom-system.admin.settings.appearance_customer_palette_title"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": {
+                              "className": "mt-5 space-y-5"
+                            },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                  "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+                                },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "iteration": {
+                                      "source": "{{_local.form?.appearance?.point_color_presets ?? []}}",
+                                      "item_var": "preset",
+                                      "index_var": "presetIdx"
+                                    },
+                                    "props": {
+                                      "className": "flex min-w-0 items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-2 py-2 bg-white dark:bg-gray-800"
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Span",
+                                        "props": {
+                                          "className": "inline-flex h-6 w-6 items-center justify-center text-xs font-semibold text-gray-500 dark:text-gray-400"
+                                        },
+                                        "text": "{{presetIdx + 1}}"
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Input",
+                                        "props": {
+                                          "name": "{{'appearance.point_color_presets.' + presetIdx}}",
+                                          "type": "color",
+                                          "value": "{{preset ?? '#6366f1'}}",
+                                          "disabled": "{{_computed.isReadOnly}}",
+                                          "className": "h-10 w-full min-w-0 flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer disabled:cursor-not-allowed"
+                                        }
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": {
+                                          "type": "button",
+                                          "disabled": "{{_computed.isReadOnly}}",
+                                          "aria-label": "$t:moabom-system.admin.settings.remove_point_color",
+                                          "className": "inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        },
+                                        "actions": [
+                                          {
+                                            "type": "click",
+                                            "handler": "setState",
+                                            "params": {
+                                              "target": "local",
+                                              "form.appearance.point_color_presets": "{{(_local.form?.appearance?.point_color_presets ?? []).filter((_, i) => i !== presetIdx)}}",
+                                              "hasChanges": true
+                                            }
+                                          }
+                                        ],
+                                        "children": [
+                                          {
+                                            "type": "basic",
+                                            "name": "Icon",
+                                            "props": {
+                                              "name": "trash",
+                                              "size": "sm"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                  "className": "mt-3"
+                                },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Button",
+                                    "props": {
+                                      "type": "button",
+                                      "disabled": "{{_computed.isReadOnly}}",
+                                      "className": "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    },
+                                    "actions": [
+                                      {
+                                        "type": "click",
+                                        "handler": "setState",
+                                        "params": {
+                                          "target": "local",
+                                          "form.appearance.point_color_presets": "{{[...(_local.form?.appearance?.point_color_presets ?? []), '#6366f1']}}",
+                                          "hasChanges": true
+                                        }
+                                      }
+                                    ],
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Icon",
+                                        "props": {
+                                          "name": "plus",
+                                          "size": "sm"
+                                        }
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Span",
+                                        "text": "$t:moabom-system.admin.settings.add_point_color"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                          "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "H3",
+                            "props": {
+                              "className": "text-base font-semibold text-gray-900 dark:text-white"
+                            },
+                            "text": "$t:moabom-system.admin.settings.themes_allowlist_title"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "iteration": {
+                              "source": "{{_local.form?.appearance?.themes ?? []}}",
+                              "item_var": "theme",
+                              "index_var": "themeIndex"
+                            },
+                            "props": {
+                              "className": "mt-5 space-y-3"
+                            },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Label",
+                                "props": {
+                                  "className": "flex items-center justify-between gap-3"
+                                },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": {
+                                      "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    },
+                                    "text": "{{theme.label ?? theme.id ?? ''}}"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Input",
+                                    "props": {
+                                      "name": "{{'appearance.themes.' + themeIndex + '.enabled'}}",
+                                      "type": "checkbox",
+                                      "checked": "{{!!theme.enabled}}",
+                                      "disabled": "{{_computed.isReadOnly}}",
+                                      "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": {
+                          "className": "text-base font-semibold text-gray-900 dark:text-white mb-1"
+                        },
+                        "text": "$t:moabom-system.admin.settings.home_background_upload_title"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "text-sm text-gray-500 dark:text-gray-400 mb-4"
+                        },
+                        "text": "$t:moabom-system.admin.settings.home_background_upload_description"
+                      },
+                      {
+                        "id": "home_background_manager",
+                        "type": "composite",
+                        "name": "HomeBackgroundManager",
+                        "props": {
+                          "items": "{{_local.form?.appearance?.home_background_items ?? []}}",
+                          "readOnly": "{{_computed.isReadOnly}}",
+                          "pointColorPresets": "{{_computed.pointColorPresetsSafe}}",
+                          "className": ""
+                        },
+                        "actions": [
+                          {
+                            "event": "onItemsChange",
+                            "handler": "setState",
+                            "params": {
+                              "target": "local",
+                              "form.appearance.home_background_items": "{{$args[0]}}",
+                              "hasChanges": true
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "preferences_panel",
+                "type": "basic",
+                "name": "Div",
+                "if": "{{_global.activeMoabomSystemSettingsTab === 'preferences'}}",
+                "props": {
+                  "className": "grid grid-cols-1 xl:grid-cols-2 gap-6"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": {
+                          "className": "text-base font-semibold text-gray-900 dark:text-white"
+                        },
+                        "text": "$t:moabom-system.admin.settings.languages_title"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "mt-2 text-sm text-gray-600 dark:text-gray-400"
+                        },
+                        "text": "$t:moabom-system.admin.settings.languages_description"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                          "className": "mt-5 space-y-4"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "iteration": {
+                              "source": "{{_local.form?.preferences?.languages ?? []}}",
+                              "item_var": "locale",
+                              "index_var": "localeIndex"
+                            },
+                            "props": {
+                              "className": "space-y-3"
+                            },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Label",
+                                "props": {
+                                  "className": "flex items-center justify-between gap-3"
+                                },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": {
+                                      "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    },
+                                    "text": "{{locale.label ?? locale.id ?? ''}}"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Input",
+                                    "props": {
+                                      "name": "{{'preferences.languages.' + localeIndex + '.enabled'}}",
+                                      "type": "checkbox",
+                                      "checked": "{{!!locale.enabled}}",
+                                      "disabled": "{{_computed.isReadOnly}}",
+                                      "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": {
+                          "className": "text-base font-semibold text-gray-900 dark:text-white"
+                        },
+                        "text": "$t:moabom-system.admin.settings.font_size_default_title"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "mt-2 text-sm text-gray-600 dark:text-gray-400"
+                        },
+                        "text": "$t:moabom-system.admin.settings.font_size_default_description"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                          "className": "mt-5 flex items-center gap-2"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Button",
+                            "iteration": {
+                              "source": "{{[1, 2, 3, 4, 5] ?? []}}",
+                              "item_var": "fontLevel",
+                              "index_var": "fontLevelIdx"
+                            },
+                            "props": {
+                              "type": "button",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "aria-label": "{{fontLevel + '단계'}}",
+                              "className": "{{(Number(_local.form?.appearance?.font_size_default ?? 2) === fontLevel) ? 'rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-semibold bg-gray-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed' : 'rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed'}}"
+                            },
+                            "actions": [
+                              {
+                                "type": "click",
+                                "handler": "setState",
+                                "params": {
+                                  "target": "local",
+                                  "form.appearance.font_size_default": "{{fontLevel}}",
+                                  "hasChanges": true
+                                }
+                              }
+                            ],
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "text": "{{fontLevel}}"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "mt-3 text-xs text-gray-500 dark:text-gray-400"
+                        },
+                        "text": "$t:moabom-system.admin.settings.font_size_default_hint"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": {
+                          "className": "text-base font-semibold text-gray-900 dark:text-white"
+                        },
+                        "text": "$t:moabom-system.admin.settings.system_options_title"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "mt-2 text-sm text-gray-600 dark:text-gray-400"
+                        },
+                        "text": "$t:moabom-system.admin.settings.system_options_description"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "iteration": {
+                          "source": "{{_local.form?.preferences?.system_options ?? []}}",
+                          "item_var": "option",
+                          "index_var": "optionIndex"
+                        },
+                        "props": {
+                          "className": "mt-5 space-y-4"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": {
+                              "className": "border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0 last:pb-0"
+                            },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-900 dark:text-white"
+                                },
+                                "text": "{{option.label ?? option.id ?? ''}}"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                  "className": "mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"
+                                },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Label",
+                                    "props": {
+                                      "className": "flex items-center justify-between gap-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Span",
+                                        "text": "$t:moabom-system.admin.settings.option_default_value"
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Input",
+                                        "props": {
+                                          "name": "{{'preferences.system_options.' + optionIndex + '.on_by_default'}}",
+                                          "type": "checkbox",
+                                          "checked": "{{!!option.on_by_default}}",
+                                          "disabled": "{{_computed.isReadOnly}}",
+                                          "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Label",
+                                    "props": {
+                                      "className": "flex items-center justify-between gap-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Span",
+                                        "text": "$t:moabom-system.admin.settings.user_editable"
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Input",
+                                        "props": {
+                                          "name": "{{'preferences.system_options.' + optionIndex + '.user_editable'}}",
+                                          "type": "checkbox",
+                                          "checked": "{{!!option.user_editable}}",
+                                          "disabled": "{{_computed.isReadOnly}}",
+                                          "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+/**
+ * 심플(flat-*) 테마는 렌더 비용을 크게 좌우하는 그림자·backdrop-filter 를 일괄 무력화한다.
+ * - 시각 장식만 제거: box-shadow / text-shadow / filter / backdrop-filter.
+ * - 애니메이션(`transition` / `animation`) 은 건드리지 않는다 — 애니메이션 on/off 는
+ *   시스템 옵션(`html[data-moa-animations]`) 이 전담하며 테마와 독립적이다.
+ * - `*` 선택자 사용 대가는 적다(Shell 전체가 이미 `moa-home-root` 안에서만 동작).
+ */
+:root[data-moa-theme="flat-light"] .moa-home-root *,
+:root[data-moa-theme="flat-dark"] .moa-home-root *,
+:root[data-moa-theme="flat-light"] .moa-home-root *::before,
+:root[data-moa-theme="flat-light"] .moa-home-root *::after,
+:root[data-moa-theme="flat-dark"] .moa-home-root *::before,
+:root[data-moa-theme="flat-dark"] .moa-home-root *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.text-xs {
+  font-size: 0.8rem;
+}
+
+.moa-icon-xxs {
+  font-size: 0.7rem;
+}
+
+.moa-point-fill {
+  background: var(--moa-point-fill-bg);
+  border: 1px solid var(--moa-point-fill-bg);
+  box-shadow: var(--moa-point-fill-shadow);
+}

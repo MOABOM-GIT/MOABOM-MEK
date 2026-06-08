@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-social-auth",
+    "description": "Social authentication module for Gnuboard7",
+    "type": "library",
+    "version": "0.2.10",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Social\\Auth\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

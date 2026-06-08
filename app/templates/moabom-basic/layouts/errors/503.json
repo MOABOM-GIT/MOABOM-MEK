@@ -1,0 +1,34 @@
+{
+    "version": "1.0.0",
+    "layout_name": "503",
+    "extends": "_user_base",
+    "slots": {
+        "content": [
+            {
+                "type": "basic",
+                "name": "Div",
+                "props": { "className": "max-w-7xl mx-auto px-4 py-32 text-center" },
+                "children": [
+                    {
+                        "type": "basic",
+                        "name": "H1",
+                        "props": { "className": "text-6xl font-bold text-gray-300 mb-4" },
+                        "text": "503"
+                    },
+                    {
+                        "type": "basic",
+                        "name": "H2",
+                        "props": { "className": "text-2xl font-bold text-gray-700 mb-2" },
+                        "text": "서비스 점검 중"
+                    },
+                    {
+                        "type": "basic",
+                        "name": "P",
+                        "props": { "className": "text-gray-500" },
+                        "text": "잠시 후 다시 접속해주세요."
+                    }
+                ]
+            }
+        ]
+    }
+}

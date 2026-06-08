@@ -1,0 +1,13 @@
+{
+    "version": "1.0.0",
+    "layout_name": "home",
+    "meta": {
+        "title": "MOABOM - 웹앱 플랫폼"
+    },
+    "components": [
+        {
+            "type": "composite",
+            "name": "HomePage"
+        }
+    ]
+}

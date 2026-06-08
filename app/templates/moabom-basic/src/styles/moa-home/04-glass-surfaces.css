@@ -1,0 +1,79 @@
+/* 글래스 패널 (좌/중/우 패널 공통) — 토큰 기반 */
+.glass-panel {
+  background: var(--moa-glass-panel-surface);
+  border: 1px solid var(--moa-glass-panel-border);
+  overflow: hidden;
+  box-shadow:
+    0 5px 20px var(--moa-glass-panel-outer-shadow),
+    inset 0 1px 0 var(--moa-glass-panel-inset-top),
+    inset 0 0 20px 1px var(--moa-glass-panel-inset-glow),
+    inset 0 -1px 0 var(--moa-glass-panel-inset-bottom);
+}
+
+@supports (backdrop-filter: blur(12px)) {
+  .moa-mobile-overlay-panel {
+    backdrop-filter: blur(12px) saturate(140%) brightness(1.05);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(12px)) {
+  .moa-mobile-overlay-panel {
+    backdrop-filter: blur(12px) saturate(140%) brightness(1.05);
+    -webkit-backdrop-filter: blur(12px) saturate(140%) brightness(1.05);
+  }
+}
+
+/* GlassCard가 부모를 꽉 채우도록 강제 */
+.glass-ui-container.fill-parent {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+.glass-ui-container.fill-parent .glass-ui-card-content {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* 글래스 효과 (기본) — 토큰 기반 */
+.glass {
+  background: var(--moa-glass-surface);
+  border: 1px solid var(--moa-glass-border);
+  box-shadow:
+    0 2px 8px var(--moa-glass-outer-shadow),
+    inset 0 1px 0 var(--moa-glass-inset-top),
+    inset 0 -1px 0 var(--moa-glass-inset-bottom);
+}
+
+/* 글래스 효과 (소형) — 토큰 기반 */
+.glass-sm {
+  background: var(--moa-glass-sm-surface);
+  border: 1px solid var(--moa-glass-sm-border);
+  box-shadow:
+    0 2px 8px var(--moa-glass-sm-outer-shadow),
+    inset 0 1px 0 var(--moa-glass-sm-inset-top),
+    inset 0 -1px 0 var(--moa-glass-sm-inset-bottom);
+}
+
+/* 글래스 효과 (흐림 추가본) — 토큰 기반 */
+.glass-sm-blur {
+  background: var(--moa-glass-smblur-surface);
+  border: 1px solid var(--moa-glass-smblur-border);
+  box-shadow:
+    0 2px 8px var(--moa-glass-smblur-outer-shadow),
+    inset 0 1px 0 var(--moa-glass-smblur-inset-top),
+    inset 0 -1px 0 var(--moa-glass-smblur-inset-bottom);
+}
+
+@supports (backdrop-filter: blur(10px)) {
+  .glass-sm-blur {
+    backdrop-filter: blur(10px);
+  }
+}
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .glass-sm-blur {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}

@@ -1,0 +1,29 @@
+{
+    "identifier": "moabom-auth-hardening",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom XSS 보안 가드",
+        "en": "Moabom XSS Security Guard"
+    },
+    "version": "0.2.4",
+    "license": "MIT",
+    "description": {
+        "ko": "전역 입력 필드 보안, 콘솔 민감정보 마스킹, DOM XSS 보조 가드, 보안 응답 헤더를 적용해 프런트 보안 노출을 완화합니다.",
+        "en": "Applies global input hardening, sensitive console masking, DOM XSS guardrails, and security response headers to reduce frontend exposure."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    },
+    "assets": {
+        "js": {
+            "entry": "resources/js/index.ts",
+            "output": "dist/js/plugin.iife.js"
+        }
+    },
+    "loading": {
+        "strategy": "global",
+        "priority": 50
+    }
+}

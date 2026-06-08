@@ -1,0 +1,624 @@
+{
+  "version": "1.2.8",
+  "layout_name": "admin_saas_hospitals",
+  "permissions": ["moabom-system.saas.read"],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-system.admin.saas.hospitals.title",
+    "description": "$t:moabom-system.admin.saas.hospitals.list_description"
+  },
+  "transition_overlay": {
+    "target": "saas_hospitals_content",
+    "fallback_target": "right_content_area",
+    "wait_for": ["hospitals"]
+  },
+  "computed": {
+    "hospitalsList": "{{Array.isArray(hospitals?.data?.hospitals) ? hospitals.data.hospitals : []}}",
+    "hospitalsTotal": "{{Array.isArray(hospitals?.data?.hospitals) ? hospitals.data.hospitals.length : 0}}",
+    "baseDomain": "{{hospitals?.data?.meta?.base_domain || 'mek360.com'}}",
+    "hasError": "{{!!_dataSourceErrors?.hospitals}}"
+  },
+  "data_sources": [
+    {
+      "id": "hospitals",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-system/platform/saas/hospitals",
+      "method": "GET",
+      "loading_strategy": "blocking",
+      "auto_fetch": true,
+      "auth_required": true,
+      "errorHandling": {
+        "401": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.saas.hospitals.auth_required"
+          }
+        },
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.saas.hospitals.permission_denied"
+          }
+        },
+        "404": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.saas.hospitals.platform_only"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "type": "basic",
+        "name": "Div",
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-system.admin.saas.hospitals.title",
+              "description": "$t:moabom-system.admin.saas.hospitals.list_description"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "title": "$t:moabom-system.admin.saas.hospitals.loading",
+                  "className": "p-2 mr-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "refetchDataSource",
+                    "params": { "dataSourceId": "hospitals" }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": { "name": "refresh", "className": "w-5 h-5" }
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "className": "inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": { "name": "plus", "className": "w-4 h-4" }
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "text": "$t:moabom-system.admin.saas.hospitals.create_button"
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "navigate",
+                    "params": { "path": "/admin/saas/hospitals/create" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "saas_hospitals_content",
+            "type": "basic",
+            "name": "Div",
+            "children": [
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_computed.hasError}}",
+            "props": {
+              "className": "mt-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-800 dark:text-red-200"
+            },
+            "text": "{{_dataSourceErrors?.hospitals?.message ?? '$t:moabom-system.admin.saas.hospitals.load_error'}}"
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.hasError && _computed.hospitalsTotal === 0}}",
+            "props": {
+              "className": "mt-6 p-10 text-center bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Icon",
+                "props": { "name": "building", "className": "w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" }
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "props": { "className": "mt-3 text-base font-medium text-gray-700 dark:text-gray-200" },
+                "text": "$t:moabom-system.admin.saas.hospitals.empty_title"
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "props": { "className": "mt-1 text-sm text-gray-500 dark:text-gray-400" },
+                "text": "$t:moabom-system.admin.saas.hospitals.empty_description"
+              },
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "className": "inline-flex items-center gap-2 mt-4 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium"
+                },
+                "text": "$t:moabom-system.admin.saas.hospitals.create_button",
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "navigate",
+                    "params": { "path": "/admin/saas/hospitals/create" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.hasError && _computed.hospitalsTotal > 0}}",
+            "props": {
+              "className": "mt-6 overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Table",
+                "props": {
+                  "className": "min-w-full text-sm text-gray-900 dark:text-gray-100"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Thead",
+                    "props": {
+                      "className": "bg-gray-50 dark:bg-gray-900/50 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Tr",
+                        "children": [
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_name", "props": { "className": "px-4 py-3 text-left font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_host", "props": { "className": "px-4 py-3 text-left font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_status", "props": { "className": "px-4 py-3 text-left font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_usage", "props": { "className": "px-4 py-3 text-left font-medium whitespace-nowrap" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_note", "props": { "className": "px-4 py-3 text-left font-medium hidden sm:table-cell" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_package", "props": { "className": "px-4 py-3 text-left font-medium hidden md:table-cell" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_created_at", "props": { "className": "px-4 py-3 text-left font-medium hidden md:table-cell" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-system.admin.saas.hospitals.table_actions", "props": { "className": "px-4 py-3 text-right font-medium" } }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Tbody",
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Tr",
+                        "iteration": {
+                          "source": "{{Array.isArray(hospitals?.data?.hospitals) ? hospitals.data.hospitals : []}}",
+                          "item_var": "item"
+                        },
+                        "props": {
+                          "className": "border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/40"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "flex items-center gap-2" },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "font-medium text-gray-900 dark:text-gray-50" },
+                                    "text": "{{item.display_name || item.slug}}"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "if": "{{item.is_platform_host}}",
+                                    "props": { "className": "inline-block px-1.5 py-0.5 text-[10px] uppercase rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
+                                    "text": "$t:moabom-system.admin.saas.hospitals.platform_host_badge"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "mt-0.5 font-mono text-[11px] text-gray-500 dark:text-gray-400" },
+                                "text": "{{item.slug}}"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "A",
+                                "props": {
+                                  "href": "{{item.app_url || ('https://' + item.host)}}",
+                                  "target": "_blank",
+                                  "rel": "noopener noreferrer",
+                                  "className": "text-blue-600 dark:text-blue-400 hover:underline"
+                                },
+                                "text": "{{item.host}}"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{item.status === 'active'}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_active"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{item.status === 'provisioning'}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_provisioning"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{item.status === 'suspended'}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_suspended"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{item.status === 'purging'}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_purging"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{item.status === 'inactive'}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_inactive"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{!item.status || (item.status !== 'active' && item.status !== 'provisioning' && item.status !== 'suspended' && item.status !== 'inactive' && item.status !== 'purging')}}",
+                                "props": { "className": "inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+                                "text": "$t:moabom-system.admin.saas.hospitals.status_unknown"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "text-xs text-gray-800 dark:text-gray-100" },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-1" },
+                                    "text": "$t:moabom-system.admin.saas.hospitals.usage_db_runtime"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "font-medium" },
+                                    "text": "{{item.usage?.db_runtime_human || '-'}}"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "mt-0.5 text-xs text-gray-800 dark:text-gray-100" },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-1" },
+                                    "text": "$t:moabom-system.admin.saas.hospitals.usage_db_baseline"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "font-medium text-gray-600 dark:text-gray-300" },
+                                    "text": "{{item.usage?.db_baseline_human || '-'}}"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "mt-1 pt-1 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-100" },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-1" },
+                                    "text": "GCS"
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": { "className": "font-medium" },
+                                    "text": "{{item.usage?.storage_size_human || '-'}}"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 text-xs text-gray-600 dark:text-gray-300 hidden sm:table-cell" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                  "className": "text-gray-800 dark:text-gray-200"
+                                },
+                                "text": "{{item.note || item.region || '-'}}"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "if": "{{item.address}}",
+                                "props": { "className": "mt-0.5 text-[11px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]" },
+                                "text": "{{item.address}}"
+                              }
+                            ]
+                          },
+                          { "type": "basic", "name": "Td", "text": "{{item.package_id || '-'}}", "props": { "className": "px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell" } },
+                          { "type": "basic", "name": "Td", "text": "{{item.created_at ? String(item.created_at).slice(0,10) : '-'}}", "props": { "className": "px-4 py-3 text-xs text-gray-500 dark:text-gray-400 hidden md:table-cell" } },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 text-right" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "flex flex-col items-end gap-1.5" },
+                                "children": [
+                                  {
+                                    "type": "basic",
+                                    "name": "A",
+                                    "props": {
+                                      "href": "{{item.app_url || ('https://' + item.host)}}",
+                                      "target": "_blank",
+                                      "rel": "noopener noreferrer",
+                                      "className": "inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Icon",
+                                        "props": { "name": "external-link", "className": "w-3.5 h-3.5" }
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Span",
+                                        "text": "$t:moabom-system.admin.saas.hospitals.open_site"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "if": "{{!item.is_platform_host && item.status === 'active'}}",
+                                    "props": { "className": "flex flex-wrap justify-end gap-1" },
+                                    "children": [
+                                      {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": {
+                                          "type": "button",
+                                          "title": "$t:moabom-system.admin.saas.hospitals.action_purge_db",
+                                          "className": "px-2 py-0.5 text-[11px] rounded border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                        },
+                                        "text": "$t:moabom-system.admin.saas.hospitals.action_purge_db",
+                                        "actions": [
+                                          {
+                                            "type": "click",
+                                            "handler": "apiCall",
+                                            "auth_required": true,
+                                            "target": "/api/modules/moabom-system/platform/saas/hospitals/{{item.slug}}/purge",
+                                            "confirm": "{{'DB 운영 데이터를 삭제하고 baseline을 복원합니다. 슬러그 \"' + item.slug + '\" — 계속할까요?'}}",
+                                            "params": {
+                                              "method": "POST",
+                                              "body": {
+                                                "mode": "db_data",
+                                                "confirm_slug": "{{item.slug}}"
+                                              }
+                                            },
+                                            "onSuccess": [
+                                              {
+                                                "handler": "refetchDataSource",
+                                                "params": { "dataSourceId": "hospitals" }
+                                              },
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "success",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.purge_db_success"
+                                                }
+                                              }
+                                            ],
+                                            "onError": [
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "error",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.action_failed"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": {
+                                          "type": "button",
+                                          "title": "$t:moabom-system.admin.saas.hospitals.action_purge_storage",
+                                          "className": "px-2 py-0.5 text-[11px] rounded border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-200 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+                                        },
+                                        "text": "$t:moabom-system.admin.saas.hospitals.action_purge_storage",
+                                        "actions": [
+                                          {
+                                            "type": "click",
+                                            "handler": "apiCall",
+                                            "auth_required": true,
+                                            "target": "/api/modules/moabom-system/platform/saas/hospitals/{{item.slug}}/purge",
+                                            "confirm": "{{'첨부·업로드 Storage를 삭제합니다(appearance seed 유지). 슬러그 \"' + item.slug + '\" — 계속할까요?'}}",
+                                            "params": {
+                                              "method": "POST",
+                                              "body": {
+                                                "mode": "storage_data",
+                                                "confirm_slug": "{{item.slug}}"
+                                              }
+                                            },
+                                            "onSuccess": [
+                                              {
+                                                "handler": "refetchDataSource",
+                                                "params": { "dataSourceId": "hospitals" }
+                                              },
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "success",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.purge_storage_success"
+                                                }
+                                              }
+                                            ],
+                                            "onError": [
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "error",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.action_failed"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": {
+                                          "type": "button",
+                                          "title": "$t:moabom-system.admin.saas.hospitals.action_destroy",
+                                          "className": "px-2 py-0.5 text-[11px] rounded border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        },
+                                        "text": "$t:moabom-system.admin.saas.hospitals.action_destroy",
+                                        "actions": [
+                                          {
+                                            "type": "click",
+                                            "handler": "apiCall",
+                                            "auth_required": true,
+                                            "target": "/api/modules/moabom-system/platform/saas/hospitals/{{item.slug}}",
+                                            "confirm": "{{'레지스트리·DB·GCS를 완전히 삭제합니다. 되돌릴 수 없습니다. 슬러그 \"' + item.slug + '\" / 호스트 \"' + item.host + '\" — 계속할까요?'}}",
+                                            "params": {
+                                              "method": "DELETE",
+                                              "body": {
+                                                "confirm_slug": "{{item.slug}}",
+                                                "confirm_host": "{{item.host}}"
+                                              }
+                                            },
+                                            "onSuccess": [
+                                              {
+                                                "handler": "refetchDataSource",
+                                                "params": { "dataSourceId": "hospitals" }
+                                              },
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "success",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.destroy_success_toast"
+                                                }
+                                              }
+                                            ],
+                                            "onError": [
+                                              {
+                                                "handler": "toast",
+                                                "params": {
+                                                  "type": "error",
+                                                  "message": "$t:moabom-system.admin.saas.hospitals.action_failed"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

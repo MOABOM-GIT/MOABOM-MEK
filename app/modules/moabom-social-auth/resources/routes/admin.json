@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "routes": [
+    {
+      "path": "*/admin/platform/settings/social-auth",
+      "layout": "admin_social_auth_settings",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-social-auth.admin.settings.title",
+        "permission": "moabom-social-auth.settings.read"
+      }
+    }
+  ]
+}

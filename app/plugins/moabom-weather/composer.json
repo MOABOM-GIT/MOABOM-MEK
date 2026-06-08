@@ -1,0 +1,20 @@
+{
+    "name": "plugins/moabom-weather",
+    "description": "Moabom Weather plugin for Gnuboard7 (Open-Meteo proxy + IP geolocation)",
+    "type": "library",
+    "version": "0.1.0",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Moabom"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Plugins\\Moabom\\Weather\\": ["src/", "./"]
+        }
+    }
+}

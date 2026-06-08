@@ -1,0 +1,16 @@
+{
+    "version": "1.0.0",
+    "layout_name": "auth/register",
+    "meta": {
+        "title": "$t:auth.register"
+    },
+    "components": [
+        {
+            "type": "composite",
+            "name": "HomePage",
+            "props": {
+                "initialWindow": "register"
+            }
+        }
+    ]
+}

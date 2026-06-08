@@ -1,0 +1,19 @@
+{
+    "name": "plugins/moabom-auth-hardening",
+    "description": "Moabom XSS Security Guard Plugin for Gnuboard7 platform",
+    "type": "library",
+    "version": "0.2.4",
+    "authors": [
+        {
+            "name": "Moabom"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Plugins\\Moabom\\Auth\\Hardening\\": ["src/", "./"]
+        }
+    }
+}

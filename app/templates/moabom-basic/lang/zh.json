@@ -1,0 +1,667 @@
+{
+  "site_name": "Moabom",
+  "home": {
+    "title": "首页"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出",
+    "register": "注册",
+    "email": "邮箱",
+    "password": "密码",
+    "login_button": "登录",
+    "register_button": "注册",
+    "no_account": "还没有账号？",
+    "have_account": "已有账号？"
+  },
+  "errors": {
+    "404_title": "页面不存在",
+    "404_message": "您访问的页面不存在。",
+    "403_title": "访问被拒绝",
+    "403_message": "您没有权限访问此页面。",
+    "500_title": "服务器错误",
+    "500_message": "发生临时错误，请稍后重试。",
+    "go_home": "返回首页"
+  },
+  "mypage": {
+    "settings": "偏好设置",
+    "language": "语言",
+    "theme": "主题",
+    "point_color": "点缀色",
+    "system_options": "系统选项"
+  },
+  "moa_mypage": {
+    "common": {
+      "user_fallback": "用户",
+      "cancel": "取消",
+      "close": "关闭",
+      "login_required_hint": "登录后可使用"
+    },
+    "tabs": {
+      "profile": {
+        "label": "个人资料",
+        "desc": "昵称与简介"
+      },
+      "settings": {
+        "label": "偏好设置",
+        "desc": "语言与显示"
+      },
+      "credit": {
+        "label": "点数",
+        "desc": "余额与记录"
+      },
+      "library": {
+        "label": "应用库",
+        "desc": "管理已保存应用"
+      },
+      "activity": {
+        "label": "我的动态",
+        "desc": "帖子、评论、互动"
+      },
+      "account": {
+        "label": "账号",
+        "desc": "资料与安全"
+      },
+      "subscription": {
+        "label": "订阅",
+        "desc": "方案与账单"
+      }
+    },
+    "settings_ui": {
+      "section_language": "语言",
+      "section_theme": "主题",
+      "section_font_size": "字体大小",
+      "font_size_level_aria": "字体大小 第{level}级",
+      "section_point_color": "点缀色",
+      "section_background": "主页背景",
+      "background_empty": "尚未注册任何主页背景。",
+      "section_system_options": "系统选项",
+      "theme_aria": "选择{label}主题",
+      "theme_title": "{label}主题",
+      "color_aria": "选择{color}",
+      "custom_color_aria": "自定义点缀色",
+      "bg_thumb_aria": "应用主页背景 {n}",
+      "point_custom_label": "自定义",
+      "point_preset": {
+        "main": "主色",
+        "naver": "Naver绿",
+        "reference": "参考",
+        "sky": "天蓝",
+        "cyan": "青色",
+        "orange": "橙色",
+        "pink": "粉色",
+        "red": "红色",
+        "dark_blue": "深蓝"
+      }
+    },
+    "lang_names": {
+      "ko": "韩语",
+      "en": "英语",
+      "ja": "日语",
+      "zh": "中文"
+    },
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "flat_light": "扁平浅色",
+      "flat_dark": "扁平深色"
+    },
+    "system_options": {
+      "sound": "音效",
+      "animation": "动画",
+      "haptic": "触感反馈",
+      "toast": "吐司通知",
+      "weather": "天气特效"
+    },
+    "weather_status": {
+      "format": "{condition} · {temp}°C",
+      "loading": "正在获取天气…",
+      "clear": "晴",
+      "partly_cloudy": "多云",
+      "overcast": "阴",
+      "fog": "雾",
+      "drizzle": "毛毛雨",
+      "rain": "雨",
+      "freezing_rain": "冻雨",
+      "snow": "雪",
+      "rain_showers": "阵雨",
+      "snow_showers": "阵雪",
+      "thunderstorm": "雷雨",
+      "thunderstorm_hail": "雷暴伴冰雹",
+      "unknown": "未知"
+    },
+    "profile": {
+      "avatar_alt": "{name}的头像",
+      "image_change": "更换图片",
+      "image_changing": "更换中…",
+      "loading": "正在加载资料…",
+      "nickname": "昵称",
+      "bio": "简介",
+      "save": "保存资料",
+      "saving": "保存中…"
+    },
+    "credit": {
+      "amount_unit": "{amount} 点",
+      "balance_label": "余额",
+      "total_earned": "累计获得",
+      "total_used": "累计使用",
+      "attendance": "签到",
+      "attendance_loading": "处理中…",
+      "recent_title": "最近记录",
+      "loading_short": "加载中",
+      "loading_rows": "正在加载点数记录…",
+      "empty": "暂无点数记录。",
+      "transaction_fallback": "点数变动"
+    },
+    "library": {
+      "created_title": "我创建的应用",
+      "created_guest_msg": "登录后可使用此功能。",
+      "created_empty": "暂无您创建的应用。",
+      "created_loading": "正在加载应用列表…",
+      "edit_app": "编辑应用",
+      "recent_title": "最近使用",
+      "recent_empty": "暂无最近使用的应用。",
+      "favorites_title": "收藏",
+      "favorites_empty": "暂无收藏的应用。",
+      "app_info_fallback": "应用信息"
+    },
+    "activity": {
+      "stat_posts": "帖子",
+      "stat_comments": "评论",
+      "stat_interactions": "互动",
+      "filter_all": "全部",
+      "filter_posts": "帖子",
+      "filter_comments": "评论",
+      "filter_interactions": "收到的互动",
+      "likes_notice": "点赞与推荐将在论坛模块提供数据后显示于此。",
+      "admin_session_notice": "您正以管理员账号登录。以下活动按当前登录的会员账号显示。",
+      "loading": "正在加载动态…",
+      "empty": "暂无动态。"
+    },
+    "subscription": {
+      "title": "MOA PRO+",
+      "period": "订阅：2026.04.01～2026.12.31",
+      "manage": "管理订阅"
+    },
+    "account": {
+      "section_basic_title": "账号资料",
+      "section_basic_desc": "管理姓名、邮箱与手机号。保存后将更新会员资料。",
+      "loading": "正在加载账号信息…",
+      "name": "姓名",
+      "email": "邮箱",
+      "email_synthetic_hint": "尚未绑定邮箱。请添加真实邮箱以便通知与找回。",
+      "mobile": "手机号",
+      "mobile_placeholder": "010-0000-0000",
+      "save_account": "保存账号",
+      "section_security_title": "安全",
+      "section_security_desc": "修改密码与注销账号需要当前密码。",
+      "change_password": "修改密码",
+      "withdraw": "注销账号",
+      "panel_password_title": "修改密码",
+      "panel_withdraw_title": "注销账号",
+      "panel_password_desc_sns": "您使用 {provider} 注册，无法在此修改密码。",
+      "panel_password_desc_local": "验证当前密码后输入新密码。",
+      "panel_withdraw_desc_sns": "您使用 {provider} 注册，注销后难以恢复。",
+      "panel_withdraw_desc_local": "验证当前密码后确认注销，难以恢复。",
+      "sns_no_password_note": "{provider} 账号不使用独立密码，请继续使用第三方登录。",
+      "current_password": "当前密码",
+      "current_password_placeholder": "输入当前密码",
+      "verify_password": "验证密码",
+      "verifying": "验证中…",
+      "new_password": "新密码",
+      "new_password_placeholder": "至少 8 位",
+      "new_password_confirm": "确认新密码",
+      "new_password_confirm_placeholder": "再次输入",
+      "changing_password": "修改中…",
+      "withdraw_processing": "处理中…",
+      "withdraw_confirm": "确认注销",
+      "withdraw_warning_sns": "{provider} 账号：第三方绑定与会话将结束，账号将被删除。",
+      "withdraw_warning_local": "会话将结束，账号将被删除。"
+    },
+    "social": {
+      "naver": "NAVER",
+      "kakao": "Kakao",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple"
+    },
+    "api": {
+      "auth_required": "请先登录。",
+      "image_load_failed": "无法加载图片。",
+      "image_edit_unavailable": "暂不可用图片编辑。",
+      "image_convert_failed": "图片转换失败。"
+    },
+    "msg": {
+      "profile_load_failed": "无法加载资料，请重新登录。",
+      "credit_load_failed": "无法加载点数。",
+      "activity_load_failed": "无法加载动态。",
+      "email_missing_field": "无法读取邮箱，请在账号中核对。",
+      "email_missing_toast": "请重新加载账号信息后再保存。",
+      "save_failed": "保存失败。",
+      "profile_saved": "资料已保存。",
+      "attendance_failed": "签到失败。",
+      "attendance_success": "签到点数已发放。",
+      "password_verify_failed": "密码验证失败。",
+      "password_verified": "密码已验证。",
+      "password_change_failed": "修改密码失败。",
+      "password_changed": "密码已修改。",
+      "withdraw_failed": "注销失败。",
+      "withdraw_success": "已注销账号。",
+      "avatar_failed": "无法更新头像。",
+      "avatar_success": "头像已更新。",
+      "avatar_failed_generic": "无法更新头像。"
+    }
+  },
+  "moa_shell": {
+    "common": {
+      "user_fallback": "用户",
+      "app_description_fallback": "应用说明",
+      "badge_urgent": "紧急",
+      "badge_event": "活动"
+    },
+    "nav": {
+      "launcher": "所有应用",
+      "economy": "排行",
+      "myapp": "我的应用",
+      "notice": "公告"
+    },
+    "left": {
+      "close_panel": "关闭左侧面板",
+      "tabs_basic_apps": "基础应用",
+      "tabs_user_apps": "用户应用",
+      "tabs_rank_apps": "应用排行",
+      "tabs_rank_users": "用户排行",
+      "tabs_favorites": "收藏",
+      "tabs_my_apps": "我的应用",
+      "tabs_notices": "公告",
+      "tabs_updates": "更新",
+      "empty_favorites": "暂无收藏应用",
+      "empty_myapps": "暂无已注册应用",
+      "creator_badge": "Lv.{level} Creator"
+    },
+    "right": {
+      "close_panel": "关闭右侧面板",
+      "profile_action_profile": "资料",
+      "profile_action_settings": "设置",
+      "profile_action_credit": "点数",
+      "profile_action_logout": "退出登录",
+      "tab_connect": "在线",
+      "tab_friend": "好友",
+      "tab_alarm": "通知",
+      "online_summary": "当前 42 人在线",
+      "friends_summary": "好友 12 人",
+      "mark_all_read": "全部标记已读",
+      "admin_mode": "管理模式",
+      "avatar_alt": "{name} 的头像"
+    },
+    "center": {
+      "edit_mode_title": "应用编辑模式",
+      "create_app_title": "AI 创建应用",
+      "create_app_desc": "用提示词创建网页应用",
+      "terms": "服务条款",
+      "privacy": "隐私政策",
+      "locale_settings_aria": "语言与设置",
+      "copyright": "© 2026 SMARTCARE360. All rights reserved.",
+      "legal_page_loading": "加载中…",
+      "legal_page_error": "无法加载页面。请在 sirsoft-page 模块中确认对应 slug 已发布。",
+      "legal_page_empty": "暂无已发布内容。",
+      "legal_page_retry": "重试",
+      "toggle_left_panel_on": "关闭左侧面板",
+      "toggle_left_panel_off": "打开左侧面板",
+      "toggle_right_panel_on": "关闭右侧面板",
+      "toggle_right_panel_off": "打开右侧面板"
+    },
+    "modes": {
+      "apps": {
+        "name": "SMARTCARE APPS",
+        "desc": "浏览各类应用"
+      },
+      "sites": {
+        "name": "SMARTCARE SITES",
+        "desc": "网站集合"
+      },
+      "work": {
+        "name": "SMARTCARE WORK",
+        "desc": "办公工具集"
+      }
+    },
+    "auth_windows": {
+      "login": "登录",
+      "register": "注册",
+      "forgot_password": "找回密码",
+      "reset_password": "重置密码"
+    },
+    "window": {
+      "favorite_add": "加入收藏",
+      "favorite_remove": "取消收藏",
+      "placeholder_content": "应用内容将显示在此处。",
+      "app_loading": "正在加载应用…",
+      "app_loading_aria": "正在准备应用，请稍候直至窗口更新。",
+      "remove_app_aria": "删除应用「{name}」"
+    },
+    "login_prompt": {
+      "title_line1": "健康管理",
+      "title_line2": "的新标准。",
+      "desc_line1": "登录并开始更智能的",
+      "desc_line2": "健康管理。",
+      "email_login": "使用邮箱登录",
+      "sns_label": "社交账号",
+      "social_google": "使用 Google 继续",
+      "social_naver": "使用 Naver 继续",
+      "social_kakao": "使用 Kakao 继续"
+    },
+    "home": {
+      "toast_already_logged_in": "您已登录。",
+      "toast_max_windows": "最多可同时打开 {max} 个窗口。请先关闭其它窗口后再试。",
+      "toast_max_taskbar": "任务栏最多保存 {max} 个最小化按钮。请先打开或关闭窗口。",
+      "toast_app_added": "已添加到主页网格。",
+      "toast_app_already": "该应用已在网格中。",
+      "sns_login_success": "社交账号登录成功。",
+      "sns_login_failed": "社交登录失败。",
+      "sns_exchange_invalid": "社交登录响应无效。"
+    },
+    "pwa": {
+      "update": {
+        "message": "平台已更新。",
+        "cta": "重新载入"
+      }
+    }
+  },
+  "moa_apps": {
+    "mypage": {
+      "name": "我的页面",
+      "description": "管理个人资料与设置"
+    },
+    "app-maker": {
+      "name": "设备租赁",
+      "description": "呼吸机租赁申请"
+    },
+    "secret-text": {
+      "name": "租赁状态",
+      "description": "查看我的租赁设备"
+    },
+    "color-tool": {
+      "name": "设备管理",
+      "description": "巡检与更换"
+    },
+    "brain-gen": {
+      "name": "睡眠分析",
+      "description": "睡眠数据报告"
+    },
+    "decision": {
+      "name": "售后服务申请",
+      "description": "上门维修受理"
+    },
+    "psych-test": {
+      "name": "使用指南",
+      "description": "设备手册"
+    },
+    "quick-game": {
+      "name": "费用查询",
+      "description": "查看月租费用"
+    },
+    "community": {
+      "name": "客服中心",
+      "description": "一对一咨询"
+    },
+    "device-info": {
+      "name": "设备信息",
+      "description": "各型号规格说明"
+    },
+    "game-coupon": {
+      "name": "优惠券",
+      "description": "租赁折扣权益"
+    },
+    "lotto-gen": {
+      "name": "健康报告",
+      "description": "月度睡眠健康分析"
+    },
+    "qr-tool": {
+      "name": "QR登记",
+      "description": "设备二维码登记"
+    },
+    "mobile-guide": {
+      "name": "物流查询",
+      "description": "租赁配送进度"
+    },
+    "weather": {
+      "name": "我的设备",
+      "description": "已登记设备列表"
+    },
+    "color-user": {
+      "name": "睡眠记录",
+      "description": "每日睡眠日志"
+    },
+    "music": {
+      "name": "通知设置",
+      "description": "设备提醒管理"
+    },
+    "task1": {
+      "name": "合同信息",
+      "description": "租赁合同记录"
+    },
+    "task2": {
+      "name": "付款记录",
+      "description": "月度账单记录"
+    },
+    "task3": {
+      "name": "积分",
+      "description": "积分余额查询"
+    },
+    "create-app": {
+      "name": "AI 创建应用",
+      "description": "用提示词创建网页应用"
+    },
+    "cpap-mask": {
+      "name": "面罩适配",
+      "description": "通过面部测量推荐 CPAP 面罩"
+    }
+  },
+  "moa_apps_ai": {
+    "title": "AI 创建应用",
+    "description": "描述想要的应用，即可生成 HTML Web 应用预览。",
+    "field_title": "应用标题",
+    "field_title_placeholder": "例如：睡眠报告仪表板",
+    "field_type": "应用类型",
+    "field_model": "AI 模型",
+    "field_prompt": "提示词",
+    "field_prompt_placeholder": "请具体描述画面、功能、颜色和交互。",
+    "field_modify_placeholder": "请描述要在当前预览中修改的内容。",
+    "types": {
+      "general": "通用应用",
+      "3d": "3D 场景",
+      "game": "游戏",
+      "dataviz": "数据可视化"
+    },
+    "models": {
+      "claude_sonnet": "Claude Sonnet 4",
+      "gpt4o": "GPT-4o",
+      "gemini_flash": "Gemini 2.5 Flash"
+    },
+    "generate": "生成",
+    "modify": "应用修改",
+    "generating": "生成中…",
+    "save": "保存",
+    "saving": "保存中…",
+    "save_success": "已保存生成的应用。",
+    "update": "保存修改",
+    "update_success": "已更新生成的应用。",
+    "editing_saved_app": "正在编辑已保存的应用。",
+    "preview_title": "生成应用预览",
+    "viewer_loading": "正在加载已保存的应用…",
+    "viewer_error": "无法加载已保存的应用。",
+    "viewer_empty": "没有可显示的应用 HTML。",
+    "preview_empty_title": "尚未生成应用",
+    "preview_empty_description": "输入提示词并点击生成查看预览。",
+    "notice_fallback": "在配置 AI provider 前将显示默认预览。",
+    "error_generate": "应用生成失败。",
+    "error_save": "保存生成应用失败。",
+    "validation": {
+      "prompt_required": "请输入提示词。",
+      "title_required": "请输入应用标题。",
+      "html_required": "没有可保存的生成 HTML。"
+    }
+  },
+  "moa_apps_cpap": {
+    "title": "CPAP 面罩适配",
+    "description": "根据摄像头和问卷信息推荐面罩类型。",
+    "hero": {
+      "badge": "AI 面部分析",
+      "title": "约 30 秒完成面罩适配",
+      "description": "点击下方符合您的选项，然后启动面部扫描，获得个性化 CPAP 面罩推荐。",
+      "privacy": "拍摄画面仅在设备上分析，不会保存到服务器。"
+    },
+    "survey_hint": "只需点选符合您的选项",
+    "steps": {
+      "survey": "问卷",
+      "camera": "扫描",
+      "result": "结果"
+    },
+    "camera_ready_badge": "扫描相机已就绪",
+    "camera_idle_badge": "开始扫描时加载 AI",
+    "camera_loading_badge": "正在准备扫描相机…",
+    "common": {
+      "yes": "是",
+      "no": "否"
+    },
+    "profile": {
+      "gender": "性别",
+      "gender_male": "男性",
+      "gender_female": "女性",
+      "age": "年龄段",
+      "age_20s": "20多岁",
+      "age_30s": "30多岁",
+      "age_40s": "40多岁",
+      "age_50s": "50多岁",
+      "age_60s+": "60岁+",
+      "tossing": "睡眠中翻身",
+      "pressure": "CPAP 压力 (cmH2O)",
+      "mouth_breathing": "睡眠中口呼吸",
+      "preferred_types": "偏好面罩类型（可多选）"
+    },
+    "level": {
+      "low": "少",
+      "medium": "中",
+      "high": "多"
+    },
+    "pressure_level": {
+      "low": "10 以下",
+      "medium": "10–15",
+      "high": "15 以上"
+    },
+    "mask_type": {
+      "nasal": {
+        "title": "鼻罩（仅覆盖鼻子）",
+        "desc": "适合青壮年"
+      },
+      "pillow": {
+        "title": "枕式（仅鼻孔）",
+        "desc": "轻便舒适，适合低压"
+      },
+      "full": {
+        "title": "全脸面罩（鼻+口）",
+        "desc": "口呼吸者，中老年"
+      }
+    },
+    "start": "开始面部扫描",
+    "start_cta": "开始面部扫描",
+    "result_badge": "AI 专属推荐",
+    "reasons_title": "推荐理由",
+    "measurements_title": "扫描数据",
+    "latest_empty_hint": "开始您的第一次扫描",
+    "latest_date": "扫描日期",
+    "mediapipe_loading": "正在准备面部扫描…",
+    "mediapipe_ready": "面部扫描已就绪",
+    "mediapipe_error": "无法准备面部扫描。",
+    "camera_starting": "正在打开摄像头…",
+    "camera_ready": "请将脸部置于画面中央。",
+    "camera_error": "无法启动摄像头。",
+    "cancel": "取消",
+    "measure": "扫描",
+    "measurement_video_required": "摄像头画面尚未准备好。",
+    "measurement_data_error": "扫描数据不足，请重试。",
+    "measurement_starting": "开始扫描。",
+    "guide_front": "请正视摄像头。",
+    "guide_front_checking": "正在确认正面… {count}/20",
+    "guide_turn_side": "侧面扫描",
+    "guide_turn_side_detail": "请慢慢将头转向侧面。",
+    "scanning_front": "正在扫描正面…",
+    "scanning_profile": "正在扫描侧面…",
+    "scan_progress": "已完成 {progress}%",
+    "face_not_detected": "未检测到面部。",
+    "measurement_complete": "扫描完成。",
+    "result_recommendation": "推荐面罩",
+    "result_confidence": "可信度 {confidence}%",
+    "result_tips": "适配提示",
+    "measurements": {
+      "faceWidth": "脸宽",
+      "faceLength": "脸长",
+      "noseWidth": "鼻宽",
+      "philtrumLength": "人中长度",
+      "mouthWidth": "嘴宽",
+      "bridgeWidth": "内眼角宽度"
+    },
+    "save": "保存扫描结果",
+    "saving": "保存中…",
+    "save_success": "扫描结果已保存。",
+    "save_error": "保存扫描结果失败。",
+    "retry": "重新扫描",
+    "latest_title": "最近扫描结果",
+    "latest_empty": "暂无保存的扫描结果。",
+    "result_empty_title": "暂无扫描结果",
+    "result_empty_detail": "没有测量数据，请先进行面部扫描。",
+    "export_pdf": "保存 PDF",
+    "view_recommended_mask": "查看推荐面罩",
+    "pdf_title": "CPAP 面罩适配扫描结果"
+  },
+  "moa_auth": {
+    "title_login": "登录",
+    "title_register": "注册",
+    "title_forgot_password": "找回密码",
+    "title_reset_password": "重置密码",
+    "desc_login": "登录后即可顺畅使用各项服务。",
+    "desc_register": "注册账号后即可顺畅使用各项服务。",
+    "desc_forgot_password": "我们将向您的注册邮箱发送重置链接。",
+    "desc_reset_password": "请确认邮件中的链接，然后输入新密码。",
+    "email": "电子邮箱",
+    "password": "密码",
+    "password_confirm": "确认密码",
+    "name": "姓名",
+    "nickname": "昵称",
+    "language": "语言",
+    "login_button": "登录",
+    "login_submitting": "登录中…",
+    "register_button": "注册",
+    "register_submitting": "注册中…",
+    "forgot_password_link": "忘记密码？",
+    "forgot_submit_button": "获取重置链接",
+    "forgot_submitting": "正在发送邮件…",
+    "reset_token_label": "重置令牌",
+    "new_password_label": "新密码",
+    "new_password_confirm_label": "确认新密码",
+    "reset_submit_button": "修改密码",
+    "reset_submitting": "修改中…",
+    "back_to_login": "返回登录",
+    "no_account": "还没有账号？",
+    "have_account": "已有账号？",
+    "name_placeholder": "请输入姓名",
+    "nickname_placeholder": "昵称（可选）",
+    "agree_terms": "我同意服务条款。",
+    "agree_privacy": "我同意隐私政策。",
+    "sns_divider": "社交账号",
+    "social_google_short": "Google",
+    "social_naver_short": "Naver",
+    "social_kakao_short": "Kakao",
+    "login_unavailable": "无法加载认证模块。",
+    "login_success": "登录成功。",
+    "login_failed": "登录失败。",
+    "register_failed": "注册失败。",
+    "register_success": "注册完成。",
+    "err_forgot_send_failed": "重置邮件发送失败。",
+    "msg_forgot_sent": "我们已向您的邮箱发送重置链接。",
+    "err_forgot_failed_generic": "重置邮件发送失败。",
+    "err_reset_token_invalid": "重置链接无效或已过期。",
+    "err_reset_failed": "重置密码失败。",
+    "msg_reset_success": "密码已更新，请使用新密码登录。"
+  }
+}

@@ -53,37 +53,27 @@ node_modules/
 /bootstrap/cache/*
 !/bootstrap/cache/.gitkeep
 
-# ===== 확장 시스템 =====
+# ===== 확장 시스템 (MOABOM-MEK: 활성 경로 = Git SSOT) =====
 
-# 활성 확장 디렉토리 (설치된 복사본 — Git 제외)
-modules/*/
-!modules/_bundled/
-plugins/*/
-!plugins/_bundled/
-templates/*/
-!templates/_bundled/
+# upstream 미러·스테이징 (루트 .gitignore 와 동일 정책)
+modules/_bundled/
+modules/_pending/
+plugins/_bundled/
+plugins/_pending/
+templates/_bundled/
+templates/_pending/
+lang-packs/_bundled/
+lang-packs/_pending/
 
-# _bundled 내부 의존성 디렉토리 제외
-modules/_bundled/*/vendor/
-modules/_bundled/*/node_modules/
-plugins/_bundled/*/vendor/
-plugins/_bundled/*/node_modules/
-templates/_bundled/*/node_modules/
-
-# _pending 디렉토리 (외부 다운로드 임시 영역 — 구조만 버전관리)
-!modules/_pending/
-!plugins/_pending/
-!templates/_pending/
-
-# ===== 언어팩 시스템 =====
-
-# 활성 언어팩 디렉토리 (설치된 복사본 — Git 제외)
-lang-packs/*/
-!lang-packs/_bundled/
-
-# _pending 디렉토리 (외부 다운로드 임시 영역)
-lang-packs/_bundled/_pending/
-!lang-packs/_pending/
+# 확장 내부 빌드·의존성 (소스만 Git, dist/node_modules 는 Cloud Build)
+modules/*/node_modules/
+modules/*/vendor/
+modules/*/dist/
+plugins/*/node_modules/
+plugins/*/vendor/
+plugins/*/dist/
+templates/*/node_modules/
+templates/*/dist/
 
 # DevTools debug dump
 storage/debug-dump/

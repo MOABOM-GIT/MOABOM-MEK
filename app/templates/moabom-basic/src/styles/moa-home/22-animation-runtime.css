@@ -1,0 +1,26 @@
+/* ─── Animation effective=false 강제 (Req 2.2, 10.1/10.2) ───
+ *
+ * `applyMoabomAnimationRuntime(false)` 가 `<html data-moa-animations="off">` 를 기록하면
+ * 아래 규칙이 `.moa-home-root` 스코프(= moabom-basic 템플릿) 내부의 모든 엘리먼트에 대해
+ * animation · transition · scroll-behavior 를 유효 0 으로 강제한다.
+ *
+ * - `.moa-home-root` 스코프를 반드시 유지해 `moabom-admin_basic` 등 다른 템플릿 DOM 에는
+ *   어떤 규칙도 매칭되지 않도록 한다(Req 10.1 / 10.2).
+ * - `0.001ms` 를 쓰는 이유: `transitionend` 이벤트를 기다리는 UX(panel-slide 등) 가
+ *   `0ms` 에서는 이벤트를 놓칠 수 있어 상태 동기화가 끊긴다. `0.001ms` 는 시각적으로 즉시
+ *   종료되면서 `transitionend` 가 정상 발생한다(브라우저 공통 관례).
+ * - Blur/backdrop-filter 는 "애니메이션" 이 아니라 "시각 장식" 이므로 여기서 건드리지 않는다.
+ *   글래스 흐림 제거는 오직 플랫 테마(`flat-light` / `flat-dark`) 에서만 일어나며, 일반
+ *   라이트/다크 테마에서는 animation off 여부와 무관하게 유지되어야 한다.
+ */
+html[data-moa-animations="off"] .moa-home-root,
+html[data-moa-animations="off"] .moa-home-root *,
+html[data-moa-animations="off"] .moa-home-root *::before,
+html[data-moa-animations="off"] .moa-home-root *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}

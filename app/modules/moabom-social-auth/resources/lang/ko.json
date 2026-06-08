@@ -1,0 +1,7 @@
+{
+  "admin": {
+    "settings": {
+      "$partial": "partial/ko/admin/settings.json"
+    }
+  }
+}

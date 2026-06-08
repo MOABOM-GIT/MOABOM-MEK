@@ -1,0 +1,16 @@
+{
+    "version": "1.0.0",
+    "layout_name": "auth/login",
+    "meta": {
+        "title": "$t:auth.login"
+    },
+    "components": [
+        {
+            "type": "composite",
+            "name": "HomePage",
+            "props": {
+                "initialWindow": "login"
+            }
+        }
+    ]
+}

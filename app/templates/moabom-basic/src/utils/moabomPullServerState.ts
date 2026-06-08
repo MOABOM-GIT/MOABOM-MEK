@@ -1,0 +1,99 @@
+import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSystem';
+import { loadMoabomSettingsPayloadForMerge } from '../api/moabomSystemApi';
+import { queueSaveMoabomSystemSettings, isRecentlySavedSettings } from './moabomSettingsSaveQueue';
+import { mergeMoabomSystemStateFromSettingsApi, writeStoredMoabomDefaultsRevision } from './moabomSystemServerMerge';
+import { areMoabomSystemStatesEqual } from './moabomSystemStateEqual';
+import { applyMoabomSystemAppearance, hasStoredMoabomSystemState, loadMoabomSystemState, saveMoabomSystemState } from './moabomSystemStore';
+
+function toSettingsSnapshot(state: MoabomSystemState): Record<string, unknown> {
+  return {
+    layout: state.layout,
+    appearance: state.appearance,
+    preferences: state.preferences,
+  } as Record<string, unknown>;
+}
+
+/**
+ * 저장 직후 보호 정책:
+ * - 로그인 사용자이면서 저장 큐 쿨다운 구간이면 서버 `settings` 대신 로컬 스냅샷 사용
+ * - 게스트는 저장 큐의 영향을 받지 않음
+ */
+export function shouldUseLocalSettingsSnapshotForPull(input: {
+  isLoggedIn: boolean;
+  recentlySaved: boolean;
+}): boolean {
+  return input.isLoggedIn && input.recentlySaved;
+}
+
+export function resolveEffectiveSettingsForPull(input: {
+  isLoggedIn: boolean;
+  recentlySaved: boolean;
+  localState: MoabomSystemState;
+  serverSettings: Record<string, unknown> | undefined;
+}): Record<string, unknown> | undefined {
+  if (shouldUseLocalSettingsSnapshotForPull(input)) {
+    return toSettingsSnapshot(input.localState);
+  }
+  return input.serverSettings;
+}
+
+/**
+ * 관리자 플랫폼 설정·(로그인 시) 사용자 저장값을 서버에서 가져와 MoabomSystemState 로 병합합니다.
+ * 게스트는 공개 `public/frontend-defaults`만 사용합니다.
+ *
+ * **저장 직후 pull 경합 방지**: 사용자가 마이페이지에서 빠르게 테마를 전환하면
+ * `visibilitychange`/`focus`/주기 pull 이 서버의 아직 반영되지 않은 구버전 `settings` 를
+ * 로컬 appearance·preferences 에 덮어쓸 수 있다. `moabomSettingsSaveQueue` 의 저장 쿨다운
+ * 구간 안에서는 서버 `settings` 대신 **로컬 값을 사용자 의사로 간주하여 유지**하고,
+ * `defaults`(플랫폼 팔레트·테마 목록·배경 목록 등)만 반영한다.
+ */
+export async function pullMoabomServerState(input: {
+  isLoggedIn: boolean;
+  coreUserLanguage?: string | null;
+  preserveShellPanelOpen: boolean;
+}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null } | null> {
+  const payload = await loadMoabomSettingsPayloadForMerge(input.isLoggedIn);
+  if (!payload) {
+    return null;
+  }
+  if (!input.isLoggedIn && !payload.defaults) {
+    return null;
+  }
+
+  // 신규 방문자 판정은 첫 save() 이전에 해야 한다 (pull 내부에서 merged 저장 후엔 항상 false).
+  const freshVisitor = !hasStoredMoabomSystemState();
+  const localState = loadMoabomSystemState();
+
+  const effectiveSettings = resolveEffectiveSettingsForPull({
+    isLoggedIn: input.isLoggedIn,
+    recentlySaved: isRecentlySavedSettings(),
+    localState,
+    serverSettings: payload.settings,
+  });
+
+  const serverRev = payload.defaults_revision ?? 0;
+  const {
+    state: merged,
+    languageAlignmentPayloadForServer,
+  } = mergeMoabomSystemStateFromSettingsApi(localState, { ...payload, settings: effectiveSettings }, {
+    coreUserLanguage: input.coreUserLanguage ?? undefined,
+    preserveShellPanelOpen: input.preserveShellPanelOpen,
+    freshVisitor,
+  });
+
+  if (input.isLoggedIn && languageAlignmentPayloadForServer) {
+    void queueSaveMoabomSystemSettings(merged);
+  }
+
+  if (!areMoabomSystemStatesEqual(localState, merged)) {
+    saveMoabomSystemState(merged);
+  }
+
+  writeStoredMoabomDefaultsRevision(serverRev);
+  applyMoabomSystemAppearance(merged.appearance);
+
+  return {
+    state: merged,
+    defaults: payload.defaults ?? null,
+  };
+}

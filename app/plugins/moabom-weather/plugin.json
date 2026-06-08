@@ -1,0 +1,19 @@
+{
+    "identifier": "moabom-weather",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom Weather",
+        "en": "Moabom Weather"
+    },
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": {
+        "ko": "Open-Meteo Forecast/Air-Quality 기반의 공개 날씨 프록시와 Cloudflare/ipinfo 우선순위 IP geolocation 을 제공하는 플러그인. moabom-system 의 weather/geolocate API 를 이관해 책임을 분리한다.",
+        "en": "Public weather proxy backed by Open-Meteo Forecast/Air-Quality plus IP geolocation (Cloudflare headers, then ipinfo.io). Extracted from moabom-system to isolate the responsibility."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    }
+}

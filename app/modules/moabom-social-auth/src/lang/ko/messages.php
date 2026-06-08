@@ -1,0 +1,31 @@
+<?php
+
+return [
+    'providers_success' => 'SNS 제공자 목록을 조회했습니다.',
+    'exchange_success' => 'SNS 로그인에 성공했습니다.',
+    'exchange_failed' => 'SNS 로그인 처리에 실패했습니다.',
+    'unsupported_provider' => '지원하지 않는 SNS 제공자입니다: :provider',
+    'missing_config' => ':provider SNS 로그인 설정이 누락되었습니다.',
+    'email_required' => ':provider 계정에서 이메일을 확인할 수 없습니다.',
+    'token_failed' => ':provider 토큰 발급에 실패했습니다.',
+    'invalid_state' => 'SNS 인증 상태 값이 올바르지 않습니다.',
+    'invalid_broker_state' => '중앙 인증 state 값이 올바르지 않습니다.',
+    'expired_broker_state' => '중앙 인증 state 값이 만료되었습니다.',
+    'invalid_code' => 'SNS 인증 코드가 만료되었거나 올바르지 않습니다.',
+    'code_required' => 'SNS 인증 코드가 필요합니다.',
+    'inactive_user' => '비활성화된 계정은 로그인할 수 없습니다.',
+    'broker_disabled' => '중앙 인증 브로커가 비활성화되어 있습니다.',
+    'broker_host_missing' => '중앙 인증 브로커 호스트 설정이 누락되었습니다.',
+    'broker_host_mismatch' => '중앙 인증 브로커 요청 호스트가 일치하지 않습니다.',
+    'invalid_tenant_host' => '요청 테넌트 호스트 정보가 올바르지 않습니다.',
+    'tenant_not_found' => '요청한 테넌트를 찾을 수 없거나 비활성 상태입니다.',
+    'settings' => [
+        'fetch_success' => 'SNS 연결설정을 조회했습니다.',
+        'save_success' => 'SNS 연결설정을 저장했습니다.',
+        'save_failed' => 'SNS 연결설정 저장에 실패했습니다.',
+        'clear_cache_success' => 'SNS 연결설정 캐시를 초기화했습니다.',
+        'required_when_enabled' => '활성화된 provider의 필수 설정값입니다.',
+        'required_when_client_secret_enabled' => 'Client Secret 사용 시 필수 설정값입니다.',
+        'required_when_broker_enabled' => '중앙 인증 브로커 사용 시 필수 설정값입니다.',
+    ],
+];

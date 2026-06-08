@@ -1,0 +1,19 @@
+{
+    "identifier": "moabom-apps",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom 앱",
+        "en": "Moabom Apps"
+    },
+    "version": "0.2.0",
+    "license": "MIT",
+    "description": {
+        "ko": "사용자 앱 인프라(현재: AI 앱 HTML 생성/저장). moabom_system_generated_apps 테이블에 사용자가 생성한 앱을 저장하며, AI 프로바이더(Anthropic/OpenAI/Google) 프록시를 제공한다.",
+        "en": "User-app infrastructure (currently: AI app HTML generate/store). Persists user-generated apps to the moabom_system_generated_apps table and proxies AI providers (Anthropic/OpenAI/Google)."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    }
+}

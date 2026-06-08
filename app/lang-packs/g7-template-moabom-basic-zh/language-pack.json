@@ -1,0 +1,30 @@
+{
+    "identifier": "g7-template-moabom-basic-zh",
+    "namespace": "g7",
+    "vendor": "moabom",
+    "name": {
+        "ko": "G7 템플릿 (moabom-basic) 중국어 언어팩",
+        "en": "G7 template (moabom-basic) Chinese language pack",
+        "zh": "G7 模板 (moabom-basic) 中文语言包"
+    },
+    "description": {
+        "ko": "Moabom 사용자 템플릿(moabom-basic) 중국어 번역 — 기존 lang/zh.json 이전",
+        "en": "Chinese translations for Moabom user template (moabom-basic), migrated from lang/zh.json",
+        "zh": "Moabom 用户模板 (moabom-basic) 中文翻译"
+    },
+    "version": "1.0.0-beta.1",
+    "license": "MIT",
+    "scope": "template",
+    "target_identifier": "moabom-basic",
+    "locale": "zh",
+    "locale_name": "Chinese",
+    "locale_native_name": "中文",
+    "text_direction": "ltr",
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "requires": {
+        "target_version": ">=0.6.0",
+        "depends_on_core_locale": false
+    },
+    "github_url": "",
+    "github_changelog_url": ""
+}

@@ -1,0 +1,23 @@
+@keyframes rocketShake {
+  0% { transform: translate(-5px, 5px) scale(1); }
+  15% { transform: translate(-11px, 11px) scale(0.9); }
+  25% { transform: translate(5px, -5px) scale(1.1); }
+  30% { transform: translate(3px, -3px) scale(1.1); }
+  70% { transform: translate(-5px, 5px) scale(1); }
+  100% { transform: translate(-5px, 5px) scale(1); }
+}
+@keyframes moaStatusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes moaStatusRing {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+/* 로켓 아이콘 애니메이션 */
+.rocket-icon {
+  animation: rocketShake 5s infinite ease-in-out;
+  font-size: 2.4rem;
+}

@@ -1,0 +1,49 @@
+{
+  "id": "hospital-default",
+  "label": "병원 기본 패키지 (Moabom SaaS)",
+  "templates": [
+    "moabom-basic",
+    "moabom-admin_basic"
+  ],
+  "active_user_template": "moabom-basic",
+  "active_admin_template": "moabom-admin_basic",
+  "modules": [
+    "sirsoft-page",
+    "sirsoft-board",
+    "moabom-system",
+    "moabom-social-auth",
+    "moabom-credit",
+    "moabom-personalization",
+    "moabom-apps",
+    "moabom-cpap",
+    "moabom-consulting",
+    "sirsoft-ecommerce"
+  ],
+  "plugins": [
+    "moabom-auth-hardening",
+    "moabom-pwa",
+    "moabom-weather",
+    "sirsoft-daum_postcode",
+    "sirsoft-ckeditor5",
+    "sirsoft-marketing",
+    "sirsoft-tosspayments",
+    "sirsoft-verification"
+  ],
+  "post_bootstrap_artisan": {
+    "module_sync_declarations": [
+      "sirsoft-page",
+      "sirsoft-board",
+      "moabom-system",
+      "moabom-social-auth",
+      "moabom-credit",
+      "moabom-personalization",
+      "moabom-apps",
+      "moabom-cpap",
+      "moabom-consulting",
+      "sirsoft-ecommerce"
+    ],
+    "module_refresh_layout": [
+      "moabom-system"
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+/* ─── 편집모드 (드래그앤드롭) ─── */
+
+/* iOS 스타일 떨림 애니메이션 */
+@keyframes wiggle {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(1.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.wiggle {
+  animation: wiggle 0.3s ease-in-out infinite;
+}
+
+/* 편집모드 삭제 버튼 */
+.edit-delete-btn {
+  position: absolute;
+  top: calc(var(--moa-main-delete-size, 24px) * -0.25);
+  right: calc(var(--moa-main-delete-size, 24px) * -0.12);
+  z-index: 20;
+  width: var(--moa-main-delete-size, 24px);
+  height: var(--moa-main-delete-size, 24px);
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  padding: 0;
+  transition: transform 0.15s ease;
+}
+
+.edit-delete-btn i {
+  font-size: calc(var(--moa-main-delete-size, 24px) * 0.5);
+}
+
+.edit-delete-btn:hover {
+  transform: scale(1.15);
+  background: #dc2626;
+}
+
+.edit-delete-btn:active {
+  transform: scale(0.9);
+}
+
+/* 편집모드 완료 버튼 */
+.edit-done-btn {
+  background: var(--moa-point-fill-bg);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 6px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--moa-point-fill-shadow);
+  transition: all 0.2s ease;
+}
+
+.edit-done-btn:hover {
+  box-shadow: var(--moa-point-fill-shadow);
+}

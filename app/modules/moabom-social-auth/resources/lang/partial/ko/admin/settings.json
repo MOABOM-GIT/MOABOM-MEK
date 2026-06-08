@@ -1,0 +1,31 @@
+{
+  "title": "SNS 연결설정",
+  "description": "Google, Kakao, Naver SNS 가입/로그인에 필요한 OAuth 정보를 관리합니다.",
+  "read_only_message": "보기 권한만 있습니다. 수정이 필요한 경우 관리자에게 문의하세요.",
+  "sub_tenant_credentials_message": "Client ID/Secret은 마스터(mek360.com)에서 관리됩니다. 이 사이트에서는 SNS 사용 여부(체크박스)만 저장할 수 있습니다.",
+  "master_inherit_badge": "마스터 키 상속 중 — 아래 값은 읽기 전용이며 mek360.com에서 변경 시 자동 반영됩니다.",
+  "save_all_providers": "전체 provider 설정 저장",
+  "validation_error": "입력 정보를 확인해주세요.",
+  "save_error": "SNS 연결설정 저장에 실패했습니다.",
+  "callback_url_hint": "Provider 콘솔의 Callback URL 또는 Redirect URI 항목에 그대로 붙여 넣으세요. 모듈은 별도 입력값이 없으면 이 주소를 자동 사용합니다.",
+  "optional_secret": "Client Secret이 필요한 경우 입력",
+  "fields": {
+    "client_id": "Client ID",
+    "client_secret": "Client Secret",
+    "use_master_defaults": "마스터 키 사용 (기본). 해제하면 이 병원 전용 키를 저장합니다.",
+    "redirect_uri": "Redirect URI",
+    "provider_callback_url": "Provider 등록용 Callback/Redirect URI",
+    "google_request_auth_time": "Google 보안 번들의 auth_time 클레임을 요청합니다. Google 인증 플랫폼에서 보안 번들이 사용 설정된 경우에만 켜세요.",
+    "kakao_use_client_secret": "카카오 앱의 Client Secret 기능이 ON이면 반드시 선택하고 Secret 값을 입력하세요. 기본 설정은 ON입니다."
+  },
+  "providers": {
+    "google_description": "Google OAuth 클라이언트 정보를 입력합니다.",
+    "kakao_description": "Kakao REST API 키와 보안 설정을 입력합니다.",
+    "naver_description": "Naver Developers 애플리케이션 정보를 입력합니다."
+  },
+  "links": {
+    "google_credentials": "Google Cloud Console에서 Client ID/Secret 발급·관리",
+    "kakao_credentials": "Kakao Developers에서 REST API 키/Client Secret 확인",
+    "naver_credentials": "Naver Developers에서 Client ID/Secret 발급·관리"
+  }
+}

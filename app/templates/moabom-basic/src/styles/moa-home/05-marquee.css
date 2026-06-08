@@ -1,0 +1,86 @@
+/*
+ * 넘치는 한 줄 라벨: [텍스트][간격][동일 텍스트] 트랙을 한 주기만큼 좌측으로 이동해 끊김 없는 무한 마퀴.
+ * --moa-marquee-loop-shift = 첫 텍스트 너비 + 간격(px).
+ * prefers-reduced-motion이면 애니메이션 없음.
+ */
+@keyframes moaOverflowMarqueeInfinite {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(calc(-1 * var(--moa-marquee-loop-shift, 0px)), 0, 0);
+  }
+}
+
+.moa-overflow-marquee {
+  --moa-marquee-sep: 0.75rem;
+
+  position: relative;
+  overflow: hidden;
+  overflow-x: clip;
+  text-align: start;
+  contain: layout;
+  /* 한 줄만 — 마퀴/ellipsis 전환 시 박스 높이가 늘어나지 않도록 min-height·inline-flex 세로 가운데 정렬 제거 */
+  font-size: inherit;
+  /* 래퍼 줄상자(strut) 높이 제거 — 마퀴·비마퀴(ellipsis) 인접 행 높이 일치 */
+  line-height: 0;
+}
+
+/** SR·레이아웃용 오버플로 측정 (표시 안 함) — 큰 음수 left는 문서 가로 폭·스크롤을 키울 수 있음 */
+.moa-overflow-marquee__measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  display: block;
+  width: max-content;
+  max-width: none;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  z-index: -1;
+  /* 같은 노드에 `leading-*` 유틸이 붙어도 숨김 측정 높이·라인박스가 튀지 않도록 */
+  line-height: 0 !important;
+}
+
+.moa-overflow-marquee__inner--ellipsis {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.moa-overflow-marquee__track {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  white-space: nowrap;
+  vertical-align: top;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.moa-overflow-marquee__gap {
+  flex-shrink: 0;
+  width: var(--moa-marquee-sep);
+  min-width: var(--moa-marquee-sep);
+}
+
+.moa-overflow-marquee__seg {
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: top;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .moa-overflow-marquee--active .moa-overflow-marquee__track {
+    animation: moaOverflowMarqueeInfinite var(--moa-marquee-cycle, 12s) linear infinite;
+  }
+}

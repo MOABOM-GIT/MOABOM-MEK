@@ -1,0 +1,19 @@
+/* ─── SNS 로그인 버튼: 우측 로그인 프롬프트 전용 컬러 ─── */
+.social-login-btn {
+  transition: all 0.2s ease;
+}
+
+.social-login-btn.social-google:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  box-shadow: 0 8px 13px -3px rgba(0, 0, 0, 0.12), 0 3px 5px -4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.social-login-btn.social-naver:hover {
+  background: rgba(3, 169, 77, 1) !important;
+  box-shadow: 0 8px 13px -3px rgba(3, 169, 77, 0.4), 0 3px 5px -4px rgba(255, 255, 255, 0.5) !important;
+}
+
+.social-login-btn.social-kakao:hover {
+  background: rgba(254, 229, 0, 1) !important;
+  box-shadow: 0 8px 13px -3px rgba(254, 229, 0, 0.4), 0 3px 5px -4px rgba(255, 255, 255, 0.5) !important;
+}

@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-system",
+    "description": "Moabom system settings module for Gnuboard7",
+    "type": "library",
+    "version": "0.7.5",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\System\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

@@ -1,0 +1,211 @@
+{
+  "version": "1.0.0",
+  "layout_name": "admin_social_auth_settings",
+  "permissions": [
+    "moabom-social-auth.settings.read"
+  ],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-social-auth.admin.settings.title",
+    "description": "$t:moabom-social-auth.admin.settings.description"
+  },
+  "computed": {
+    "hostScope": "{{settings?.data?.abilities?.host_scope ?? 'platform'}}",
+    "isReadOnly": "{{!!settings?.data && settings?.data?.abilities?.can_update !== true}}",
+    "canManageCredentials": "{{settings?.data?.abilities?.features?.manage_credentials !== false && settings?.data?.abilities?.can_manage_credentials !== false}}",
+    "credentialInputsLocked": "{{!_computed.canManageCredentials || _computed.isReadOnly}}",
+    "credentialLabelClassName": "{{_computed.canManageCredentials ? 'block text-sm font-medium text-gray-700 dark:text-gray-300' : 'block text-sm font-medium text-gray-400 dark:text-gray-500'}}",
+    "credentialInputClassName": "{{_computed.canManageCredentials ? 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:cursor-not-allowed disabled:opacity-75' : 'w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-75'}}"
+  },
+  "transition_overlay": {
+    "wait_for": ["settings"]
+  },
+  "initLocal": {
+    "isSaving": false,
+    "errors": null
+  },
+  "data_sources": [
+    {
+      "id": "settings",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-social-auth/admin/settings",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true,
+      "initLocal": "form",
+      "refetchOnMount": true,
+      "errorHandling": {
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "id": "social_auth_settings_content",
+        "type": "basic",
+        "name": "Div",
+        "dataKey": "form",
+        "trackChanges": true,
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "id": "page_header",
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-social-auth.admin.settings.title",
+              "description": "$t:moabom-social-auth.admin.settings.description"
+            },
+            "children": [
+              {
+                "id": "save_button",
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "disabled": "{{_computed.isReadOnly || !_local.hasChanges || _local.isSaving}}",
+                  "className": "px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "sequence",
+                    "params": {
+                      "actions": [
+                        {
+                          "handler": "setState",
+                          "params": {
+                            "target": "local",
+                            "isSaving": true,
+                            "errors": null
+                          }
+                        },
+                        {
+                          "handler": "apiCall",
+                          "auth_required": true,
+                          "target": "/api/modules/moabom-social-auth/admin/settings",
+                          "params": {
+                            "method": "PUT",
+                            "body": "{{(() => ({ providers: _local.form?.providers ?? {} }))()}}"
+                          },
+                          "onSuccess": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "hasChanges": false
+                              }
+                            },
+                            {
+                              "handler": "refetchDataSource",
+                              "params": {
+                                "dataSourceId": "settings"
+                              }
+                            }
+                          ],
+                          "onError": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "errors": "{{error.errors ?? error.message ?? '$t:moabom-social-auth.admin.settings.save_error'}}"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "text": "{{_local.isSaving ? '$t:common.saving' : '$t:moabom-social-auth.admin.settings.save_all_providers'}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "sub_tenant_banner",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.canManageCredentials && settings?.data?.abilities?.can_update === true}}",
+            "props": {
+              "className": "mt-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "P",
+                "props": {
+                  "className": "text-sm text-indigo-800 dark:text-indigo-200"
+                },
+                "text": "$t:moabom-social-auth.admin.settings.sub_tenant_credentials_message"
+              }
+            ]
+          },
+          {
+            "id": "readonly_banner",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_computed.isReadOnly}}",
+            "props": {
+              "className": "mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "P",
+                "props": {
+                  "className": "text-sm text-yellow-800 dark:text-yellow-200"
+                },
+                "text": "$t:moabom-social-auth.admin.settings.read_only_message"
+              }
+            ]
+          },
+          {
+            "id": "validation_error",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_local.errors}}",
+            "props": {
+              "className": "mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300"
+            },
+            "text": "{{typeof _local.errors === 'string' ? _local.errors : '$t:moabom-social-auth.admin.settings.validation_error'}}"
+          },
+          {
+            "id": "providers_grid",
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6"
+            },
+            "children": [
+              {
+                "partial": "partials/social_auth/_provider_card_google.json"
+              },
+              {
+                "partial": "partials/social_auth/_provider_card_kakao.json"
+              },
+              {
+                "partial": "partials/social_auth/_provider_card_naver.json"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

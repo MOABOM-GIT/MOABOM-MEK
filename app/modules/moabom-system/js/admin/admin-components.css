@@ -1,0 +1,47 @@
+/**
+ * moabom-system 관리자 전용 컴포넌트 스타일.
+ * sirsoft-admin_basic Tailwind safelist와 무관하게 모듈과 함께 배포된다.
+ */
+
+.moabom-home-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .moabom-home-bg-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .moabom-home-bg-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .moabom-home-bg-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+.moabom-home-bg-thumb {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.moabom-home-bg-thumb-preview {
+  height: 5rem;
+  width: 100%;
+}
+
+.moabom-home-bg-thumb-preview img {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}

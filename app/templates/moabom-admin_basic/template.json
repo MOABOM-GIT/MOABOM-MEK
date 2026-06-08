@@ -1,0 +1,73 @@
+{
+    "identifier": "moabom-admin_basic",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom Admin Basic",
+        "en": "Moabom Admin Basic"
+    },
+    "version": "1.0.0-beta.13",
+    "license": "MIT",
+    "description": {
+        "ko": "Moabom 커스텀 관리자 템플릿 (sirsoft-admin_basic 포크)",
+        "en": "Moabom custom admin template (forked from sirsoft-admin_basic)"
+    },
+    "type": "admin",
+    "locales": ["ko", "en"],
+    "author": {
+        "name": "moabom",
+        "email": "contact@sirsoft.com",
+        "url": "https://sirsoft.com"
+    },
+    "release_date": "2025-01-01",
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    },
+    "assets": {
+        "css": ["assets/css/main.css", "assets/css/ui-system.css"],
+        "js": ["dist/components.js"],
+        "fonts": ["assets/fonts/"],
+        "images": ["assets/images/"]
+    },
+    "components": {
+        "basic": [
+            "a", "button", "checkbox", "div", "form",
+            "h1", "h2", "h3", "hr", "icon", "img", "input",
+            "label", "li", "nav", "p", "section",
+            "select", "span", "svg", "table", "tbody",
+            "td", "textarea", "th", "thead", "tr", "ul"
+        ],
+        "composite": [
+            "action-menu", "admin-footer", "admin-header", "admin-sidebar",
+            "alert-dialog", "breadcrumb", "card", "confirm-dialog",
+            "data-grid", "dialog", "dropdown", "empty-state",
+            "filter-group", "icon-button", "loading-spinner", "modal",
+            "page-header", "pagination", "product-card", "search-bar",
+            "stat-card", "status-badge", "tab-navigation", "template-card", "toast",
+            "sortable-mypage-menu-list", "home-background-manager"
+        ],
+        "layout": [
+            "container", "flex", "grid", "section"
+        ]
+    },
+    "preview": {
+        "thumbnail": "preview/thumbnail.png",
+        "screenshots": [
+            "preview/screenshot1.png",
+            "preview/screenshot2.png"
+        ]
+    },
+    "error_config": {
+        "layouts": {
+            "401": "401",
+            "404": "404",
+            "403": "403",
+            "500": "500",
+            "503": "503",
+            "maintenance": "maintenance"
+        }
+    },
+    "github_url": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic",
+    "github_changelog_url": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic/blob/main/CHANGELOG.md"
+}

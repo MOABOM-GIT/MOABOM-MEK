@@ -1,0 +1,30 @@
+{
+    "name": "@g7/moabom-system",
+    "version": "0.6.10",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "guard:no-host-build": "node ../../scripts/guard-no-host-build.cjs",
+        "preinstall": "node ../../scripts/guard-no-host-build.cjs",
+        "prebuild": "node ../../scripts/guard-no-host-build.cjs",
+        "build": "vite build",
+        "predev": "node ../../scripts/guard-no-host-build.cjs",
+        "test": "vitest",
+        "test:run": "vitest run"
+    },
+    "dependencies": {
+        "@dnd-kit/core": "^6.3.1",
+        "@dnd-kit/sortable": "^10.0.0",
+        "@dnd-kit/utilities": "^3.2.2"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@vitejs/plugin-react": "^4.3.4",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "typescript": "^5.3.3",
+        "vite": "^5.4.14",
+        "vitest": "^2.1.8"
+    }
+}

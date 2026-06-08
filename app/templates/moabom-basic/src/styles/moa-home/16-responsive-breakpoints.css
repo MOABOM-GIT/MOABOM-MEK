@@ -1,0 +1,156 @@
+/* 데스크톱 셸(아이콘 그리드·센터 패널 등) — 뷰포트 기준, Tailwind 기본 `lg`(1024px) 미만 */
+@media (max-width: 1023px) {
+  .moa-center-panel {
+    top: 10px !important;
+    bottom: 10px !important;
+  }
+
+  .moa-main-app-grid {
+    --moa-main-cell-min: 118px;
+    --moa-main-grid-gap: 24px;
+    --moa-main-app-size: 92px;
+    --moa-main-icon-size: 80px;
+    --moa-main-symbol-size: 1.65rem;
+    --moa-main-title-size: 0.92rem;
+    --moa-main-desc-size: 0.7rem;
+    --moa-main-delete-size: 22px;
+  }
+}
+
+/* 창 내부(앱·마이페이지 표면) — 컨테이너 가로 기준, Tailwind `md`(768px) 이하 */
+@container (max-width: 768px) {
+  .moa-shell-app-window,
+  .moa-mypage-surface {
+    padding: 0.75rem 0;
+  }
+}
+
+/* 셸 — Tailwind `md`(768px) 이하 */
+@media (max-width: 768px) {
+  .moa-center-grid {
+    padding: 2rem 1rem !important;
+  }
+
+  .moa-main-app-grid {
+    --moa-main-cell-min: 96px;
+    --moa-main-grid-gap: 18px;
+    --moa-main-app-size: 82px;
+    --moa-main-icon-size: 70px;
+    --moa-main-symbol-size: 1.45rem;
+    --moa-main-title-size: 0.87rem;
+    --moa-main-desc-size: 0.7rem;
+    --moa-main-delete-size: 20px;
+  }
+
+  .moa-left-panel-app-title {
+    font-size: 0.75rem;
+  }
+
+  .moa-center-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+}
+
+/* 셸 — Tailwind `sm`(640px) 미만 */
+@media (max-width: 639px) {
+  .moa-center-grid {
+    padding: 1.5rem 0.75rem !important;
+  }
+
+  .moa-main-app-grid {
+    --moa-main-grid-gap: 12px;
+    --moa-main-app-size: 72px;
+    --moa-main-icon-size: 60px;
+    --moa-main-symbol-size: 1.2rem;
+    --moa-main-title-size: 0.77rem;
+    --moa-main-desc-size: 0.63rem;
+    --moa-main-delete-size: 17px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .moa-left-panel-app-grid {
+    --moa-left-panel-app-cell-min: 64px;
+    --moa-left-panel-app-gap: 10px;
+  }
+}
+
+/* 마이페이지 — 컨테이너 `lg`(1024px) 미만 */
+@container (max-width: 1023px) {
+  .moa-mypage-layout {
+    grid-template-columns: 1fr !important;
+    height: auto;
+  }
+
+  .moa-mypage-sidebar {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .moa-mypage-sidebar > div:last-child,
+  .moa-mypage-sidebar-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .moa-mypage-sidebar > div:last-child button > div:last-child,
+  .moa-mypage-sidebar-nav button > div:last-child {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.25rem;
+  }
+
+  .moa-mypage-sidebar > div:last-child button > div:last-child > div:last-child,
+  .moa-mypage-sidebar-nav button > div:last-child > div:last-child {
+    margin-top: 0 !important;
+    text-align: start;
+  }
+
+  .moa-mypage-content {
+    padding: 0 !important;
+  }
+
+  /* 세로 절약: 모바일·좁은 폭에서 탭 제목만 */
+  .moa-mypage-menu-desc {
+    display: none;
+  }
+
+  .moa-mypage-profile,
+  .moa-mypage-credit,
+  .moa-mypage-account {
+    grid-template-columns: 1fr !important;
+  }
+
+  .moa-mypage-library {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 마이페이지 — 컨테이너 `sm`(640px) 미만 */
+@container (max-width: 639px) {
+  .moa-mypage-sidebar > div:last-child,
+  .moa-mypage-sidebar-nav,
+  .moa-mypage-system-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .moa-mypage-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .moa-mypage-option-grid > .moa-btn,
+  .moa-mypage-system-grid > .moa-btn {
+    min-width: 0;
+  }
+
+  .moa-mypage-library {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}

@@ -1,0 +1,38 @@
+/**
+ * MOABOM Home 셸 전용 스타일 — 진입점
+ *
+ * 규칙은 `./moa-home/*.css` 에 용도·로드 순서별로 분리한다.
+ * 미사용 후보(`bgPulse`, `.moa-status-mobile` 등)는 `./moa-home/00-deferred-unused.css` 에만 두고
+ * 기본 번들에는 포함하지 않는다(필요 시 `main.css` 에서 수동 @import).
+ *
+ * 번들 경로: `main.css` → `@import './Moa_homepage.css'` → 아래 `@import` 전부(Vite가 하나의 CSS 청크로 합침).
+ * 파일 번호 순(`01` … `23`, `24`)과 동일한 순서로 나열한다.
+ *
+ * @see moa-home/ 디렉터리
+ */
+
+@import './moa-home/01-tokens.css';
+@import './moa-home/02-theme-scope.css';
+@import './moa-home/03-shell-root.css';
+@import './moa-home/04-glass-surfaces.css';
+@import './moa-home/24-moa-reuse-field-tokens.css';
+@import './moa-home/05-marquee.css';
+@import './moa-home/06-motion-decorative.css';
+@import './moa-home/07-sliding-toggle.css';
+@import './moa-home/08-buttons-base.css';
+@import './moa-home/09-form-fields.css';
+@import './moa-home/10-buttons-variants.css';
+@import './moa-home/11-switch-checkbox.css';
+@import './moa-home/12-mypage-presets-layout.css';
+@import './moa-home/13-app-grid-and-overlays.css';
+@import './moa-home/14-status-dots.css';
+@import './moa-home/15-center-footer.css';
+@import './moa-home/16-responsive-breakpoints.css';
+@import './moa-home/17-edit-mode.css';
+@import './moa-home/18-app-launcher.css';
+@import './moa-home/19-panel-taskbar.css';
+@import './moa-home/20-social-login.css';
+@import './moa-home/21-scrollbar.css';
+@import './moa-home/22-animation-runtime.css';
+@import './moa-home/23-create-app-window-title.css';
+@import './moa-home/25-cpap-survey.css';

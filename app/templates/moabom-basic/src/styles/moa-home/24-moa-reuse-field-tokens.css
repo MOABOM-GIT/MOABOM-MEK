@@ -1,0 +1,15 @@
+/* ─── 재사용 폼 필드 토큰 (버튼 `moa-btn` 계열과 동일: 짧은 클래스명 + TS에서 `glass-sm moa-field` 와 조합) ─── */
+/* `glass-sm`·`.moa-field`·`moa-field--*` 는 04-glass / 09-form-fields 와 배경 토큰 선택자 연동을 위해 HTML에 유지한다. */
+/* 색상은 `ui-system/colors` 의 `.text-secondary` / `.text-faint` 와 동일한 gray 톤을 Tailwind 원시 유틸로 맞춤(@apply 시맨틱 클래스는 v4 빌드에서 해석되지 않음). */
+
+@layer components {
+  .moa-reuse-core {
+    @apply w-full min-w-0 text-sm text-gray-600 dark:text-gray-300;
+    @apply placeholder:text-gray-400 dark:placeholder:text-gray-500;
+    @apply outline-none transition-[outline-color,box-shadow] disabled:opacity-[0.55] disabled:cursor-not-allowed;
+  }
+
+  .moa-reuse-select-row {
+    @apply inline-flex items-center justify-between gap-2 text-left cursor-pointer;
+  }
+}

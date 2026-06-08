@@ -1,0 +1,30 @@
+{
+    "identifier": "g7-template-moabom-basic-ja",
+    "namespace": "g7",
+    "vendor": "moabom",
+    "name": {
+        "ko": "G7 템플릿 (moabom-basic) 일본어 언어팩",
+        "en": "G7 template (moabom-basic) Japanese language pack",
+        "ja": "G7 テンプレート (moabom-basic) 日本語 言語パック"
+    },
+    "description": {
+        "ko": "Moabom 사용자 템플릿(moabom-basic) 일본어 번역 — 기존 lang/ja.json 이전",
+        "en": "Japanese translations for Moabom user template (moabom-basic), migrated from lang/ja.json",
+        "ja": "Moabom ユーザーテンプレート (moabom-basic) の日本語翻訳"
+    },
+    "version": "1.0.0-beta.1",
+    "license": "MIT",
+    "scope": "template",
+    "target_identifier": "moabom-basic",
+    "locale": "ja",
+    "locale_name": "Japanese",
+    "locale_native_name": "日本語",
+    "text_direction": "ltr",
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "requires": {
+        "target_version": ">=0.6.0",
+        "depends_on_core_locale": true
+    },
+    "github_url": "",
+    "github_changelog_url": ""
+}

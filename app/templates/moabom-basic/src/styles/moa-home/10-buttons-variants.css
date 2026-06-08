@@ -1,0 +1,185 @@
+.moa-btn-primary {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: var(--moa-point-fill-bg);
+  --moa-btn-border: var(--moa-point-fill-bg);
+  --moa-btn-shadow: var(--moa-point-fill-shadow);
+  --moa-btn-hover-shadow: var(--moa-point-fill-hover-shadow);
+}
+
+.moa-btn-taskbar {
+  --moa-btn-color: #fff;
+  --moa-btn-shadow: rgba(148, 163, 184, 0.24) 0px 4px 10px,
+    rgba(15, 23, 42, 0.08) 0px 2px 5px;
+  --moa-btn-hover-color: #fff;
+  --moa-btn-hover-shadow: rgba(148, 163, 184, 0.32) 0px 6px 14px,
+    rgba(15, 23, 42, 0.1) 0px 3px 7px;
+  border: none;
+  /* 메인 앱 아이콘(.app-btn)과 동일한 살짝 커지는 호버 모션 */
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.moa-btn-taskbar:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.moa-btn-taskbar:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+/** 그라데이션·유색 카드 위 CTA — `moa-btn` + 사이즈만 조합해 쓰는 글래스 필(밝은 테두리·화이트 라벨) */
+.moa-btn-neutral {
+  --moa-btn-color: #ffffff;
+  --moa-btn-bg: #ffffff1c;
+  --moa-btn-border: #ffffff80;
+  --moa-btn-shadow: 0 1px 2px #0f172a14;
+  --moa-btn-hover-color: #ffffff;
+  --moa-btn-hover-bg: #ffffff30;
+  --moa-btn-hover-border: #ffffffa6;
+  --moa-btn-hover-shadow: 0 2px 8px #0f172a1f;
+}
+
+.moa-btn-success {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: #10b981;
+  --moa-btn-border: #10b981;
+  --moa-btn-hover-color: #059669;
+  --moa-btn-hover-bg: rgb(255 255 255 / 70%);
+  --moa-btn-hover-border: #059669;
+  --moa-btn-hover-shadow: rgba(16, 185, 129, 0.18) 0px 4px 8px,
+    rgba(16, 185, 129, 0.14) 0px 4px 14px,
+    rgba(255, 255, 255, 0.5) 0px 1px 0px inset;
+}
+
+.dark .moa-btn-success {
+  --moa-btn-hover-color: #d1fae5;
+  --moa-btn-hover-bg: rgb(0 0 0 / 40%);
+  --moa-btn-hover-shadow: rgba(16, 185, 129, 0.35) 0px 4px 8px,
+    rgba(16, 185, 129, 0.22) 0px 4px 14px,
+    rgba(255, 255, 255, 0.06) 0px 1px 0px inset;
+}
+
+.moa-btn-warning {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: #f59e0b;
+  --moa-btn-border: #f59e0b;
+  --moa-btn-hover-color: #d97706;
+  --moa-btn-hover-bg: rgb(255 255 255 / 70%);
+  --moa-btn-hover-border: #d97706;
+  --moa-btn-hover-shadow: rgba(245, 158, 11, 0.18) 0px 4px 8px,
+    rgba(245, 158, 11, 0.14) 0px 4px 14px,
+    rgba(255, 255, 255, 0.5) 0px 1px 0px inset;
+}
+
+.dark .moa-btn-warning {
+  --moa-btn-hover-color: #fef3c7;
+  --moa-btn-hover-bg: rgb(0 0 0 / 40%);
+  --moa-btn-hover-shadow: rgba(245, 158, 11, 0.35) 0px 4px 8px,
+    rgba(245, 158, 11, 0.22) 0px 4px 14px,
+    rgba(255, 255, 255, 0.06) 0px 1px 0px inset;
+}
+
+.moa-btn-danger {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: #ef4444;
+  --moa-btn-border: #ef4444;
+  --moa-btn-hover-color: #e11d48;
+  --moa-btn-hover-bg: rgb(255 255 255 / 70%);
+  --moa-btn-hover-border: #e11d48;
+  --moa-btn-hover-shadow: rgba(239, 68, 68, 0.18) 0px 4px 8px,
+    rgba(239, 68, 68, 0.14) 0px 4px 14px,
+    rgba(255, 255, 255, 0.5) 0px 1px 0px inset;
+}
+
+.dark .moa-btn-danger {
+  --moa-btn-hover-color: #fee2e2;
+  --moa-btn-hover-bg: rgb(0 0 0 / 40%);
+  --moa-btn-hover-shadow: rgba(239, 68, 68, 0.35) 0px 4px 8px,
+    rgba(239, 68, 68, 0.22) 0px 4px 14px,
+    rgba(255, 255, 255, 0.06) 0px 1px 0px inset;
+}
+
+.moa-btn-dark {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: #7c8793;
+  --moa-btn-border: #7c8793;
+  --moa-btn-shadow: rgba(124, 135, 147, 0.14) 0px 2px 3px,
+    rgba(124, 135, 147, 0.11) 0px 2px 10px,
+    rgba(255, 255, 255, 0.45) 0px 1px 0px inset;
+  --moa-btn-hover-shadow: rgba(124, 135, 147, 0.22) 0px 4px 8px,
+    rgba(124, 135, 147, 0.16) 0px 4px 14px,
+    rgba(255, 255, 255, 0.45) 0px 1px 0px inset;
+}
+
+.dark .moa-btn-dark {
+  --moa-btn-bg: #7c8793;
+  --moa-btn-border: #7c8793;
+  /* 다크 배경에서도 단추 덩어리가 구분되도록 동일 키 컬러 + 소프트 림 */
+  --moa-btn-shadow: rgba(15, 23, 42, 0.55) 0px 1px 2px,
+    rgba(124, 135, 147, 0.35) 0px 2px 10px,
+    rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+  --moa-btn-hover-shadow: rgba(15, 23, 42, 0.55) 0px 2px 4px,
+    rgba(124, 135, 147, 0.42) 0px 3px 12px,
+    rgba(255, 255, 255, 0.18) 0px 1px 0px inset;
+}
+
+.moa-btn-primary-outline,
+.moa-btn-dark-outline,
+.moa-btn-success-outline,
+.moa-btn-warning-outline,
+.moa-btn-danger-outline {
+  --moa-btn-bg: rgb(255 255 255 / 70%);
+  --moa-btn-border: rgb(var(--moa-btn-rgb) / 24%);
+  --moa-btn-hover-bg: rgb(var(--moa-btn-rgb) / 8%);
+  --moa-btn-hover-border: rgb(var(--moa-btn-rgb) / 45%);
+  --moa-btn-shadow: rgba(15, 23, 42, 0.06) 0px 2px 8px,
+    rgba(255, 255, 255, 0.5) 0px 1px 0px inset;
+}
+
+.dark .moa-btn-primary-outline,
+.dark .moa-btn-dark-outline,
+.dark .moa-btn-success-outline,
+.dark .moa-btn-warning-outline,
+.dark .moa-btn-danger-outline {
+  --moa-btn-bg: rgb(0 0 0 / 40%);
+  --moa-btn-border: rgb(var(--moa-btn-rgb) / 36%);
+  --moa-btn-hover-bg: rgb(var(--moa-btn-rgb) / 18%);
+  --moa-btn-hover-border: rgb(var(--moa-btn-rgb) / 60%);
+  --moa-btn-shadow: rgba(0, 0, 0, 0.4) 0px 2px 8px,
+    rgba(255, 255, 255, 0.06) 0px 1px 0px inset;
+}
+
+.moa-btn-primary-outline {
+  --moa-btn-rgb: var(--moa-point-rgb);
+  --moa-btn-color: var(--moa-point-color);
+  --moa-btn-hover-color: var(--moa-point-color);
+}
+
+.moa-btn-dark-outline {
+  --moa-btn-rgb: 124 135 147;
+  --moa-btn-color: #7c8793;
+  --moa-btn-hover-color: #7c8793;
+}
+
+.moa-btn-success-outline {
+  --moa-btn-rgb: 16 185 129;
+  --moa-btn-color: #059669;
+  --moa-btn-hover-color: #059669;
+}
+
+.moa-btn-warning-outline {
+  --moa-btn-rgb: 245 158 11;
+  --moa-btn-color: #d97706;
+  --moa-btn-hover-color: #d97706;
+}
+
+.moa-btn-danger-outline {
+  --moa-btn-rgb: 239 68 68;
+  --moa-btn-color: #e11d48;
+  --moa-btn-hover-color: #e11d48;
+}

@@ -1,0 +1,25 @@
+{
+    "id": "create-app",
+    "module": "moabom-apps",
+    "name": {
+        "ko": "AI 앱 만들기",
+        "en": "AI App Maker"
+    },
+    "description": {
+        "ko": "프롬프트로 웹앱 만들기",
+        "en": "Build a web app from a prompt"
+    },
+    "icon": "wand-magic-sparkles",
+    "gradient": "linear-gradient(135deg,#8b5cf6,#ec4899)",
+    "category": "basic",
+    "source": "system",
+    "frontend": {
+        "template": "moabom-basic",
+        "chunk": "moabom-shell-create-app.iife.js",
+        "global": "create-app"
+    },
+    "api_prefix": "api/modules/moabom-apps",
+    "permissions": [],
+    "tenant_scoped": true,
+    "order": 20
+}

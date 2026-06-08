@@ -1,0 +1,158 @@
+
+.moa-main-app-grid {
+  --moa-main-cell-min: 140px;
+  --moa-main-grid-gap: 30px;
+  --moa-main-app-size: 100px;
+  --moa-main-icon-size: 88px;
+  --moa-main-symbol-size: 1.875rem;
+  --moa-main-title-size: 1rem;
+  --moa-main-desc-size: 0.8rem;
+  --moa-main-delete-size: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--moa-main-cell-min), 1fr));
+  gap: var(--moa-main-grid-gap);
+  justify-items: stretch;
+}
+
+.moa-main-app-grid > * {
+  min-width: 0;
+}
+
+.moa-main-app-item,
+.create-app-btn {
+  width: 100%;
+  max-width: var(--moa-main-app-size);
+  margin-inline: auto;
+}
+
+.moa-main-app-item {
+  display: flex;
+  justify-content: center;
+}
+
+.moa-main-app-item.is-editing {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.moa-main-app-icon {
+  width: var(--moa-main-icon-size);
+  height: var(--moa-main-icon-size);
+}
+
+.moa-main-app-symbol {
+  font-size: var(--moa-main-symbol-size);
+}
+
+.moa-main-app-title {
+  font-size: var(--moa-main-title-size);
+}
+
+.moa-main-app-desc {
+  font-size: var(--moa-main-desc-size);
+}
+
+.moa-left-panel-app-grid {
+  --moa-left-panel-app-cell-min: 70px;
+  --moa-left-panel-app-gap: 17px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--moa-left-panel-app-cell-min), 1fr));
+  gap: var(--moa-left-panel-app-gap);
+  justify-items: stretch;
+}
+
+/* 그리드 자식이 긴 텍스트로 옆 칸을 침범하지 않도록 (min-width: auto 방지) */
+.moa-left-panel-app-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.moa-left-panel-app-btn {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.moa-left-panel-app-title {
+  font-size: 0.8rem;
+}
+
+.moa-center-grid {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
+}
+
+.moa-responsive-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(219, 222, 231, 0.24);
+}
+
+.dark .moa-responsive-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.moa-panel-outside-close {
+  position: fixed;
+  top: 18px;
+  z-index: 90;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dark .moa-panel-outside-close {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@supports (backdrop-filter: blur(10px)) {
+  .moa-panel-outside-close {
+    backdrop-filter: blur(10px) saturate(140%);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .moa-panel-outside-close {
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+  }
+}
+
+.moa-panel-outside-close:hover {
+  background: rgba(255, 255, 255, 0.42);
+  transform: scale(1.04);
+}
+
+.dark .moa-panel-outside-close:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.moa-panel-outside-close:active {
+  transform: scale(0.96);
+}
+
+@supports (backdrop-filter: blur(3px)) {
+  .moa-responsive-backdrop {
+    backdrop-filter: blur(3px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(3px)) {
+  .moa-responsive-backdrop {
+    -webkit-backdrop-filter: blur(3px);
+  }
+}

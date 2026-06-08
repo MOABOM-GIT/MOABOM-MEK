@@ -1,0 +1,34 @@
+{
+    "identifier": "moabom-system",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom 시스템",
+        "en": "Moabom System"
+    },
+    "version": "0.7.5",
+    "license": "MIT",
+    "description": {
+        "ko": "Moabom SaaS 플랫폼 코어. Host별 DB·GCS 격리, 병원 생성·관리, 병원·마이페이지 설정, 홈 배경, shell-boot 등 공개 부트 API.",
+        "en": "Moabom SaaS platform core: per-host DB/GCS isolation, hospital provisioning and admin, tenant/My Page settings, home backgrounds, and public boot APIs (shell-boot, etc.)."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    },
+    "assets": {
+        "js": {
+            "entry": "js/index.ts",
+            "output": "dist/js/module.iife.js"
+        },
+        "css": {
+            "entry": "js/admin/admin-components.css",
+            "output": "dist/css/module.css"
+        },
+        "handlers": false
+    },
+    "loading": {
+        "strategy": "global",
+        "priority": 90
+    }
+}

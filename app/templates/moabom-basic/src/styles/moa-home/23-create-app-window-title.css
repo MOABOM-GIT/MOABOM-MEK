@@ -1,0 +1,112 @@
+/**
+ * create-app 창 타이틀 바
+ *
+ * 테두리: gradient-border 패턴 — `calc(-1 * --border)`·`+ 2*border` 박스, 60° 그라데이션,
+ * `background-size: 300% 300%` + `moveGradient`(alternate). 색은 spin-a/b만 색공간에서 부드럽게 연결.
+ * `::before`: 동일 그라데이션 + blur(번짐), `::after`: 선명 테두리. `__inner`가 면을 덮음.
+ * 라이트/다크 `__inner` 모두 `@supports (color-mix(in lab, …))` 시 8자리 hex 알파 베이스 `color-mix` 경로.
+ */
+
+.moa-window-title-bar-create {
+  --moa-create-edge-a: var(--create-app-spin-a, #8b5cf6);
+  --moa-create-edge-b: var(--create-app-spin-b, #ec4899);
+  --moa-create-title-border-w: 2px;
+  /* spin-a → spin-b 구간만 촘촘히 (무지개 데모와 동일 60°·다점, 색만 브랜드) */
+  --moa-create-title-edge-grad: linear-gradient(
+    60deg,
+    var(--moa-create-edge-a),
+    color-mix(in srgb, var(--moa-create-edge-a) 85%, var(--moa-create-edge-b)),
+    color-mix(in srgb, var(--moa-create-edge-a) 70%, var(--moa-create-edge-b)),
+    color-mix(in srgb, var(--moa-create-edge-a) 55%, var(--moa-create-edge-b)),
+    color-mix(in srgb, var(--moa-create-edge-a) 40%, var(--moa-create-edge-b)),
+    color-mix(in srgb, var(--moa-create-edge-a) 25%, var(--moa-create-edge-b)),
+    var(--moa-create-edge-b),
+    color-mix(in srgb, var(--moa-create-edge-b) 75%, var(--moa-create-edge-a)),
+    color-mix(in srgb, var(--moa-create-edge-b) 50%, var(--moa-create-edge-a)),
+    color-mix(in srgb, var(--moa-create-edge-b) 25%, var(--moa-create-edge-a)),
+    var(--moa-create-edge-a)
+  );
+
+  position: relative;
+  overflow: visible;
+  border-radius: inherit;
+}
+
+.moa-window-title-bar-create::before,
+.moa-window-title-bar-create::after {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--moa-create-title-border-w));
+  left: calc(-1 * var(--moa-create-title-border-w));
+  width: calc(100% + var(--moa-create-title-border-w) * 2);
+  height: calc(100% + var(--moa-create-title-border-w) * 2);
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--moa-create-title-edge-grad);
+  background-size: 300% 300%;
+  background-position: 0 50%;
+  animation: moa-window-create-title-move-gradient 4s alternate infinite;
+}
+
+.moa-window-title-bar-create::before {
+  z-index: 0;
+  filter: blur(14px);
+  opacity: 0.62;
+}
+
+.moa-window-title-bar-create::after {
+  z-index: 1;
+}
+
+@keyframes moa-window-create-title-move-gradient {
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.moa-window-title-bar-create__inner {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--moa-create-edge-a) 70%, #0f172a) 0%,
+    color-mix(in srgb, var(--moa-create-edge-b) 55%, #1e1b4b) 50%,
+    color-mix(in srgb, var(--moa-create-edge-a) 62%, #0c0a1a) 100%
+  );
+}
+
+.dark .moa-window-title-bar-create__inner {
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--moa-create-edge-a) 44%, #0b0a12) 0%,
+    color-mix(in srgb, var(--moa-create-edge-b) 38%, #0f0b14) 52%,
+    color-mix(in srgb, var(--moa-create-edge-a) 40%, #08070f) 100%
+  );
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .moa-window-title-bar-create__inner {
+    background: linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--moa-create-edge-a) 70%, #0f172a00) 0%,
+      color-mix(in srgb, var(--moa-create-edge-b) 55%, #1e1b4b47) 50%,
+      color-mix(in srgb, var(--moa-create-edge-a) 62%, #0c0a1a07) 100%
+    );
+  }
+
+  .dark .moa-window-title-bar-create__inner {
+    background: linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--moa-create-edge-a) 44%, #0b0a1200) 0%,
+      color-mix(in srgb, var(--moa-create-edge-b) 38%, #0f0b1447) 52%,
+      color-mix(in srgb, var(--moa-create-edge-a) 40%, #08070f07) 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moa-window-title-bar-create::before,
+  .moa-window-title-bar-create::after {
+    animation: none !important;
+  }
+}

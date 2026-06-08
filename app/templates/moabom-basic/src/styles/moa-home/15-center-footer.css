@@ -1,0 +1,15 @@
+.moa-center-footer {
+  max-height: 4.5rem;
+  overflow: hidden;
+  transition: max-height 220ms ease, opacity 180ms ease, padding 220ms ease, transform 220ms ease;
+  will-change: max-height, opacity, transform;
+}
+
+.moa-center-footer.is-hidden {
+  max-height: 0;
+  opacity: 0;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+  pointer-events: none;
+  transform: translateY(0.75rem);
+}

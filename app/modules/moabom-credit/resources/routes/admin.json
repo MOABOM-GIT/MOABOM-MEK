@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "routes": [
+    {
+      "path": "*/admin/platform/settings/credit",
+      "layout": "admin_credit_settings",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-credit.admin.settings.title",
+        "permission": "moabom-credit.settings.read"
+      }
+    }
+  ]
+}

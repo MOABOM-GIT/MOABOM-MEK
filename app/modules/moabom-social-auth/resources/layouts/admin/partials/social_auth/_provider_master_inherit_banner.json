@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "서브 테넌트 마스터 키 상속 안내 배너"
+  },
+  "type": "basic",
+  "name": "Div",
+  "if": "{{!_computed.canManageCredentials}}",
+  "props": {
+    "className": "rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 p-3"
+  },
+  "children": [
+    {
+      "type": "basic",
+      "name": "P",
+      "props": {
+        "className": "text-xs font-medium text-indigo-800 dark:text-indigo-200"
+      },
+      "text": "$t:moabom-social-auth.admin.settings.master_inherit_badge"
+    }
+  ]
+}

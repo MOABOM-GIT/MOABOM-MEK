@@ -1,0 +1,448 @@
+{
+    "version": "1.0.0",
+    "layout_name": "_user_base",
+    "meta": {
+        "title": "$t:site_name",
+        "is_base": true
+    },
+    "init_actions": [
+        {
+            "handler": "setState",
+            "params": {
+                "target": "global",
+                "siteName": "{{_global.settings?.general?.site_name ?? 'Moabom'}}",
+                "leftPanelOpen": false,
+                "rightPanelOpen": false
+            }
+        }
+    ],
+    "data_sources": [
+        {
+            "id": "current_user",
+            "type": "api",
+            "endpoint": "/api/auth/user",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "loading_strategy": "progressive",
+            "initGlobal": "currentUser",
+            "fallback": { "data": null },
+            "errorHandling": {
+                "401": {
+                    "handler": "suppress"
+                }
+            }
+        },
+        {
+            "id": "apps_list",
+            "type": "static",
+            "data": {
+                "categories": [
+                    {
+                        "id": "featured",
+                        "name": "추천 앱",
+                        "apps": [
+                            {
+                                "id": "weather",
+                                "name": "날씨",
+                                "description": "실시간 날씨 정보",
+                                "icon": "cloud-sun",
+                                "bgColor": "bg-gradient-to-br from-blue-400 to-blue-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "color",
+                                "name": "색상",
+                                "description": "컬러 팔레트",
+                                "icon": "palette",
+                                "bgColor": "bg-gradient-to-br from-purple-400 to-purple-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "music",
+                                "name": "음악",
+                                "description": "음악 플레이어",
+                                "icon": "music",
+                                "bgColor": "bg-gradient-to-br from-indigo-400 to-indigo-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "task",
+                                "name": "작업",
+                                "description": "할 일 관리",
+                                "icon": "tasks",
+                                "bgColor": "bg-gradient-to-br from-green-400 to-green-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "team",
+                                "name": "팀",
+                                "description": "팀 협업 도구",
+                                "icon": "users",
+                                "bgColor": "bg-gradient-to-br from-teal-400 to-teal-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "tools",
+                                "name": "도구",
+                                "description": "유틸리티 도구",
+                                "icon": "wrench",
+                                "bgColor": "bg-gradient-to-br from-gray-400 to-gray-600",
+                                "installed": false
+                            }
+                        ]
+                    },
+                    {
+                        "id": "productivity",
+                        "name": "생산성",
+                        "apps": [
+                            {
+                                "id": "notes",
+                                "name": "메모장",
+                                "description": "빠른 메모",
+                                "icon": "sticky-note",
+                                "bgColor": "bg-gradient-to-br from-yellow-400 to-yellow-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "calendar",
+                                "name": "캘린더",
+                                "description": "일정 관리",
+                                "icon": "calendar-alt",
+                                "bgColor": "bg-gradient-to-br from-red-400 to-red-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "calculator",
+                                "name": "계산기",
+                                "description": "간편 계산",
+                                "icon": "calculator",
+                                "bgColor": "bg-gradient-to-br from-orange-400 to-orange-600",
+                                "installed": false
+                            },
+                            {
+                                "id": "timer",
+                                "name": "타이머",
+                                "description": "시간 측정",
+                                "icon": "stopwatch",
+                                "bgColor": "bg-gradient-to-br from-pink-400 to-pink-600",
+                                "installed": false
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "components": [
+        {
+            "id": "global_toast",
+            "type": "composite",
+            "name": "Toast",
+            "props": {
+                "toasts": "{{_global.toasts}}",
+                "position": "bottom-center",
+                "duration": 4000
+            }
+        },
+        {
+            "id": "root",
+            "type": "basic",
+            "name": "Div",
+            "props": {
+                "className": "min-h-screen flex flex-col"
+            },
+            "children": [
+                {
+                    "id": "main_layout",
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                        "className": "flex-1 flex flex-col"
+                    },
+                    "children": [
+                        {
+                            "id": "three_column_layout",
+                            "type": "basic",
+                            "name": "Div",
+                            "props": {
+                                "className": "relative flex flex-row w-full h-full"
+                            },
+                            "children": [
+                                {
+                                    "id": "left_panel",
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "props": {
+                                        "className": "flex flex-col bg-white border-r border-gray-200",
+                                        "style": "width: 280px;"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "left_panel_content",
+                                            "type": "basic",
+                                            "name": "Div",
+                                            "props": {
+                                                "className": "flex-1 overflow-y-auto p-6"
+                                            },
+                                            "children": [
+                                                {
+                                                    "type": "basic",
+                                                    "name": "H2",
+                                                    "props": {
+                                                        "className": "text-xl font-bold text-gray-900 mb-4"
+                                                    },
+                                                    "text": "왼쪽 패널"
+                                                },
+                                                {
+                                                    "type": "basic",
+                                                    "name": "Nav",
+                                                    "props": {
+                                                        "className": "space-y-2"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "type": "basic",
+                                                            "name": "Button",
+                                                            "props": {
+                                                                "variant": "secondary",
+                                                                "className": "w-full justify-start"
+                                                            },
+                                                            "text": "홈",
+                                                            "actions": [
+                                                                {
+                                                                    "type": "click",
+                                                                    "handler": "navigate",
+                                                                    "params": {
+                                                                        "path": "/"
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "basic",
+                                                            "name": "Button",
+                                                            "props": {
+                                                                "variant": "secondary",
+                                                                "className": "w-full justify-start"
+                                                            },
+                                                            "text": "앱 스토어",
+                                                            "actions": [
+                                                                {
+                                                                    "type": "click",
+                                                                    "handler": "navigate",
+                                                                    "params": {
+                                                                        "path": "/apps"
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "center_panel",
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "props": {
+                                        "className": "flex-1 flex flex-col min-w-0 bg-gray-50"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "header",
+                                            "type": "composite",
+                                            "name": "Header",
+                                            "props": {
+                                                "siteName": "{{_global.siteName ?? 'Moabom'}}",
+                                                "className": "border-b border-gray-200"
+                                            }
+                                        },
+                                        {
+                                            "id": "main_content",
+                                            "type": "basic",
+                                            "name": "Div",
+                                            "props": {
+                                                "className": "flex-1 overflow-y-auto p-8"
+                                            },
+                                            "children": [
+                                                {
+                                                    "type": "basic",
+                                                    "name": "H1",
+                                                    "props": {
+                                                        "className": "text-3xl font-bold text-gray-900 mb-8 text-center"
+                                                    },
+                                                    "text": "MOABOM APPS"
+                                                },
+                                                {
+                                                    "type": "basic",
+                                                    "name": "Div",
+                                                    "props": {
+                                                        "className": "space-y-12"
+                                                    },
+                                                    "iteration": {
+                                                        "source": "{{apps_list?.data?.categories ?? []}}",
+                                                        "item_var": "category",
+                                                        "index_var": "idx"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "type": "basic",
+                                                            "name": "Div",
+                                                            "props": {
+                                                                "className": "bg-white rounded-2xl shadow-sm p-6"
+                                                            },
+                                                            "children": [
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "H2",
+                                                                    "props": {
+                                                                        "className": "text-2xl font-bold text-gray-900 mb-6"
+                                                                    },
+                                                                    "text": "{{category.name}}"
+                                                                },
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "Div",
+                                                                    "props": {
+                                                                        "className": "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+                                                                    },
+                                                                    "iteration": {
+                                                                        "source": "{{category.apps ?? []}}",
+                                                                        "item_var": "app",
+                                                                        "index_var": "app_idx"
+                                                                    },
+                                                                    "children": [
+                                                                        {
+                                                                            "type": "composite",
+                                                                            "name": "AppCard",
+                                                                            "props": {
+                                                                                "id": "{{app.id}}",
+                                                                                "name": "{{app.name}}",
+                                                                                "description": "{{app.description}}",
+                                                                                "icon": "{{app.icon}}",
+                                                                                "bgColor": "{{app.bgColor}}",
+                                                                                "installed": "{{app.installed}}"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "slot",
+                                                    "name": "content"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": "footer",
+                                            "type": "composite",
+                                            "name": "Footer",
+                                            "props": {
+                                                "siteName": "{{_global.siteName ?? 'Moabom'}}",
+                                                "className": "border-t border-gray-200"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "right_panel",
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "props": {
+                                        "className": "flex flex-col bg-white border-l border-gray-200",
+                                        "style": "width: 320px;"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "right_panel_content",
+                                            "type": "basic",
+                                            "name": "Div",
+                                            "props": {
+                                                "className": "flex-1 overflow-y-auto p-6"
+                                            },
+                                            "children": [
+                                                {
+                                                    "type": "basic",
+                                                    "name": "H2",
+                                                    "props": {
+                                                        "className": "text-xl font-bold text-gray-900 mb-4"
+                                                    },
+                                                    "text": "오른쪽 패널"
+                                                },
+                                                {
+                                                    "type": "basic",
+                                                    "name": "Div",
+                                                    "props": {
+                                                        "className": "space-y-4"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "type": "basic",
+                                                            "name": "Div",
+                                                            "props": {
+                                                                "className": "p-4 bg-blue-50 rounded-lg"
+                                                            },
+                                                            "children": [
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "H3",
+                                                                    "props": {
+                                                                        "className": "text-sm font-bold text-blue-900 mb-2"
+                                                                    },
+                                                                    "text": "공지사항"
+                                                                },
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "P",
+                                                                    "props": {
+                                                                        "className": "text-sm text-blue-700"
+                                                                    },
+                                                                    "text": "새로운 기능이 추가되었습니다."
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "basic",
+                                                            "name": "Div",
+                                                            "props": {
+                                                                "className": "p-4 bg-green-50 rounded-lg"
+                                                            },
+                                                            "children": [
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "H3",
+                                                                    "props": {
+                                                                        "className": "text-sm font-bold text-green-900 mb-2"
+                                                                    },
+                                                                    "text": "최근 활동"
+                                                                },
+                                                                {
+                                                                    "type": "basic",
+                                                                    "name": "P",
+                                                                    "props": {
+                                                                        "className": "text-sm text-green-700"
+                                                                    },
+                                                                    "text": "활동 내역이 없습니다."
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

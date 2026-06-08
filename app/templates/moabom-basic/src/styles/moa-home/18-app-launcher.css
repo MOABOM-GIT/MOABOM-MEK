@@ -1,0 +1,112 @@
+/* ─── 앱 버튼 ─── */
+
+/* 앱 버튼 호버 효과 */
+.app-btn {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.app-btn:hover {
+  transform: scale(1.10);
+}
+
+.app-btn:active {
+  transform: scale(0.93);
+}
+
+.moa-main-app-btn.is-editing,
+.moa-main-app-btn.is-editing:hover,
+.moa-main-app-btn.is-editing:active {
+  transform: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.moa-left-panel-app-btn.is-editing,
+.moa-left-panel-app-btn.is-editing:hover,
+.moa-left-panel-app-btn.is-editing:active {
+  transform: none;
+  touch-action: pan-y;
+}
+
+/* ─── 앱 만들기 버튼 ─── */
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
+
+.create-app-btn {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.create-app-btn:hover {
+  transform: scale(1.10);
+}
+
+.create-app-btn:active {
+  transform: scale(0.93);
+}
+
+.create-app-icon {
+  position: relative;
+  background: 0 0;
+  border: solid 2px;
+  border-color: rgba(255, 255, 255, 0.99);
+}
+
+.dark .create-app-icon {
+  border-color: #525252c7;
+}
+
+/* 회전 보더 (가장 바깥) — 색은 부모에서 --create-app-spin-a/b 로 주입(AI 앱 생성기 악센트) */
+.create-app-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 42%,
+    color-mix(in srgb, var(--create-app-spin-a, #8b5cf6) 75%, transparent),
+    color-mix(in srgb, var(--create-app-spin-b, #ec4899) 75%, transparent),
+    transparent 58%
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin-border 5s linear infinite;
+}
+
+/* 보더 안쪽 면 — 그라데이션(변수), 미주입 시 밝은 면 */
+.create-app-icon::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 20px;
+  background: var(--create-app-inner-bg, #ffffffe6);
+  border: 2px solid;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.dark .create-app-icon::after {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* 제목: 부모에 --create-app-title-gradient(메타데이터 linear-gradient) */
+.create-app-title-gradient {
+  background-image: var(--create-app-title-gradient, linear-gradient(135deg, #8b5cf6, #ec4899));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

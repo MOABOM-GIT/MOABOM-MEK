@@ -1,0 +1,75 @@
+{
+    "identifier": "moabom-basic",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom Basic",
+        "en": "Moabom Basic"
+    },
+    "version": "0.6.77",
+    "license": "MIT",
+    "description": {
+        "ko": "Moabom 기본 사용자 템플릿",
+        "en": "Moabom basic user template"
+    },
+    "type": "user",
+    "locales": ["ko", "en", "ja", "zh"],
+    "author": {
+        "name": "moabom-basic",
+        "email": "",
+        "url": ""
+    },
+    "release_date": "2026-04-18",
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {
+            "sirsoft-page": ">=1.0.0-beta.2"
+        },
+        "plugins": {}
+    },
+    "assets": {
+        "css": ["dist/css/components.css"],
+        "js": [
+            "dist/js/components.iife.js",
+            "dist/js/moabom-shell-create-app.iife.js",
+            "dist/js/moabom-shell-cpap-mask.iife.js",
+            "dist/js/image-gallery-lightbox.iife.js"
+        ],
+        "fonts": [],
+        "images": []
+    },
+    "components": {
+        "basic": [
+            "button", "input", "textarea", "select", "option", "checkbox", "password-input",
+            "div", "span", "p", "h1", "h2", "h3", "h4", "label", "a", "nav",
+            "ul", "li", "form", "table", "icon", "img", "footer", "header", "hr"
+        ],
+        "composite": [
+            "header", "footer", "mobile-nav", "product-card", "rich-text-editor",
+            "image-gallery", "product-image-viewer", "quantity-selector", "post-reactions",
+            "social-login-buttons", "file-uploader", "toast", "page-transition-indicator",
+            "page-transition-blur", "page-skeleton", "page-loading", "theme-toggle",
+            "pagination", "search-bar", "avatar", "user-info", "html-content",
+            "html-editor", "modal", "confirm-dialog", "avatar-uploader", "tab-navigation",
+            "expandable-content", "app-card", "app-grid"
+        ],
+        "layout": [
+            "container", "flex", "grid", "section-layout", "three-column-layout"
+        ]
+    },
+    "error_config": {
+        "layouts": {
+            "401": "403",
+            "404": "404",
+            "403": "403",
+            "500": "500",
+            "503": "503",
+            "maintenance": "maintenance"
+        }
+    },
+    "features": {
+        "dark_mode": false,
+        "responsive": true,
+        "multi_language": true,
+        "multi_currency": false
+    }
+}

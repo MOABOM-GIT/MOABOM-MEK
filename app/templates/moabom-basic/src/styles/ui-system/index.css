@@ -1,0 +1,15 @@
+/**
+ * Moabom Basic Template — Design Tokens
+ *
+ * 그누보드7 표준(`sirsoft-admin_basic/src/styles/ui-system/*`) 구조를 채택한다.
+ * 컴포넌트 쪽에서는 `text-gray-900 dark:text-white` 같은 쌍 유틸 대신
+ * 시맨틱 유틸만 사용하고 light/dark 매핑은 `ui-system/colors.css`에서 한 번만 정의한다.
+ *
+ * 토큰 요약(라이트 기준): `.text-heading` gray-800, `.text-primary` 700, `.text-secondary` 600,
+ * `.text-muted` 500, `.text-faint` 400 — 역할은 제목 / 주요 라벨 / 부제·설명 / 캡션 / 더 흐림.
+ * 다크: `.text-primary` gray-100, `.text-secondary` 300, `.text-muted` 400.
+ */
+
+@import "./colors.css";
+@import "./typography.css";
+@import "./surfaces.css";

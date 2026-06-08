@@ -1,0 +1,667 @@
+{
+  "site_name": "Moabom",
+  "home": {
+    "title": "Home"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "login_button": "Login",
+    "register_button": "Register",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?"
+  },
+  "errors": {
+    "404_title": "Page Not Found",
+    "404_message": "The page you requested does not exist.",
+    "403_title": "Access Denied",
+    "403_message": "You do not have permission to access this page.",
+    "500_title": "Server Error",
+    "500_message": "A temporary error occurred. Please try again later.",
+    "go_home": "Go to Home"
+  },
+  "mypage": {
+    "settings": "Preferences",
+    "language": "Language",
+    "theme": "Theme",
+    "point_color": "Accent color",
+    "system_options": "System options"
+  },
+  "moa_mypage": {
+    "common": {
+      "user_fallback": "User",
+      "cancel": "Cancel",
+      "close": "Close",
+      "login_required_hint": "Sign in to use"
+    },
+    "tabs": {
+      "profile": {
+        "label": "Profile",
+        "desc": "Nickname and bio"
+      },
+      "settings": {
+        "label": "Preferences",
+        "desc": "Language and display"
+      },
+      "credit": {
+        "label": "Credits",
+        "desc": "Balance and history"
+      },
+      "library": {
+        "label": "App library",
+        "desc": "Manage saved apps"
+      },
+      "activity": {
+        "label": "My activity",
+        "desc": "Posts, comments, reactions"
+      },
+      "account": {
+        "label": "Account",
+        "desc": "Profile and security"
+      },
+      "subscription": {
+        "label": "Subscription",
+        "desc": "Plan and billing"
+      }
+    },
+    "settings_ui": {
+      "section_language": "Language",
+      "section_theme": "Theme",
+      "section_font_size": "Font size",
+      "font_size_level_aria": "Font size level {level}",
+      "section_point_color": "Accent color",
+      "section_background": "Home background",
+      "background_empty": "No home backgrounds are available.",
+      "section_system_options": "System options",
+      "theme_aria": "Select {label} theme",
+      "theme_title": "{label} theme",
+      "color_aria": "Select {color}",
+      "custom_color_aria": "Custom accent color",
+      "bg_thumb_aria": "Apply home background {n}",
+      "point_custom_label": "Custom",
+      "point_preset": {
+        "main": "Main",
+        "naver": "Naver green",
+        "reference": "Reference",
+        "sky": "Sky blue",
+        "cyan": "Cyan",
+        "orange": "Orange",
+        "pink": "Pink",
+        "red": "Red",
+        "dark_blue": "Dark blue"
+      }
+    },
+    "lang_names": {
+      "ko": "Korean",
+      "en": "English",
+      "ja": "Japanese",
+      "zh": "Chinese"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "flat_light": "Flat light",
+      "flat_dark": "Flat dark"
+    },
+    "system_options": {
+      "sound": "Sound effects",
+      "animation": "Animations",
+      "haptic": "Haptic feedback",
+      "toast": "Toast notifications",
+      "weather": "Weather effects"
+    },
+    "weather_status": {
+      "format": "{condition} · {temp}°C",
+      "loading": "Loading weather…",
+      "clear": "Clear",
+      "partly_cloudy": "Partly cloudy",
+      "overcast": "Overcast",
+      "fog": "Fog",
+      "drizzle": "Drizzle",
+      "rain": "Rain",
+      "freezing_rain": "Freezing rain",
+      "snow": "Snow",
+      "rain_showers": "Rain showers",
+      "snow_showers": "Snow showers",
+      "thunderstorm": "Thunderstorm",
+      "thunderstorm_hail": "Thunderstorm with hail",
+      "unknown": "Unknown"
+    },
+    "profile": {
+      "avatar_alt": "{name} profile photo",
+      "image_change": "Change image",
+      "image_changing": "Updating…",
+      "loading": "Loading profile…",
+      "nickname": "Nickname",
+      "bio": "Bio",
+      "save": "Save profile",
+      "saving": "Saving…"
+    },
+    "credit": {
+      "amount_unit": "{amount} credits",
+      "balance_label": "Balance",
+      "total_earned": "Total earned",
+      "total_used": "Total spent",
+      "attendance": "Check-in",
+      "attendance_loading": "Checking in…",
+      "recent_title": "Recent activity",
+      "loading_short": "Loading",
+      "loading_rows": "Loading credit history…",
+      "empty": "No credit history yet.",
+      "transaction_fallback": "Credit transaction"
+    },
+    "library": {
+      "created_title": "My apps",
+      "created_guest_msg": "Sign in to use this feature.",
+      "created_empty": "No apps you created.",
+      "created_loading": "Loading your apps…",
+      "edit_app": "Edit app",
+      "recent_title": "Recently used",
+      "recent_empty": "No recently used apps.",
+      "favorites_title": "Favorites",
+      "favorites_empty": "No favorite apps.",
+      "app_info_fallback": "App info"
+    },
+    "activity": {
+      "stat_posts": "Posts",
+      "stat_comments": "Comments",
+      "stat_interactions": "Reactions",
+      "filter_all": "All",
+      "filter_posts": "Posts",
+      "filter_comments": "Comments",
+      "filter_interactions": "Reactions received",
+      "likes_notice": "Likes/recommendations will appear here when the board module provides that data.",
+      "admin_session_notice": "You are signed in with an administrator account. Activity below is for the member account you are logged in as.",
+      "loading": "Loading activity…",
+      "empty": "No activity to show."
+    },
+    "subscription": {
+      "title": "MOA PRO+",
+      "period": "Subscription: 2026.04.01 ~ 2026.12.31",
+      "manage": "Manage subscription"
+    },
+    "account": {
+      "section_basic_title": "Account details",
+      "section_basic_desc": "Manage your name, email, and phone. Saving updates your member profile.",
+      "loading": "Loading account info…",
+      "name": "Name",
+      "email": "Email",
+      "email_synthetic_hint": "Email is not registered yet. Add a real email for notifications and recovery.",
+      "mobile": "Mobile number",
+      "mobile_placeholder": "010-0000-0000",
+      "save_account": "Save account",
+      "section_security_title": "Security",
+      "section_security_desc": "Password change and account deletion require your current password.",
+      "change_password": "Change password",
+      "withdraw": "Delete account",
+      "panel_password_title": "Change password",
+      "panel_withdraw_title": "Delete account",
+      "panel_password_desc_sns": "Signed up with {provider}. Password cannot be changed here.",
+      "panel_password_desc_local": "Verify your current password, then enter a new password.",
+      "panel_withdraw_desc_sns": "Signed up with {provider}. Deleting your account is hard to undo.",
+      "panel_withdraw_desc_local": "Verify your current password to confirm deletion. This is hard to undo.",
+      "sns_no_password_note": "{provider} accounts do not use a separate password. Continue signing in with your SNS account.",
+      "current_password": "Current password",
+      "current_password_placeholder": "Enter current password",
+      "verify_password": "Verify password",
+      "verifying": "Verifying…",
+      "new_password": "New password",
+      "new_password_placeholder": "At least 8 characters",
+      "new_password_confirm": "Confirm new password",
+      "new_password_confirm_placeholder": "Re-enter new password",
+      "changing_password": "Updating…",
+      "withdraw_processing": "Deleting…",
+      "withdraw_confirm": "Delete account",
+      "withdraw_warning_sns": "{provider} account: SNS links and sessions will end and the account will be deleted.",
+      "withdraw_warning_local": "Your session will end and the account will be deleted."
+    },
+    "social": {
+      "naver": "Naver",
+      "kakao": "Kakao",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple"
+    },
+    "api": {
+      "auth_required": "Please sign in.",
+      "image_load_failed": "Could not load the image.",
+      "image_edit_unavailable": "Image editing is not available.",
+      "image_convert_failed": "Failed to convert the image."
+    },
+    "msg": {
+      "profile_load_failed": "Could not load profile. Please sign in again.",
+      "credit_load_failed": "Could not load credits.",
+      "activity_load_failed": "Could not load activity.",
+      "email_missing_field": "Could not load email. Check it under Account.",
+      "email_missing_toast": "Reload account info and try saving again.",
+      "save_failed": "Save failed.",
+      "profile_saved": "Profile saved.",
+      "attendance_failed": "Check-in failed.",
+      "attendance_success": "Check-in credits applied.",
+      "password_verify_failed": "Password verification failed.",
+      "password_verified": "Password verified.",
+      "password_change_failed": "Password change failed.",
+      "password_changed": "Password updated.",
+      "withdraw_failed": "Account deletion failed.",
+      "withdraw_success": "Account deleted.",
+      "avatar_failed": "Could not update profile photo.",
+      "avatar_success": "Profile photo updated.",
+      "avatar_failed_generic": "Could not update profile photo."
+    }
+  },
+  "moa_shell": {
+    "common": {
+      "user_fallback": "User",
+      "app_description_fallback": "App description",
+      "badge_urgent": "Urgent",
+      "badge_event": "Event"
+    },
+    "nav": {
+      "launcher": "All Apps",
+      "economy": "Ranking",
+      "myapp": "My apps",
+      "notice": "Notices"
+    },
+    "left": {
+      "close_panel": "Close left panel",
+      "tabs_basic_apps": "Built-in",
+      "tabs_user_apps": "User apps",
+      "tabs_rank_apps": "App ranking",
+      "tabs_rank_users": "User ranking",
+      "tabs_favorites": "Favorites",
+      "tabs_my_apps": "My apps",
+      "tabs_notices": "Notices",
+      "tabs_updates": "Updates",
+      "empty_favorites": "No favorite apps yet",
+      "empty_myapps": "No apps registered",
+      "creator_badge": "Lv.{level} Creator"
+    },
+    "right": {
+      "close_panel": "Close right panel",
+      "profile_action_profile": "Profile",
+      "profile_action_settings": "Settings",
+      "profile_action_credit": "Credits",
+      "profile_action_logout": "Log out",
+      "tab_connect": "Online",
+      "tab_friend": "Friends",
+      "tab_alarm": "Alerts",
+      "online_summary": "42 people active now",
+      "friends_summary": "12 friends",
+      "mark_all_read": "Mark all as read",
+      "admin_mode": "Admin mode",
+      "avatar_alt": "{name} profile photo"
+    },
+    "center": {
+      "edit_mode_title": "App edit mode",
+      "create_app_title": "AI App Builder",
+      "create_app_desc": "Build a web app from a prompt",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "locale_settings_aria": "Language & settings",
+      "copyright": "© 2026 SMARTCARE360. All rights reserved.",
+      "legal_page_loading": "Loading…",
+      "legal_page_error": "Could not load the page. Check that the slug is published in the sirsoft-page module.",
+      "legal_page_empty": "No content is published yet.",
+      "legal_page_retry": "Try again",
+      "toggle_left_panel_on": "Close left panel",
+      "toggle_left_panel_off": "Open left panel",
+      "toggle_right_panel_on": "Close right panel",
+      "toggle_right_panel_off": "Open right panel"
+    },
+    "modes": {
+      "apps": {
+        "name": "SMARTCARE APPS",
+        "desc": "Browse apps"
+      },
+      "sites": {
+        "name": "SMARTCARE SITES",
+        "desc": "Website hub"
+      },
+      "work": {
+        "name": "SMARTCARE WORK",
+        "desc": "Work tools"
+      }
+    },
+    "auth_windows": {
+      "login": "Sign in",
+      "register": "Sign up",
+      "forgot_password": "Forgot password",
+      "reset_password": "Reset password"
+    },
+    "window": {
+      "favorite_add": "Add to favorites",
+      "favorite_remove": "Remove from favorites",
+      "placeholder_content": "App content appears here.",
+      "app_loading": "Loading app…",
+      "app_loading_aria": "Preparing the app. Please wait until the window updates.",
+      "remove_app_aria": "Remove app {name}"
+    },
+    "login_prompt": {
+      "title_line1": "A new standard",
+      "title_line2": "for health management.",
+      "desc_line1": "Sign in and start smarter",
+      "desc_line2": "health management today.",
+      "email_login": "Continue with email",
+      "sns_label": "SNS",
+      "social_google": "Continue with Google",
+      "social_naver": "Continue with Naver",
+      "social_kakao": "Continue with Kakao"
+    },
+    "home": {
+      "toast_already_logged_in": "You are already signed in.",
+      "toast_max_windows": "You can open up to {max} windows. Close one and try again.",
+      "toast_max_taskbar": "You can keep up to {max} minimized buttons. Open or close one first.",
+      "toast_app_added": "App added to the home grid.",
+      "toast_app_already": "This app is already on the grid.",
+      "sns_login_success": "Signed in with social account.",
+      "sns_login_failed": "Social sign-in failed.",
+      "sns_exchange_invalid": "Invalid social sign-in response."
+    },
+    "pwa": {
+      "update": {
+        "message": "The platform has been updated.",
+        "cta": "Reload"
+      }
+    }
+  },
+  "moa_apps": {
+    "mypage": {
+      "name": "My Page",
+      "description": "Manage your profile and settings"
+    },
+    "app-maker": {
+      "name": "Equipment rental",
+      "description": "CPAP rental application"
+    },
+    "secret-text": {
+      "name": "Rental status",
+      "description": "View your rental equipment"
+    },
+    "color-tool": {
+      "name": "Equipment management",
+      "description": "Inspection and replacement"
+    },
+    "brain-gen": {
+      "name": "Sleep analysis",
+      "description": "Sleep data reports"
+    },
+    "decision": {
+      "name": "Service request",
+      "description": "On-site repair requests"
+    },
+    "psych-test": {
+      "name": "User guide",
+      "description": "Equipment manuals"
+    },
+    "quick-game": {
+      "name": "Fee inquiry",
+      "description": "Check monthly rental fees"
+    },
+    "community": {
+      "name": "Customer center",
+      "description": "1:1 inquiry and support"
+    },
+    "device-info": {
+      "name": "Equipment info",
+      "description": "Model specifications"
+    },
+    "game-coupon": {
+      "name": "Discount coupons",
+      "description": "Rental discount benefits"
+    },
+    "lotto-gen": {
+      "name": "Health report",
+      "description": "Monthly sleep health analysis"
+    },
+    "qr-tool": {
+      "name": "QR registration",
+      "description": "Register equipment QR codes"
+    },
+    "mobile-guide": {
+      "name": "Delivery tracking",
+      "description": "Rental delivery status"
+    },
+    "weather": {
+      "name": "My equipment",
+      "description": "List of registered devices"
+    },
+    "color-user": {
+      "name": "Sleep log",
+      "description": "Daily sleep records"
+    },
+    "music": {
+      "name": "Notifications",
+      "description": "Manage equipment alerts"
+    },
+    "task1": {
+      "name": "Contract info",
+      "description": "Rental contract history"
+    },
+    "task2": {
+      "name": "Payment history",
+      "description": "Monthly billing history"
+    },
+    "task3": {
+      "name": "Points",
+      "description": "Reward points balance"
+    },
+    "create-app": {
+      "name": "AI App Builder",
+      "description": "Build a web app from a prompt"
+    },
+    "cpap-mask": {
+      "name": "Mask Fitting",
+      "description": "Recommend a CPAP mask from face measurements"
+    }
+  },
+  "moa_apps_ai": {
+    "title": "AI App Builder",
+    "description": "Describe the app you want and generate an HTML web app preview.",
+    "field_title": "App title",
+    "field_title_placeholder": "Example: Sleep report dashboard",
+    "field_type": "App type",
+    "field_model": "AI model",
+    "field_prompt": "Prompt",
+    "field_prompt_placeholder": "Describe the screen, features, colors, and interactions you want.",
+    "field_modify_placeholder": "Describe what you want to change in the current preview.",
+    "types": {
+      "general": "General app",
+      "3d": "3D scene",
+      "game": "Game",
+      "dataviz": "Data visualization"
+    },
+    "models": {
+      "claude_sonnet": "Claude Sonnet 4",
+      "gpt4o": "GPT-4o",
+      "gemini_flash": "Gemini 2.5 Flash"
+    },
+    "generate": "Generate",
+    "modify": "Apply changes",
+    "generating": "Generating...",
+    "save": "Save",
+    "saving": "Saving...",
+    "save_success": "Generated app saved.",
+    "update": "Save changes",
+    "update_success": "Generated app updated.",
+    "editing_saved_app": "Editing a saved app.",
+    "preview_title": "Generated app preview",
+    "viewer_loading": "Loading saved app…",
+    "viewer_error": "Could not load the saved app.",
+    "viewer_empty": "No app HTML to display.",
+    "preview_empty_title": "No app generated yet",
+    "preview_empty_description": "Enter a prompt and generate a preview.",
+    "notice_fallback": "A default preview is shown until the AI provider is configured.",
+    "error_generate": "Failed to generate the app.",
+    "error_save": "Failed to save the generated app.",
+    "validation": {
+      "prompt_required": "Please enter a prompt.",
+      "title_required": "Please enter an app title.",
+      "html_required": "There is no generated HTML to save."
+    }
+  },
+  "moa_apps_cpap": {
+    "title": "CPAP Mask Fitting",
+    "description": "Recommend a mask type using camera and survey data.",
+    "hero": {
+      "badge": "AI face analysis",
+      "title": "Mask fitting in about 30 seconds",
+      "description": "Tap the options that apply to you, then start the face scan for a personalized CPAP mask recommendation.",
+      "privacy": "Video is analyzed on your device only and is not stored on our servers."
+    },
+    "survey_hint": "Tap only what applies to you",
+    "steps": {
+      "survey": "Survey",
+      "camera": "Scan",
+      "result": "Result"
+    },
+    "camera_ready_badge": "Scan camera ready",
+    "camera_idle_badge": "AI loads when you start scan",
+    "camera_loading_badge": "Preparing scan camera…",
+    "common": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "profile": {
+      "gender": "Gender",
+      "gender_male": "Male",
+      "gender_female": "Female",
+      "age": "Age group",
+      "age_20s": "20s",
+      "age_30s": "30s",
+      "age_40s": "40s",
+      "age_50s": "50s",
+      "age_60s+": "60+",
+      "tossing": "Movement during sleep",
+      "pressure": "CPAP pressure (cmH2O)",
+      "mouth_breathing": "Mouth breathing during sleep",
+      "preferred_types": "Preferred mask types (multi-select)"
+    },
+    "level": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "pressure_level": {
+      "low": "10 or below",
+      "medium": "10–15",
+      "high": "15 or above"
+    },
+    "mask_type": {
+      "nasal": {
+        "title": "Nasal (covers nose)",
+        "desc": "Often suits younger adults"
+      },
+      "pillow": {
+        "title": "Pillow (nostrils only)",
+        "desc": "Light and comfortable; lower pressure"
+      },
+      "full": {
+        "title": "Full face (nose + mouth)",
+        "desc": "Mouth breathers; middle age and older"
+      }
+    },
+    "start": "Start face scan",
+    "start_cta": "Start face scan",
+    "result_badge": "AI recommendation",
+    "reasons_title": "Why this mask",
+    "measurements_title": "Scan data",
+    "latest_empty_hint": "Start your first scan",
+    "latest_date": "Scanned on",
+    "mediapipe_loading": "Preparing face scan…",
+    "mediapipe_ready": "Face scan ready",
+    "mediapipe_error": "Could not prepare face scan.",
+    "camera_starting": "Opening camera...",
+    "camera_ready": "Place your face in the center of the screen.",
+    "camera_error": "Could not start the camera.",
+    "cancel": "Cancel",
+    "measure": "Scan",
+    "measurement_video_required": "Camera video is not ready.",
+    "measurement_data_error": "Not enough scan data. Please try again.",
+    "measurement_starting": "Starting scan.",
+    "guide_front": "Look straight at the camera.",
+    "guide_front_checking": "Checking front pose... {count}/20",
+    "guide_turn_side": "Side scan",
+    "guide_turn_side_detail": "Slowly turn your head to the side.",
+    "scanning_front": "Scanning front view...",
+    "scanning_profile": "Scanning side view...",
+    "scan_progress": "{progress}% complete",
+    "face_not_detected": "Face not detected.",
+    "measurement_complete": "Scan completed.",
+    "result_recommendation": "Recommended mask",
+    "result_confidence": "Confidence {confidence}%",
+    "result_tips": "Fitting tips",
+    "measurements": {
+      "faceWidth": "Face width",
+      "faceLength": "Face length",
+      "noseWidth": "Nose width",
+      "philtrumLength": "Philtrum length",
+      "mouthWidth": "Mouth width",
+      "bridgeWidth": "Bridge width"
+    },
+    "save": "Save scan result",
+    "saving": "Saving...",
+    "save_success": "Scan result saved.",
+    "save_error": "Failed to save scan result.",
+    "retry": "Scan again",
+    "latest_title": "Recent scan results",
+    "latest_empty": "No saved scan results yet.",
+    "result_empty_title": "No scan result",
+    "result_empty_detail": "No measurement data yet. Please run a face scan.",
+    "export_pdf": "Save PDF",
+    "view_recommended_mask": "View recommended mask",
+    "pdf_title": "CPAP mask fitting scan result"
+  },
+  "moa_auth": {
+    "title_login": "Sign in",
+    "title_register": "Sign up",
+    "title_forgot_password": "Forgot password",
+    "title_reset_password": "Reset password",
+    "desc_login": "Sign in and use every feature seamlessly.",
+    "desc_register": "Create an account and use every feature seamlessly.",
+    "desc_forgot_password": "We'll email you a password reset link.",
+    "desc_reset_password": "Confirm the email link, then enter your new password.",
+    "email": "Email",
+    "password": "Password",
+    "password_confirm": "Confirm password",
+    "name": "Name",
+    "nickname": "Nickname",
+    "language": "Language",
+    "login_button": "Sign in",
+    "login_submitting": "Signing in…",
+    "register_button": "Sign up",
+    "register_submitting": "Signing up…",
+    "forgot_password_link": "Forgot your password?",
+    "forgot_submit_button": "Send reset link",
+    "forgot_submitting": "Sending email…",
+    "reset_token_label": "Reset token",
+    "new_password_label": "New password",
+    "new_password_confirm_label": "Confirm new password",
+    "reset_submit_button": "Update password",
+    "reset_submitting": "Updating…",
+    "back_to_login": "Back to sign in",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "name_placeholder": "Enter your name",
+    "nickname_placeholder": "Nickname (optional)",
+    "agree_terms": "I agree to the Terms of Service.",
+    "agree_privacy": "I agree to the Privacy Policy.",
+    "sns_divider": "Social",
+    "social_google_short": "Google",
+    "social_naver_short": "Naver",
+    "social_kakao_short": "Kakao",
+    "login_unavailable": "Authentication module failed to load.",
+    "login_success": "Signed in successfully.",
+    "login_failed": "Sign-in failed.",
+    "register_failed": "Sign-up failed.",
+    "register_success": "Registration completed.",
+    "err_forgot_send_failed": "Failed to send reset email.",
+    "msg_forgot_sent": "We sent a password reset link to your email.",
+    "err_forgot_failed_generic": "Failed to send reset email.",
+    "err_reset_token_invalid": "This reset link is invalid or expired.",
+    "err_reset_failed": "Password reset failed.",
+    "msg_reset_success": "Password updated. Sign in with your new password."
+  }
+}

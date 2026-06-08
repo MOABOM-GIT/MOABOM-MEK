@@ -1,0 +1,610 @@
+{
+  "version": "1.0.0",
+  "layout_name": "admin_credit_settings",
+  "permissions": [
+    "moabom-credit.settings.read"
+  ],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-credit.admin.settings.title",
+    "description": "$t:moabom-credit.admin.settings.description"
+  },
+  "computed": {
+    "isReadOnly": "{{!!settings?.data && settings?.data?.abilities?.can_update !== true}}"
+  },
+  "transition_overlay": {
+    "wait_for": ["settings"]
+  },
+  "initLocal": {
+    "isSaving": false,
+    "errors": null
+  },
+  "data_sources": [
+    {
+      "id": "settings",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-credit/admin/settings",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true,
+      "initLocal": "form",
+      "refetchOnMount": true,
+      "errorHandling": {
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "id": "credit_settings_content",
+        "type": "basic",
+        "name": "Div",
+        "dataKey": "form",
+        "trackChanges": true,
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "id": "page_header",
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-credit.admin.settings.title",
+              "description": "$t:moabom-credit.admin.settings.description"
+            },
+            "children": [
+              {
+                "id": "save_button",
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "disabled": "{{_computed.isReadOnly || !_local.hasChanges || _local.isSaving}}",
+                  "className": "px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "sequence",
+                    "params": {
+                      "actions": [
+                        {
+                          "handler": "setState",
+                          "params": {
+                            "target": "local",
+                            "isSaving": true,
+                            "errors": null
+                          }
+                        },
+                        {
+                          "handler": "apiCall",
+                          "auth_required": true,
+                          "target": "/api/modules/moabom-credit/admin/settings",
+                          "params": {
+                            "method": "PUT",
+                            "body": "{{(() => ({ rewards: _local.form?.rewards ?? {}, limits: _local.form?.limits ?? {}, ads: _local.form?.ads ?? {} }))()}}"
+                          },
+                          "onSuccess": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "hasChanges": false
+                              }
+                            },
+                            {
+                              "handler": "refetchDataSource",
+                              "params": {
+                                "dataSourceId": "settings"
+                              }
+                            }
+                          ],
+                          "onError": [
+                            {
+                              "handler": "setState",
+                              "params": {
+                                "target": "local",
+                                "isSaving": false,
+                                "errors": "{{error.errors ?? error.message ?? '$t:moabom-credit.admin.settings.save_error'}}"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "text": "{{_local.isSaving ? '$t:common.saving' : '$t:common.save'}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "readonly_banner",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_computed.isReadOnly}}",
+            "props": {
+              "className": "mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "P",
+                "props": {
+                  "className": "text-sm text-yellow-800 dark:text-yellow-200"
+                },
+                "text": "$t:moabom-credit.admin.settings.read_only_message"
+              }
+            ]
+          },
+          {
+            "id": "page_intro",
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "P",
+                "props": {
+                  "className": "text-sm text-blue-800 dark:text-blue-200"
+                },
+                "text": "$t:moabom-credit.admin.settings.page_intro"
+              }
+            ]
+          },
+          {
+            "id": "validation_error",
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_local.errors}}",
+            "props": {
+              "className": "mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300"
+            },
+            "text": "{{typeof _local.errors === 'string' ? _local.errors : '$t:moabom-credit.admin.settings.validation_error'}}"
+          },
+          {
+            "id": "settings_grid",
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6"
+            },
+            "children": [
+              {
+                "id": "reward_card",
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": {
+                      "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.rewards"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "mt-1 mb-5 text-sm text-gray-500 dark:text-gray-400"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.rewards_description"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "space-y-4"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-center justify-between gap-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                            },
+                            "text": "$t:moabom-credit.admin.settings.fields.login_amount"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "rewards.login_enabled",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "rewards.login_amount",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-center justify-between gap-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                            },
+                            "text": "$t:moabom-credit.admin.settings.fields.post_write_amount"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "rewards.post_write_enabled",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "rewards.post_write_amount",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-center justify-between gap-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                            },
+                            "text": "$t:moabom-credit.admin.settings.fields.like_received_amount"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "rewards.like_received_enabled",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "rewards.like_received_amount",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-center justify-between gap-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                            },
+                            "text": "$t:moabom-credit.admin.settings.fields.attendance_amount"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "rewards.attendance_enabled",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "rewards.attendance_amount",
+                          "type": "number",
+                          "min": 1,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "limits_card",
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": {
+                      "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.limits"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "mt-1 mb-5 text-sm text-gray-500 dark:text-gray-400"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.limits_description"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "space-y-4"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.daily_earn_limit"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "limits.daily_earn_limit",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.hints.daily_earn_limit"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.attendance_daily_limit"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "limits.attendance_daily_limit",
+                          "type": "number",
+                          "min": 1,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.max_post_write_rewards_per_day"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "limits.max_post_write_rewards_per_day",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.max_like_received_rewards_per_day"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "limits.max_like_received_rewards_per_day",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "ads_card",
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": {
+                      "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.ads"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "mt-1 mb-5 text-sm text-gray-500 dark:text-gray-400"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.ads_description"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "space-y-4"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "ads.attendance_requires_ad",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-xs text-blue-800 dark:text-blue-200"
+                            },
+                            "text": "$t:moabom-credit.admin.settings.fields.attendance_requires_ad"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.attendance_ad_provider"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "ads.attendance_ad_provider",
+                          "type": "text",
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.attendance_ad_reward_multiplier"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "ads.attendance_ad_reward_multiplier",
+                          "type": "number",
+                          "min": 1,
+                          "step": 0.1,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": {
+                          "className": "rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.hints.ads"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

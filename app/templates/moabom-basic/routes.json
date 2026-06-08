@@ -1,0 +1,114 @@
+{
+  "version": "1.0.1",
+  "description": "moabom 사용자 템플릿 라우트 정의",
+  "routes": [
+    {
+      "path": "/",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "홈"
+      }
+    },
+    {
+      "path": "/me",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "마이페이지"
+      }
+    },
+    {
+      "path": "/me/:tab",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "마이페이지"
+      }
+    },
+    {
+      "path": "/auth/:mode",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "인증"
+      }
+    },
+    {
+      "path": "/app/:id",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "앱"
+      }
+    },
+    {
+      "path": "/apps",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "MOABOM APPS"
+      }
+    },
+    {
+      "path": "/login",
+      "layout": "auth/login",
+      "auth_required": false,
+      "guest_only": true,
+      "meta": {
+        "title": "로그인"
+      }
+    },
+    {
+      "path": "/register",
+      "layout": "auth/register",
+      "auth_required": false,
+      "guest_only": true,
+      "meta": {
+        "title": "회원가입"
+      }
+    },
+    {
+      "path": "/forgot-password",
+      "layout": "auth/forgot-password",
+      "auth_required": false,
+      "guest_only": true,
+      "meta": {
+        "title": "비밀번호 찾기"
+      }
+    },
+    {
+      "path": "/reset-password",
+      "layout": "auth/reset-password",
+      "auth_required": false,
+      "guest_only": true,
+      "meta": {
+        "title": "비밀번호 재설정"
+      }
+    },
+    {
+      "path": "/404",
+      "layout": "errors/404",
+      "auth_required": false,
+      "meta": {
+        "title": "페이지를 찾을 수 없습니다"
+      }
+    },
+    {
+      "path": "/403",
+      "layout": "errors/403",
+      "auth_required": false,
+      "meta": {
+        "title": "접근 권한이 없습니다"
+      }
+    },
+    {
+      "path": "/500",
+      "layout": "errors/500",
+      "auth_required": false,
+      "meta": {
+        "title": "서버 오류"
+      }
+    }
+  ]
+}

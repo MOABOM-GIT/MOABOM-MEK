@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "routes": [
+    {
+      "path": "*/admin/platform/settings/mypage",
+      "layout": "admin_mypage_settings",
+      "auth_required": true,
+      "meta": {
+        "title": "마이페이지 설정",
+        "permission": "moabom-system.settings.read"
+      }
+    },
+    {
+      "path": "*/admin/saas/hospitals",
+      "layout": "admin_saas_hospitals",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-system.admin.saas.hospitals.title",
+        "permission": "moabom-system.saas.read"
+      }
+    },
+    {
+      "path": "*/admin/saas/hospitals/create",
+      "layout": "admin_saas_hospital_create",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-system.admin.saas.hospitals.create_title",
+        "permission": "moabom-system.saas.create"
+      }
+    }
+  ]
+}

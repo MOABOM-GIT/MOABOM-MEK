@@ -1,0 +1,209 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "Google SNS 연결 설정 카드"
+  },
+  "id": "google_provider_card",
+  "type": "basic",
+  "name": "Div",
+  "props": {
+    "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5"
+  },
+  "children": [
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "flex items-center justify-between gap-4 mb-5"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Div",
+          "children": [
+            {
+              "type": "basic",
+              "name": "H3",
+              "props": {
+                "className": "text-lg font-semibold text-gray-900 dark:text-white"
+              },
+              "text": "Google"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-1 text-sm text-gray-500 dark:text-gray-400"
+              },
+              "text": "$t:moabom-social-auth.admin.settings.providers.google_description"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Input",
+          "props": {
+            "name": "providers.google_enabled",
+            "type": "checkbox",
+            "disabled": "{{_computed.isReadOnly}}",
+            "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+          }
+        }
+      ]
+    },
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "space-y-4"
+      },
+      "children": [
+        {
+          "partial": "partials/social_auth/_provider_master_inherit_banner.json"
+        },
+        {
+          "type": "basic",
+          "name": "Label",
+          "if": "{{_computed.canManageCredentials}}",
+          "props": {
+            "className": "flex items-start gap-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 p-3"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "name": "providers.google_use_master_defaults",
+                "type": "checkbox",
+                "disabled": "{{_computed.isReadOnly}}",
+                "className": "mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+              }
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "props": {
+                "className": "text-xs text-indigo-800 dark:text-indigo-200"
+              },
+              "text": "$t:moabom-social-auth.admin.settings.fields.use_master_defaults"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Label",
+          "props": {
+            "className": "{{_computed.credentialLabelClassName}}"
+          },
+          "text": "$t:moabom-social-auth.admin.settings.fields.client_id"
+        },
+        {
+          "type": "basic",
+          "name": "Input",
+          "props": {
+            "name": "providers.google_client_id",
+            "type": "text",
+            "value": "{{_local.form?.providers?.google_client_id ?? ''}}",
+            "placeholder": "Google OAuth Client ID",
+            "disabled": "{{_computed.credentialInputsLocked || _local.form?.providers?.google_use_master_defaults === true}}",
+            "className": "{{_computed.credentialInputClassName}}"
+          }
+        },
+        {
+          "type": "basic",
+          "name": "Label",
+          "props": {
+            "className": "{{_computed.credentialLabelClassName}}"
+          },
+          "text": "$t:moabom-social-auth.admin.settings.fields.client_secret"
+        },
+        {
+          "type": "basic",
+          "name": "Input",
+          "props": {
+            "name": "providers.google_client_secret",
+            "type": "password",
+            "value": "{{_local.form?.providers?.google_client_secret ?? ''}}",
+            "autoComplete": "new-password",
+            "placeholder": "Google OAuth Client Secret",
+            "disabled": "{{_computed.credentialInputsLocked || _local.form?.providers?.google_use_master_defaults === true}}",
+            "className": "{{_computed.credentialInputClassName}}"
+          }
+        },
+        {
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mb-2 text-xs font-medium text-gray-700 dark:text-gray-300"
+              },
+              "text": "$t:moabom-social-auth.admin.settings.fields.provider_callback_url"
+            },
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "type": "text",
+                "value": "{{settings?.data?.callback_urls?.google ?? ''}}",
+                "readOnly": true,
+                "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs"
+              }
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-2 text-xs text-gray-500 dark:text-gray-400"
+              },
+              "text": "$t:moabom-social-auth.admin.settings.callback_url_hint"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Label",
+          "props": {
+            "className": "flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "name": "providers.google_request_auth_time",
+                "type": "checkbox",
+                "disabled": "{{_computed.isReadOnly || !_computed.canManageCredentials}}",
+                "className": "mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+              }
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "props": {
+                "className": "text-xs text-blue-800 dark:text-blue-200"
+              },
+              "text": "$t:moabom-social-auth.admin.settings.fields.google_request_auth_time"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "A",
+          "props": {
+            "href": "https://console.cloud.google.com/apis/credentials",
+            "target": "_blank",
+            "rel": "noopener noreferrer",
+            "className": "inline-flex items-center justify-center w-full px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors no-underline"
+          },
+          "text": "$t:moabom-social-auth.admin.settings.links.google_credentials"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "admin": {
+    "settings": {
+      "title": "マイページ設定",
+      "description": "マイページメニューと、お客様が選択できるテーマ・背景・環境オプションを管理します。",
+      "save": "保存",
+      "save_error": "マイページ設定の保存に失敗しました。",
+      "menus": "メニュー構成",
+      "menus_description": "マイページ左メニューの表示と既定の並び順を管理します。",
+      "appearance": "テーマ・背景",
+      "appearance_description": "サイトのマイページでお客様に表示するテーマ、ポイントカラー、ホーム背景を管理します。管理画面のスタイルには影響しません。",
+      "appearance_customer_palette_title": "ポイントカラー設定",
+      "add_point_color": "色を追加",
+      "remove_point_color": "この色を削除",
+      "themes_allowlist_title": "許可テーマ",
+      "preferences": "システムオプション",
+      "preferences_description": "マイページでお客様に表示する言語とエフェクトオプションを管理します。",
+      "menu_enabled": "表示",
+      "guest_enabled": "ゲスト許可",
+      "theme_enabled": "許可",
+      "language_enabled": "許可",
+      "user_editable": "ユーザー変更可",
+      "home_background_upload_title": "アップロードしたホーム背景",
+      "home_background_upload_description": "登録した画像はマイページで選択できます。サムネイルの並びが表示順に反映されます。",
+      "languages_title": "言語選択の表示",
+      "languages_description": "チェックした言語のみマイページの言語選択に表示されます。既定言語はお客様の選択またはブラウザ言語検出で決まります。",
+      "system_options_title": "エフェクトオプション",
+      "system_options_description": "既定値はまだ保存していないお客様に初回適用されます。ユーザー変更をオフにするとマイページでそのオプションを変更できません。",
+      "option_default_value": "既定値"
+    }
+  }
+}

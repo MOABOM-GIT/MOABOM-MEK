@@ -1,0 +1,25 @@
+{
+    "id": "consulting",
+    "module": "moabom-consulting",
+    "name": {
+        "ko": "360 컨설팅",
+        "en": "360 Consulting"
+    },
+    "description": {
+        "ko": "병원 수익성 시뮬레이션 · 전자계약",
+        "en": "Hospital profitability simulation & e-contract"
+    },
+    "icon": "handshake",
+    "gradient": "linear-gradient(135deg,#0ea5e9,#1d4ed8)",
+    "category": "basic",
+    "source": "system",
+    "frontend": {
+        "template": "moabom-basic",
+        "chunk": "moabom-shell-consulting.iife.js",
+        "global": "consulting"
+    },
+    "api_prefix": "api/modules/moabom-consulting",
+    "permissions": [],
+    "tenant_scoped": true,
+    "order": 5
+}

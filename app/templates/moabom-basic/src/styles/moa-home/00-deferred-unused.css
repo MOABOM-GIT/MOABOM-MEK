@@ -1,0 +1,15 @@
+/**
+ * moabom-basic 번들에 기본 포함하지 않는 규칙 보관.
+ * (TSX에서 미참조로 확인된 항목 — 필요 시 `main.css` 등에서 수동 import)
+ */
+
+/* 배경 펄스 애니메이션 */
+@keyframes bgPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+
+
+.moa-status-mobile {
+  background: #8b5cf6;
+}

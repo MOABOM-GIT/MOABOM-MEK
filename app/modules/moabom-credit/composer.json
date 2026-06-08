@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-credit",
+    "description": "Credit module for Gnuboard7",
+    "type": "library",
+    "version": "0.1.6",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Credit\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

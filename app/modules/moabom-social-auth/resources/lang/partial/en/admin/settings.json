@@ -1,0 +1,31 @@
+{
+  "title": "Social Connection Settings",
+  "description": "Manage OAuth credentials for Google, Kakao, and Naver social sign-up/login.",
+  "read_only_message": "You only have view permission. Contact an administrator if changes are required.",
+  "sub_tenant_credentials_message": "Client ID/Secret are managed on the master host (mek360.com). On this site you can only save SNS on/off toggles.",
+  "master_inherit_badge": "Using master keys — values below are read-only and update automatically when changed on mek360.com.",
+  "save_all_providers": "Save all provider settings",
+  "validation_error": "Please check the entered information.",
+  "save_error": "Failed to save social connection settings.",
+  "callback_url_hint": "Paste this value into the Callback URL or Redirect URI field in the provider console. The module uses this URL automatically when no override is saved.",
+  "optional_secret": "Enter if Client Secret is required",
+  "fields": {
+    "client_id": "Client ID",
+    "client_secret": "Client Secret",
+    "use_master_defaults": "Use master keys (default). Disable to save tenant-specific keys.",
+    "redirect_uri": "Redirect URI",
+    "provider_callback_url": "Callback/Redirect URI for provider console",
+    "google_request_auth_time": "Request the Google Security Bundle auth_time claim. Enable only when the feature is enabled in Google Auth Platform.",
+    "kakao_use_client_secret": "Enable this and enter the secret when Kakao Client Secret is ON. The default Kakao setting is ON."
+  },
+  "providers": {
+    "google_description": "Enter Google OAuth client information.",
+    "kakao_description": "Enter Kakao REST API key and security settings.",
+    "naver_description": "Enter Naver Developers application information."
+  },
+  "links": {
+    "google_credentials": "Issue/manage Client ID/Secret in Google Cloud Console",
+    "kakao_credentials": "Check REST API key/Client Secret in Kakao Developers",
+    "naver_credentials": "Issue/manage Client ID/Secret in Naver Developers"
+  }
+}

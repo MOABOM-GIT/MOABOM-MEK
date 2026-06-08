@@ -1,0 +1,599 @@
+{
+  "site_name": "Moabom",
+  "home": {
+    "title": "ホーム"
+  },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "register": "会員登録",
+    "email": "メール",
+    "password": "パスワード",
+    "login_button": "ログイン",
+    "register_button": "登録",
+    "no_account": "アカウントをお持ちでないですか？",
+    "have_account": "すでにアカウントをお持ちですか？"
+  },
+  "errors": {
+    "404_title": "ページが見つかりません",
+    "404_message": "お探しのページは存在しません。",
+    "403_title": "アクセス拒否",
+    "403_message": "このページにアクセスする権限がありません。",
+    "500_title": "サーバーエラー",
+    "500_message": "一時的なエラーが発生しました。しばらくしてからお試しください。",
+    "go_home": "ホームへ"
+  },
+  "mypage": {
+    "settings": "環境設定",
+    "language": "言語",
+    "theme": "テーマ",
+    "point_color": "ポイントカラー",
+    "system_options": "システムオプション"
+  },
+  "moa_mypage": {
+    "common": {
+      "user_fallback": "ユーザー",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "login_required_hint": "ログインするとご利用いただけます"
+    },
+    "tabs": {
+      "profile": {
+        "label": "プロフィール",
+        "desc": "ニックネームと紹介"
+      },
+      "settings": {
+        "label": "環境設定",
+        "desc": "言語と表示"
+      },
+      "credit": {
+        "label": "クレジット",
+        "desc": "残高と履歴"
+      },
+      "library": {
+        "label": "アプリライブラリ",
+        "desc": "保存したアプリを管理"
+      },
+      "activity": {
+        "label": "マイアクティビティ",
+        "desc": "投稿・コメント・反応"
+      },
+      "account": {
+        "label": "アカウント",
+        "desc": "連絡先とセキュリティ"
+      },
+      "subscription": {
+        "label": "サブスク",
+        "desc": "プランと請求"
+      }
+    },
+    "settings_ui": {
+      "section_language": "言語",
+      "section_theme": "テーマ",
+      "section_point_color": "ポイントカラー",
+      "section_background": "ホーム背景",
+      "background_empty": "登録されたホーム背景がありません。",
+      "section_system_options": "システムオプション",
+      "theme_aria": "{label}テーマを選択",
+      "theme_title": "{label}テーマ",
+      "color_aria": "{color}を選択",
+      "custom_color_aria": "カスタムポイントカラー",
+      "bg_thumb_aria": "ホーム背景 {n} を適用",
+      "point_custom_label": "カスタム",
+      "point_preset": {
+        "main": "メイン",
+        "naver": "네이버",
+        "reference": "레퍼런스",
+        "sky": "스카이",
+        "cyan": "シアン",
+        "orange": "오렌지",
+        "pink": "핑크",
+        "red": "레드",
+        "dark_blue": "다크 블루"
+      }
+    },
+    "lang_names": {
+      "ko": "韓国語",
+      "en": "英語",
+      "ja": "日本語",
+      "zh": "中国語"
+    },
+    "themes": {
+      "light": "ライト",
+      "dark": "ダーク",
+      "flat_light": "フラットライト",
+      "flat_dark": "フラットダーク"
+    },
+    "system_options": {
+      "sound": "効果音",
+      "animation": "アニメーション",
+      "haptic": "触覚フィードバック",
+      "toast": "トースト通知",
+      "weather": "天気エフェクト"
+    },
+    "profile": {
+      "avatar_alt": "{name}のプロフィール写真",
+      "image_change": "画像を変更",
+      "image_changing": "変更中…",
+      "loading": "プロフィールを読み込み中…",
+      "nickname": "ニックネーム",
+      "bio": "紹介",
+      "save": "プロフィールを保存",
+      "saving": "保存中…"
+    },
+    "credit": {
+      "amount_unit": "{amount}クレジット",
+      "balance_label": "残高",
+      "total_earned": "累計獲得",
+      "total_used": "累計使用",
+      "attendance": "出席チェック",
+      "attendance_loading": "処理中…",
+      "recent_title": "最近の取引",
+      "loading_short": "読み込み中",
+      "loading_rows": "クレジット履歴を読み込み中…",
+      "empty": "クレジット履歴がありません。",
+      "transaction_fallback": "クレジット取引"
+    },
+    "library": {
+      "created_title": "作成したアプリ",
+      "created_guest_msg": "ログインするとご利用いただけます。",
+      "created_empty": "作成したアプリはありません。",
+      "recent_title": "最近使ったアプリ",
+      "recent_empty": "最近使ったアプリはありません。",
+      "favorites_title": "お気に入り",
+      "favorites_empty": "お気に入りのアプリはありません。",
+      "app_info_fallback": "アプリ情報"
+    },
+    "activity": {
+      "stat_posts": "投稿",
+      "stat_comments": "コメント",
+      "stat_interactions": "反応",
+      "filter_all": "すべて",
+      "filter_posts": "投稿",
+      "filter_comments": "コメント",
+      "filter_interactions": "受け取った反応",
+      "likes_notice": "おすすめやいいねは、掲示板モジュールがデータを提供するとここに表示されます。",
+      "admin_session_notice": "管理者アカウントでログインしています。以下の活動は、現在ログインしている会員基準で表示されます。",
+      "loading": "アクティビティを読み込み中…",
+      "empty": "表示するアクティビティがありません。"
+    },
+    "subscription": {
+      "title": "MOA PRO+",
+      "period": "サブスク：2026.04.01～2026.12.31",
+      "manage": "サブスクを管理"
+    },
+    "account": {
+      "section_basic_title": "アカウント情報",
+      "section_basic_desc": "名前・メール・携帯番号を管理します。保存すると会員情報が更新されます。",
+      "loading": "アカウント情報を読み込み中…",
+      "name": "名前",
+      "email": "メール",
+      "email_synthetic_hint": "メールが未登録です。通知や復旧のために実際のメールを追加してください。",
+      "mobile": "携帯番号",
+      "mobile_placeholder": "010-0000-0000",
+      "save_account": "アカウントを保存",
+      "section_security_title": "セキュリティ",
+      "section_security_desc": "パスワード変更と退会には現在のパスワードが必要です。",
+      "change_password": "パスワード変更",
+      "withdraw": "退会",
+      "panel_password_title": "パスワード変更",
+      "panel_withdraw_title": "退会",
+      "panel_password_desc_sns": "{provider}で登録済みです。ここではパスワードを変更できません。",
+      "panel_password_desc_local": "現在のパスワードを確認してから、新しいパスワードを入力してください。",
+      "panel_withdraw_desc_sns": "{provider}で登録済みです。退会は取り消しが難しい場合があります。",
+      "panel_withdraw_desc_local": "現在のパスワードで確認後に退会します。取り消しが難しい場合があります。",
+      "sns_no_password_note": "{provider}アカウントは別パスワードを使いません。引き続きSNSでログインしてください。",
+      "current_password": "現在のパスワード",
+      "current_password_placeholder": "現在のパスワードを入力",
+      "verify_password": "パスワード確認",
+      "verifying": "確認中…",
+      "new_password": "新しいパスワード",
+      "new_password_placeholder": "8文字以上",
+      "new_password_confirm": "新しいパスワード（確認）",
+      "new_password_confirm_placeholder": "もう一度入力",
+      "changing_password": "変更中…",
+      "withdraw_processing": "処理中…",
+      "withdraw_confirm": "退会する",
+      "withdraw_warning_sns": "{provider}アカウント：SNS連携とセッションが終了し、アカウントが削除されます。",
+      "withdraw_warning_local": "セッションが終了し、アカウントが削除されます。"
+    },
+    "social": {
+      "naver": "NAVER",
+      "kakao": "Kakao",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple"
+    },
+    "api": {
+      "auth_required": "ログインしてください。",
+      "image_load_failed": "画像を読み込めませんでした。",
+      "image_edit_unavailable": "画像編集は利用できません。",
+      "image_convert_failed": "画像の変換に失敗しました。"
+    },
+    "msg": {
+      "profile_load_failed": "プロフィールを読み込めません。再度ログインしてください。",
+      "credit_load_failed": "クレジットを読み込めませんでした。",
+      "activity_load_failed": "アクティビティを読み込めませんでした。",
+      "email_missing_field": "メールを読み込めませんでした。アカウントで確認してください。",
+      "email_missing_toast": "アカウント情報を再読み込みしてから保存してください。",
+      "save_failed": "保存に失敗しました。",
+      "profile_saved": "プロフィールを保存しました。",
+      "attendance_failed": "出席チェックに失敗しました。",
+      "attendance_success": "出席チェッククレジットが適用されました。",
+      "password_verify_failed": "パスワード確認に失敗しました。",
+      "password_verified": "パスワードを確認しました。",
+      "password_change_failed": "パスワード変更に失敗しました。",
+      "password_changed": "パスワードを変更しました。",
+      "withdraw_failed": "退会に失敗しました。",
+      "withdraw_success": "退会しました。",
+      "avatar_failed": "プロフィール写真を更新できませんでした。",
+      "avatar_success": "プロフィール写真を更新しました。",
+      "avatar_failed_generic": "プロフィール写真を更新できませんでした。"
+    }
+  },
+  "moa_shell": {
+    "common": {
+      "user_fallback": "ユーザー",
+      "app_description_fallback": "アプリの説明",
+      "badge_urgent": "緊急",
+      "badge_event": "イベント"
+    },
+    "nav": {
+      "launcher": "ライブラリ",
+      "economy": "ランキング",
+      "myapp": "マイアプリ",
+      "notice": "お知らせ"
+    },
+    "left": {
+      "close_panel": "左パネルを閉じる",
+      "tabs_basic_apps": "基本アプリ",
+      "tabs_user_apps": "ユーザーアプリ",
+      "tabs_rank_apps": "アプリ順位",
+      "tabs_rank_users": "ユーザーランキング",
+      "tabs_favorites": "お気に入り",
+      "tabs_my_apps": "マイアプリ",
+      "tabs_notices": "お知らせ",
+      "tabs_updates": "アップデート",
+      "empty_favorites": "お気に入りのアプリがありません",
+      "empty_myapps": "登録されたアプリがありません",
+      "creator_badge": "Lv.{level} Creator"
+    },
+    "right": {
+      "close_panel": "右パネルを閉じる",
+      "profile_action_profile": "プロフィール",
+      "profile_action_settings": "設定",
+      "profile_action_credit": "クレジット",
+      "profile_action_logout": "ログアウト",
+      "tab_connect": "接続中",
+      "tab_friend": "フレンド",
+      "tab_alarm": "通知",
+      "online_summary": "現在42名がアクティブ",
+      "friends_summary": "フレンド12名",
+      "mark_all_read": "すべて既読にする",
+      "admin_mode": "管理者モード",
+      "avatar_alt": "{name}のプロフィール写真"
+    },
+    "center": {
+      "edit_mode_title": "アプリ編集モード",
+      "create_app_title": "AIでアプリを作る",
+      "create_app_desc": "プロンプトからWebアプリを作成",
+      "terms": "利用規約",
+      "privacy": "プライバシーポリシー",
+      "locale_settings_aria": "言語と設定",
+      "copyright": "© 2026 SMARTCARE360. All rights reserved.",
+      "legal_page_loading": "読み込み中…",
+      "legal_page_error": "ページを読み込めませんでした。sirsoft-page モジュールで該当スラッグが公開されているか確認してください。",
+      "legal_page_empty": "公開された内容がありません。",
+      "legal_page_retry": "再試行",
+      "toggle_left_panel_on": "左パネルを閉じる",
+      "toggle_left_panel_off": "左パネルを開く",
+      "toggle_right_panel_on": "右パネルを閉じる",
+      "toggle_right_panel_off": "右パネルを開く"
+    },
+    "modes": {
+      "apps": {
+        "name": "SMARTCARE APPS",
+        "desc": "さまざまなアプリを探索"
+      },
+      "sites": {
+        "name": "SMARTCARE SITES",
+        "desc": "ウェブサイト集"
+      },
+      "work": {
+        "name": "SMARTCARE WORK",
+        "desc": "業務ツール集"
+      }
+    },
+    "auth_windows": {
+      "login": "ログイン",
+      "register": "会員登録",
+      "forgot_password": "パスワードをお忘れですか",
+      "reset_password": "パスワード再設定"
+    },
+    "window": {
+      "favorite_add": "お気に入りに追加",
+      "favorite_remove": "お気に入りから削除",
+      "placeholder_content": "アプリの内容がここに表示されます。",
+      "app_loading": "アプリを読み込み中…",
+      "app_loading_aria": "アプリを準備しています。画面が切り替わるまでしばらくお待ちください。",
+      "remove_app_aria": "アプリ「{name}」を削除"
+    },
+    "login_prompt": {
+      "title_line1": "あなたの可能性を",
+      "title_line2": "解き放ちましょう。",
+      "desc_before": "ログインして",
+      "desc_highlight": "自分だけのアプリ",
+      "desc_after": "を作り、",
+      "desc_line2": "世界中と共有しましょう。",
+      "email_login": "メールでログイン",
+      "sns_label": "SNS",
+      "social_google": "Googleで続ける",
+      "social_naver": "NAVERで続ける",
+      "social_kakao": "Kakaoで続ける"
+    },
+    "home": {
+      "toast_already_logged_in": "すでにログインしています。",
+      "toast_max_windows": "ウィンドウは最大{max}個までです。不要なウィンドウを閉じて再度お試しください。",
+      "toast_max_taskbar": "最小化ボタンは最大{max}個までです。先にウィンドウを開くか閉じてください。",
+      "toast_app_added": "アプリを追加しました。",
+      "toast_app_already": "すでに追加済みのアプリです。",
+      "sns_login_success": "SNSでログインしました。",
+      "sns_login_failed": "SNSログインに失敗しました。",
+      "sns_exchange_invalid": "SNSログインの応答が正しくありません。"
+    },
+    "pwa": {
+      "update": {
+        "message": "プラットフォームが更新されました。",
+        "cta": "再読み込み"
+      }
+    }
+  },
+  "moa_apps": {
+    "create-app": {
+      "name": "AIでアプリを作る",
+      "description": "プロンプトからWebアプリを作成"
+    },
+    "cpap-mask": {
+      "name": "マスクフィッティング",
+      "description": "顔測定でCPAPマスクを推薦"
+    }
+  },
+  "moa_apps_ai": {
+    "title": "AIでアプリを作る",
+    "description": "作りたいアプリを説明するとHTML Webアプリのプレビューを生成します。",
+    "field_title": "アプリ名",
+    "field_title_placeholder": "例: 睡眠レポートダッシュボード",
+    "field_type": "アプリ種別",
+    "field_model": "AIモデル",
+    "field_prompt": "プロンプト",
+    "field_prompt_placeholder": "画面、機能、色、動作を具体的に入力してください。",
+    "field_modify_placeholder": "現在のプレビューで変更したい内容を入力してください。",
+    "types": {
+      "general": "一般アプリ",
+      "3d": "3Dシーン",
+      "game": "ゲーム",
+      "dataviz": "データ可視化"
+    },
+    "models": {
+      "claude_sonnet": "Claude Sonnet 4",
+      "gpt4o": "GPT-4o",
+      "gemini_flash": "Gemini 2.5 Flash"
+    },
+    "generate": "生成",
+    "modify": "変更を適用",
+    "generating": "生成中…",
+    "save": "保存",
+    "saving": "保存中…",
+    "save_success": "生成アプリを保存しました。",
+    "preview_title": "生成アプリプレビュー",
+    "preview_empty_title": "まだ生成されたアプリはありません",
+    "preview_empty_description": "プロンプトを入力して生成ボタンを押してください。",
+    "notice_fallback": "AI provider設定前は基本プレビューを表示します。",
+    "error_generate": "アプリ生成に失敗しました。",
+    "error_save": "生成アプリの保存に失敗しました。",
+    "validation": {
+      "prompt_required": "プロンプトを入力してください。",
+      "title_required": "アプリ名を入力してください。",
+      "html_required": "保存する生成HTMLがありません。"
+    }
+  },
+  "moa_apps_cpap": {
+    "title": "CPAPマスクフィッティング",
+    "description": "カメラと問診情報をもとにマスクタイプを推薦します。",
+    "steps": {
+      "survey": "問診",
+      "camera": "顔確認",
+      "result": "結果"
+    },
+    "profile": {
+      "gender": "性別",
+      "gender_male": "男性",
+      "gender_female": "女性",
+      "age": "年代",
+      "age_20s": "20代",
+      "age_30s": "30代",
+      "age_40s": "40代",
+      "age_50s": "50代",
+      "age_60s+": "60代以上",
+      "tossing": "寝返り",
+      "pressure": "圧力",
+      "mouth_breathing": "睡眠中に口呼吸があります"
+    },
+    "level": {
+      "low": "低い",
+      "medium": "普通",
+      "high": "高い"
+    },
+    "start": "カメラ開始",
+    "mediapipe_loading": "AI顔モデルを読み込み中…",
+    "mediapipe_ready": "AI顔モデルの準備ができました。",
+    "mediapipe_error": "AI顔モデルを読み込めませんでした。",
+    "camera_starting": "カメラを起動中…",
+    "camera_ready": "顔を画面中央に合わせてください。",
+    "camera_error": "カメラを開始できません。",
+    "cancel": "キャンセル",
+    "measure": "測定",
+    "measurement_video_required": "カメラ映像の準備ができていません。",
+    "measurement_data_error": "測定データが不足しています。もう一度お試しください。",
+    "measurement_starting": "測定を開始します。",
+    "guide_front": "カメラを正面から見てください。",
+    "guide_front_checking": "正面確認中… {count}/20",
+    "guide_turn_side": "側面測定",
+    "guide_turn_side_detail": "ゆっくり横を向いてください。",
+    "scanning_front": "正面をスキャン中…",
+    "scanning_profile": "側面をスキャン中…",
+    "scan_progress": "{progress}% 完了",
+    "face_not_detected": "顔が検出されません。",
+    "measurement_complete": "測定が完了しました。",
+    "result_recommendation": "おすすめマスク",
+    "result_confidence": "信頼度 {confidence}%",
+    "result_tips": "フィッティングのヒント",
+    "measurements": {
+      "faceWidth": "顔幅",
+      "faceLength": "顔の長さ",
+      "noseWidth": "鼻幅",
+      "philtrumLength": "人中の長さ",
+      "mouthWidth": "口幅",
+      "bridgeWidth": "目頭間の幅"
+    },
+    "save": "測定結果を保存",
+    "saving": "保存中…",
+    "save_success": "測定結果を保存しました。",
+    "save_error": "測定結果の保存に失敗しました。",
+    "retry": "再測定",
+    "latest_title": "最近の測定",
+    "latest_empty": "保存された測定結果はありません。"
+  },
+  "moa_auth": {
+    "title_login": "ログイン",
+    "title_register": "会員登録",
+    "title_forgot_password": "パスワードをお忘れですか",
+    "title_reset_password": "パスワードの再設定",
+    "desc_login": "ログインしてサービスをご利用ください。",
+    "desc_register": "アカウントを作成してサービスをご利用ください。",
+    "desc_forgot_password": "登録メール宛に再設定リンクをお送りします。",
+    "desc_reset_password": "メールのリンクを確認し、新しいパスワードを入力してください。",
+    "email": "メール",
+    "password": "パスワード",
+    "password_confirm": "パスワード確認",
+    "name": "名前",
+    "nickname": "ニックネーム",
+    "language": "言語",
+    "login_button": "ログイン",
+    "login_submitting": "ログイン中…",
+    "register_button": "登録する",
+    "register_submitting": "登録中…",
+    "forgot_password_link": "パスワードをお忘れですか？",
+    "forgot_submit_button": "再設定リンクを受け取る",
+    "forgot_submitting": "送信中…",
+    "reset_token_label": "再設定トークン",
+    "new_password_label": "新しいパスワード",
+    "new_password_confirm_label": "新しいパスワード確認",
+    "reset_submit_button": "パスワードを変更",
+    "reset_submitting": "変更中…",
+    "back_to_login": "ログインに戻る",
+    "no_account": "アカウントをお持ちでないですか？",
+    "have_account": "すでにアカウントをお持ちですか？",
+    "name_placeholder": "名前を入力",
+    "nickname_placeholder": "ニックネーム（任意）",
+    "agree_terms": "利用規約に同意します。",
+    "agree_privacy": "プライバシーポリシーに同意します。",
+    "sns_divider": "SNS",
+    "social_google_short": "Google",
+    "social_naver_short": "NAVER",
+    "social_kakao_short": "Kakao",
+    "login_unavailable": "認証モジュールを読み込めませんでした。",
+    "login_success": "ログインしました。",
+    "login_failed": "ログインに失敗しました。",
+    "register_failed": "登録に失敗しました。",
+    "register_success": "登録が完了しました。",
+    "err_forgot_send_failed": "再設定メールの送信に失敗しました。",
+    "msg_forgot_sent": "再設定リンクをメールで送信しました。",
+    "err_forgot_failed_generic": "再設定メールの送信に失敗しました。",
+    "err_reset_token_invalid": "再設定リンクが無効です。",
+    "err_reset_failed": "パスワードの再設定に失敗しました。",
+    "msg_reset_success": "パスワードを変更しました。新しいパスワードでログインしてください。"
+  },
+  "moa_apps": {
+    "mypage": {
+      "name": "マイページ",
+      "description": "プロフィールと設定の管理"
+    },
+    "app-maker": {
+      "name": "機器レンタル",
+      "description": "CPAPレンタル申請"
+    },
+    "secret-text": {
+      "name": "レンタル状況",
+      "description": "レンタル機器の確認"
+    },
+    "color-tool": {
+      "name": "機器管理",
+      "description": "点検・交換"
+    },
+    "brain-gen": {
+      "name": "睡眠分析",
+      "description": "睡眠データレポート"
+    },
+    "decision": {
+      "name": "アフターサービス申込",
+      "description": "訪問修理の受付"
+    },
+    "psych-test": {
+      "name": "ご利用ガイド",
+      "description": "機器マニュアル"
+    },
+    "quick-game": {
+      "name": "料金照会",
+      "description": "月額レンタル料の確認"
+    },
+    "community": {
+      "name": "カスタマーセンター",
+      "description": "お問い合わせ・サポート"
+    },
+    "device-info": {
+      "name": "機器情報",
+      "description": "モデル別スペック"
+    },
+    "game-coupon": {
+      "name": "割引クーポン",
+      "description": "レンタル割引特典"
+    },
+    "lotto-gen": {
+      "name": "健康レポート",
+      "description": "月次睡眠ヘルス分析"
+    },
+    "qr-tool": {
+      "name": "QR登録",
+      "description": "機器QRコード登録"
+    },
+    "mobile-guide": {
+      "name": "配送状況",
+      "description": "レンタル配送の追跡"
+    },
+    "weather": {
+      "name": "マイ機器",
+      "description": "登録機器一覧"
+    },
+    "color-user": {
+      "name": "睡眠記録",
+      "description": "日別睡眠ログ"
+    },
+    "music": {
+      "name": "通知設定",
+      "description": "機器通知の管理"
+    },
+    "task1": {
+      "name": "契約情報",
+      "description": "レンタル契約履歴"
+    },
+    "task2": {
+      "name": "お支払い履歴",
+      "description": "月次請求履歴"
+    },
+    "task3": {
+      "name": "ポイント",
+      "description": "獲得ポイントの確認"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-apps",
+    "description": "Moabom user-apps module (AI app generation & storage) for Gnuboard7",
+    "type": "library",
+    "version": "0.2.0",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Apps\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

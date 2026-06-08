@@ -1,0 +1,7 @@
+{
+  "admin": {
+    "settings": {
+      "$partial": "partial/en/admin/settings.json"
+    }
+  }
+}

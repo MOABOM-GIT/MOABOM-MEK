@@ -1,0 +1,52 @@
+{
+  "_meta": {
+    "version": "0.1.1",
+    "description": "Moabom credit reward settings",
+    "categories": ["rewards", "limits", "ads"]
+  },
+  "defaults": {
+    "rewards": {
+      "login_enabled": true,
+      "login_amount": 5,
+      "post_write_enabled": true,
+      "post_write_amount": 20,
+      "like_received_enabled": true,
+      "like_received_amount": 2,
+      "attendance_enabled": true,
+      "attendance_amount": 10
+    },
+    "limits": {
+      "daily_earn_limit": 500,
+      "attendance_daily_limit": 1,
+      "max_post_write_rewards_per_day": 10,
+      "max_like_received_rewards_per_day": 50
+    },
+    "ads": {
+      "attendance_requires_ad": false,
+      "attendance_ad_provider": "google",
+      "attendance_ad_reward_multiplier": 1
+    }
+  },
+  "frontend_schema": {
+    "rewards": {
+      "expose": true,
+      "fields": {
+        "attendance_enabled": { "expose": true },
+        "attendance_amount": { "expose": true }
+      }
+    },
+    "limits": {
+      "expose": true,
+      "fields": {
+        "attendance_daily_limit": { "expose": true }
+      }
+    },
+    "ads": {
+      "expose": true,
+      "fields": {
+        "attendance_requires_ad": { "expose": true },
+        "attendance_ad_provider": { "expose": true }
+      }
+    }
+  }
+}

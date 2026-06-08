@@ -1,0 +1,31 @@
+<?php
+
+return [
+    'providers_success' => 'Social providers have been loaded.',
+    'exchange_success' => 'Social login succeeded.',
+    'exchange_failed' => 'Social login failed.',
+    'unsupported_provider' => 'Unsupported social provider: :provider',
+    'missing_config' => ':provider social login configuration is missing.',
+    'email_required' => 'The :provider account did not provide an email address.',
+    'token_failed' => 'Failed to issue :provider token.',
+    'invalid_state' => 'The social authentication state is invalid.',
+    'invalid_broker_state' => 'The broker authentication state is invalid.',
+    'expired_broker_state' => 'The broker authentication state has expired.',
+    'invalid_code' => 'The social authentication code is invalid or expired.',
+    'code_required' => 'The social authentication code is required.',
+    'inactive_user' => 'Inactive accounts cannot log in.',
+    'broker_disabled' => 'The social auth broker is disabled.',
+    'broker_host_missing' => 'The social auth broker host is missing.',
+    'broker_host_mismatch' => 'The broker request host does not match the configured broker host.',
+    'invalid_tenant_host' => 'The requested tenant host is invalid.',
+    'tenant_not_found' => 'The requested tenant was not found or is inactive.',
+    'settings' => [
+        'fetch_success' => 'Social connection settings have been loaded.',
+        'save_success' => 'Social connection settings have been saved.',
+        'save_failed' => 'Failed to save social connection settings.',
+        'clear_cache_success' => 'Social connection settings cache has been cleared.',
+        'required_when_enabled' => 'This field is required when the provider is enabled.',
+        'required_when_client_secret_enabled' => 'This field is required when Client Secret is enabled.',
+        'required_when_broker_enabled' => 'This field is required when broker mode is enabled.',
+    ],
+];

@@ -1,0 +1,146 @@
+/* ─── 글래스 효과 ─── */
+
+/**
+ * 글래스 표면 디자인 토큰.
+ * - light: 흰색 반투명 위에 화이트 highlight (아쿠아 유리 룩)
+ * - dark: 블랙 반투명 위에 블랙 shadow 중심 (짙은 유리 룩)
+ *
+ * 컴포넌트(.glass, .glass-sm, .glass-sm-blur, .glass-panel)는 이 변수들만 참조한다.
+ * 추가 variant 가 필요하면 여기서 변수를 덮어쓰기만 하면 된다.
+ */
+:root {
+  /** Tailwind 기본 `sm`/`md`/`lg`와 동일 rem — 순수 CSS `@media`·`@container`에서 참조 */
+  --moa-bp-sm: 40rem;
+  --moa-bp-md: 48rem;
+  --moa-bp-lg: 64rem;
+
+  --moa-point-color: var(--color-indigo-500);
+  --moa-point-rgb: 99 102 241;
+  --moa-point-fill-bg: var(--moa-point-color);
+  --moa-point-fill-shadow: 0 2px 3px color-mix(in srgb, var(--moa-point-color) 30%, transparent),
+    0 2px 10px color-mix(in srgb, var(--moa-point-color) 20%, transparent),
+    inset 0 1px 0 #ffffff4d;
+  --moa-point-fill-hover-shadow: 0 4px 8px color-mix(in srgb, var(--moa-point-color) 34%, transparent),
+    0 4px 14px color-mix(in srgb, var(--moa-point-color) 22%, transparent),
+    inset 0 1px 0 #ffffff4d;
+
+  /**
+   * 재사용 폼 컨트롤(input/select/textarea/셀렉트 트리거) 표면 배경.
+   * `.moa-btn-primary-outline` 기본 `--moa-btn-bg` 와 동일 (`10-buttons-variants.css`).
+   */
+  --moa-field-reuse-surface-bg: rgb(255 255 255 / 70%);
+
+  /** 글래스 공통 토큰 — light */
+  --moa-glass-surface: #ffffffc7;
+  --moa-glass-border: #ffffff70;
+  --moa-glass-inset-top: rgba(255, 255, 255, 0.5);
+  --moa-glass-inset-bottom: rgba(255, 255, 255, 0.2);
+  --moa-glass-outer-shadow: rgba(255, 255, 255, 0.15);
+
+  /** glass-sm: 더 옅음 */
+  --moa-glass-sm-surface: rgba(255, 255, 255, 0.5);
+  --moa-glass-sm-border: rgba(255, 255, 255, 0.3);
+  --moa-glass-sm-inset-top: rgba(255, 255, 255, 0.3);
+  --moa-glass-sm-inset-bottom: rgba(255, 255, 255, 0.2);
+  --moa-glass-sm-outer-shadow: rgba(27, 26, 29, 0.03);
+
+  /** glass-sm-blur: 흐림 추가본 */
+  --moa-glass-smblur-surface: #ffffffc7;
+  --moa-glass-smblur-border: #ffffff70;
+  --moa-glass-smblur-inset-top: rgba(255, 255, 255, 0.5);
+  --moa-glass-smblur-inset-bottom: rgba(255, 255, 255, 0.2);
+  --moa-glass-smblur-outer-shadow: rgba(255, 255, 255, 0.15);
+
+  /** glass-panel: 패널용 (더 진함) */
+  --moa-glass-panel-surface: rgba(255, 255, 255, 0.3);
+  --moa-glass-panel-border: rgba(255, 255, 255, 0.4);
+  --moa-glass-panel-inset-top: rgba(255, 255, 255, 0.5);
+  --moa-glass-panel-inset-bottom: rgba(255, 255, 255, 0.2);
+  --moa-glass-panel-inset-glow: rgba(255, 255, 255, 0.5);
+  --moa-glass-panel-outer-shadow: rgba(31, 38, 135, 0.10);
+}
+
+/** 다크 모드 글래스 토큰 (#1b1a1d 베이스) */
+.dark {
+  --moa-glass-surface: #1b1a1dad;
+  --moa-glass-border: #1b1a1dbd;
+  --moa-glass-inset-top: #ffffff1f;
+  --moa-glass-inset-bottom: #1b1a1d1c;
+  --moa-glass-outer-shadow: #1b1a1d66;
+
+  --moa-glass-sm-surface: #1b1a1d70;
+  --moa-glass-sm-border: #1b1a1dad;
+  --moa-glass-sm-inset-top: #1b1a1d52;
+  --moa-glass-sm-inset-bottom: #ffffff0f;
+  --moa-glass-sm-outer-shadow: #1b1a1d00;
+
+  --moa-field-reuse-surface-bg: rgb(0 0 0 / 40%);
+
+  --moa-glass-smblur-surface: #1b1a1dad;
+  --moa-glass-smblur-border: #1b1a1dad;
+  --moa-glass-smblur-inset-top: #ffffff1f;
+  --moa-glass-smblur-inset-bottom: #1b1a1d40;
+  --moa-glass-smblur-outer-shadow: #1b1a1d66;
+
+  --moa-glass-panel-surface: #1b1a1dbd;
+  --moa-glass-panel-border: #1b1a1dad;
+  --moa-glass-panel-inset-top: #ffffff1f;
+  --moa-glass-panel-inset-bottom: #1b1a1d80;
+  --moa-glass-panel-inset-glow: #1b1a1d59;
+  --moa-glass-panel-outer-shadow: #1b1a1d66;
+}
+
+:root[data-moa-theme="dark"] {
+  color-scheme: dark;
+}
+
+/*
+ * flat-* 는 `color-scheme: dark`만 유지하고, 밝기·채도 조작으로 "그냥 어둡게 보이게" 하던
+ * 임시 필터(`filter: saturate(...) brightness(...)`)는 제거한다.
+ * 실제 어둡게 전환되는 색은 `.dark` 클래스 + Tailwind `dark:` variant 및 아래 CSS 변형에서 담당한다.
+ */
+
+:root[data-moa-theme="flat-light"] {
+  --moa-point-color: #03c75a;
+  --moa-point-rgb: 3 199 90;
+  --moa-point-fill-shadow: none;
+  --moa-point-fill-hover-shadow: none;
+
+  /** 심플 테마: 그림자·inset highlight 모두 제거해 플랫 룩 + 렌더 비용 절감 */
+  --moa-glass-outer-shadow: transparent;
+  --moa-glass-inset-top: transparent;
+  --moa-glass-inset-bottom: transparent;
+  --moa-glass-sm-outer-shadow: transparent;
+  --moa-glass-sm-inset-top: transparent;
+  --moa-glass-sm-inset-bottom: transparent;
+  --moa-glass-smblur-outer-shadow: transparent;
+  --moa-glass-smblur-inset-top: transparent;
+  --moa-glass-smblur-inset-bottom: transparent;
+  --moa-glass-panel-outer-shadow: transparent;
+  --moa-glass-panel-inset-top: transparent;
+  --moa-glass-panel-inset-bottom: transparent;
+  --moa-glass-panel-inset-glow: transparent;
+}
+
+:root[data-moa-theme="flat-dark"] {
+  color-scheme: dark;
+  --moa-point-color: #5865f2;
+  --moa-point-rgb: 88 101 242;
+  --moa-point-fill-shadow: none;
+  --moa-point-fill-hover-shadow: none;
+
+  /** 심플 다크도 동일하게 그림자/inset 무력화 */
+  --moa-glass-outer-shadow: transparent;
+  --moa-glass-inset-top: transparent;
+  --moa-glass-inset-bottom: transparent;
+  --moa-glass-sm-outer-shadow: transparent;
+  --moa-glass-sm-inset-top: transparent;
+  --moa-glass-sm-inset-bottom: transparent;
+  --moa-glass-smblur-outer-shadow: transparent;
+  --moa-glass-smblur-inset-top: transparent;
+  --moa-glass-smblur-inset-bottom: transparent;
+  --moa-glass-panel-outer-shadow: transparent;
+  --moa-glass-panel-inset-top: transparent;
+  --moa-glass-panel-inset-bottom: transparent;
+  --moa-glass-panel-inset-glow: transparent;
+}
