@@ -24,7 +24,7 @@ class SaveSettingsRequest extends FormRequest
     /**
      * 지원되는 스토리지 드라이버 목록
      */
-    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3'];
+    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3', 'gcs'];
 
     /**
      * 지원되는 S3 리전 목록

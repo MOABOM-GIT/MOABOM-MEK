@@ -16,6 +16,21 @@ MOABOM_CRJ_PROJECT="$(moabom_gcp_project)"
 MOABOM_CRJ_SQL="$(moabom_gcp_cloudsql_instance)"
 MOABOM_CRJ_ENV_FILE="${MOABOM_CRJ_ENV_FILE:-${_MOABOM_CRJ_ROOT}/deploy/production.env.yaml}"
 MOABOM_CRJ_SECRETS="$(moabom_gcp_secret_mappings)"
+MOABOM_CRJ_SERVICE_ACCOUNT="${MOABOM_CRJ_SERVICE_ACCOUNT:-}"
+
+moabom_cloud_run_job_service_account() {
+  if [[ -n "${MOABOM_CRJ_SERVICE_ACCOUNT}" ]]; then
+    echo "${MOABOM_CRJ_SERVICE_ACCOUNT}"
+    return 0
+  fi
+
+  local service
+  service="$(moabom_gcp_cloud_run_service)"
+  gcloud run services describe "${service}" \
+    --region="${MOABOM_CRJ_REGION}" \
+    --project="${MOABOM_CRJ_PROJECT}" \
+    --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true
+}
 
 # @param job_name @param task_timeout (e.g. 900s) @param artisan_arg ...
 moabom_run_artisan_job() {
@@ -23,7 +38,8 @@ moabom_run_artisan_job() {
   local task_timeout="$2"
   shift 2
   local -a artisan_tail=("$@")
-  local image args_csv arg
+  local image args_csv arg service_account
+  local -a service_account_args=()
 
   for arg in "${artisan_tail[@]}"; do
     if [[ "${arg}" == "*" ]]; then
@@ -35,6 +51,10 @@ moabom_run_artisan_job() {
   done
 
   image="$(moabom_container_image)"
+  service_account="$(moabom_cloud_run_job_service_account)"
+  if [[ -n "${service_account}" ]]; then
+    service_account_args=(--service-account="${service_account}")
+  fi
   args_csv="artisan"
   for arg in "${artisan_tail[@]}"; do
     args_csv+=",${arg}"
@@ -49,6 +69,7 @@ moabom_run_artisan_job() {
       --region="${MOABOM_CRJ_REGION}" \
       --project="${MOABOM_CRJ_PROJECT}" \
       --image="${image}" \
+      "${service_account_args[@]}" \
       --set-cloudsql-instances="${MOABOM_CRJ_SQL}" \
       --env-vars-file="${MOABOM_CRJ_ENV_FILE}" \
       --set-secrets="${MOABOM_CRJ_SECRETS}" \
@@ -62,6 +83,8 @@ moabom_run_artisan_job() {
       --region="${MOABOM_CRJ_REGION}" \
       --project="${MOABOM_CRJ_PROJECT}" \
       --image="${image}" \
+      "${service_account_args[@]}" \
+      --set-cloudsql-instances="${MOABOM_CRJ_SQL}" \
       --env-vars-file="${MOABOM_CRJ_ENV_FILE}" \
       --set-secrets="${MOABOM_CRJ_SECRETS}" \
       --command=php \

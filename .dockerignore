@@ -21,6 +21,7 @@ app/vendor
 app/node_modules
 app/storage
 **/node_modules
+**/dist
 deploy/backups
 app/storage/logs
 app/storage/framework/cache/*

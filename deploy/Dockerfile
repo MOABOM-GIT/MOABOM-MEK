@@ -7,9 +7,7 @@
 #     이 가드는 의도치 않은 로컬 빌드로 잘못된 이미지가 만들어지는 사고를 막습니다.
 #   - 로컬 개발 컨테이너는 docker-compose + docker-compose.override.yml + ./docker/php/Dockerfile (별도 이미지)
 #
-# 가드 우회 방법 (운영자가 정말 로컬에서 검증용으로 빌드해야 할 때만):
-#     docker build --build-arg MOABOM_BUILD_ENV=cloudbuild --build-arg MOABOM_LOCAL_BUILD_ACK=1 ...
-#   단, 결과 이미지는 절대 Cloud Run 에 push/deploy 하지 마세요 (이미지 태그가 cloudbuild 와 충돌).
+# 예외 빌드는 운영 경로가 아니다. 결과 이미지는 Cloud Run 에 push/deploy 하지 않는다.
 
 # --- 1) Composer dependencies ---
 FROM composer:2 AS vendor
@@ -27,7 +25,7 @@ RUN if [ "$MOABOM_BUILD_ENV" != "cloudbuild" ] && [ "$MOABOM_LOCAL_BUILD_ACK" !=
       echo "   ./deploy/build-and-deploy.sh         # 검증 + Cloud Build + Cloud Run"; \
       echo "   ./deploy/build-and-deploy.sh --async # 비동기 (배포는 별도)"; \
       echo ""; \
-      echo " (정말 로컬 검증 빌드가 필요하면 README/DEPLOY-GOLDEN-v7.md 참조)"; \
+      echo " 운영 이미지는 Cloud Build 경로로만 생성하세요."; \
       echo "================================================================"; \
       echo ""; \
       exit 1; \
@@ -58,9 +56,9 @@ COPY app/ ./
 # 코어 번들 (public/build/core)
 RUN npm run build:core 2>/dev/null || npm run build 2>/dev/null || true
 # 활성 템플릿/모듈 dist — 모든 빌드는 Cloud Build 안에서 (호스트 빌드 금지 SSOT)
-RUN cd templates/moabom-admin_basic && npm ci && npm run build
-RUN cd modules/moabom-system && npm ci && npm run build
-RUN cd templates/moabom-basic && npm ci && MOABOM_ALLOW_LOCAL_BUILD=1 npm run build
+RUN cd templates/moabom-admin_basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd modules/moabom-system && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd templates/moabom-basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 
 # --- 3) Runtime ---
 FROM php:8.4-fpm-bookworm

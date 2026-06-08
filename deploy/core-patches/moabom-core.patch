@@ -89,6 +89,32 @@ index 334c28a..197c517 100644
 +        return $skipRouteNames !== [] && $request->routeIs(...$skipRouteNames);
 +    }
  }
+diff --git a/app/Http/Requests/Settings/SaveSettingsRequest.php b/app/Http/Requests/Settings/SaveSettingsRequest.php
+index a978fc4..02af924 100644
+--- a/app/Http/Requests/Settings/SaveSettingsRequest.php
++++ b/app/Http/Requests/Settings/SaveSettingsRequest.php
+@@ -24,7 +24,7 @@ class SaveSettingsRequest extends FormRequest
+     /**
+      * 지원되는 스토리지 드라이버 목록
+      */
+-    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3'];
++    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3', 'gcs'];
+ 
+     /**
+      * 지원되는 S3 리전 목록
+diff --git a/app/Http/Requests/Settings/TestDriverConnectionRequest.php b/app/Http/Requests/Settings/TestDriverConnectionRequest.php
+index 45968f9..e022881 100644
+--- a/app/Http/Requests/Settings/TestDriverConnectionRequest.php
++++ b/app/Http/Requests/Settings/TestDriverConnectionRequest.php
+@@ -17,7 +17,7 @@ class TestDriverConnectionRequest extends FormRequest
+     /**
+      * 지원되는 스토리지 드라이버 목록
+      */
+-    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3'];
++    private const SUPPORTED_STORAGE_DRIVERS = ['local', 's3', 'gcs'];
+ 
+     /**
+      * 지원되는 S3 리전 목록
 diff --git a/app/Providers/ModuleRouteServiceProvider.php b/app/Providers/ModuleRouteServiceProvider.php
 index 2e28b5a..a3f3aa5 100644
 --- a/app/Providers/ModuleRouteServiceProvider.php
@@ -144,7 +170,7 @@ index 5de99fd..c9a0e12 100644
          }
  
 diff --git a/app/Providers/SettingsServiceProvider.php b/app/Providers/SettingsServiceProvider.php
-index ac222bc..b965ca3 100644
+index ac222bc..781201e 100644
 --- a/app/Providers/SettingsServiceProvider.php
 +++ b/app/Providers/SettingsServiceProvider.php
 @@ -32,26 +32,10 @@ class SettingsServiceProvider extends ServiceProvider
@@ -201,6 +227,73 @@ index ac222bc..b965ca3 100644
      }
  
      /**
+@@ -280,7 +276,7 @@ private function applyDriverConfig(JsonConfigRepository $configRepository): void
+ 
+         // 스토리지 드라이버 설정
+         if (! empty($driverSettings['storage_driver'])) {
+-            Config::set('filesystems.default', $driverSettings['storage_driver']);
++            $this->applyStorageDriverConfig((string) $driverSettings['storage_driver']);
+         }
+ 
+         // 웹소켓 설정
+@@ -361,6 +357,47 @@ private function applyS3Config(array $driverSettings): void
+         }
+     }
+ 
++    private function applyStorageDriverConfig(string $driver): void
++    {
++        Config::set('filesystems.default', $driver);
++
++        // local / s3 는 G7 순정 디스크 정의를 그대로 둔다.
++        // Moabom 기본값인 gcs 에서만 named disk 를 버킷 prefix 로 매핑한다.
++        if ($driver !== 'gcs') {
++            return;
++        }
++
++        $diskNames = ['attachments', 'modules', 'plugins', 'public'];
++        $baseDisk = Config::get("filesystems.disks.{$driver}");
++        if (! is_array($baseDisk)) {
++            return;
++        }
++
++        foreach ($diskNames as $diskName) {
++            Config::set("filesystems.disks.{$diskName}", $this->gcsDiskConfigFor($baseDisk, $diskName));
++        }
++
++        // AttachmentService는 config('attachment.disk')를 직접 사용한다.
++        Config::set('attachment.disk', 'attachments');
++    }
++
++    /**
++     * @param  array<string, mixed>  $baseDisk
++     * @return array<string, mixed>
++     */
++    private function gcsDiskConfigFor(array $baseDisk, string $diskName): array
++    {
++        $diskConfig = $baseDisk;
++        $diskConfig['path_prefix'] = $diskName;
++        $diskConfig['throw'] = true;
++        $diskConfig['report'] = false;
++        if ($diskName === 'public') {
++            $diskConfig['visibility'] = 'public';
++        }
++
++        return $diskConfig;
++    }
++
+     /**
+      * 로그 드라이버 설정을 적용합니다.
+      */
+@@ -560,7 +597,8 @@ private function applyUploadConfig(JsonConfigRepository $configRepository): void
+             return;
+         }
+ 
+-        if (! empty($uploadSettings['disk'])) {
++        $driverSettings = $configRepository->getCategory('drivers');
++        if (empty($driverSettings['storage_driver']) && ! empty($uploadSettings['disk'])) {
+             Config::set('filesystems.default', $uploadSettings['disk']);
+         }
+ 
 diff --git a/app/Repositories/JsonConfigRepository.php b/app/Repositories/JsonConfigRepository.php
 index ed63319..94359d0 100644
 --- a/app/Repositories/JsonConfigRepository.php
@@ -260,6 +353,28 @@ index ed63319..94359d0 100644
          try {
              // 파일 잠금으로 동시 쓰기 방지
              $fullPath = Storage::disk(self::STORAGE_DISK)->path($path);
+diff --git a/app/Services/DriverRegistryService.php b/app/Services/DriverRegistryService.php
+index 36cc9a1..0874764 100644
+--- a/app/Services/DriverRegistryService.php
++++ b/app/Services/DriverRegistryService.php
+@@ -25,7 +25,7 @@ class DriverRegistryService
+      * @var array<string, list<string>>
+      */
+     private const CORE_DRIVER_IDS = [
+-        'storage' => ['local', 's3'],
++        'storage' => ['local', 's3', 'gcs'],
+         'cache' => ['file', 'redis'],
+         'session' => ['file', 'database', 'redis'],
+         'queue' => ['sync', 'database', 'redis'],
+@@ -40,7 +40,7 @@ class DriverRegistryService
+      * @var array<string, string>
+      */
+     private const DEFAULT_DRIVERS = [
+-        'storage' => 'local',
++        'storage' => 'gcs',
+         'cache' => 'file',
+         'session' => 'database',
+         'queue' => 'database',
 diff --git a/app/Services/SettingsService.php b/app/Services/SettingsService.php
 index 829817d..6e93427 100644
 --- a/app/Services/SettingsService.php
@@ -694,6 +809,19 @@ index 0000000..075d715
 +        FILTER_VALIDATE_BOOL,
 +    ),
 +];
+diff --git a/config/settings/defaults.json b/config/settings/defaults.json
+index 771cea1..4aceb35 100644
+--- a/config/settings/defaults.json
++++ b/config/settings/defaults.json
+@@ -106,7 +106,7 @@
+             "last_updated_at": ""
+         },
+         "drivers": {
+-            "storage_driver": "local",
++            "storage_driver": "gcs",
+             "s3_bucket": "",
+             "s3_region": "ap-northeast-2",
+             "s3_access_key": "",
 diff --git a/resources/js/core/TemplateApp.ts b/resources/js/core/TemplateApp.ts
 index 5652323..35f8774 100644
 --- a/resources/js/core/TemplateApp.ts
@@ -763,6 +891,212 @@ index 5652323..35f8774 100644
      /**
       * computed 값 계산
       *
+diff --git a/resources/js/core/template-engine/ActionDispatcher.ts b/resources/js/core/template-engine/ActionDispatcher.ts
+index f13c1be..e27be5e 100644
+--- a/resources/js/core/template-engine/ActionDispatcher.ts
++++ b/resources/js/core/template-engine/ActionDispatcher.ts
+@@ -1240,6 +1240,59 @@ export class ActionDispatcher {
+       }
+     });
+ 
++    // loadDeferredExtensionAssets: lazy/layout 전략 확장을 실제 진입 시점에만 로드
++    // params.moduleIdentifiers / params.pluginIdentifiers 로 지정된 항목만 G7Config.deferred*에서
++    // 활성 moduleAssets/pluginAssets로 승격한 뒤 ModuleAssetLoader가 중복 로드를 방지한다.
++    this.registerHandler('loadDeferredExtensionAssets', async (action: ActionDefinition, _context: ActionContext) => {
++      if (typeof window === 'undefined') {
++        logger.warn('loadDeferredExtensionAssets: window is not available');
++        return;
++      }
++
++      const G7Config = (window as any).G7Config;
++      if (!G7Config) {
++        logger.warn('loadDeferredExtensionAssets: G7Config not available');
++        return;
++      }
++
++      const moduleIdentifiers = Array.isArray(action.params?.moduleIdentifiers)
++        ? action.params.moduleIdentifiers.map(String)
++        : [];
++      const pluginIdentifiers = Array.isArray(action.params?.pluginIdentifiers)
++        ? action.params.pluginIdentifiers.map(String)
++        : [];
++      const assetLoader = getModuleAssetLoader();
++
++      const modules = moduleIdentifiers.flatMap((identifier: string) => {
++        const asset = G7Config.deferredModuleAssets?.[identifier];
++        if (!asset) {
++          logger.warn(`loadDeferredExtensionAssets: missing deferred module asset for ${identifier}`);
++          return [];
++        }
++        G7Config.moduleAssets = G7Config.moduleAssets || {};
++        G7Config.moduleAssets[identifier] = asset;
++        return [{ identifier, ...asset }];
++      });
++
++      const plugins = pluginIdentifiers.flatMap((identifier: string) => {
++        const asset = G7Config.deferredPluginAssets?.[identifier];
++        if (!asset) {
++          logger.warn(`loadDeferredExtensionAssets: missing deferred plugin asset for ${identifier}`);
++          return [];
++        }
++        G7Config.pluginAssets = G7Config.pluginAssets || {};
++        G7Config.pluginAssets[identifier] = asset;
++        return [{ identifier, ...asset }];
++      });
++
++      if (modules.length > 0) {
++        await assetLoader.loadActiveExtensionAssets(modules);
++      }
++      if (plugins.length > 0) {
++        await assetLoader.loadActiveExtensionAssets(plugins);
++      }
++    });
++
+     // reloadModuleHandlers: 모듈 핸들러 동적 로드/제거
+     // 모듈 활성화/비활성화 시 window.G7Config.moduleAssets 병합/제거 및 JS 로드
+     this.registerHandler('reloadModuleHandlers', async (action: ActionDefinition, _context: ActionContext) => {
+@@ -3401,6 +3454,13 @@ export class ActionDispatcher {
+     return true;
+   }
+ 
++  private isFileLike(value: unknown): value is Blob {
++    return (
++      (typeof File !== 'undefined' && value instanceof File) ||
++      (typeof Blob !== 'undefined' && value instanceof Blob)
++    );
++  }
++
+   /**
+    * apiCall 액션을 처리합니다.
+    *
+@@ -3494,8 +3554,14 @@ export class ActionDispatcher {
+         // multipart/form-data: FormData 객체로 변환
+         const formData = new FormData();
+         for (const [key, value] of Object.entries(body)) {
+-          if (value instanceof File || value instanceof Blob) {
++          if (this.isFileLike(value)) {
+             formData.append(key, value);
++          } else if (Array.isArray(value)) {
++            value.forEach((item) => {
++              if (item !== null && item !== undefined) {
++                formData.append(key, this.isFileLike(item) ? item : String(item));
++              }
++            });
+           } else if (value !== null && value !== undefined) {
+             formData.append(
+               key,
+@@ -5113,6 +5179,7 @@ export class ActionDispatcher {
+                 _global: { ...(currentState._global || {}), ...globalPayload }
+               };
+             }
++
+             logger.log('[handleSequence] global state synchronized (mergeMode=%s):', __mergeMode || 'deep', currentState._global);
+           } else if (result.data.__target === 'isolated') {
+             // isolated 상태 동기화
+@@ -6481,6 +6548,7 @@ export class ActionDispatcher {
+         target: {
+           value: (target as any).value,
+           name: (target as any).name ?? '',
++          files: (target as any).files,
+         },
+       };
+ 
+@@ -6500,6 +6568,7 @@ export class ActionDispatcher {
+           checked: (target as HTMLInputElement).checked ?? false,
+           type: target.type ?? '',
+           tagName: target.tagName,
++          files: (target as HTMLInputElement).files,
+         }
+       : {};
+ 
+diff --git a/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts b/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
+index 4997c0b..942caa6 100644
+--- a/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
++++ b/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
+@@ -6925,6 +6925,43 @@ describe('ActionDispatcher', () => {
+       expect(callArgs.value).toBe('custom_value');
+     });
+ 
++    it('FileInput 커스텀 이벤트의 File 참조를 setState에 보존해야 함', async () => {
++      const mockGlobalUpdater = vi.fn();
++      dispatcher.setGlobalStateUpdater(mockGlobalUpdater);
++      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
++
++      const props = {
++        actions: [
++          {
++            type: 'change' as const,
++            handler: 'setState',
++            params: {
++              target: 'global',
++              'form.logo_light': '{{$event.target.files?.[0] || $event.target.value}}',
++            },
++          },
++        ],
++      };
++
++      const boundProps = dispatcher.bindActionsToProps(props);
++
++      boundProps.onChange({
++        target: {
++          value: logoFile,
++          files: [logoFile],
++          name: 'logo_light',
++        },
++      });
++
++      await vi.waitFor(() => {
++        expect(mockGlobalUpdater).toHaveBeenCalled();
++      });
++
++      const callArgs = mockGlobalUpdater.mock.calls[0][0];
++      expect(callArgs.form.logo_light).toBe(logoFile);
++      expect(callArgs.form.logo_light.name).toBe('logo_moabom.svg');
++    });
++
+     it('raw value (File/null/boolean 등)를 전달하면 핸들러가 실행되지 않아야 함', () => {
+       // 사례 26 회귀 테스트: raw value fallback 의도적 제거
+       // (컴포넌트 마운트 시 초기 setState 로 API 로드 데이터가 덮어쓰이는 버그 방지)
+@@ -7221,6 +7258,39 @@ describe('ActionDispatcher', () => {
+       expect(formData.get('metadata')).toBe(JSON.stringify({ version: '1.0' }));
+     });
+ 
++    it('multipart body에서 배열 안의 File 값을 파일 파트로 유지해야 함', async () => {
++      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
++
++      const action: ActionDefinition = {
++        type: 'click',
++        handler: 'apiCall',
++        target: '/api/modules/moabom-system/platform/saas/hospitals',
++        params: {
++          method: 'POST',
++          contentType: 'multipart/form-data',
++          body: {
++            slug: 'clinic88',
++            logo_light: [logoFile],
++          },
++        },
++      };
++
++      const handler = dispatcher.createHandler(action);
++      await handler({
++        preventDefault: vi.fn(),
++        type: 'click',
++        target: null,
++      } as unknown as Event);
++
++      const [, fetchOptions] = mockFetchLocal.mock.calls.find(
++        (call: unknown[]) => (call[0] as string).includes('/platform/saas/hospitals')
++      )!;
++
++      const formData = fetchOptions.body as FormData;
++      expect(formData.has('logo_light')).toBe(true);
++      expect(formData.get('slug')).toBe('clinic88');
++    });
++
+     it('multipart body에서 null/undefined 값은 FormData에 포함되지 않아야 함', async () => {
+       const action: ActionDefinition = {
+         type: 'click',
 diff --git a/resources/views/admin.blade.php b/resources/views/admin.blade.php
 index 2574d8d..f117e96 100644
 --- a/resources/views/admin.blade.php
@@ -844,3 +1178,137 @@ index 0b89306..05f9faa 100644
      /**
       * CPU 정보는 비어있지 않은 문자열이며, 명령 실행 오류 메시지의 꼬리말이
       * 그대로 노출되지 않는다.
+diff --git a/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php b/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php
+new file mode 100644
+index 0000000..fdb1c17
+--- /dev/null
++++ b/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php
+@@ -0,0 +1,86 @@
++<?php
++
++namespace Tests\Unit\Providers;
++
++use App\Providers\SettingsServiceProvider;
++use Illuminate\Support\Facades\Config;
++use PHPUnit\Framework\Attributes\Test;
++use ReflectionMethod;
++use Tests\TestCase;
++
++class SettingsServiceProviderStorageDriverTest extends TestCase
++{
++    private function callApplyStorageDriverConfig(string $driver): void
++    {
++        $provider = new SettingsServiceProvider($this->app);
++        $method = new ReflectionMethod($provider, 'applyStorageDriverConfig');
++        $method->invoke($provider, $driver);
++    }
++
++    #[Test]
++    public function local_storage_driver_preserves_g7_named_file_disks(): void
++    {
++        Config::set('filesystems.disks.attachments.driver', 'local');
++        Config::set('filesystems.disks.attachments.root', storage_path('app/attachments'));
++        Config::set('filesystems.disks.modules.driver', 'local');
++        Config::set('filesystems.disks.modules.root', storage_path('app/modules'));
++
++        $this->callApplyStorageDriverConfig('local');
++
++        $this->assertSame('local', config('filesystems.default'));
++        $this->assertSame('local', config('filesystems.disks.attachments.driver'));
++        $this->assertSame(storage_path('app/attachments'), config('filesystems.disks.attachments.root'));
++        $this->assertSame('local', config('filesystems.disks.modules.driver'));
++        $this->assertSame(storage_path('app/modules'), config('filesystems.disks.modules.root'));
++    }
++
++    #[Test]
++    public function s3_storage_driver_preserves_g7_named_file_disks(): void
++    {
++        Config::set('filesystems.disks.s3', [
++            'driver' => 's3',
++            'key' => 'key',
++            'secret' => 'secret',
++            'region' => 'ap-northeast-2',
++            'bucket' => 'bucket',
++        ]);
++        Config::set('filesystems.disks.attachments.driver', 'local');
++        Config::set('filesystems.disks.attachments.root', storage_path('app/attachments'));
++        Config::set('filesystems.disks.modules.driver', 'local');
++        Config::set('filesystems.disks.modules.root', storage_path('app/modules'));
++
++        $this->callApplyStorageDriverConfig('s3');
++
++        $this->assertSame('s3', config('filesystems.default'));
++        $this->assertSame('local', config('filesystems.disks.attachments.driver'));
++        $this->assertSame(storage_path('app/attachments'), config('filesystems.disks.attachments.root'));
++        $this->assertSame('local', config('filesystems.disks.modules.driver'));
++        $this->assertSame(storage_path('app/modules'), config('filesystems.disks.modules.root'));
++    }
++
++    #[Test]
++    public function gcs_storage_driver_updates_core_named_file_disks_with_isolated_prefixes(): void
++    {
++        Config::set('filesystems.disks.gcs', [
++            'driver' => 'gcs',
++            'project_id' => 'smartmek',
++            'bucket' => 'smartmek',
++            'path_prefix' => '',
++            'visibility' => 'private',
++        ]);
++
++        $this->callApplyStorageDriverConfig('gcs');
++
++        $this->assertSame('gcs', config('filesystems.default'));
++        $this->assertSame('attachments', config('attachment.disk'));
++        $this->assertSame('gcs', config('filesystems.disks.attachments.driver'));
++        $this->assertSame('attachments', config('filesystems.disks.attachments.path_prefix'));
++        $this->assertSame('gcs', config('filesystems.disks.modules.driver'));
++        $this->assertSame('modules', config('filesystems.disks.modules.path_prefix'));
++        $this->assertSame('gcs', config('filesystems.disks.plugins.driver'));
++        $this->assertSame('plugins', config('filesystems.disks.plugins.path_prefix'));
++        $this->assertSame('gcs', config('filesystems.disks.public.driver'));
++        $this->assertSame('public', config('filesystems.disks.public.path_prefix'));
++        $this->assertSame('public', config('filesystems.disks.public.visibility'));
++    }
++}
+diff --git a/tests/Unit/Services/DriverExtensionIntegrationTest.php b/tests/Unit/Services/DriverExtensionIntegrationTest.php
+index c31629e..7e4ccc4 100644
+--- a/tests/Unit/Services/DriverExtensionIntegrationTest.php
++++ b/tests/Unit/Services/DriverExtensionIntegrationTest.php
+@@ -567,7 +567,7 @@ public function mail_driver_actual_send_with_log_transport(): void
+     public function fallback_to_default_driver_for_all_categories(): void
+     {
+         $expectedDefaults = [
+-            'storage' => ['local', 'filesystems.default'],
++            'storage' => ['gcs', 'filesystems.default'],
+             'cache' => ['file', 'cache.default'],
+             'session' => ['database', 'session.driver'],
+             'queue' => ['database', 'queue.default'],
+diff --git a/tests/Unit/Services/DriverRegistryServiceTest.php b/tests/Unit/Services/DriverRegistryServiceTest.php
+index fb46df2..5e2abaa 100644
+--- a/tests/Unit/Services/DriverRegistryServiceTest.php
++++ b/tests/Unit/Services/DriverRegistryServiceTest.php
+@@ -60,6 +60,7 @@ public function it_returns_core_drivers_for_each_category(): void
+ 
+         $this->assertContains('local', $driverIds);
+         $this->assertContains('s3', $driverIds);
++        $this->assertContains('gcs', $driverIds);
+     }
+ 
+     /**
+@@ -102,6 +103,7 @@ public function it_identifies_core_drivers_correctly(): void
+     {
+         $this->assertTrue($this->service->isCoreDriver('storage', 'local'));
+         $this->assertTrue($this->service->isCoreDriver('storage', 's3'));
++        $this->assertTrue($this->service->isCoreDriver('storage', 'gcs'));
+         $this->assertTrue($this->service->isCoreDriver('mail', 'smtp'));
+ 
+         $this->assertFalse($this->service->isCoreDriver('storage', 'custom_storage'));
+@@ -136,7 +138,7 @@ public function it_reports_unregistered_drivers_as_unavailable(): void
+     #[Test]
+     public function it_returns_correct_default_drivers(): void
+     {
+-        $this->assertEquals('local', $this->service->getDefaultDriver('storage'));
++        $this->assertEquals('gcs', $this->service->getDefaultDriver('storage'));
+         $this->assertEquals('file', $this->service->getDefaultDriver('cache'));
+         $this->assertEquals('database', $this->service->getDefaultDriver('session'));
+         $this->assertEquals('database', $this->service->getDefaultDriver('queue'));

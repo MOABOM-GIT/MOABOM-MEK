@@ -8,7 +8,8 @@
         "dev": "vite",
         "test": "vitest",
         "test:ui": "vitest --ui",
-        "test:run": "vitest run",
+        "test:core": "vitest run",
+        "test:run": "node scripts/vitest-all.mjs",
         "test:coverage": "vitest run --coverage"
     },
     "devDependencies": {

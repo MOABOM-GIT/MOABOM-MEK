@@ -91,17 +91,35 @@ ok "RF-18b: SaaS template cache tenant scope"
   || fail "DEPLOY-RECURRING-FAILURES.md 없음"
 ok "DEPLOY-RECURRING-FAILURES.md SSOT"
 
-# RF-20: WSL 호스트 npm 으로 moabom-basic 로컬 빌드 금지 가드
-BASIC_DIR="${APP}/templates/moabom-basic"
-BASIC_PKG="${BASIC_DIR}/package.json"
-BASIC_GUARD="${BASIC_DIR}/scripts/guard-no-host-build.cjs"
-[[ -f "${BASIC_GUARD}" ]] \
-  || fail "RF-20: moabom-basic guard-no-host-build.cjs 없음 (호스트 로컬 빌드 차단 가드)"
-grep -q '"prebuild"[[:space:]]*:[[:space:]]*"node scripts/guard-no-host-build.cjs"' "${BASIC_PKG}" \
-  || fail "RF-20: moabom-basic package.json prebuild 가드 미연결"
-grep -q '"predev"[[:space:]]*:[[:space:]]*"node scripts/guard-no-host-build.cjs"' "${BASIC_PKG}" \
-  || fail "RF-20: moabom-basic package.json predev 가드 미연결"
-ok "RF-20: moabom-basic 호스트 로컬 빌드 가드 (prebuild/predev)"
+# RF-20: WSL 호스트 npm 으로 활성 프론트 로컬 빌드 금지 가드
+SHARED_BUILD_GUARD="${APP}/scripts/guard-no-host-build.cjs"
+[[ -f "${SHARED_BUILD_GUARD}" ]] \
+  || fail "RF-20: app/scripts/guard-no-host-build.cjs 없음 (공통 호스트 로컬 빌드 차단 가드)"
+
+check_host_build_guard() {
+  local label="$1"
+  local pkg="$2"
+  local guard_cmd="$3"
+
+  [[ -f "${pkg}" ]] || { fail "RF-20: ${label} package.json 없음"; return; }
+  grep -q "\"preinstall\"[[:space:]]*:[[:space:]]*\"${guard_cmd}\"" "${pkg}" \
+    || fail "RF-20: ${label} package.json preinstall 가드 미연결"
+  grep -q "\"prebuild\"[[:space:]]*:[[:space:]]*\"${guard_cmd}\"" "${pkg}" \
+    || fail "RF-20: ${label} package.json prebuild 가드 미연결"
+  grep -q "\"predev\"[[:space:]]*:[[:space:]]*\"${guard_cmd}\"" "${pkg}" \
+    || fail "RF-20: ${label} package.json predev 가드 미연결"
+}
+
+check_host_build_guard "moabom-basic" "${APP}/templates/moabom-basic/package.json" "node scripts/guard-no-host-build.cjs"
+check_host_build_guard "moabom-admin_basic" "${APP}/templates/moabom-admin_basic/package.json" "node ../../scripts/guard-no-host-build.cjs"
+check_host_build_guard "moabom-system" "${APP}/modules/moabom-system/package.json" "node ../../scripts/guard-no-host-build.cjs"
+ok "RF-20: 활성 프론트 호스트 로컬 npm 가드 (preinstall/prebuild/predev)"
+
+grep -q '\*\*/dist/' "${ROOT}/.gcloudignore" \
+  || fail "RF-20: .gcloudignore 에 **/dist/ 제외 없음 (로컬 stale dist 업로드 위험)"
+grep -q '\*\*/dist' "${ROOT}/.dockerignore" \
+  || fail "RF-20: .dockerignore 에 **/dist 제외 없음 (로컬 stale dist 이미지 입력 위험)"
+ok "RF-20: 로컬 dist 업로드/이미지 입력 제외"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

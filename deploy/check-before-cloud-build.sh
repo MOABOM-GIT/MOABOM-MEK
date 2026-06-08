@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # v7 성공 배포 기준 검증 — 로컬·Cloud Build 1단계 공통
-# DEPLOY-GOLDEN-v7.md 참고
+# deploy/README.md · DEPLOY-RECURRING-FAILURES.md 참고
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -106,6 +106,8 @@ fi
 if ! grep -q 'MOABOM_BUILD_ENV=cloudbuild' "${CB}" 2>/dev/null; then
   fail "deploy/cloudbuild-v3.yaml docker build 에 --build-arg MOABOM_BUILD_ENV=cloudbuild 누락 — 정상 빌드도 차단됨"
 fi
+grep -q 'MOABOM_BUILD_ENV=cloudbuild npm run build' "${DOCKERFILE}" 2>/dev/null \
+  || fail "deploy/Dockerfile asset build 가 MOABOM_BUILD_ENV=cloudbuild 로 npm build 를 실행하지 않음"
 ok "로컬 빌드 차단 가드 + cloudbuild build-arg"
 
 echo "==> [v7-5] production.env.yaml (v7 운영 스펙)"
@@ -131,7 +133,9 @@ echo "==> [v7-6] .gcloudignore (업로드 병목)"
 [[ -f "${GCLOUDIGNORE}" ]] || fail ".gcloudignore 없음"
 grep -q 'node_modules' "${GCLOUDIGNORE}" || fail "**/node_modules 제외 없음"
 grep -q '_bundled' "${GCLOUDIGNORE}" || fail "app/*/_bundled 제외 없음"
-ok "node_modules + _bundled 업로드 제외"
+grep -q '\*\*/dist/' "${GCLOUDIGNORE}" || fail "**/dist 제외 없음 (Cloud Build asset stage 산출물 SSOT)"
+grep -q '\*\*/dist' "${ROOT}/.dockerignore" || fail ".dockerignore **/dist 제외 없음"
+ok "node_modules + _bundled + 로컬 dist 업로드 제외"
 
 echo "==> [v7-6b] TS 경계 (upstream tsconfig 허용 + 활성 템플릿 SSOT)"
 TSCONFIG="${ROOT}/app/tsconfig.json"
@@ -159,7 +163,7 @@ if ! "${ROOT}/deploy/check-bundled-detach-regression.sh"; then
 fi
 
 echo "==> [v7-7] moabom-basic dist (참고용 — 실제 dist 는 Cloud Build 가 매번 새로 만든다)"
-# Cloud Build 가 templates/moabom-basic 을 빌드하므로 repo 의 dist 잔존 여부는 운영에 영향 없음.
+# Cloud Build 가 templates/moabom-basic 을 빌드하므로 로컬 dist 잔존 여부는 운영에 영향 없음.
 # 이 단계는 src/ 가 정상적인지 가벼운 sanity 만 본다.
 [[ -d "${ROOT}/app/templates/moabom-basic/src" ]] \
   || fail "templates/moabom-basic/src 없음 — Cloud Build 가 빌드할 소스가 없다"
@@ -192,7 +196,7 @@ fi
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo ""
-  echo "==> 검증 실패. v7 성공 기준: deploy/DEPLOY-GOLDEN-v7.md"
+  echo "==> 검증 실패. deploy/README.md · DEPLOY-RECURRING-FAILURES.md 참고"
   exit 1
 fi
 
@@ -221,9 +225,15 @@ if ! "${ROOT}/deploy/check-moabom-admin-basic-ssot.sh"; then
   FAIL=1
 fi
 
+echo "==> [v8d] Moabom final refactor invariants"
+chmod +x "${ROOT}/deploy/check-moabom-refactor-invariants.sh" 2>/dev/null || true
+if ! "${ROOT}/deploy/check-moabom-refactor-invariants.sh"; then
+  FAIL=1
+fi
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo ""
-  echo "==> 검증 실패 (v8). deploy/check-saas-runtime-invariants.sh"
+  echo "==> 검증 실패 (v8). deploy/check-saas-runtime-invariants.sh 또는 deploy/check-moabom-refactor-invariants.sh"
   exit 1
 fi
 

@@ -14,17 +14,20 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/../../app" && pwd)"
 PATCH="${SCRIPT_DIR}/moabom-core.patch"
+# shellcheck source=../lib/g7-worktree.sh
+source "${ROOT}/deploy/lib/g7-worktree.sh"
 
-cd "${APP_DIR}"
+g7_git_setup "${APP_DIR}"
 
 CORE_PATHS=(app config bootstrap routes database/migrations resources/js/core resources/views tests)
 
 # 내용이 실제로 바뀐 tracked 파일만 (numstat added+deleted > 0 → 모드 전용 변경 제외)
-mapfile -t TRACKED < <(git diff HEAD --numstat -- "${CORE_PATHS[@]}" | awk '($1+$2)>0 {print $3}')
+mapfile -t TRACKED < <(g7_git diff HEAD --numstat -- "${CORE_PATHS[@]}" | awk '($1+$2)>0 {print $3}')
 # 신규(untracked) 코어 파일
-mapfile -t UNTRACKED < <(git ls-files --others --exclude-standard -- "${CORE_PATHS[@]}")
+mapfile -t UNTRACKED < <(g7_git ls-files --others --exclude-standard -- "${CORE_PATHS[@]}")
 
 if [[ ${#TRACKED[@]} -eq 0 && ${#UNTRACKED[@]} -eq 0 ]]; then
   echo "[regenerate] 코어 변경 없음 — 패치 미생성."
@@ -33,14 +36,14 @@ fi
 
 # 신규 파일을 패치에 new-file 형태로 담기 위해 intent-to-add
 if [[ ${#UNTRACKED[@]} -gt 0 ]]; then
-  git add -N -- "${UNTRACKED[@]}"
+  g7_git add -N -- "${UNTRACKED[@]}"
 fi
 
-git diff HEAD -- "${TRACKED[@]}" "${UNTRACKED[@]}" > "${PATCH}"
+g7_git diff HEAD -- "${TRACKED[@]}" "${UNTRACKED[@]}" > "${PATCH}"
 
 # intent-to-add 원복 (untracked 상태로 복귀)
 if [[ ${#UNTRACKED[@]} -gt 0 ]]; then
-  git reset -q -- "${UNTRACKED[@]}"
+  g7_git reset -q -- "${UNTRACKED[@]}"
 fi
 
 echo "[regenerate] 생성: ${PATCH}"

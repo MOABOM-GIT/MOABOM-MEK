@@ -60,6 +60,7 @@ class DriverRegistryServiceTest extends TestCase
 
         $this->assertContains('local', $driverIds);
         $this->assertContains('s3', $driverIds);
+        $this->assertContains('gcs', $driverIds);
     }
 
     /**
@@ -102,6 +103,7 @@ class DriverRegistryServiceTest extends TestCase
     {
         $this->assertTrue($this->service->isCoreDriver('storage', 'local'));
         $this->assertTrue($this->service->isCoreDriver('storage', 's3'));
+        $this->assertTrue($this->service->isCoreDriver('storage', 'gcs'));
         $this->assertTrue($this->service->isCoreDriver('mail', 'smtp'));
 
         $this->assertFalse($this->service->isCoreDriver('storage', 'custom_storage'));
@@ -136,7 +138,7 @@ class DriverRegistryServiceTest extends TestCase
     #[Test]
     public function it_returns_correct_default_drivers(): void
     {
-        $this->assertEquals('local', $this->service->getDefaultDriver('storage'));
+        $this->assertEquals('gcs', $this->service->getDefaultDriver('storage'));
         $this->assertEquals('file', $this->service->getDefaultDriver('cache'));
         $this->assertEquals('database', $this->service->getDefaultDriver('session'));
         $this->assertEquals('database', $this->service->getDefaultDriver('queue'));

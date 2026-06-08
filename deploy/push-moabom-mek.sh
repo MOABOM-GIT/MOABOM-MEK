@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MOABOM-MEK → GitHub push (최초 1회: gh auth login 또는 SSH remote 설정 필요)
+# MOABOM-MEK → GitHub push (SSH: ~/.ssh/moabom_key 또는 MOABOM_SSH_KEY)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,7 +7,12 @@ cd "${ROOT}"
 
 REMOTE="${MOABOM_GIT_REMOTE:-origin}"
 BRANCH="${MOABOM_GIT_BRANCH:-main}"
-URL="${MOABOM_GIT_URL:-https://github.com/MOABOM-GIT/MOABOM-MEK.git}"
+URL="${MOABOM_GIT_URL:-git@github.com:MOABOM-GIT/MOABOM-MEK.git}"
+SSH_KEY="${MOABOM_SSH_KEY:-${HOME}/.ssh/moabom_key}"
+
+if [[ -f "${SSH_KEY}" ]]; then
+  export GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o IdentitiesOnly=yes"
+fi
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "ERROR: ${ROOT} 에 git 저장소 없음"

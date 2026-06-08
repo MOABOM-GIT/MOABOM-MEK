@@ -1,33 +1,30 @@
 ---
-description: moabom-social-auth Admin host scope × abilities — UI/API 확장 SSOT (레이아웃·SNS 설정 작업 시)
-globs: app/modules/moabom-social-auth/**,deploy/PROJECT-SOCIAL-AUTH*.md
+description: moabom-social-auth Admin host scope × abilities
+globs: app/modules/moabom-social-auth/**
 alwaysApply: false
 ---
 
 # SNS Admin — Host Scope × Abilities
 
-**작업 전 필독:** `app/modules/moabom-social-auth/docs/ADMIN-HOST-SCOPE.md`
+**작업 전:** `app/modules/moabom-social-auth/docs/ADMIN-HOST-SCOPE.md`
 
-## SSOT (4계층, 순서 고정)
+## SSOT (4계층)
 
 1. `src/Support/SocialAuthAdminHostScope.php` — `host_scope` + `features.*`
-2. `SocialAuthSettingsController::settingsAbilities()` — API merge (+ `can_update`)
-3. `SocialAuthSettingsService` + `StoreSocialAuthSettingsRequest` — 저장·검증 strip
-4. `resources/layouts/admin/admin_social_auth_settings.json` `computed` → `partials/social_auth/*`
+2. `SocialAuthSettingsController::settingsAbilities()` — API merge
+3. `SocialAuthSettingsService` + `StoreSocialAuthSettingsRequest` — 저장·검증
+4. `resources/layouts/admin/admin_social_auth_settings.json` → `partials/social_auth/*`
 
 ## 필수 규칙
 
-- 레이아웃/partial에서 **호스트 문자열 직접 비교 금지** (`endsWith`, `mek360.com` 등)
+- 레이아웃/partial에서 호스트 문자열 직접 비교 금지
 - UI 분기 = `abilities.features.*` 또는 `_computed.*` 만
-- sub-tenant credential = `disabled` + `credentialInputClassName` (readOnly 단독 금지)
-- 수정 경로 = **활성** `app/modules/moabom-social-auth/` (`_bundled/` 직접 수정 금지)
+- sub-tenant credential = `disabled` + `credentialInputClassName`
+- 수정 = 활성 `app/modules/moabom-social-auth/` 만
 
 ## 새 scope/feature 추가 시
 
 1. `SocialAuthAdminHostScope::resolve()` feature 추가
-2. Service persist + FormRequest validation
-3. layout `computed` (필요 시 1~2개)
-4. partial `if`/`disabled`/`className`
-5. Unit test + `ADMIN-HOST-SCOPE.md` §1 표 갱신
-
-OAuth·브로커·배포 전체: `deploy/PROJECT-SOCIAL-AUTH-PROXY-MULTITENANT.md`
+2. Service + FormRequest
+3. layout `computed` + partial
+4. Unit test + `ADMIN-HOST-SCOPE.md` 갱신

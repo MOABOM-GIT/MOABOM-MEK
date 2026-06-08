@@ -38,6 +38,7 @@ return [
         'storage' => [
             'local' => '로컬',
             's3' => 'Amazon S3',
+            'gcs' => 'Google Cloud Storage',
         ],
         'cache' => [
             'file' => '파일',

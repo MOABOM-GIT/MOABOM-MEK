@@ -61,12 +61,14 @@ grep -q '"path": "/admin/saas/hospitals/create"' "${LIST}" \
   || fail "list layout must navigate to create (SPA)"
 grep -q '"wait_for": \["hospitals"\]' "${LIST}" \
   || fail "list layout missing transition_overlay.wait_for hospitals"
-grep -q '"version": "1.2.4"' "${CREATE}" \
-  || fail "admin_saas_hospital_create.json v1.2.4 required (logos multipart + navigate)"
+grep -q '"version": "1.2.5"' "${CREATE}" \
+  || fail "admin_saas_hospital_create.json v1.2.5 required (logo FileInput object + multipart + navigate)"
 grep -q 'multipart/form-data' "${CREATE}" \
   || fail "create layout must POST multipart for logo_light/logo_dark"
 grep -q 'logo_light' "${CREATE}" \
   || fail "create layout missing logo_light upload"
+grep -q '\$event.target.files?.\[0\] || \$event.target.value' "${CREATE}" \
+  || fail "create layout must keep FileInput File object, not filename string"
 grep -q '"handler": "navigate"' "${CREATE}" \
   || fail "create layout must use navigate handler for list return (not href reload)"
 grep -q '"enabled": false' "${CREATE}" \

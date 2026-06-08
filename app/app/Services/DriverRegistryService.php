@@ -25,7 +25,7 @@ class DriverRegistryService
      * @var array<string, list<string>>
      */
     private const CORE_DRIVER_IDS = [
-        'storage' => ['local', 's3'],
+        'storage' => ['local', 's3', 'gcs'],
         'cache' => ['file', 'redis'],
         'session' => ['file', 'database', 'redis'],
         'queue' => ['sync', 'database', 'redis'],
@@ -40,7 +40,7 @@ class DriverRegistryService
      * @var array<string, string>
      */
     private const DEFAULT_DRIVERS = [
-        'storage' => 'local',
+        'storage' => 'gcs',
         'cache' => 'file',
         'session' => 'database',
         'queue' => 'database',

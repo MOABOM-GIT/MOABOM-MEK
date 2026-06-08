@@ -6925,6 +6925,43 @@ describe('ActionDispatcher', () => {
       expect(callArgs.value).toBe('custom_value');
     });
 
+    it('FileInput 커스텀 이벤트의 File 참조를 setState에 보존해야 함', async () => {
+      const mockGlobalUpdater = vi.fn();
+      dispatcher.setGlobalStateUpdater(mockGlobalUpdater);
+      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
+
+      const props = {
+        actions: [
+          {
+            type: 'change' as const,
+            handler: 'setState',
+            params: {
+              target: 'global',
+              'form.logo_light': '{{$event.target.files?.[0] || $event.target.value}}',
+            },
+          },
+        ],
+      };
+
+      const boundProps = dispatcher.bindActionsToProps(props);
+
+      boundProps.onChange({
+        target: {
+          value: logoFile,
+          files: [logoFile],
+          name: 'logo_light',
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(mockGlobalUpdater).toHaveBeenCalled();
+      });
+
+      const callArgs = mockGlobalUpdater.mock.calls[0][0];
+      expect(callArgs.form.logo_light).toBe(logoFile);
+      expect(callArgs.form.logo_light.name).toBe('logo_moabom.svg');
+    });
+
     it('raw value (File/null/boolean 등)를 전달하면 핸들러가 실행되지 않아야 함', () => {
       // 사례 26 회귀 테스트: raw value fallback 의도적 제거
       // (컴포넌트 마운트 시 초기 setState 로 API 로드 데이터가 덮어쓰이는 버그 방지)
@@ -7219,6 +7256,39 @@ describe('ActionDispatcher', () => {
       expect(formData.has('file')).toBe(true);
       expect(formData.get('description')).toBe('Test upload');
       expect(formData.get('metadata')).toBe(JSON.stringify({ version: '1.0' }));
+    });
+
+    it('multipart body에서 배열 안의 File 값을 파일 파트로 유지해야 함', async () => {
+      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
+
+      const action: ActionDefinition = {
+        type: 'click',
+        handler: 'apiCall',
+        target: '/api/modules/moabom-system/platform/saas/hospitals',
+        params: {
+          method: 'POST',
+          contentType: 'multipart/form-data',
+          body: {
+            slug: 'clinic88',
+            logo_light: [logoFile],
+          },
+        },
+      };
+
+      const handler = dispatcher.createHandler(action);
+      await handler({
+        preventDefault: vi.fn(),
+        type: 'click',
+        target: null,
+      } as unknown as Event);
+
+      const [, fetchOptions] = mockFetchLocal.mock.calls.find(
+        (call: unknown[]) => (call[0] as string).includes('/platform/saas/hospitals')
+      )!;
+
+      const formData = fetchOptions.body as FormData;
+      expect(formData.has('logo_light')).toBe(true);
+      expect(formData.get('slug')).toBe('clinic88');
     });
 
     it('multipart body에서 null/undefined 값은 FormData에 포함되지 않아야 함', async () => {

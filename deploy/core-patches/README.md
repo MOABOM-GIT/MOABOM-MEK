@@ -16,7 +16,7 @@
 
 | | |
 |---|---|
-| `moabom-core.patch` | **18파일** (이전 21 → 정리 후) |
+| `moabom-core.patch` | **26파일** |
 | 패치 밖 필수 | `composer.json` / `composer.lock` — `spatie/laravel-google-cloud-storage` |
 
 ### 제거·분리한 것 (코어 패치에 넣지 않음)
@@ -28,7 +28,7 @@
 | `_bundled` moabom 오염·chmod 노이즈 | `git checkout HEAD -- …/_bundled` 로 미러 복원 |
 | `tests/bootstrap.php` `_bundled` 제거 | upstream 복원 (활성 확장 테스트는 CI/모듈 스위트로) |
 
-## 18파일 분류
+## 26파일 분류
 
 ### ① 확장 주입 훅 (upstream PR 후보 — Moabom 하드코딩 없음)
 
@@ -46,7 +46,12 @@
 |------|------|
 | `config/filesystems.php` | `gcs` 디스크 + `FILESYSTEM_DISK=gcs` 시 확장 디스크 |
 | `bootstrap/providers.php` | Spatie GCS Provider (Settings 로드 전 등록) |
-| `app/Providers/SettingsServiceProvider.php` | JSON 설정 로드 `register()` → `boot()` |
+| `app/Providers/SettingsServiceProvider.php` | JSON 설정 로드 `register()` → `boot()`, 관리자 storage driver 선택을 `attachments/modules/plugins/public` named disk에 반영 |
+| `app/Services/DriverRegistryService.php` | 관리자 storage driver 목록에 `local/s3/gcs` 노출 |
+| `config/settings/defaults.json` | Moabom 파일 스토리지 기본값을 `gcs` 로 고정 |
+| `app/Http/Requests/Settings/SaveSettingsRequest.php` | 관리자 storage driver 저장 검증에서 `gcs` 허용 |
+| `app/Http/Requests/Settings/TestDriverConnectionRequest.php` | 관리자 driver test 검증에서 `gcs` 허용 |
+| `lang/ko/settings.php`, `lang/en/settings.php` | `gcs` 드라이버 라벨 |
 | `composer.json` | Spatie 패키지 (**패치 밖**, lock 동반) |
 
 ### ③ Cloud Run / SaaS 런타임 효율
@@ -69,6 +74,7 @@
 |------|------|
 | `resources/js/core/TemplateApp.ts` | `mergeComputedRecalc()` |
 | `tests/Feature/Api/Admin/SettingsControllerTest.php` | ① 가드 회귀 테스트 |
+| `tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php` | 관리자 storage driver 선택 → 실제 파일 named disk 반영 회귀 테스트 |
 
 ## 사용
 
@@ -96,13 +102,24 @@ php artisan config:cache   # Cloud Run entrypoint 와 동일
 
 활성 확장·`deploy/production.env.yaml`·Cloud Build는 **코어 패치와 별도** — 변경하지 않음.
 
-## upstream 패치 검증 (beta.7 = `main` 기준, 2026-06-08)
+## upstream 패치 검증 (beta.7 = `main` 기준)
+
+```bash
+bash deploy/dry-run-upstream-patches.sh   # 로컬 G7 HEAD archive 기준 (권장)
+bash deploy/check-upstream-prep.sh        # 패치 + 가드 + sync + dry-run 통합
+```
+
+원격 클론으로도 동일:
 
 ```bash
 git clone https://github.com/gnuboard/g7.git /tmp/g7-test
-cd /tmp/g7-test && git apply --check /path/to/moabom-core.patch   # OK
-git apply --check /path/to/g7-upstream-hooks.patch                 # OK
+cd /tmp/g7-test && git apply --check /path/to/moabom-core.patch
+git apply --check /path/to/g7-upstream-hooks.patch
 ```
+
+## MOABOM-MEK 모노레포와 G7 git
+
+`app/.git` 은 `app/.git.g7-upstream-backup` 으로 분리됨. 패치 스크립트는 `deploy/lib/g7-worktree.sh` 로 동일하게 `git apply`·`regenerate` 한다.
 
 ## upstream PR 준비 (`g7-upstream-hooks.patch`)
 

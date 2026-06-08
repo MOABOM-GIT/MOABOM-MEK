@@ -17,8 +17,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/../../app" && pwd)"
 PATCH="${SCRIPT_DIR}/moabom-core.patch"
+# shellcheck source=../lib/g7-worktree.sh
+source "${ROOT}/deploy/lib/g7-worktree.sh"
 
 CHECK_ONLY=0
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
@@ -26,23 +29,21 @@ CHECK_ONLY=0
 log() { printf '[core-patches] %s\n' "$*"; }
 
 [[ -f "${PATCH}" ]] || { log "ERROR: 패치 파일 없음: ${PATCH}"; exit 1; }
-[[ -d "${APP_DIR}/.git" ]] || { log "ERROR: g7 app git 저장소 아님: ${APP_DIR}"; exit 1; }
-
-cd "${APP_DIR}"
+g7_git_setup "${APP_DIR}"
 
 # 1) 이미 적용돼 있는가? (reverse-check 통과 = 현재 트리에 patch 내용이 존재)
-if git apply --check --reverse "${PATCH}" >/dev/null 2>&1; then
+if g7_git apply --check --reverse "${PATCH}" >/dev/null 2>&1; then
   log "이미 적용됨 — 건너뜀 (reverse-check 통과)."
   exit 0
 fi
 
 # 2) pristine 코어에 깨끗하게 적용 가능한가?
-if git apply --check "${PATCH}" >/dev/null 2>&1; then
+if g7_git apply --check "${PATCH}" >/dev/null 2>&1; then
   if [[ "${CHECK_ONLY}" == "1" ]]; then
     log "OK: 깨끗하게 적용 가능 (--check)."
     exit 0
   fi
-  git apply "${PATCH}"
+  g7_git apply "${PATCH}"
   log "OK: 코어 패치 적용 완료 ($(grep -c '^diff --git' "${PATCH}")개 파일)."
   exit 0
 fi
@@ -53,7 +54,7 @@ if [[ "${CHECK_ONLY}" == "1" ]]; then
   log "ERROR: --check 모드에서 clean apply 불가. 수동 검토 필요."
   exit 2
 fi
-if git apply --3way "${PATCH}"; then
+if g7_git apply --3way "${PATCH}"; then
   log "OK: 3way 병합으로 적용 완료 (충돌 없음)."
   exit 0
 fi

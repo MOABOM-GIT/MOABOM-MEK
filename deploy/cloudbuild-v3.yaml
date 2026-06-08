@@ -1,6 +1,6 @@
 # 태그는 substitutions._IMAGE_TAG 한 곳만 수정 (build -t / images 자동 동기화)
 substitutions:
-  _IMAGE_TAG: v205
+  _IMAGE_TAG: v208
 
 steps:
   # v7 성공 기준 — 직접 gcloud submit 해도 동일 검증 (재발 방지)

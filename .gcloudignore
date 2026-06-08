@@ -4,6 +4,7 @@
 .git
 .gitignore
 **/.git
+app/.git.g7-upstream-backup/
 
 # 문서·로컬 배포 메모
 **/*.md
@@ -47,6 +48,9 @@ app/templates/sirsoft-basic/
 # 템플릿·플러그인·모듈 내 node_modules (로컬 개발용 — 삭제 불필요, 업로드만 제외)
 **/node_modules/
 
+# 프론트 빌드 산출물은 Cloud Build assets 스테이지에서 재생성
+**/dist/
+
 # 프론트·도구 캐시 (개발용, 배포 tarball 불필요)
 **/.vite/
 **/.turbo/
@@ -73,6 +77,8 @@ docker-compose.override.yml
 *.code-workspace
 .vscode/
 .cursor/
+agent-transcripts/
+.cursor/plans/
 
 # unused 아카이브는 전부 배포 미포함
 **/unused/

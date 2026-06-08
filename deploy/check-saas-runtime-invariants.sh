@@ -157,6 +157,12 @@ ls "${PLATFORM_MIG}" 2>/dev/null | grep -q "create_moabom_saas_tenant_operations
   || fail "create_moabom_saas_tenant_operations_table 마이그레이션 없음"
 grep -q 'TenantDeprovisioner' "${ACTIVE_SYS}/src/Saas/Deprovision/TenantDeprovisioner.php" \
   || fail "TenantDeprovisioner 미구현"
+grep -q 'deleteTenantStorageRecursive' "${ACTIVE_SYS}/src/Saas/Deprovision/TenantDeprovisioner.php" \
+  || fail "TenantDeprovisioner destroy 가 driver-neutral tenant storage 삭제를 사용해야 함"
+grep -q 'TENANT_STORAGE_DISKS' "${ACTIVE_SYS}/src/Saas/Deprovision/TenantDeprovisioner.php" \
+  || fail "TenantDeprovisioner destroy 가 tenant storage disks 전체를 정리해야 함"
+grep -q 'storage_objects_deleted' "${ACTIVE_SYS}/src/Saas/Deprovision/TenantDeprovisioner.php" \
+  || fail "TenantDeprovisioner destroy metrics 에 storage_objects_deleted 필요"
 grep -q 'SaasTenantReapplyAppearanceDefaultsCommand' "${PROVIDER}" \
   || fail "SystemServiceProvider 에 SaasTenantReapplyAppearanceDefaultsCommand 미등록"
 test -f "${ACTIVE_SYS}/database/saas/tenant-baseline-manifest.json" \
@@ -567,21 +573,31 @@ if [[ -f "${HOSPITAL_PKG}" ]]; then
 fi
 ok "분리된 4개 카탈로그 기본 ON 보장 (DECOMPOSITION)"
 
-echo "==> [v8-16] moabom-basic dist ↔ src API prefix 동기화 (strict — canonical 강제)"
-# Dockerfile 은 moabom-basic npm build 를 스킵하고 repo 의 dist/ 를 그대로 패키징한다.
-# src 만 갱신하고 dist 미빌드 시 구 moabom-system URL 이 프로덕션 404 로 이어진다.
+echo "==> [v8-16] moabom-basic src/dist API prefix 계약 (Cloud Build 산출물 기준)"
+# moabom-basic dist 는 Cloud Build asset stage 가 생성한다. 로컬/WSL 빌드 금지.
+# pre-Cloud Build(clean checkout)에서는 dist 가 없을 수 있으므로 src 계약만 필수로 보고,
+# dist 가 존재하는 경우에만 stale 산출물 회귀를 추가 검증한다.
 DIST_DIR="${APP}/templates/moabom-basic/dist/js"
 DIST_COMPONENTS="${DIST_DIR}/components.iife.js"
 DIST_CPAP="${DIST_DIR}/moabom-shell-cpap-mask.iife.js"
 DIST_CREATE="${DIST_DIR}/moabom-shell-create-app.iife.js"
 WEATHER_TS="${APP}/templates/moabom-basic/src/runtime/weather/weatherApi.ts"
 
-[[ -f "${DIST_COMPONENTS}" ]] \
-  || fail "moabom-basic dist/js/components.iife.js 없음 — template:build moabom-basic --active 필요"
-[[ -f "${DIST_CPAP}" ]] \
-  || fail "moabom-basic dist/js/moabom-shell-cpap-mask.iife.js 없음 — npm run build (shell) 필요"
-[[ -f "${DIST_CREATE}" ]] \
-  || fail "moabom-basic dist/js/moabom-shell-create-app.iife.js 없음 — npm run build (shell) 필요"
+[[ -f "${APP}/templates/moabom-basic/vite.config.ts" ]] \
+  || fail "moabom-basic vite.config.ts 없음 — Cloud Build asset stage 빌드 입력 누락"
+[[ -f "${APP}/templates/moabom-basic/vite.shell-create-app.config.ts" ]] \
+  || fail "moabom-basic create-app shell vite config 없음"
+[[ -f "${APP}/templates/moabom-basic/scripts/build-shell-apps.cjs" ]] \
+  || fail "moabom-basic shell app 빌드 스크립트 없음"
+grep -q "entryFileNames: 'js/components.iife.js'" "${APP}/templates/moabom-basic/vite.config.ts" \
+  || fail "moabom-basic vite output 이 dist/js/components.iife.js 계약과 다름"
+grep -q "entryFileNames: 'js/moabom-shell-create-app.iife.js'" "${APP}/templates/moabom-basic/vite.shell-create-app.config.ts" \
+  || fail "moabom-basic create-app shell output 계약과 다름"
+
+if [[ ! -f "${DIST_COMPONENTS}" || ! -f "${DIST_CPAP}" || ! -f "${DIST_CREATE}" ]]; then
+  echo "    info: repo dist 없음/불완전 — Cloud Build asset stage 산출 후 dist strict 검증 대상"
+  ok "moabom-basic src/API 계약 (dist 검사는 Cloud Build 산출물 기준)"
+else
 
 # strict: dist 는 항상 canonical 이어야 한다. decomposition-compat(v8-18) 는 구 PWA/캐시 클라이언트
 # 전용 안전망으로만 남기고, 신규 dist 빌드에는 분리 도메인의 구 moabom-system URL 이 0건이어야 한다.
@@ -590,11 +606,11 @@ MYPAGE_TS="${APP}/templates/moabom-basic/src/components/composite/mypage/myPageA
 for dist_file in "${DIST_COMPONENTS}" "${DIST_CPAP}" "${DIST_CREATE}"; do
   base="$(basename "${dist_file}")"
   grep -q 'moabom-system/weather' "${dist_file}" 2>/dev/null \
-    && fail "${base} 에 구 weather URL(moabom-system/weather) 잔존 — weatherApi.ts canonical + dist 재빌드 필요"
+    && fail "${base} 에 구 weather URL(moabom-system/weather) 잔존 — weatherApi.ts canonical + Cloud Build 산출물 갱신 필요"
   grep -q 'moabom-system/user/activities' "${dist_file}" 2>/dev/null \
-    && fail "${base} 에 구 activities URL(moabom-system/user/activities) 잔존 — myPageApi.ts canonical + dist 재빌드 필요"
+    && fail "${base} 에 구 activities URL(moabom-system/user/activities) 잔존 — myPageApi.ts canonical + Cloud Build 산출물 갱신 필요"
   grep -qE 'moabom-system/(apps/ai|apps/generated|apps/cpap-mask)' "${dist_file}" 2>/dev/null \
-    && fail "${base} 에 구 apps URL(moabom-system/apps/*) 잔존 — moabomAppsApi.ts canonical + dist 재빌드 필요"
+    && fail "${base} 에 구 apps URL(moabom-system/apps/*) 잔존 — moabomAppsApi.ts canonical + Cloud Build 산출물 갱신 필요"
 done
 
 # strict allowlist: dist 의 moabom-system literal 엔드포인트는 "셸/사용자 시스템" 코어만 정당.
@@ -625,19 +641,20 @@ PY
 # src ↔ dist 정합 (strict — src 가 canonical 인데 dist 미반영이면 fail)
 if [[ -f "${MYPAGE_TS}" ]] && grep -q 'moabom-personalization/user/activities' "${MYPAGE_TS}" 2>/dev/null; then
   grep -q 'moabom-personalization' "${DIST_COMPONENTS}" 2>/dev/null \
-    || fail "myPageApi.ts 는 moabom-personalization 인데 dist/components.iife.js 미반영 — dist 재빌드 필요"
+    || fail "myPageApi.ts 는 moabom-personalization 인데 dist/components.iife.js 미반영 — Cloud Build 산출물 갱신 필요"
 fi
 if [[ -f "${WEATHER_TS}" ]] && grep -q 'plugins/moabom-weather' "${WEATHER_TS}" 2>/dev/null; then
   grep -q 'plugins/moabom-weather' "${DIST_COMPONENTS}" 2>/dev/null \
-    || fail "weatherApi.ts 는 moabom-weather 인데 dist 미반영 — dist 재빌드 필요"
+    || fail "weatherApi.ts 는 moabom-weather 인데 dist 미반영 — Cloud Build 산출물 갱신 필요"
 fi
 if [[ -f "${APPS_TS}" ]] && grep -q "requestMoabomCpapApi" "${APPS_TS}" 2>/dev/null; then
   grep -q 'moabom-cpap' "${DIST_CPAP}" 2>/dev/null \
-    || fail "CPAP→moabom-cpap 전환인데 dist/cpap shell 미반영 — dist 재빌드 필요"
+    || fail "CPAP→moabom-cpap 전환인데 dist/cpap shell 미반영 — Cloud Build 산출물 갱신 필요"
   grep -q 'moabom-apps' "${DIST_CREATE}" 2>/dev/null \
-    || fail "AI→moabom-apps 전환인데 dist/create-app shell 미반영 — dist 재빌드 필요"
+    || fail "AI→moabom-apps 전환인데 dist/create-app shell 미반영 — Cloud Build 산출물 갱신 필요"
 fi
 ok "moabom-basic dist API prefix (v8-16 strict — canonical 0 legacy)"
+fi
 
 echo "==> [v8-17] 패키지 확장 bootstrap (DECOMPOSITION install+active gap)"
 SYNC_CMD="${APP}/modules/moabom-system/src/Console/Commands/SaasSyncPackageExtensionsCommand.php"

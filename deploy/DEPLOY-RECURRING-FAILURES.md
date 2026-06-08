@@ -1,10 +1,10 @@
 # 배포 시 자주 나는 오류·증상 — 재발 방지 SSOT
 
 > **목적:** Cloud Build / Cloud Run 배포마다 우회·재시도·태그 낭비가 반복되지 않도록, **증상 → 원인 → 올바른 조치**를 한곳에 모음.  
-> **Tenant settings split-brain(DoD-5)** 는 [AGENT-FAILURE-ANALYSIS.md](./AGENT-FAILURE-ANALYSIS.md) — 본 문서는 **배포·이미지·Job·레이아웃·인프라** 쪽.
+> Tenant appearance·split-brain 등 과거 DoD 분석은 본 문서 범위 밖 — **본 문서는 배포·이미지·Job·레이아웃·인프라** 쪽.
 
 **배포 전 필수:** `./deploy/check-before-cloud-build.sh` (내부에 `check-deploy-recurring-guards.sh` 포함)  
-**배포 골든 경로:** [DEPLOY-GOLDEN-v7.md](./DEPLOY-GOLDEN-v7.md) · [build-and-deploy.sh](./build-and-deploy.sh)
+**배포 골든 경로:** [README.md](./README.md) · [build-and-deploy.sh](./build-and-deploy.sh)
 
 ---
 
@@ -54,10 +54,7 @@
 
 ### 아직 “다른 주제”로 남는 것 (본 문서 범위 밖)
 
-| 주제 | 문서 |
-|------|------|
-| Tenant appearance DoD-5 · split-brain | [AGENT-FAILURE-ANALYSIS.md](./AGENT-FAILURE-ANALYSIS.md) |
-| moabom-system decomposition·dist URL | [PROJECT-MOABOM-SYSTEM-DECOMPOSITION.md](./PROJECT-MOABOM-SYSTEM-DECOMPOSITION.md) |
+Tenant appearance DoD-5·split-brain, moabom-system decomposition 등은 별도 설계 주제 — 배포 RF는 본 문서와 `deploy/README.md`만 SSOT.
 
 ---
 
@@ -70,8 +67,8 @@
 | D3 | JSON/레이아웃만 고치고 DB sync 생략 | [RF-01](#rf-01-admin-정보-탭-memory_usage--react-31) |
 | D4 | Cloud Run Job에 `php artisan … '*'` 전달 | slug **생략** 또는 `freshent` 등 구체 slug [RF-12](#rf-12-cloud-run-job-인자에--전달) |
 | D5 | `--async` 후 `gcloud run deploy` 생략 | Build SUCCESS → deploy → smoke [RF-03](#rf-03-async-후-deploy-누락) |
-| D6 | 로컬 `docker build -f deploy/Dockerfile` 로 운영 push | **Cloud Build만** [DEPLOY-GOLDEN-v7.md](./DEPLOY-GOLDEN-v7.md) |
-| D7 | WSL 호스트에서 `cd templates/moabom-basic && npm ci`/`npm run build` | **금지** — dist 는 repo 커밋본, 가드가 차단 [RF-20](#rf-20-wsl-호스트-npm-으로-moabom-basic-로컬-빌드--node_modules-파손) |
+| D6 | 로컬 `docker build -f deploy/Dockerfile` 로 운영 push | **Cloud Build만** [README.md](./README.md) |
+| D7 | WSL 호스트에서 `cd templates/moabom-basic && npm ci`/`npm run build` | **금지** — dist 는 Cloud Build asset stage 산출물, 가드가 차단 [RF-20](#rf-20-wsl-호스트-npm-으로-moabom-basic-로컬-빌드--node_modules-파손) |
 
 ---
 
@@ -112,7 +109,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 |---|---|
 | **증상** | 빌드만 SUCCESS, 운영 URL은 구 이미지 · “고쳤는데 안 바뀜” |
 | **조치** | `gcloud builds list` → SUCCESS 후 `gcloud run deploy` 또는 동기 `build-and-deploy.sh` |
-| **예방** | async 사용 시 체크리스트 [DEPLOY-GOLDEN-v7.md §--async](./DEPLOY-GOLDEN-v7.md) |
+| **예방** | async 사용 시 [README.md](./README.md) · build-and-deploy `--async` 안내 따르기 |
 
 ### RF-04: Cloud Build 업로드·빌드 30분+ / FAILURE
 
@@ -175,12 +172,12 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **조치** | 정적 게이트만 로컬 · 운영 검증은 Cloud Build + Job |
 | **예방** | Docker Desktop WSL integration 또는 CI만 사용 |
 
-### RF-11: `template:build` / npm — `_bundled` 덮어쓰기
+### RF-11: 로컬 `template:build` / npm — `_bundled` 덮어쓰기
 
 | | |
 |---|---|
 | **증상** | upstream 미러 파괴 · dist·이미지 불일치 |
-| **조치** | `template:build {id} --active` 만 · 호스트 npm 금지 |
+| **조치** | 활성 경로만 수정하고 산출물은 Cloud Build asset stage 에 맡김 · 호스트 npm 금지 |
 | **예방** | `moabom-operations.mdc` 프론트 빌드 표 |
 
 ### RF-20: WSL 호스트 npm 으로 moabom-basic 로컬 빌드 → node_modules 파손
@@ -189,12 +186,12 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 |------|------|
 | **증상** | `vite.config.ts` 에 `'vite-plugin-dts'`/`'workbox-build'` **모듈 또는 형식 선언을 찾을 수 없음** (원래 없던 빨간 줄) |
 | **직접 원인** | WSL 호스트에서 `cd app/templates/moabom-basic && npm ci && npm run build` 실행. `npm ci` 가 node_modules 를 비운 뒤 재설치하는데 PATH 의 npm 이 **Windows npm**(`/mnt/c/Program Files/nodejs/npm`) 으로 폴백 → esbuild postinstall(`install.js`)이 **UNC 경로(`\\wsl.localhost\...`)에서 CMD 미지원으로 실패** → 재설치 중단 → `workbox-build` 의 `package.json` 누락·`vite-plugin-dts` 디렉터리 소실 |
-| **근본 원인** | ① 에이전트가 `deploy/README.md` 골든룰("호스트/WSL `npm run build` 금지")을 어기고 이미지용 dist 를 로컬에서 빌드하려 함. moabom-basic 은 **Dockerfile 에서 빌드하지 않고 repo 커밋 dist 를 사용**하므로 로컬 빌드 자체가 불필요. ② WSL 에 Linux Node 부재 → npm 이 Windows 로 폴백되는 환경 풋건 |
-| **착각** | "다른 템플릿(admin_basic·moabom-system)처럼 이미지용 dist 를 빌드해야 한다" — moabom-basic 만 커밋 dist 사용([Dockerfile](./Dockerfile) `moabom-basic dist 는 repo 에 포함된 빌드 산출물 사용` 주석) |
-| **조치** | ① WSL 에 **Linux Node 설치**(nvm `nvm install 22` 또는 NodeSource) 후 `npm ci` 로 node_modules 복구 ② 로컬 빌드 시도 자체를 막는 가드 ③ moabom-basic dist 는 절대 호스트에서 재빌드하지 말고 repo 커밋본 유지 |
-| **예방** | `templates/moabom-basic/scripts/guard-no-host-build.cjs` (`prebuild`/`predev` 훅) — Windows npm/UNC 감지 시 **하드 차단**, 호스트 로컬 빌드는 `MOABOM_ALLOW_LOCAL_BUILD=1` 명시 시에만 허용. `check-deploy-recurring-guards.sh` 가 가드 wiring 상존 검증. `check-before-cloud-build.sh` 는 Dockerfile 내 moabom-basic npm 빌드도 차단 |
+| **근본 원인** | ① 에이전트가 골든룰("호스트/WSL `npm run build` 금지")을 어기고 이미지용 dist 를 로컬에서 빌드하려 함. 운영 산출물은 **Cloud Build asset stage** 가 생성하므로 로컬 빌드 자체가 불필요. ② WSL 에 Linux Node 부재 → npm 이 Windows 로 폴백되는 환경 풋건 |
+| **착각** | "이미지용 dist 를 지금 로컬에서 만들어야 한다" — 실제 운영 이미지는 [Dockerfile](./Dockerfile) asset stage 에서 `moabom-admin_basic`·`moabom-system`·`moabom-basic` 을 모두 빌드 |
+| **조치** | ① WSL 에 **Linux Node 설치**(nvm `nvm install 22` 또는 NodeSource) 후 `npm ci` 로 node_modules 복구가 필요할 수 있음 ② 로컬 빌드 시도 자체를 막는 가드 유지 ③ 운영 dist 는 Cloud Build 산출물로만 갱신 |
+| **예방** | 활성 프론트 `package.json` 의 `prebuild`/`predev` 훅 — Windows npm/UNC 및 호스트/WSL 빌드 **하드 차단**. `check-deploy-recurring-guards.sh` 가 가드 wiring 상존 검증. `check-before-cloud-build.sh` 는 Dockerfile 내 Cloud Build asset stage 존재와 로컬 Dockerfile 빌드 차단 가드를 함께 검증 |
 
-> **핵심:** moabom-basic 은 빌드 산출물(`dist/`)이 repo 에 커밋되어 Cloud Build 이미지에 그대로 패키징된다. 호스트/WSL 에서 `npm run build` 를 돌릴 이유가 없고, Windows npm 폴백 환경에서는 그 시도가 곧 node_modules 파손이다.
+> **핵심:** moabom-basic 운영 산출물(`dist/`)은 Cloud Build asset stage 에서 만들어진다. 호스트/WSL 에서 `npm run build` 를 돌릴 이유가 없고, Windows npm 폴백 환경에서는 그 시도가 곧 node_modules 파손이다.
 
 ### RF-12: Cloud Run Job 인자에 `*` 전달
 
@@ -327,7 +324,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 - [ ] `./deploy/build-and-deploy.sh` (또는 async → deploy **필수**)
 - [ ] `smoke-after-deploy.sh` 통과
 - [ ] (자동) `build-and-deploy.sh` 가 layout sync Job 실행 — **module layout sync SUCCESS** 포함 (RF-14)
-- [ ] SaaS hospitals 변경 시: `AUTH_TOKEN=… bash deploy/saas-platform-hospitals-smoke.sh` + lang API + 브라우저 강력 새로고침
+- [ ] SaaS hospitals 변경 시: `saas-hospitals-admin-gate.sh` 통과 + lang API + 브라우저 강력 새로고침 (선택 e2e는 `deploy/saas-platform-hospitals-smoke.sh` 추가 시)
 - [ ] freshent 등 tenant admin → 환경설정 → 정보 탭 확인
 
 ### env만 변경
@@ -368,8 +365,6 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | 문서 | 범위 |
 |------|------|
-| [AGENT-FAILURE-ANALYSIS.md](./AGENT-FAILURE-ANALYSIS.md) | Tenant appearance DoD-5 · split-brain |
-| [DEPLOY-GOLDEN-v7.md](./DEPLOY-GOLDEN-v7.md) | 에이전트 배포 실행 지시 |
-| [PROJECT-ADMIN-SAAS-REBUILD.md](./PROJECT-ADMIN-SAAS-REBUILD.md) | admin 템플릿 · tenant DB |
-| [PROJECT-SAAS-HOSPITALS-REGISTRATION.md](./PROJECT-SAAS-HOSPITALS-REGISTRATION.md) | hospitals UI · 시행착오 회고 · RF-14~16 |
+| [README.md](./README.md) | deploy/ 인덱스·파이프라인·파일 역할 |
+| [core-patches/README.md](./core-patches/README.md) | G7 코어 패치 캡슐 |
 | [check-deploy-recurring-guards.sh](./check-deploy-recurring-guards.sh) | 재발 방지 정적 검증 |

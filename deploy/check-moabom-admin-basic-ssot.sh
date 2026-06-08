@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${ROOT}/app"
 ACTIVE_ADMIN="${APP}/templates/moabom-admin_basic"
 PACKAGE="${APP}/modules/moabom-system/database/saas/packages/hospital-default.json"
+DOCKERFILE="${ROOT}/deploy/Dockerfile"
 FAIL=0
 
 fail() { echo "FAIL: $*"; FAIL=1; }
@@ -16,16 +17,20 @@ ok() { echo "OK:   $*"; }
 echo "== check-moabom-admin-basic-ssot (DoD-8) =="
 
 [[ -d "${ACTIVE_ADMIN}" ]] || fail "활성 moabom-admin_basic 없음"
-[[ -f "${ACTIVE_ADMIN}/dist/js/components.iife.js" ]] \
-  || fail "moabom-admin_basic dist 없음 — template:build moabom-admin_basic"
-grep -q 'flushFormBeforeSave' "${ACTIVE_ADMIN}/dist/js/components.iife.js" \
-  || fail "moabom-admin_basic dist 에 flushFormBeforeSave 없음"
+[[ -f "${ACTIVE_ADMIN}/package.json" ]] || fail "moabom-admin_basic package.json 없음"
+[[ -f "${ACTIVE_ADMIN}/vite.config.ts" ]] || fail "moabom-admin_basic vite.config.ts 없음"
+grep -q 'flushFormBeforeSave' "${ACTIVE_ADMIN}/src/handlers/index.ts" \
+  || fail "moabom-admin_basic src handlers 에 flushFormBeforeSave 등록 없음"
+grep -q "entryFileNames: 'js/components.iife.js'" "${ACTIVE_ADMIN}/vite.config.ts" \
+  || fail "moabom-admin_basic vite output 이 dist/js/components.iife.js 계약과 다름"
+grep -qE 'templates/moabom-admin_basic.*npm (ci|run build)' "${DOCKERFILE}" 2>/dev/null \
+  || fail "Dockerfile asset stage 에 moabom-admin_basic 빌드 단계 없음"
 TAB_INFO="${ACTIVE_ADMIN}/layouts/partials/admin_settings/_tab_info.json"
 grep -q 'memory_usage?.used' "${TAB_INFO}" \
   || fail "_tab_info memory_usage — used/total/percentage 필드 바인딩 누락 (React #31)"
 grep -q 'memory_usage ??' "${TAB_INFO}" \
   && fail "_tab_info memory_usage 객체 직접 렌더 — React #31" || true
-ok "moabom-admin_basic dist + flushFormBeforeSave + system info memory binding"
+ok "moabom-admin_basic src + Cloud Build dist 계약 + system info memory binding"
 
 # NOTE: _bundled 정합성 검사는 제거 (G7 업스트림 준비 전환 — 2026-06-07).
 #   - moabom-admin_basic 은 활성 templates/moabom-admin_basic 가 SSOT.

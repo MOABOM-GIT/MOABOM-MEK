@@ -276,7 +276,7 @@ class SettingsServiceProvider extends ServiceProvider
 
         // 스토리지 드라이버 설정
         if (! empty($driverSettings['storage_driver'])) {
-            Config::set('filesystems.default', $driverSettings['storage_driver']);
+            $this->applyStorageDriverConfig((string) $driverSettings['storage_driver']);
         }
 
         // 웹소켓 설정
@@ -355,6 +355,47 @@ class SettingsServiceProvider extends ServiceProvider
         if (! empty($driverSettings['s3_url'])) {
             Config::set('filesystems.disks.s3.url', $driverSettings['s3_url']);
         }
+    }
+
+    private function applyStorageDriverConfig(string $driver): void
+    {
+        Config::set('filesystems.default', $driver);
+
+        // local / s3 는 G7 순정 디스크 정의를 그대로 둔다.
+        // Moabom 기본값인 gcs 에서만 named disk 를 버킷 prefix 로 매핑한다.
+        if ($driver !== 'gcs') {
+            return;
+        }
+
+        $diskNames = ['attachments', 'modules', 'plugins', 'public'];
+        $baseDisk = Config::get("filesystems.disks.{$driver}");
+        if (! is_array($baseDisk)) {
+            return;
+        }
+
+        foreach ($diskNames as $diskName) {
+            Config::set("filesystems.disks.{$diskName}", $this->gcsDiskConfigFor($baseDisk, $diskName));
+        }
+
+        // AttachmentService는 config('attachment.disk')를 직접 사용한다.
+        Config::set('attachment.disk', 'attachments');
+    }
+
+    /**
+     * @param  array<string, mixed>  $baseDisk
+     * @return array<string, mixed>
+     */
+    private function gcsDiskConfigFor(array $baseDisk, string $diskName): array
+    {
+        $diskConfig = $baseDisk;
+        $diskConfig['path_prefix'] = $diskName;
+        $diskConfig['throw'] = true;
+        $diskConfig['report'] = false;
+        if ($diskName === 'public') {
+            $diskConfig['visibility'] = 'public';
+        }
+
+        return $diskConfig;
     }
 
     /**
@@ -556,7 +597,8 @@ class SettingsServiceProvider extends ServiceProvider
             return;
         }
 
-        if (! empty($uploadSettings['disk'])) {
+        $driverSettings = $configRepository->getCategory('drivers');
+        if (empty($driverSettings['storage_driver']) && ! empty($uploadSettings['disk'])) {
             Config::set('filesystems.default', $uploadSettings['disk']);
         }
 

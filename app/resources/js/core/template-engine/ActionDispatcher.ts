@@ -1240,6 +1240,59 @@ export class ActionDispatcher {
       }
     });
 
+    // loadDeferredExtensionAssets: lazy/layout 전략 확장을 실제 진입 시점에만 로드
+    // params.moduleIdentifiers / params.pluginIdentifiers 로 지정된 항목만 G7Config.deferred*에서
+    // 활성 moduleAssets/pluginAssets로 승격한 뒤 ModuleAssetLoader가 중복 로드를 방지한다.
+    this.registerHandler('loadDeferredExtensionAssets', async (action: ActionDefinition, _context: ActionContext) => {
+      if (typeof window === 'undefined') {
+        logger.warn('loadDeferredExtensionAssets: window is not available');
+        return;
+      }
+
+      const G7Config = (window as any).G7Config;
+      if (!G7Config) {
+        logger.warn('loadDeferredExtensionAssets: G7Config not available');
+        return;
+      }
+
+      const moduleIdentifiers = Array.isArray(action.params?.moduleIdentifiers)
+        ? action.params.moduleIdentifiers.map(String)
+        : [];
+      const pluginIdentifiers = Array.isArray(action.params?.pluginIdentifiers)
+        ? action.params.pluginIdentifiers.map(String)
+        : [];
+      const assetLoader = getModuleAssetLoader();
+
+      const modules = moduleIdentifiers.flatMap((identifier: string) => {
+        const asset = G7Config.deferredModuleAssets?.[identifier];
+        if (!asset) {
+          logger.warn(`loadDeferredExtensionAssets: missing deferred module asset for ${identifier}`);
+          return [];
+        }
+        G7Config.moduleAssets = G7Config.moduleAssets || {};
+        G7Config.moduleAssets[identifier] = asset;
+        return [{ identifier, ...asset }];
+      });
+
+      const plugins = pluginIdentifiers.flatMap((identifier: string) => {
+        const asset = G7Config.deferredPluginAssets?.[identifier];
+        if (!asset) {
+          logger.warn(`loadDeferredExtensionAssets: missing deferred plugin asset for ${identifier}`);
+          return [];
+        }
+        G7Config.pluginAssets = G7Config.pluginAssets || {};
+        G7Config.pluginAssets[identifier] = asset;
+        return [{ identifier, ...asset }];
+      });
+
+      if (modules.length > 0) {
+        await assetLoader.loadActiveExtensionAssets(modules);
+      }
+      if (plugins.length > 0) {
+        await assetLoader.loadActiveExtensionAssets(plugins);
+      }
+    });
+
     // reloadModuleHandlers: 모듈 핸들러 동적 로드/제거
     // 모듈 활성화/비활성화 시 window.G7Config.moduleAssets 병합/제거 및 JS 로드
     this.registerHandler('reloadModuleHandlers', async (action: ActionDefinition, _context: ActionContext) => {
@@ -3401,6 +3454,13 @@ export class ActionDispatcher {
     return true;
   }
 
+  private isFileLike(value: unknown): value is Blob {
+    return (
+      (typeof File !== 'undefined' && value instanceof File) ||
+      (typeof Blob !== 'undefined' && value instanceof Blob)
+    );
+  }
+
   /**
    * apiCall 액션을 처리합니다.
    *
@@ -3494,8 +3554,14 @@ export class ActionDispatcher {
         // multipart/form-data: FormData 객체로 변환
         const formData = new FormData();
         for (const [key, value] of Object.entries(body)) {
-          if (value instanceof File || value instanceof Blob) {
+          if (this.isFileLike(value)) {
             formData.append(key, value);
+          } else if (Array.isArray(value)) {
+            value.forEach((item) => {
+              if (item !== null && item !== undefined) {
+                formData.append(key, this.isFileLike(item) ? item : String(item));
+              }
+            });
           } else if (value !== null && value !== undefined) {
             formData.append(
               key,
@@ -5113,6 +5179,7 @@ export class ActionDispatcher {
                 _global: { ...(currentState._global || {}), ...globalPayload }
               };
             }
+
             logger.log('[handleSequence] global state synchronized (mergeMode=%s):', __mergeMode || 'deep', currentState._global);
           } else if (result.data.__target === 'isolated') {
             // isolated 상태 동기화
@@ -6481,6 +6548,7 @@ export class ActionDispatcher {
         target: {
           value: (target as any).value,
           name: (target as any).name ?? '',
+          files: (target as any).files,
         },
       };
 
@@ -6500,6 +6568,7 @@ export class ActionDispatcher {
           checked: (target as HTMLInputElement).checked ?? false,
           type: target.type ?? '',
           tagName: target.tagName,
+          files: (target as HTMLInputElement).files,
         }
       : {};
 

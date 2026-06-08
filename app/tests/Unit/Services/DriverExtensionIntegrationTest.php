@@ -567,7 +567,7 @@ class DriverExtensionIntegrationTest extends TestCase
     public function fallback_to_default_driver_for_all_categories(): void
     {
         $expectedDefaults = [
-            'storage' => ['local', 'filesystems.default'],
+            'storage' => ['gcs', 'filesystems.default'],
             'cache' => ['file', 'cache.default'],
             'session' => ['database', 'session.driver'],
             'queue' => ['database', 'queue.default'],

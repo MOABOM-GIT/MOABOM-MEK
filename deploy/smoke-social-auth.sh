@@ -84,14 +84,14 @@ ok "socialAuth.ts popup SSOT"
 
 if [[ -f "${DIST_JS}" ]]; then
   if grep -q 'popup=yes,noopener=yes,noreferrer=yes' "${DIST_JS}" 2>/dev/null; then
-    fail "dist JS 가 구 popup 구현 — ./scripts/g7 php artisan template:build moabom-basic --active 필요"
+    fail "dist JS 가 구 popup 구현 — Cloud Build asset stage 산출물 갱신 필요"
   elif ! grep -q 'moabom-social-auth-' "${DIST_JS}" 2>/dev/null; then
-    fail "dist JS 에 moabom-social-auth- prefix 없음 — template:build moabom-basic 필요"
+    fail "dist JS 에 moabom-social-auth- prefix 없음 — Cloud Build asset stage 산출물 갱신 필요"
   else
     ok "dist popup socialAuth 번들"
   fi
 else
-  warn "dist/js/components.iife.js 없음 — template:build moabom-basic 후 재검증"
+  warn "dist/js/components.iife.js 없음 — Cloud Build 산출 후 재검증"
 fi
 
 if docker compose -f "${ROOT}/docker-compose.yml" ps --status running app 2>/dev/null | grep -q app; then
@@ -156,7 +156,7 @@ echo "    [ ] Admin enabled → 웹 popup SNS 로그인 E2E"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo ""
-  echo "==> SNS smoke 실패 — deploy/PROJECT-SOCIAL-AUTH-PROXY-MULTITENANT.md 참고"
+  echo "==> SNS smoke 실패 — moabom-social-auth/docs/ADMIN-HOST-SCOPE.md · DEPLOY-RECURRING-FAILURES.md 참고"
   exit 1
 fi
 

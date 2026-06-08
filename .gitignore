@@ -1,7 +1,8 @@
 # ── Moabom MEK monorepo (G7 app + 활성 확장 + deploy) ──
 
-# 로컬 아카이브 (활성 deploy/ssot 로 이전 완료)
+# 로컬 아카이브 (Git·Cloud Build 제외 — 활성 트리만 SSOT)
 _archive_*/
+_archive_20260607/
 
 # GCP·서비스 계정 키 (절대 커밋 금지)
 **/smartmek-*.json

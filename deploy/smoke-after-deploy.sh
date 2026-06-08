@@ -2,10 +2,11 @@
 # v7 성공 기준 HTTP 스모크 (배포 직후)
 set -euo pipefail
 
+ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+ENV_FILE="${ROOT}/deploy/production.env.yaml"
+STRICT_SMOKE="${MOABOM_STRICT_SMOKE:-0}"
 URL="${1:-}"
 if [[ -z "${URL}" ]]; then
-  ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-  ENV_FILE="${ROOT}/deploy/production.env.yaml"
   if [[ -f "${ENV_FILE}" ]] && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}"; then
     URL="https://mek360.com"
   else
@@ -76,6 +77,26 @@ check_auth_or_ok "/api/modules/moabom-personalization/user/activities?type=all&l
 # 전환기 compat — dist 가 구 URL 이면 401/200 (404 금지)
 check_auth_or_ok "/api/modules/moabom-system/user/activities?type=all&limit=1" "legacy activities compat" || FAIL=1
 
+run_optional_smoke() {
+  local label="$1"
+  local script="$2"
+  shift 2
+
+  if [[ -x "${script}" ]]; then
+    echo "==> ${label}"
+    "$@" "${script}" || return 1
+    return 0
+  fi
+
+  if [[ "${STRICT_SMOKE}" == "1" ]]; then
+    echo "FAIL ${label}: missing executable ${script}"
+    return 1
+  fi
+
+  echo "SKIP ${label}: ${script} 없음 (MOABOM_STRICT_SMOKE=1 이면 실패)"
+  return 0
+}
+
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "ERROR: 스모크 실패 — Cloud Run 로그 확인"
   exit 1
@@ -103,23 +124,18 @@ fi
 
 echo "==> 스모크 통과"
 
-ENV_FILE="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}/deploy/production.env.yaml"
 if [[ -f "${ENV_FILE}" ]] && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}"; then
-  echo "==> SaaS wildcard LB smoke (PHASE1 §11)"
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/saas-wildcard-smoke.sh" || exit 1
+  run_optional_smoke "SaaS wildcard LB smoke (PHASE1 §11)" "${ROOT}/deploy/saas-wildcard-smoke.sh" bash || exit 1
   echo "==> SaaS tenant shell-boot smoke"
   sleep 2
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/smoke-saas-tenant-shell-boot.sh" || exit 1
-  echo "==> SaaS tenant isolation (DoD-7)"
-  DEPLOY=1 bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/e2e-tenant-isolation-dod.sh" || exit 1
-  echo "==> SaaS platform hospitals smoke"
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/saas-platform-hospitals-smoke.sh" || exit 1
-  echo "==> SaaS tenant admin template smoke"
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/saas-tenant-admin-smoke.sh" || exit 1
+  run_optional_smoke "SaaS tenant shell-boot smoke" "${ROOT}/deploy/smoke-saas-tenant-shell-boot.sh" bash || exit 1
+  run_optional_smoke "SaaS tenant isolation (DoD-7)" "${ROOT}/deploy/e2e-tenant-isolation-dod.sh" env DEPLOY=1 bash || exit 1
+  run_optional_smoke "SaaS platform hospitals smoke" "${ROOT}/deploy/saas-platform-hospitals-smoke.sh" bash || exit 1
+  run_optional_smoke "SaaS tenant admin template smoke" "${ROOT}/deploy/saas-tenant-admin-smoke.sh" bash || exit 1
   echo "==> moabom-admin_basic SSOT (DoD-8)"
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/check-moabom-admin-basic-ssot.sh" || exit 1
+  bash "${ROOT}/deploy/check-moabom-admin-basic-ssot.sh" || exit 1
   echo "==> SNS OAuth broker smoke (Phase 5)"
-  bash "$(cd "$(dirname "$0")/.." && pwd)/deploy/smoke-social-auth.sh" || exit 1
+  bash "${ROOT}/deploy/smoke-social-auth.sh" || exit 1
 fi
 
 exit 0

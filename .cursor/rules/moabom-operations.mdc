@@ -1,107 +1,45 @@
 ---
-description: Cloud Run 배포·autoload·GCS·에이전트 내부 운영 (사용자 대화는 moabom-user-workflow.mdc 우선)
+description: Cloud Run 배포·autoload·SaaS If-Then (에이전트 내부 — 사용자 대화는 moabom-user-workflow 우선)
 alwaysApply: true
 ---
 
 # Moabom 운영 (에이전트 내부)
 
-**🛑 사용자-facing:** [`moabom-user-workflow.mdc`](moabom-user-workflow.mdc) — **_bundled·update --force·호스트/WSL 빌드·미러·무단 배포 금지.** 아래 WSL 표는 사용자에게 읊지 말고, 허용된 검증/배포 명령만 에이전트가 실행.
+**사용자-facing:** [`moabom-user-workflow.mdc`](moabom-user-workflow.mdc) 우선.
 
-**🛑 매 턴 재읽기:** `deploy/AGENT-FAILURE-ANALYSIS.md` — Tenant settings·DoD-5. **`deploy/DEPLOY-RECURRING-FAILURES.md`** — 배포·레이아웃: **A·B 완료, C(런타임 DB 제거) 범위 외** ([§완료 상태](deploy/DEPLOY-RECURRING-FAILURES.md#완료-상태--ab-vs-c-2026-06-02)). **원인 미고정 시 `_IMAGE_TAG` 증가 금지**, 분기 조건 추가로 해결 금지, 3회 실패 시 구조 진단 전환.
+**배포 RF SSOT:** `deploy/DEPLOY-RECURRING-FAILURES.md` — 원인 미고정 시 `_IMAGE_TAG` 증가 금지, 3회 실패 시 구조 진단.
 
-**🛑 DoD-5 (Tenant appearance) 작업 시작 전 §9 결산 필수**: v98~v108 11 가설 모두 false / 효과 없음 — 같은 가설 (CRLF, streamReads, octet-stream, SDK 우회, truncation) 재시도 금지. 측정 없이 가설 좁히기 금지. 한 배포 = 한 가설.
+**필수 실행:** `deploy/check-before-cloud-build.sh` · `scripts/check-extension-autoload.sh`
 
-**🛑 인프라 가설 금지 (§9.3)**: "Cloud Run TCP Keep-Alive / GCS Edge cache poisoning / Guzzle retry / generation 명시 / Connection: close / `?t=time()` cache busting" 등 인프라성 가설은 **SaaS 도입 전 같은 인프라가 정상이었다는 사실로 모두 부정됨**. 다음 트랙은 §9.6 의 SaaS 코드 candidate (C1~C7).
-
-**에이전트 필수 (문서 대신 실행):** `./deploy/check-before-cloud-build.sh` · `scripts/check-extension-autoload.sh`  
-장문 배경: `deploy/unused/LOCAL-RUN-PARITY.md` (사람용, @로 붙일 때만)
-
-## If-Then (WSL ↔ Run — 에이전트 내부, 사용자에게 표로 설명 금지)
+## If-Then
 
 | IF | THEN |
 |----|------|
-| `modules/moabom-*` 추가·활성·수정 | 활성 `modules/{id}/` 기준으로 작업 → `extension:update-autoload` → `scripts/check-extension-autoload.sh` |
-| `CreditController does not exist` / 크레딧·출석 500 | `bootstrap/cache/autoload-extensions.php`에 `modules/moabom-credit/src` 있는지 · Run 부팅 로그 `Generating extension autoload` ( `Reusing`만이면 구파일) |
-| WSL dev 로그인 실패 | `app/.env` `DB_WRITE_DATABASE` = 루트 `.env` `MYSQL_DATABASE` = 데이터 있는 DB (`moabom-db` 등) |
-| `/api/me/avatar` 500 (Run) | `production.env.yaml` `FILESYSTEM_DISK=gcs` · check [v7-2b] · Cloud Run 로그 `GCS 첨부파일 업로드 실패` |
-| SaaS·Cafe24·멀티 도메인 | `deploy/unused/SAAS-PHASE1.md` · `MOABOM_SAAS_ENABLED` 기본 false · `moabom:saas:platform-migrate` |
-| env만 변경 | `./deploy/build-and-deploy.sh --env-only` |
-| entrypoint·PHP·규칙 변경 | `_IMAGE_TAG` 증가 → `check-before-cloud-build.sh` → `build-and-deploy.sh` |
-| `moabom-admin_basic` layout JSON 변경 | `build-and-deploy.sh` 가 smoke 후 layout sync **자동** (RF-13) · `--async` 만 수동 Job |
+| `modules/moabom-*` 추가·수정 | 활성 경로 작업 → `extension:update-autoload` → `check-extension-autoload.sh` |
+| `CreditController does not exist` | `bootstrap/cache/autoload-extensions.php` 에 `moabom-credit` 경로 확인 |
+| `/api/me/avatar` 500 (Run) | `FILESYSTEM_DISK=gcs` · check [v7-2b] · Cloud Run 로그 |
+| env만 변경 | `build-and-deploy.sh --env-only` |
+| PHP·entrypoint·규칙 변경 | `_IMAGE_TAG` 증가 → `check-before-cloud-build.sh` → `build-and-deploy.sh` |
+| `moabom-admin_basic` layout JSON | `build-and-deploy.sh` smoke 후 layout sync 자동 (RF-13) |
 
-인덱스: **`deploy/README.md`**
-
-## WSL dev (에이전트 내부 — 사용자에게 표·명령 안내 금지)
-
-| 작업 | 명령 |
-|------|------|
-| 기동 | `docker compose up -d` |
-| Artisan | `./scripts/g7 php artisan …` |
-| 모듈 autoload | `./scripts/g7 php artisan extension:update-autoload` → `bash scripts/check-extension-autoload.sh` |
-| 권한 복구 | `bash scripts/fix-permissions.sh` |
-| recreate 후 503 | `bash scripts/ensure-local-boot.sh` → `deploy/unused/LOCAL-DEV-RECOVERY.md` |
-
-상세: `deploy/unused/WSL-SETUP.md`
-
-## Cloud Run 배포 (골든 경로만)
+## Cloud Run 배포 (유일 경로)
 
 1. `deploy/cloudbuild-v3.yaml` — `_IMAGE_TAG` **한 곳만** 증가
-2. `moabom-system` PHP 변경 시 → 활성 `app/modules/moabom-system` 직접 수정 (SSOT). `deploy/unused/sync-moabom-system-from-bundled.sh` 사용 금지(OBSOLETE).
-3. WSL: `extension:update-autoload` 후 `bash scripts/check-extension-autoload.sh` (제출용 autoload 최신)
-4. `./deploy/check-before-cloud-build.sh` (v7-2c autoload 포함)
-5. `./deploy/build-and-deploy.sh` (또는 `--async` 후 **deploy+smoke 필수**)
-6. env만: `./deploy/build-and-deploy.sh --env-only`
+2. `moabom-system` → 활성 `app/modules/moabom-system` 직접 수정
+3. `check-before-cloud-build.sh`
+4. `build-and-deploy.sh`
 
-**사용:** `deploy/cloudbuild-v3.yaml` + `production.env.yaml` + `min-instances=1`  
-**다름:** `deploy/cloudbuild.yaml` (CI, SHA 태그, 파이프라인 내 deploy)
-
-에이전트 전용 전문: **`deploy/DEPLOY-GOLDEN-v7.md`** — 다른 경로·추측 배포 금지.
-
-## 🛑 프론트 빌드·`_bundled` (재발 방지 — 절대 위반 금지)
-
-| 금지 | 이유 |
-|------|------|
-| WSL/호스트에서 `npm run build` · `npm ci` (템플릿·모듈) | `_bundled`·활성 dist 혼선, Windows/WSL 경로 오류 |
-| `php artisan template:build {id}` **`--active` 없이** | **기본 타겟 = `_bundled`** → upstream 미러 **덮어쓰기** |
-| `template:build --all` ( `--active` 없음) | 전체 `_bundled` dist 일괄 덮어쓰기 |
-| 호스트/WSL 에서 `templates/moabom-basic` 직접 `npm ci`/`npm run build` (Windows npm 폴백 → node_modules 파손) | Cloud Build 컨테이너 안 RUN 은 정상 (모든 활성 템플릿/모듈 동일 패턴) |
-| `_bundled` 수정 후 활성 `templates/`·`modules/` 미동기화 | Run 이미지·IDE·라우트 404 |
-
-**dist 갱신 정책 (모든 활성 템플릿/모듈):** Cloud Build 안 `Dockerfile` assets 스테이지가 `templates/moabom-admin_basic`·`templates/moabom-basic`·`modules/moabom-system` 모두 `npm ci && npm run build` 로 직접 산출 → final image 에 COPY. 호스트/WSL 에서 `npm ci`/`npm run build` 는 RF-20 (Windows npm 폴백·node_modules 파손) 사고 방지를 위해 금지. `src` 변경 후에는 `_IMAGE_TAG` 한 단계 증가 + `build-and-deploy.sh` 한 줄로 끝. invariant **v8-16**.
-
-## 배포 금지 (요약)
-
-- WSL dev `node_modules` / `_bundled` 삭제
-- `_bundled`만 수정 후 활성 미동기화
-- `ExtensionManager::getActiveModuleIdentifiers()` (없음 → 500)
-- `route:cache`
-- `production.env.yaml`에 `DB_WRITE_HOST: db`
-- 버그 수정 전 `_IMAGE_TAG` 연속 증가 (이미지 낭비)
-- Dockerfile 의 활성 템플릿/모듈 빌드 단계 **제거** (admin_basic·moabom-basic·moabom-system 모두 컨테이너 안에서 빌드해야 함)
-- **`template:build` 를 `--active` 없이 실행** (`_bundled` dist 덮어쓰기 — upstream 미러 파괴)
-- **WSL/호스트에서 템플릿·모듈 `npm run build` / `npm ci`** (dist·`_bundled` 혼선)
-- `AttachmentService` 서브클래스 bind 시 `StorageInterface` 팩토리 누락 (v12 500)
-- **WSL에서 `docker build -f deploy/Dockerfile ...` / `docker push asia-northeast3-docker.pkg.dev/...` 직접 실행**
-  - 운영 이미지는 **Cloud Build 만** (= `./deploy/build-and-deploy.sh` → `gcloud builds submit --config deploy/cloudbuild-v3.yaml`)
-  - 가드: `deploy/Dockerfile` 의 `MOABOM_BUILD_ENV` ARG + `check-before-cloud-build.sh` [v7-9]
-  - 이유: 활성 `modules/templates/plugins` SSOT — WSL dev 환경의 `_bundled`·임의 dist·`sirsoft-*` 활성 경로가 섞여 들어가면 추적 불가
-- **Dockerfile 에 `COPY .*_bundled` 추가** ([v7-4b] 차단)
+**금지:** 호스트 `docker build`/`push`, WSL `npm run build`/`npm ci`, `route:cache`, `production.env.yaml` 에 `DB_WRITE_HOST: db`, Dockerfile 에 `_bundled` COPY.
 
 ## 환경 분리
 
-| | 설정 | DB | 시크릿 |
-|---|------|-----|------|
-| WSL dev | `app/.env` | `DB_WRITE_HOST=db` | `app/.env` 평문 (로컬 한정) |
-| Cloud Run | `deploy/production.env.yaml` | `DB_SOCKET=/cloudsql/...` | **Google Secret Manager** (매핑 SSOT: `deploy/lib/gcp-env.sh#moabom_gcp_secret_mappings`) |
+| | 설정 | DB |
+|---|------|-----|
+| WSL dev | `app/.env` | `DB_WRITE_HOST=db` |
+| Cloud Run | `deploy/production.env.yaml` | `DB_SOCKET=/cloudsql/...` |
 
-**GCP 인프라 식별자 SSOT:** `deploy/lib/gcp-env.sh` (project / region / Cloud Run service / Cloud SQL / Artifact Registry / GCS). 모든 배포 스크립트(`build-and-deploy.sh`, `lib/image-tag.sh`, `lib/cloud-run-artisan-job.sh`, `smoke-after-deploy.sh`)가 이 파일만 source — 다른 곳에 인프라 값 하드코딩 금지.
+GCP 식별자·시크릿 SSOT: `deploy/lib/gcp-env.sh` · `deploy/secret-manager-bootstrap.sh`
 
-**Secret Manager 부트스트랩:** `bash deploy/secret-manager-bootstrap.sh` (1회 / 값 변경 시). `build-and-deploy.sh` 가 시작 시 시크릿 존재 여부를 자동 가드.
+## 스모크
 
-성능·TTFB: `deploy/unused/CLOUD-RUN-PERFORMANCE.md`
-
-## 스모크 (배포 후)
-
-`deploy/smoke-after-deploy.sh` (frontend-defaults · providers · shell-boot · **weather/current+geolocate** · **분리 모듈 라우트**)
-
-GCS 첨부 변경 시: `GET .../api/attachment/INVALIDHASH12` → **404 JSON** (500 HTML이면 DI 실패).
+`deploy/smoke-after-deploy.sh` — shell-boot, frontend-defaults, providers, weather, 분리 모듈 라우트.
