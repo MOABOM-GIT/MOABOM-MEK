@@ -96,6 +96,14 @@ php artisan config:cache   # Cloud Run entrypoint 와 동일
 
 활성 확장·`deploy/production.env.yaml`·Cloud Build는 **코어 패치와 별도** — 변경하지 않음.
 
+## upstream 패치 검증 (beta.7 = `main` 기준, 2026-06-08)
+
+```bash
+git clone https://github.com/gnuboard/g7.git /tmp/g7-test
+cd /tmp/g7-test && git apply --check /path/to/moabom-core.patch   # OK
+git apply --check /path/to/g7-upstream-hooks.patch                 # OK
+```
+
 ## upstream PR 준비 (`g7-upstream-hooks.patch`)
 
 `gnuboard/g7` 기여 1순위 — **Moabom 문자열 없는 범용 확장 훅 3파일 + 회귀 테스트**:
