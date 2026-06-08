@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "description": "moabom-system 분리(2026-06-02) 이후 구 prefix API 호환 SSOT. dist·PWA 캐시가 갱신되기 전까지 moabom-system 라우트로 신규 핸들러에 위임한다.",
+  "remove_when": "invariant v8-16 통과(dist 에 구 URL 0건) 후 MOABOM_DECOMPOSITION_COMPAT=false",
+  "legacy_prefix": "/api/modules/moabom-system/",
+  "routes": [
+    {
+      "legacy_suffix": "user/activities",
+      "target": "/api/modules/moabom-personalization/user/activities",
+      "phase": 2,
+      "auth": "sanctum"
+    },
+    {
+      "legacy_suffix": "weather/current",
+      "target": "/api/plugins/moabom-weather/weather/current",
+      "phase": 1,
+      "auth": "public"
+    },
+    {
+      "legacy_suffix": "weather/geolocate",
+      "target": "/api/plugins/moabom-weather/weather/geolocate",
+      "phase": 1,
+      "auth": "public"
+    },
+    {
+      "legacy_suffix": "apps/ai/generate",
+      "target": "/api/modules/moabom-apps/apps/ai/generate",
+      "phase": 3,
+      "auth": "sanctum"
+    },
+    {
+      "legacy_suffix": "apps/generated",
+      "target": "/api/modules/moabom-apps/apps/generated",
+      "phase": 3,
+      "auth": "sanctum"
+    },
+    {
+      "legacy_suffix": "apps/generated/{id}",
+      "target": "/api/modules/moabom-apps/apps/generated/{id}",
+      "phase": 3,
+      "auth": "sanctum"
+    },
+    {
+      "legacy_suffix": "apps/cpap-mask/measurements/latest",
+      "target": "/api/modules/moabom-cpap/apps/cpap-mask/measurements/latest",
+      "phase": 4,
+      "auth": "sanctum"
+    },
+    {
+      "legacy_suffix": "apps/cpap-mask/measurements",
+      "target": "/api/modules/moabom-cpap/apps/cpap-mask/measurements",
+      "phase": 4,
+      "auth": "sanctum"
+    }
+  ]
+}

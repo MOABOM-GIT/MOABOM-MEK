@@ -1,0 +1,69 @@
+# ── Moabom MEK monorepo (G7 app + 활성 확장 + deploy) ──
+
+# 로컬 아카이브 (활성 deploy/ssot 로 이전 완료)
+_archive_*/
+
+# GCP·서비스 계정 키 (절대 커밋 금지)
+**/smartmek-*.json
+docker/php/*.json
+credentials.json
+service-account.json
+*.pem
+*.p12
+
+# 비밀·환경
+.env
+.env.*
+!/.env.example
+deploy/production.env.yaml
+deploy/production.env.yaml.*
+deploy/backups/
+app/.env
+app/.env.*
+!app/.env.example
+!app/.env.testing.example
+
+# PHP / Composer (Cloud Build·Dockerfile 에서 재생성)
+app/vendor/
+app/vendor-bundle.zip
+app/storage/composer/
+
+# Node (Cloud Build npm ci)
+**/node_modules/
+
+# 빌드 산출물 (Cloud Build SSOT — Dockerfile 이 dist 생성)
+**/dist/
+
+# Laravel 런타임
+app/storage/logs/
+app/storage/framework/cache/
+app/storage/framework/sessions/
+app/storage/framework/views/
+app/storage/*.key
+app/bootstrap/cache/*.php
+!app/bootstrap/cache/.gitignore
+!app/bootstrap/cache/autoload-extensions.php
+
+# G7 upstream 미러 (런타임·이미지 SSOT 아님)
+app/modules/_bundled/
+app/templates/_bundled/
+app/plugins/_bundled/
+app/lang-packs/_bundled/
+
+# g7 nested git 백업 (모노레포 전환 잔여)
+app/.git.g7-upstream-backup/
+
+# 로그·캐시·IDE
+*.log
+**/.phpunit.result.cache
+**/.vite/
+**/.turbo/
+**/.cache/
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# 로컬 Docker override (선택)
+docker-compose.override.yml

@@ -1,0 +1,90 @@
+# gcloud builds submit 업로드 제외 (Cloud Build 소스 tarball)
+# .dockerignore 와 별개 — 이 파일이 없으면 node_modules 등이 전부 업로드됨 (1GB+)
+
+.git
+.gitignore
+**/.git
+
+# 문서·로컬 배포 메모
+**/*.md
+!deploy/DEPLOY-RECURRING-FAILURES.md
+deploy/WSL-SETUP.md
+deploy/backups/
+
+# 환경·비밀 (이미지에는 production.env.yaml 미포함 — .dockerignore 참고)
+.env
+.env.*
+app/.env
+app/.env.*
+!app/.env.example
+
+# Laravel dev (Dockerfile vendor 단계에서 재생성)
+app/vendor/
+app/node_modules/
+app/storage/**
+app/storage/logs/
+app/storage/framework/cache/**
+app/storage/framework/sessions/**
+app/storage/framework/views/**
+app/bootstrap/cache/*
+!app/bootstrap/cache/.gitignore
+!app/bootstrap/cache/autoload-extensions.php
+
+# _bundled = 개발·패키징 소스만 (런타임은 modules/·templates/·plugins/ 활성 경로)
+app/modules/_bundled/
+app/templates/_bundled/
+app/plugins/_bundled/
+app/lang-packs/_bundled/
+
+# 실험/레퍼런스 확장(활성 경로 포함) — Cloud Run 런타임 이미지 제외
+app/modules/gnuboard7-hello_module/
+app/plugins/gnuboard7-hello_plugin/
+app/templates/gnuboard7-hello_admin_template/
+app/templates/gnuboard7-hello_user_template/
+app/templates/sirsoft-admin_basic/
+app/templates/sirsoft-basic/
+
+# 템플릿·플러그인·모듈 내 node_modules (로컬 개발용 — 삭제 불필요, 업로드만 제외)
+**/node_modules/
+
+# 프론트·도구 캐시 (개발용, 배포 tarball 불필요)
+**/.vite/
+**/.turbo/
+**/.cache/
+**/coverage/
+**/.nyc_output/
+**/.eslintcache
+*.tsbuildinfo
+
+# 테스트·캐시 (Cloud Build tarball / 이미지 제외)
+# 코어 tests/ 와 활성 modules/templates/plugins 내부 tests/, __tests__/ 모두 제외
+app/tests/
+app/.phpunit.result.cache
+app/phpunit.xml
+**/__tests__/
+**/tests/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# 로컬 Docker
+docker-compose.override.yml
+*.code-workspace
+.vscode/
+.cursor/
+
+# unused 아카이브는 전부 배포 미포함
+**/unused/
+
+# 대용량 로컬 캐시/백업 (Cloud Build 업로드 불필요)
+app/storage/composer/
+app/storage/app/extension_backups/
+deploy/unused/backups/
+app/vendor-bundle.zip
+app/modules/**/vendor-bundle.zip
+
+# 소스맵/참고용 코드 (런타임 불필요)
+**/*.map
+app/docs/
+app/public/install/

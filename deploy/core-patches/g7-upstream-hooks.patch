@@ -1,0 +1,276 @@
+diff --git a/app/Http/Middleware/EnforceIdentityPolicy.php b/app/Http/Middleware/EnforceIdentityPolicy.php
+index 334c28a..197c517 100644
+--- a/app/Http/Middleware/EnforceIdentityPolicy.php
++++ b/app/Http/Middleware/EnforceIdentityPolicy.php
+@@ -57,6 +57,10 @@ public function __construct(
+      */
+     public function handle(Request $request, Closure $next, ?string $policyKey = null): Response
+     {
++        if ($this->shouldSkipPublicShellBootPath($request)) {
++            return $next($request);
++        }
++
+         $policies = $this->resolvePolicies($request, $policyKey);
+ 
+         foreach ($policies as $policy) {
+@@ -214,4 +218,26 @@ protected function resolveTargetEmail(Request $request): ?string
+ 
+         return null;
+     }
++
++    /**
++     * 홈 셸 부트용 공개 read-only API — IDV 인덱스 조회 생략 (TTFB 절감).
++     */
++    protected function shouldSkipPublicShellBootPath(Request $request): bool
++    {
++        $skipRequestPatterns = array_values(array_filter(
++            (array) config('core.identity_policy_middleware.skip_request_patterns', []),
++            static fn ($value) => is_string($value) && $value !== ''
++        ));
++
++        if ($skipRequestPatterns !== [] && $request->is(...$skipRequestPatterns)) {
++            return true;
++        }
++
++        $skipRouteNames = array_values(array_filter(
++            (array) config('core.identity_policy_middleware.skip_route_names', []),
++            static fn ($value) => is_string($value) && $value !== ''
++        ));
++
++        return $skipRouteNames !== [] && $request->routeIs(...$skipRouteNames);
++    }
+ }
+diff --git a/app/Services/SettingsService.php b/app/Services/SettingsService.php
+index 829817d..6e93427 100644
+--- a/app/Services/SettingsService.php
++++ b/app/Services/SettingsService.php
+@@ -36,9 +36,72 @@ public function __construct(
+     private function invalidateSettingsCache(): void
+     {
+         $this->cache->forget('settings.system');
++
++        if ($this->shouldSkipConfigClear()) {
++            return;
++        }
++
+         Artisan::call('config:clear');
+     }
+ 
++    /**
++     * config:clear 생략 가드.
++     *
++     * 코어는 특정 확장(모듈/플러그인) 클래스를 직접 참조하지 않고,
++     * core.config_clear_guards 설정을 통해 런타임 정책을 주입받습니다.
++     *
++     * guard 예시:
++     * [
++     *   'enabled_config' => 'my-module.feature.enabled',
++     *   'bound_abstract' => App\\Support\\RequestScopedContext::class,
++     *   'context_not_null_method' => 'current',
++     * ]
++     */
++    private function shouldSkipConfigClear(): bool
++    {
++        $guards = config('core.config_clear_guards', []);
++        if (! is_array($guards) || $guards === []) {
++            return false;
++        }
++
++        foreach ($guards as $guard) {
++            if (! is_array($guard)) {
++                continue;
++            }
++
++            $enabledConfig = $guard['enabled_config'] ?? null;
++            if (is_string($enabledConfig) && $enabledConfig !== '' && ! (bool) config($enabledConfig, false)) {
++                continue;
++            }
++
++            $boundAbstract = $guard['bound_abstract'] ?? null;
++            if (is_string($boundAbstract) && $boundAbstract !== '' && ! app()->bound($boundAbstract)) {
++                continue;
++            }
++
++            $contextMethod = $guard['context_not_null_method'] ?? null;
++            if (is_string($contextMethod) && $contextMethod !== '') {
++                if (! is_string($boundAbstract) || $boundAbstract === '') {
++                    continue;
++                }
++
++                try {
++                    $context = app($boundAbstract);
++                } catch (\Throwable) {
++                    continue;
++                }
++
++                if (! is_object($context) || ! method_exists($context, $contextMethod) || $context->{$contextMethod}() === null) {
++                    continue;
++                }
++            }
++
++            return true;
++        }
++
++        return false;
++    }
++
+     /**
+      * 모든 시스템 설정을 조회합니다.
+      *
+diff --git a/config/core.php b/config/core.php
+index 50534ca..8ff41d5 100644
+--- a/config/core.php
++++ b/config/core.php
+@@ -360,7 +360,7 @@
+             'url' => '/admin/notification-logs',
+             'icon' => 'fas fa-bell',
+             'parent_id' => null,
+-            'order' => 3,
++            'order' => 4,
+             'is_active' => true,
+         ],
+         [
+@@ -369,7 +369,7 @@
+             'url' => '/admin/identity/logs',
+             'icon' => 'fas fa-clipboard-check',
+             'parent_id' => null,
+-            'order' => 4,
++            'order' => 5,
+             'is_active' => true,
+         ],
+         [
+@@ -378,7 +378,7 @@
+             'url' => '/admin/activity-logs',
+             'icon' => 'fas fa-history',
+             'parent_id' => null,
+-            'order' => 5,
++            'order' => 6,
+             'is_active' => true,
+         ],
+         [
+@@ -387,7 +387,7 @@
+             'url' => '/admin/menus',
+             'icon' => 'fas fa-bars',
+             'parent_id' => null,
+-            'order' => 6,
++            'order' => 7,
+             'is_active' => true,
+         ],
+         [
+@@ -396,7 +396,7 @@
+             'url' => '/admin/users',
+             'icon' => 'fas fa-users',
+             'parent_id' => null,
+-            'order' => 7,
++            'order' => 8,
+             'is_active' => true,
+         ],
+         [
+@@ -405,7 +405,7 @@
+             'url' => '/admin/roles',
+             'icon' => 'fas fa-lock',
+             'parent_id' => null,
+-            'order' => 8,
++            'order' => 9,
+             'is_active' => true,
+         ],
+         [
+@@ -414,7 +414,7 @@
+             'url' => '/admin/modules',
+             'icon' => 'fas fa-cube',
+             'parent_id' => null,
+-            'order' => 9,
++            'order' => 10,
+             'is_active' => true,
+         ],
+         [
+@@ -423,7 +423,7 @@
+             'url' => '/admin/plugins',
+             'icon' => 'fas fa-puzzle-piece',
+             'parent_id' => null,
+-            'order' => 10,
++            'order' => 11,
+             'is_active' => true,
+         ],
+         [
+@@ -432,7 +432,7 @@
+             'url' => '/admin/templates',
+             'icon' => 'fas fa-palette',
+             'parent_id' => null,
+-            'order' => 11,
++            'order' => 12,
+             'is_active' => true,
+         ],
+         [
+@@ -441,7 +441,7 @@
+             'url' => '/admin/schedules',
+             'icon' => 'fas fa-clock',
+             'parent_id' => null,
+-            'order' => 12,
++            'order' => 13,
+             'is_active' => false,
+         ],
+     ],
+@@ -588,6 +588,20 @@
+         ],
+     ],
+ 
++    /*
++    |--------------------------------------------------------------------------
++    | 런타임 가드 주입 포인트 (확장 전용)
++    |--------------------------------------------------------------------------
++    | 코어가 특정 모듈/플러그인을 직접 참조하지 않도록, 런타임 정책은
++    | 확장에서 이 설정 키를 주입해 사용합니다.
++    */
++    'config_clear_guards' => [],
++
++    'identity_policy_middleware' => [
++        'skip_request_patterns' => [],
++        'skip_route_names' => [],
++    ],
++
+     /*
+     |--------------------------------------------------------------------------
+     | 코어 본인인증(IDV) 정책
+diff --git a/tests/Feature/Api/Admin/SettingsControllerTest.php b/tests/Feature/Api/Admin/SettingsControllerTest.php
+index 0b89306..05f9faa 100644
+--- a/tests/Feature/Api/Admin/SettingsControllerTest.php
++++ b/tests/Feature/Api/Admin/SettingsControllerTest.php
+@@ -711,6 +711,37 @@ public function test_system_info_memory_usage_has_disk_like_structure(): void
+         $this->assertLessThanOrEqual(100, $memory['percentage']);
+     }
+ 
++    /**
++     * php_extensions 는 required/optional 맵이며 값은 bool 이어야 한다.
++     *
++     * 회귀: admin 정보 탭 Object.entries(ext) — ext[1] 이 bool 이 아니면
++     * 아이콘이 전부 disconnected 로 보일 수 있다.
++     */
++    public function test_system_info_php_extensions_are_boolean_flags(): void
++    {
++        $response = $this->authRequest()->getJson('/api/admin/settings/system-info');
++
++        $response->assertStatus(200)
++            ->assertJsonStructure([
++                'data' => [
++                    'php_extensions' => [
++                        'required',
++                        'optional',
++                    ],
++                ],
++            ]);
++
++        $extensions = $response->json('data.php_extensions');
++        $this->assertNotEmpty($extensions['required']);
++        foreach ($extensions['required'] as $name => $loaded) {
++            $this->assertIsBool($loaded, "required extension {$name} must be bool");
++        }
++        $this->assertTrue(
++            $extensions['required']['openssl'] ?? false,
++            'openssl must be loaded in test/runtime PHP'
++        );
++    }
++
+     /**
+      * CPU 정보는 비어있지 않은 문자열이며, 명령 실행 오류 메시지의 꼬리말이
+      * 그대로 노출되지 않는다.

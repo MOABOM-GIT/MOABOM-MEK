@@ -1,0 +1,67 @@
+# Git & docs
+.git
+.gitignore
+**/*.md
+deploy/WSL-SETUP.md
+deploy/production.env.yaml
+
+# Local-only compose overrides
+docker-compose.override.yml
+*.code-workspace
+.vscode/
+.cursor/
+.env
+.env.*
+app/.env
+app/.env.*
+!app/.env.example
+
+# Laravel dev artifacts (rebuilt in image)
+app/vendor
+app/node_modules
+app/storage
+**/node_modules
+deploy/backups
+app/storage/logs
+app/storage/framework/cache/*
+app/storage/framework/sessions/*
+app/storage/framework/views/*
+app/bootstrap/cache/*
+!app/bootstrap/cache/.gitignore
+!app/bootstrap/cache/autoload-extensions.php
+
+# Tests & dev tooling (Cloud Run 런타임 이미지 제외)
+# 코어 tests/ 와 활성 modules/templates/plugins 내부 tests/, __tests__/ 모두 제외
+app/tests
+app/.phpunit.result.cache
+app/phpunit.xml
+**/__tests__
+**/tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# 개발용 _bundled (이미지에는 활성 modules/templates/plugins 만)
+app/modules/_bundled
+app/templates/_bundled
+app/plugins/_bundled
+app/lang-packs/_bundled
+
+# Large / optional
+app/.git
+
+# unused 아카이브는 전부 이미지 빌드 제외
+**/unused/
+
+# 대용량 로컬 캐시/백업 (이미지 빌드 불필요)
+app/storage/composer
+app/storage/app/extension_backups
+deploy/unused/backups
+app/vendor-bundle.zip
+app/modules/**/vendor-bundle.zip
+
+# 소스맵/참고용 코드 (런타임 불필요)
+**/*.map
+app/docs
+app/public/install

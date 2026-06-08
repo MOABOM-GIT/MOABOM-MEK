@@ -1,0 +1,102 @@
+---
+description: G7 코어 비수정·디버깅·build/update 체인·WSL artisan (항상 적용)
+alwaysApply: true
+---
+
+# Moabom + G7 — 필수 규칙
+
+## G7 SSoT (코어 문서)
+
+- 개발 가이드: `app/AGENTS.md`
+- 백엔드·프론트·확장 상세: `app/docs/` (예: `extension/extension-manager.md`, `extension/module-basics.md`, `frontend/layout-json.md`)
+- Moabom 운영·배포 상세: `deploy/README.md`
+- 항상 현재 배정받은 AI 에이전트 이름을 알려주고 작업을 시작한다.
+
+**그누보드7 코어**(`app/app`, `app/resources/js/core`, 코어 `routes/`·`config/`·`database/migrations/`·`tests/`)는 `core:update`·배포마다 덮어쓰이므로 **수정 금지**.
+
+## Moabom 작업 허용 경로
+
+- `app/modules/moabom-*`, `app/plugins/moabom-*`
+- `app/templates/moabom-admin_basic` (Moabom admin SSOT), `app/templates/_bundled/moabom-admin_basic` (참고/자연 도태 가능)
+- `app/templates/_bundled/moabom-basic`, `app/templates/_bundled/sirsoft-admin_basic` (업스트림 원본·merge용)
+- `app/lang-packs/`, `deploy/`, `scripts/`, `.cursor/rules/`
+
+코어 API·훅이 없으면 **코어에 추가하지 말 것** — 모듈 HTTP·미들웨어·`components.json`·lang JSON으로 해결. `ComponentRegistry` private API 우회 금지.
+
+## 재발 방지 디버깅 (필수)
+
+1. **증상-체인:** `URL → API/JSON/JS 응답 → 소스맵 원본 → 런타임 상태`
+2. **서빙 산출물 우선:** `/api/templates/assets/...`, `/api/plugins/assets/...` 실제 내용·`v=` 캐시
+3. **i18n:** 코드 키 = 병합 카탈로그 키, JSON 중복 키 금지
+4. **우회 금지:** 원인 미확정 시 임시 분기·코어 `state.locale` 직접 대입 금지
+5. **3회 실패 시** 구조 진단으로 전환
+6. **수정 후:** API/서빙 JS 변경 확인 + 회귀 테스트
+
+## build → update → cache (WSL·이미지 공통)
+
+| 대상 | 빌드 | 활성 반영 | 서빙 예 |
+|------|------|-----------|---------|
+| `moabom-basic` | `template:build` | 활성 템플릿 직접 반영(별도 bundled update 불필요) | `/api/templates/assets/moabom-basic/js/components.iife.js` |
+| 플러그인 | `plugin:build <id>` | `plugin:update <id> --force` | `/api/plugins/assets/<id>/dist/js/plugin.iife.js` |
+| 모듈 | `module:build <id>` | `module:update <id> --force` | `/api/modules/assets/<id>/dist/js/module.iife.js` |
+
+```bash
+./scripts/g7 php artisan template:cache-clear
+./scripts/g7 php artisan optimize:clear
+```
+
+서빙 검증 예:
+
+```bash
+curl -sS "http://localhost:8080/api/templates/assets/moabom-basic/js/components.iife.js" | grep -E 'n\.locale=|state\.locale=' || echo "OK"
+curl -sS "http://localhost:8080/api/plugins/assets/moabom-auth-hardening/dist/js/plugin.iife.js" | grep -q attributeName && echo "OK: domGuard"
+```
+
+Cloud Run: `_bundled`·`node_modules`는 tarball/이미지 제외 — **활성** `modules/`·`templates/`·`dist`만. 상세: `deploy/unused/MOABOM-ARCHITECTURE.md`, `deploy/DEPLOY-GOLDEN-v7.md`.
+
+## 프론트·라우트 (흰 화면·500 방지)
+
+- `MutationObserver`가 자신이 쓴 마커 속성까지 재처리 → 무한 루프. `moabom-auth-hardening` `domGuard`: `on*`·위험 URL만.
+- `__invoke` 컨트롤러: `Route::get('...', [FooController::class, '__invoke']);` (`FooController::class` 단독 금지)
+- 프로덕션 경로에 영구 `debugTag`/`reason` 로그 금지. 임시는 `localStorage moabom_debug=1` + DEV 게이트.
+
+## WSL ↔ Cloud Run (에이전트 내부 — 사용자에게 표로 설명 금지)
+
+- **설정 분리:** `app/.env` (WSL dev) ≠ `deploy/production.env.yaml` (Run). 이미지에 dev `.env` 없음.
+- **모듈 활성 후:** `extension:update-autoload` — 라우트만 있고 클래스 없으면 500 (`CreditController does not exist`).
+- **검증:** `bash scripts/check-extension-autoload.sh` (배포 전 `deploy/check-before-cloud-build.sh` [v7-2c]).
+- **DB명:** WSL `DB_WRITE_DATABASE` = compose `MYSQL_DATABASE` = 실제 데이터 DB.
+
+## WSL + Docker (에이전트 내부)
+
+- 루트 `~/moabom`, URL `http://localhost:8080`
+- **항상** `./scripts/g7 php artisan …` (FPM과 동일 `www-data`, root exec 금지)
+- `php artisan config:cache` **WSL dev 금지** — `optimize:clear`만
+- nginx: `*.js` regex + `=404` 금지 (`/api/`, `/pwa/` Laravel-first). `bash scripts/health-check.sh`
+- recreate 후 503: `bash scripts/ensure-local-boot.sh` → `deploy/unused/LOCAL-DEV-RECOVERY.md`
+- 프론트 `node_modules`: `bash scripts/dev-install-frontend.sh`
+
+## 코어 업데이트 루틴
+
+```bash
+bash deploy/check-core-patches.sh          # 적용 전·후 정합성
+bash deploy/check-g7-core-guard-regression.sh
+php artisan core:update                    # Cloud Build/Run: 컨테이너 내 artisan
+bash deploy/core-patches/apply-core-patches.sh
+bash deploy/check-core-patches.sh
+bash deploy/check-core-sync-regression.sh
+# composer: spatie/laravel-google-cloud-storage 유지 확인
+```
+
+활성 확장 빌드는 Cloud Build SSOT (`deploy/Dockerfile`). `_bundled` 업스트림 미러는 `core:update`로 자연 동기화 — 활성 `moabom-*` 덮어쓰기 금지.
+
+**Git SSOT:** [MOABOM-MEK](https://github.com/MOABOM-GIT/MOABOM-MEK) (`origin`). G7 upstream remote 이름: `g7-upstream`.
+
+활성 관리자 템플릿 ID는 DB 확인 (**목표: `moabom-admin_basic`** — 재설계: `deploy/PROJECT-ADMIN-SAAS-REBUILD.md`).
+
+## 관련 규칙 (상세는 deploy/)
+
+| 규칙 | 내용 |
+|------|------|
+| `moabom-architecture.mdc` | 자산 4계층·Ghost/deferred·TS 경계·앱 셸 패널 |
+| `moabom-operations.mdc` | If-Then·배포·autoload·GCS·스모크 (에이전트 운영 SSOT) |

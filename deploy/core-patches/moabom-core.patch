@@ -1,0 +1,846 @@
+diff --git a/app/Http/Controllers/Api/Public/PublicTemplateController.php b/app/Http/Controllers/Api/Public/PublicTemplateController.php
+index 2445226..05d469d 100644
+--- a/app/Http/Controllers/Api/Public/PublicTemplateController.php
++++ b/app/Http/Controllers/Api/Public/PublicTemplateController.php
+@@ -33,7 +33,7 @@ public function getRoutes(string $identifier): JsonResponse
+         $this->logApiUsage('templates.routes', ['identifier' => $identifier]);
+ 
+         // 캐시 버전을 키에 포함하여 모듈/플러그인 변경 시 캐시 무효화
+-        $cacheVersion = request()->query('v', 0);
++        $cacheVersion = $this->resolveCacheVersion();
+ 
+         // 캐싱된 응답 반환 (1시간 유효)
+         $routesData = $this->cached(
+@@ -217,7 +217,7 @@ public function serveLanguage(string $identifier, string $locale): JsonResponse
+         ]);
+ 
+         // 캐시 버전을 키에 포함하여 모듈/플러그인 변경 시 캐시 무효화
+-        $cacheVersion = request()->query('v', 0);
++        $cacheVersion = $this->resolveCacheVersion();
+ 
+         // 캐싱된 응답 반환 (1시간 유효)
+         $languageData = $this->cached(
+@@ -262,4 +262,26 @@ function () use ($identifier, $locale) {
+         // 성공 응답 (JSON 데이터 직접 반환, 래핑 없음)
+         return $this->cachedJsonResponse($languageData['data'], 3600);
+     }
++
++    /**
++     * 템플릿 API 캐시 버전 결정:
++     * - v 쿼리 파라미터가 유효하면 우선 사용
++     * - 없거나 비정상이면 현재 확장 캐시 버전으로 폴백
++     *
++     * 이렇게 하면 프론트가 v를 누락해도 오래된 v0 캐시로 고정되지 않는다.
++     */
++    private function resolveCacheVersion(): int
++    {
++        $fallback = ClearsTemplateCaches::getExtensionCacheVersion();
++        $raw = request()->query('v');
++
++        if (is_numeric($raw)) {
++            $parsed = (int) $raw;
++            if ($parsed >= 0) {
++                return $parsed;
++            }
++        }
++
++        return $fallback;
++    }
+ }
+diff --git a/app/Http/Middleware/EnforceIdentityPolicy.php b/app/Http/Middleware/EnforceIdentityPolicy.php
+index 334c28a..197c517 100644
+--- a/app/Http/Middleware/EnforceIdentityPolicy.php
++++ b/app/Http/Middleware/EnforceIdentityPolicy.php
+@@ -57,6 +57,10 @@ public function __construct(
+      */
+     public function handle(Request $request, Closure $next, ?string $policyKey = null): Response
+     {
++        if ($this->shouldSkipPublicShellBootPath($request)) {
++            return $next($request);
++        }
++
+         $policies = $this->resolvePolicies($request, $policyKey);
+ 
+         foreach ($policies as $policy) {
+@@ -214,4 +218,26 @@ protected function resolveTargetEmail(Request $request): ?string
+ 
+         return null;
+     }
++
++    /**
++     * 홈 셸 부트용 공개 read-only API — IDV 인덱스 조회 생략 (TTFB 절감).
++     */
++    protected function shouldSkipPublicShellBootPath(Request $request): bool
++    {
++        $skipRequestPatterns = array_values(array_filter(
++            (array) config('core.identity_policy_middleware.skip_request_patterns', []),
++            static fn ($value) => is_string($value) && $value !== ''
++        ));
++
++        if ($skipRequestPatterns !== [] && $request->is(...$skipRequestPatterns)) {
++            return true;
++        }
++
++        $skipRouteNames = array_values(array_filter(
++            (array) config('core.identity_policy_middleware.skip_route_names', []),
++            static fn ($value) => is_string($value) && $value !== ''
++        ));
++
++        return $skipRouteNames !== [] && $request->routeIs(...$skipRouteNames);
++    }
+ }
+diff --git a/app/Providers/ModuleRouteServiceProvider.php b/app/Providers/ModuleRouteServiceProvider.php
+index 2e28b5a..a3f3aa5 100644
+--- a/app/Providers/ModuleRouteServiceProvider.php
++++ b/app/Providers/ModuleRouteServiceProvider.php
+@@ -2,9 +2,8 @@
+ 
+ namespace App\Providers;
+ 
+-use App\Enums\ExtensionStatus;
+ use App\Extension\ExtensionManager;
+-use App\Models\Module;
++use App\Extension\ModuleManager;
+ use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+ use Illuminate\Support\Facades\File;
+ use Illuminate\Support\Facades\Route;
+@@ -38,8 +37,8 @@ public function boot(): void
+      */
+     protected function loadModuleRoutes(): void
+     {
+-        // .env 파일이 없으면 스킵 (인스톨러 실행 전)
+-        if (! File::exists(base_path('.env'))) {
++        // 인스톨러 실행 전: .env·APP_KEY 모두 없으면 스킵 (Cloud Run은 env 변수만 사용)
++        if (! File::exists(base_path('.env')) && empty(config('app.key'))) {
+             return;
+         }
+ 
+@@ -67,10 +66,8 @@ protected function loadModuleRoutes(): void
+             }
+         }
+ 
+-        // 활성화된 모듈 identifier 목록 가져오기
+-        $activeModuleIdentifiers = Module::where('status', ExtensionStatus::Active->value)
+-            ->pluck('identifier')
+-            ->toArray();
++        // 활성 모듈 목록 — DB 매 요청 조회 대신 캐시 (CachesModuleStatus)
++        $activeModuleIdentifiers = ModuleManager::getActiveModuleIdentifiers();
+ 
+         $modules = File::directories($modulesPath);
+ 
+diff --git a/app/Providers/PluginRouteServiceProvider.php b/app/Providers/PluginRouteServiceProvider.php
+index 5de99fd..c9a0e12 100644
+--- a/app/Providers/PluginRouteServiceProvider.php
++++ b/app/Providers/PluginRouteServiceProvider.php
+@@ -34,8 +34,8 @@ public function boot(): void
+      */
+     protected function loadPluginRoutes(): void
+     {
+-        // .env 파일이 없으면 스킵 (인스톨러 실행 전)
+-        if (! File::exists(base_path('.env'))) {
++        // 인스톨러 실행 전: .env·APP_KEY 모두 없으면 스킵 (Cloud Run은 env 변수만 사용)
++        if (! File::exists(base_path('.env')) && empty(config('app.key'))) {
+             return;
+         }
+ 
+diff --git a/app/Providers/SettingsServiceProvider.php b/app/Providers/SettingsServiceProvider.php
+index ac222bc..b965ca3 100644
+--- a/app/Providers/SettingsServiceProvider.php
++++ b/app/Providers/SettingsServiceProvider.php
+@@ -32,26 +32,10 @@ class SettingsServiceProvider extends ServiceProvider
+ 
+     /**
+      * 서비스를 등록합니다.
+-     *
+-     * DB 연결 전에 실행되므로 JSON 파일에서 직접 읽습니다.
+      */
+     public function register(): void
+     {
+-        // JsonConfigRepository를 직접 인스턴스화 (DI 컨테이너 사용 불가)
+-        $configRepository = new JsonConfigRepository;
+-
+-        // 각 설정 파일이 존재하는 경우에만 해당 설정을 오버라이드
+-        $this->applyMailConfig($configRepository);
+-        $this->applyAppConfig($configRepository);
+-        $this->applyDebugConfig($configRepository);
+-        $this->applyDriverConfig($configRepository);
+-        $this->applyCacheConfig($configRepository);
+-        $this->applyUploadConfig($configRepository);
+-        $this->applyCoreUpdateConfig($configRepository);
+-        $this->applyGeoIpConfig($configRepository);
+-
+-        // 코어 설정을 g7_settings.core prefix로 저장
+-        $this->loadCoreSettingsToConfig($configRepository);
++        //
+     }
+ 
+     /**
+@@ -75,11 +59,23 @@ private function loadCoreSettingsToConfig(JsonConfigRepository $configRepository
+     }
+ 
+     /**
+-     * 서비스를 부트스트랩합니다.
++     * JSON 설정을 config에 주입합니다.
++     *
++     * boot()에서 실행 — Cloud Run GCS 드라이버(Spatie)가 register() 이후 boot()에서 등록되기 때문.
+      */
+     public function boot(): void
+     {
+-        // 부트스트랩 후 추가 설정 적용 가능
++        $configRepository = new JsonConfigRepository;
++
++        $this->applyMailConfig($configRepository);
++        $this->applyAppConfig($configRepository);
++        $this->applyDebugConfig($configRepository);
++        $this->applyDriverConfig($configRepository);
++        $this->applyCacheConfig($configRepository);
++        $this->applyUploadConfig($configRepository);
++        $this->applyCoreUpdateConfig($configRepository);
++        $this->applyGeoIpConfig($configRepository);
++        $this->loadCoreSettingsToConfig($configRepository);
+     }
+ 
+     /**
+diff --git a/app/Repositories/JsonConfigRepository.php b/app/Repositories/JsonConfigRepository.php
+index ed63319..94359d0 100644
+--- a/app/Repositories/JsonConfigRepository.php
++++ b/app/Repositories/JsonConfigRepository.php
+@@ -4,6 +4,7 @@
+ 
+ use App\Contracts\Repositories\ConfigRepositoryInterface;
+ use Illuminate\Support\Arr;
++use Illuminate\Support\Facades\Cache;
+ use Illuminate\Support\Facades\Log;
+ use Illuminate\Support\Facades\Storage;
+ 
+@@ -75,6 +76,25 @@ public function getCategory(string $category): array
+             return $this->getDefaultsForCategory($category);
+         }
+ 
++        $ttl = (int) config('cache.g7_json_settings_ttl', 300);
++        if ($ttl <= 0) {
++            return $this->readCategoryFromStorage($category);
++        }
++
++        return Cache::remember(
++            'g7_json_settings_category:'.$category,
++            $ttl,
++            fn (): array => $this->readCategoryFromStorage($category),
++        );
++    }
++
++    /**
++     * GCS/로컬 settings 디스크에서 카테고리 JSON을 읽습니다.
++     *
++     * @return array<string, mixed>
++     */
++    protected function readCategoryFromStorage(string $category): array
++    {
+         $path = $this->getCategoryPath($category);
+ 
+         if (! Storage::disk(self::STORAGE_DISK)->exists($path)) {
+@@ -93,10 +113,8 @@ public function getCategory(string $category): array
+                 return $this->getDefaultsForCategory($category);
+             }
+ 
+-            // _meta 키 제거하고 반환
+             unset($data['_meta']);
+ 
+-            // 기본값과 병합 (새 설정 키 자동 추가)
+             $defaults = $this->getDefaultsForCategory($category);
+ 
+             return array_merge($defaults, $data);
+@@ -193,6 +211,9 @@ public function saveCategory(string $category, array $settings): bool
+         $path = $this->getCategoryPath($category);
+         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+ 
++        Cache::forget('g7_json_settings_category:'.$category);
++        $this->cache = null;
++
+         try {
+             // 파일 잠금으로 동시 쓰기 방지
+             $fullPath = Storage::disk(self::STORAGE_DISK)->path($path);
+diff --git a/app/Services/SettingsService.php b/app/Services/SettingsService.php
+index 829817d..6e93427 100644
+--- a/app/Services/SettingsService.php
++++ b/app/Services/SettingsService.php
+@@ -36,9 +36,72 @@ public function __construct(
+     private function invalidateSettingsCache(): void
+     {
+         $this->cache->forget('settings.system');
++
++        if ($this->shouldSkipConfigClear()) {
++            return;
++        }
++
+         Artisan::call('config:clear');
+     }
+ 
++    /**
++     * config:clear 생략 가드.
++     *
++     * 코어는 특정 확장(모듈/플러그인) 클래스를 직접 참조하지 않고,
++     * core.config_clear_guards 설정을 통해 런타임 정책을 주입받습니다.
++     *
++     * guard 예시:
++     * [
++     *   'enabled_config' => 'my-module.feature.enabled',
++     *   'bound_abstract' => App\\Support\\RequestScopedContext::class,
++     *   'context_not_null_method' => 'current',
++     * ]
++     */
++    private function shouldSkipConfigClear(): bool
++    {
++        $guards = config('core.config_clear_guards', []);
++        if (! is_array($guards) || $guards === []) {
++            return false;
++        }
++
++        foreach ($guards as $guard) {
++            if (! is_array($guard)) {
++                continue;
++            }
++
++            $enabledConfig = $guard['enabled_config'] ?? null;
++            if (is_string($enabledConfig) && $enabledConfig !== '' && ! (bool) config($enabledConfig, false)) {
++                continue;
++            }
++
++            $boundAbstract = $guard['bound_abstract'] ?? null;
++            if (is_string($boundAbstract) && $boundAbstract !== '' && ! app()->bound($boundAbstract)) {
++                continue;
++            }
++
++            $contextMethod = $guard['context_not_null_method'] ?? null;
++            if (is_string($contextMethod) && $contextMethod !== '') {
++                if (! is_string($boundAbstract) || $boundAbstract === '') {
++                    continue;
++                }
++
++                try {
++                    $context = app($boundAbstract);
++                } catch (\Throwable) {
++                    continue;
++                }
++
++                if (! is_object($context) || ! method_exists($context, $contextMethod) || $context->{$contextMethod}() === null) {
++                    continue;
++                }
++            }
++
++            return true;
++        }
++
++        return false;
++    }
++
+     /**
+      * 모든 시스템 설정을 조회합니다.
+      *
+diff --git a/bootstrap/app.php b/bootstrap/app.php
+index cab48cb..e9a071f 100644
+--- a/bootstrap/app.php
++++ b/bootstrap/app.php
+@@ -52,6 +52,9 @@
+         },
+     )
+     ->withMiddleware(function (Middleware $middleware): void {
++        // Cloud Run / 로드밸런서: X-Forwarded-Proto 로 HTTPS 인식 (asset() http 생성 방지)
++        $middleware->trustProxies(at: '*');
++
+         // Laravel 기본 메인터넌스 미들웨어 제거 (커스텀 MaintenanceModePage로 대체)
+         $middleware->remove(\Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class);
+ 
+diff --git a/bootstrap/providers.php b/bootstrap/providers.php
+index a8f43df..b1b3787 100644
+--- a/bootstrap/providers.php
++++ b/bootstrap/providers.php
+@@ -2,6 +2,8 @@
+ 
+ return [
+     App\Providers\InstallerRuntimeServiceProvider::class,  // 설치 진행 중 runtime.php 로 동적 설정 주입 (.env 무수정)
++    // Cloud Run GCS: SettingsServiceProvider 가 Storage::disk() 호출 전에 드라이버 등록 필요
++    Spatie\GoogleCloudStorage\GoogleCloudStorageServiceProvider::class,
+     App\Providers\SettingsServiceProvider::class,  // DB 연결 전 JSON 설정 로드
+     App\Providers\AppServiceProvider::class,
+     App\Providers\AuthServiceProvider::class,
+diff --git a/config/cache.php b/config/cache.php
+index b279bff..dcb78ab 100644
+--- a/config/cache.php
++++ b/config/cache.php
+@@ -105,4 +105,15 @@
+ 
+     'prefix' => env('CACHE_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-cache-'),
+ 
++    /*
++     * G7 JSON settings / Moabom public boot API TTL (초).
++     * Cloud Run entrypoint config:cache 이후에는 config() 로만 읽을 것 (env() 는 null).
++     */
++    'g7_json_settings_ttl' => (int) env('G7_JSON_SETTINGS_CACHE_TTL', 300),
++
++    'moabom_public_boot_ttl' => (int) env(
++        'MOABOM_PUBLIC_BOOT_CACHE_TTL',
++        env('G7_JSON_SETTINGS_CACHE_TTL', 300)
++    ),
++
+ ];
+diff --git a/config/core.php b/config/core.php
+index 50534ca..8ff41d5 100644
+--- a/config/core.php
++++ b/config/core.php
+@@ -360,7 +360,7 @@
+             'url' => '/admin/notification-logs',
+             'icon' => 'fas fa-bell',
+             'parent_id' => null,
+-            'order' => 3,
++            'order' => 4,
+             'is_active' => true,
+         ],
+         [
+@@ -369,7 +369,7 @@
+             'url' => '/admin/identity/logs',
+             'icon' => 'fas fa-clipboard-check',
+             'parent_id' => null,
+-            'order' => 4,
++            'order' => 5,
+             'is_active' => true,
+         ],
+         [
+@@ -378,7 +378,7 @@
+             'url' => '/admin/activity-logs',
+             'icon' => 'fas fa-history',
+             'parent_id' => null,
+-            'order' => 5,
++            'order' => 6,
+             'is_active' => true,
+         ],
+         [
+@@ -387,7 +387,7 @@
+             'url' => '/admin/menus',
+             'icon' => 'fas fa-bars',
+             'parent_id' => null,
+-            'order' => 6,
++            'order' => 7,
+             'is_active' => true,
+         ],
+         [
+@@ -396,7 +396,7 @@
+             'url' => '/admin/users',
+             'icon' => 'fas fa-users',
+             'parent_id' => null,
+-            'order' => 7,
++            'order' => 8,
+             'is_active' => true,
+         ],
+         [
+@@ -405,7 +405,7 @@
+             'url' => '/admin/roles',
+             'icon' => 'fas fa-lock',
+             'parent_id' => null,
+-            'order' => 8,
++            'order' => 9,
+             'is_active' => true,
+         ],
+         [
+@@ -414,7 +414,7 @@
+             'url' => '/admin/modules',
+             'icon' => 'fas fa-cube',
+             'parent_id' => null,
+-            'order' => 9,
++            'order' => 10,
+             'is_active' => true,
+         ],
+         [
+@@ -423,7 +423,7 @@
+             'url' => '/admin/plugins',
+             'icon' => 'fas fa-puzzle-piece',
+             'parent_id' => null,
+-            'order' => 10,
++            'order' => 11,
+             'is_active' => true,
+         ],
+         [
+@@ -432,7 +432,7 @@
+             'url' => '/admin/templates',
+             'icon' => 'fas fa-palette',
+             'parent_id' => null,
+-            'order' => 11,
++            'order' => 12,
+             'is_active' => true,
+         ],
+         [
+@@ -441,7 +441,7 @@
+             'url' => '/admin/schedules',
+             'icon' => 'fas fa-clock',
+             'parent_id' => null,
+-            'order' => 12,
++            'order' => 13,
+             'is_active' => false,
+         ],
+     ],
+@@ -588,6 +588,20 @@
+         ],
+     ],
+ 
++    /*
++    |--------------------------------------------------------------------------
++    | 런타임 가드 주입 포인트 (확장 전용)
++    |--------------------------------------------------------------------------
++    | 코어가 특정 모듈/플러그인을 직접 참조하지 않도록, 런타임 정책은
++    | 확장에서 이 설정 키를 주입해 사용합니다.
++    */
++    'config_clear_guards' => [],
++
++    'identity_policy_middleware' => [
++        'skip_request_patterns' => [],
++        'skip_route_names' => [],
++    ],
++
+     /*
+     |--------------------------------------------------------------------------
+     | 코어 본인인증(IDV) 정책
+diff --git a/config/database.php b/config/database.php
+index da01b56..5152951 100644
+--- a/config/database.php
++++ b/config/database.php
+@@ -2,6 +2,31 @@
+ 
+ use Illuminate\Support\Str;
+ 
++/**
++ * MySQL/MariaDB PDO options (SSL CA, optional persistent connections).
++ *
++ * Cloud Run entrypoint `config:cache` 시 동일 파일이 재로드될 수 있어 function_exists 로 감쌉니다.
++ *
++ * @return array<int, mixed>
++ */
++if (! function_exists('moabom_mysql_pdo_options')) {
++    function moabom_mysql_pdo_options(): array
++    {
++        if (! extension_loaded('pdo_mysql')) {
++            return [];
++        }
++
++        $sslCaKey = (PHP_VERSION_ID >= 80500 && class_exists('Pdo\\Mysql', false))
++            ? \Pdo\Mysql::ATTR_SSL_CA
++            : PDO::MYSQL_ATTR_SSL_CA;
++
++        return array_filter([
++            PDO::ATTR_PERSISTENT => filter_var(env('DB_PERSISTENT', false), FILTER_VALIDATE_BOOLEAN),
++            $sslCaKey => env('MYSQL_ATTR_SSL_CA'),
++        ], static fn (mixed $value): bool => $value !== null && $value !== false && $value !== '');
++    }
++}
++
+ return [
+ 
+     /*
+@@ -72,12 +97,7 @@
+             'prefix_indexes' => true,
+             'strict' => true,
+             'engine' => null,
+-            'options' => extension_loaded('pdo_mysql') ? array_filter([
+-                (PHP_VERSION_ID >= 80500 && class_exists('Pdo\\Mysql', false))
+-                    ? \Pdo\Mysql::ATTR_SSL_CA
+-                    : PDO::MYSQL_ATTR_SSL_CA
+-                => env('MYSQL_ATTR_SSL_CA'),
+-            ]) : [],
++            'options' => moabom_mysql_pdo_options(),
+         ],
+ 
+         'mariadb' => [
+@@ -95,12 +115,7 @@
+             'prefix_indexes' => true,
+             'strict' => true,
+             'engine' => null,
+-            'options' => extension_loaded('pdo_mysql') ? array_filter([
+-                (PHP_VERSION_ID >= 80500 && class_exists('Pdo\\Mysql', false))
+-                    ? \Pdo\Mysql::ATTR_SSL_CA
+-                    : PDO::MYSQL_ATTR_SSL_CA
+-                => env('MYSQL_ATTR_SSL_CA'),
+-            ]) : [],
++            'options' => moabom_mysql_pdo_options(),
+         ],
+ 
+         'pgsql' => [
+diff --git a/config/filesystems.php b/config/filesystems.php
+index 9e822c2..db96281 100644
+--- a/config/filesystems.php
++++ b/config/filesystems.php
+@@ -1,5 +1,20 @@
+ <?php
+ 
++use League\Flysystem\GoogleCloudStorage\UniformBucketLevelAccessVisibility;
++
++$useGcs = env('FILESYSTEM_DISK') === 'gcs';
++
++$gcsDisk = static fn (string $pathPrefix = ''): array => [
++    'driver' => 'gcs',
++    'project_id' => env('GOOGLE_CLOUD_PROJECT_ID', 'smartmek'),
++    'bucket' => env('GOOGLE_CLOUD_STORAGE_BUCKET', 'smartmek'),
++    'path_prefix' => $pathPrefix,
++    'visibility' => 'private',
++    'visibility_handler' => UniformBucketLevelAccessVisibility::class,
++    'throw' => true,
++    'report' => false,
++];
++
+ return [
+ 
+     /*
+@@ -24,12 +39,17 @@
+     | may even configure multiple disks for the same driver. Examples for
+     | most supported storage drivers are configured here for reference.
+     |
+-    | Supported drivers: "local", "ftp", "sftp", "s3"
++    | Supported drivers: "local", "ftp", "sftp", "s3", "gcs"
++    |
++    | Cloud Run: FILESYSTEM_DISK=gcs + Workload Identity (서비스 계정 ADC).
++    | key_file_path 미설정 시 컨테이너 메타데이터 자격증명 사용.
+     |
+     */
+ 
+     'disks' => [
+ 
++        'gcs' => $gcsDisk(),
++
+         'local' => [
+             'driver' => 'local',
+             'root' => storage_path('app/private'),
+@@ -38,7 +58,7 @@
+             'report' => false,
+         ],
+ 
+-        'modules' => [
++        'modules' => $useGcs ? $gcsDisk('modules') : [
+             'driver' => 'local',
+             'root' => storage_path('app/modules'),
+             'serve' => true,
+@@ -46,7 +66,7 @@
+             'report' => false,
+         ],
+ 
+-        'plugins' => [
++        'plugins' => $useGcs ? $gcsDisk('plugins') : [
+             'driver' => 'local',
+             'root' => storage_path('app/plugins'),
+             'serve' => true,
+@@ -54,7 +74,7 @@
+             'report' => false,
+         ],
+ 
+-        'attachments' => [
++        'attachments' => $useGcs ? $gcsDisk('attachments') : [
+             'driver' => 'local',
+             'root' => storage_path('app/attachments'),
+             'serve' => false,
+@@ -62,7 +82,7 @@
+             'report' => false,
+         ],
+ 
+-        'settings' => [
++        'settings' => $useGcs ? $gcsDisk('settings') : [
+             'driver' => 'local',
+             'root' => storage_path('app/settings'),
+             'serve' => false,
+@@ -70,7 +90,9 @@
+             'report' => false,
+         ],
+ 
+-        'public' => [
++        'public' => $useGcs ? array_merge($gcsDisk('public'), [
++            'visibility' => 'public',
++        ]) : [
+             'driver' => 'local',
+             'root' => storage_path('app/public'),
+             'url' => env('APP_URL').'/storage',
+diff --git a/config/moabom-saas.php b/config/moabom-saas.php
+new file mode 100644
+index 0000000..075d715
+--- /dev/null
++++ b/config/moabom-saas.php
+@@ -0,0 +1,34 @@
++<?php
++
++/*
++ * SaaS 플래그 SSOT — config:cache 시 env() 가 여기만 평가됨.
++ *
++ * moabom-system.config 의 saas.* 는 config('moabom-saas.*') 를 참조한다.
++ * @see deploy/ssot/moabom-system.config.php
++ */
++
++return [
++    'enabled' => env('MOABOM_SAAS_ENABLED', false),
++    'base_domain' => env('MOABOM_SAAS_BASE_DOMAIN', 'mek360.com'),
++    'platform_hosts' => array_values(array_filter(array_map(
++        'trim',
++        explode(',', (string) env('MOABOM_SAAS_PLATFORM_HOSTS', 'mek360.com,www.mek360.com,auth.mek360.com')),
++    ))),
++    'platform_database' => env('MOABOM_PLATFORM_DATABASE', 'moabom-platform'),
++    // tenant bootstrap 후에도 cross-query SSOT (SNS master credential 등)
++    'platform_write_database' => env('DB_WRITE_DATABASE', 'moabom-db'),
++    'registry_cache_ttl' => (int) env('MOABOM_SAAS_REGISTRY_CACHE_TTL', 60),
++    'dev_tenant_slug' => env('MOABOM_SAAS_DEV_TENANT_SLUG', ''),
++    // module 카테고리 storage backend 기본값은 db 고정.
++    // 과거 gcs 분기 재진입 시 split-brain 재발 이력이 있어 운영은 db 단일 경로만 허용.
++    // @see deploy/AGENT-FAILURE-ANALYSIS.md §10~§13
++    'module_settings_backend' => env('MOABOM_SAAS_MODULE_SETTINGS_BACKEND', 'db'),
++    // A안 — 테넌트 language_packs 카탈로그를 platform 단일 SSOT로 read-through.
++    // true 시 테넌트 DB 의 language_packs 는 platform 테이블을 가리키는 VIEW 가 되어
++    // mirror/싱크 없이도 항상 일치한다 (그누보드7 코어 무수정 — DB 객체 레벨 routing).
++    // 기본 false: 기존 mirror 경로 유지(안전 롤백).
++    'shared_language_packs' => filter_var(
++        env('MOABOM_SAAS_SHARED_LANGUAGE_PACKS', false),
++        FILTER_VALIDATE_BOOL,
++    ),
++];
+diff --git a/resources/js/core/TemplateApp.ts b/resources/js/core/TemplateApp.ts
+index 5652323..35f8774 100644
+--- a/resources/js/core/TemplateApp.ts
++++ b/resources/js/core/TemplateApp.ts
+@@ -3322,6 +3322,8 @@ export class TemplateApp {
+                     updateData._global = { ...this.globalState };
+                 }
+ 
++                this.mergeComputedRecalc(updateData);
++
+                 updateTemplateData(updateData, options?.sync ? { sync: true } : undefined);
+ 
+                 logger.log(`Data source refetched successfully: ${dataSourceId}`);
+@@ -3807,22 +3809,7 @@ export class TemplateApp {
+                 // query 컨텍스트도 업데이트 (배열 쿼리 파라미터 지원)
+                 updateData.query = parseQueryParams(this.currentQueryParams);
+ 
+-                // computed 재계산: 현재 레이아웃에 computed 정의가 있으면 재계산
+-                // (navigate replace: true 시 _local 상태가 변경되면 $computed도 갱신되어야 함)
+-                if (state.currentLayoutJson?.computed && Object.keys(state.currentLayoutJson.computed).length > 0) {
+-                    // 재계산에 필요한 컨텍스트 구성
+-                    const computeContext = {
+-                        ...state.currentDataContext,
+-                        ...updateData,
+-                        query: updateData.query,
+-                    };
+-                    const computedData = this.calculateComputed(state.currentLayoutJson.computed, computeContext);
+-                    if (Object.keys(computedData).length > 0) {
+-                        updateData._computed = computedData;
+-                        this.globalState._computed = computedData;
+-                        logger.log('Computed values recalculated in updateQueryParams:', Object.keys(computedData));
+-                    }
+-                }
++                this.mergeComputedRecalc(updateData);
+ 
+                 updateTemplateData(updateData, { sync: true });
+                 logger.log('Template data updated with new query params');
+@@ -3837,6 +3824,31 @@ export class TemplateApp {
+         }
+     }
+ 
++    /**
++     * dataContext 업데이트 전 _computed 재계산 (refetchDataSource / updateQueryParams 공통)
++     */
++    private mergeComputedRecalc(updateData: Record<string, any>): void {
++        const state = getState();
++        const computedDefs = state.currentLayoutJson?.computed;
++        if (!computedDefs || Object.keys(computedDefs).length === 0) {
++            return;
++        }
++
++        const computeContext = {
++            ...state.currentDataContext,
++            ...updateData,
++            query: updateData.query ?? state.currentDataContext?.query,
++        };
++        const computedData = this.calculateComputed(computedDefs, computeContext);
++        if (Object.keys(computedData).length === 0) {
++            return;
++        }
++
++        updateData._computed = computedData;
++        this.globalState._computed = computedData;
++        logger.log('Computed values recalculated:', Object.keys(computedData));
++    }
++
+     /**
+      * computed 값 계산
+      *
+diff --git a/resources/views/admin.blade.php b/resources/views/admin.blade.php
+index 2574d8d..f117e96 100644
+--- a/resources/views/admin.blade.php
++++ b/resources/views/admin.blade.php
+@@ -52,7 +52,7 @@
+         </script>
+ 
+         <!-- 코어 렌더링 엔진 -->
+-        <script src="{{ asset('build/core/template-engine.min.js') }}?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
++        <script src="/build/core/template-engine.min.js?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
+ 
+         <!-- 템플릿 컴포넌트 번들 (IIFE) -->
+         <script src="/api/templates/assets/{{ $activeAdminTemplate }}/js/components.iife.js?v={{ time() }}"></script>
+diff --git a/resources/views/app.blade.php b/resources/views/app.blade.php
+index 14867b2..e185dbc 100644
+--- a/resources/views/app.blade.php
++++ b/resources/views/app.blade.php
+@@ -8,9 +8,9 @@
+ 
+         <title>{{ config('app.name', '그누보드7') }}</title>
+ 
+-        <!-- Fonts -->
+-        <link rel="preconnect" href="https://fonts.bunny.net">
+-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
++        <!-- Fonts (disabled: bunny Inter CDN) -->
++        {{-- <link rel="preconnect" href="https://fonts.bunny.net"> --}}
++        {{-- <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" /> --}}
+ 
+         <!-- Font Awesome CDN -->
+         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+@@ -56,7 +56,7 @@
+         </script>
+ 
+         <!-- 코어 렌더링 엔진 -->
+-        <script src="{{ asset('build/core/template-engine.min.js') }}?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
++        <script src="/build/core/template-engine.min.js?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
+ 
+         <!-- 템플릿 컴포넌트 번들 (IIFE) -->
+         <script src="/api/templates/assets/{{ $activeUserTemplate }}/js/components.iife.js?v={{ time() }}"></script>
+diff --git a/tests/Feature/Api/Admin/SettingsControllerTest.php b/tests/Feature/Api/Admin/SettingsControllerTest.php
+index 0b89306..05f9faa 100644
+--- a/tests/Feature/Api/Admin/SettingsControllerTest.php
++++ b/tests/Feature/Api/Admin/SettingsControllerTest.php
+@@ -711,6 +711,37 @@ public function test_system_info_memory_usage_has_disk_like_structure(): void
+         $this->assertLessThanOrEqual(100, $memory['percentage']);
+     }
+ 
++    /**
++     * php_extensions 는 required/optional 맵이며 값은 bool 이어야 한다.
++     *
++     * 회귀: admin 정보 탭 Object.entries(ext) — ext[1] 이 bool 이 아니면
++     * 아이콘이 전부 disconnected 로 보일 수 있다.
++     */
++    public function test_system_info_php_extensions_are_boolean_flags(): void
++    {
++        $response = $this->authRequest()->getJson('/api/admin/settings/system-info');
++
++        $response->assertStatus(200)
++            ->assertJsonStructure([
++                'data' => [
++                    'php_extensions' => [
++                        'required',
++                        'optional',
++                    ],
++                ],
++            ]);
++
++        $extensions = $response->json('data.php_extensions');
++        $this->assertNotEmpty($extensions['required']);
++        foreach ($extensions['required'] as $name => $loaded) {
++            $this->assertIsBool($loaded, "required extension {$name} must be bool");
++        }
++        $this->assertTrue(
++            $extensions['required']['openssl'] ?? false,
++            'openssl must be loaded in test/runtime PHP'
++        );
++    }
++
+     /**
+      * CPU 정보는 비어있지 않은 문자열이며, 명령 실행 오류 메시지의 꼬리말이
+      * 그대로 노출되지 않는다.

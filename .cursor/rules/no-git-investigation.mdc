@@ -1,0 +1,40 @@
+---
+description: 사용자 질문에 답하려고 git/GitHub 이력 뒤지기 금지 (정상 git 워크플로는 허용)
+alwaysApply: true
+---
+
+# 🛑 git/GitHub 이력 뒤지기 금지
+
+**원칙:** 사용자가 코드·변경·현황을 물어보면 **현재 워킹트리**를 `Grep`·`Glob`·`Read` 로 조사한다. git/GitHub 이력은 **사용자가 명시 요청할 때만** 본다.
+
+## ❌ 금지 (에이전트가 반사적으로 하지 말 것)
+
+- `git log` / `git show` / `git blame` / `git grep` / `git reflog` / `git bisect` / `git whatchanged` / `git shortlog` / `git rev-list` / `git rev-parse`
+- `git log -S/-G/--grep=/--author/--since/--until/--all` 같은 pickaxe·history 검색
+- `git diff HEAD~` / `git diff <SHA>` / `git diff a..b` — **과거 ref 비교**
+- `gh pr ...` / `gh issue ...` / `gh search ...` / `gh run ...` / `gh api repos/...` / `gh browse` — GitHub 뒤지기
+- "변경됐는지 확인" 같은 질문에 git 부터 켜는 행동
+
+위 명령은 `.cursor/hooks/block-forbidden-shell.sh` 에서 **하드 차단** 됨.
+
+## ✅ 허용 (정상 워크플로 — 사용자 요청 시 그대로 사용)
+
+- **Moabom SSOT:** `https://github.com/MOABOM-GIT/MOABOM-MEK` — `git push` / `commit` / `add` / `status` / `diff`
+- 그누보드7 upstream: `git fetch g7-upstream` / `git remote -v` (`g7-upstream` = gnuboard/g7)
+- 동기화·게시: `git push` / `git add` / `git commit` / `git tag` / `git stash`
+- 브랜치: `git branch` / `git checkout <branch>` / `git switch` / `git merge` / `git rebase`
+- 워킹트리 상태: `git status` / `git diff` (인자 없음 = 워킹트리 변경)
+
+## 조사 기본 동작
+
+| 사용자 질문 | 에이전트 동작 |
+|-------------|---------------|
+| "X 가 Y 로 바뀌었나?" | `Grep "X|Y"` 로 워킹트리 검색 → 결과 보고 |
+| "어디서 쓰여?" | `Grep` / `Glob` |
+| "이 파일 내용은?" | `Read` |
+| "언제·누가 바꿨어?" | **사용자가 명시 요청한 경우에만** git log/blame |
+| "PR/이슈 상태?" | **사용자가 명시 요청한 경우에만** `gh` |
+
+## 위반 시
+
+차단된 명령은 hook 이 deny 메시지를 반환한다. 우회 시도 금지 (다른 셸 표현, 변수 치환, base64 등). 우회는 `audit-banned-user-phrases.sh` 가 감지·로그한다.

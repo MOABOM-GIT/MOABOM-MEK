@@ -1,0 +1,64 @@
+---
+description: Moabom 확장 자산·표면·_bundled/활성·TS·앱 셸 UI (G7 extension-manager·module-assets 기준)
+alwaysApply: false
+---
+
+# Moabom 아키텍처 (확장 레이어만)
+
+G7 확장 모델: `app/docs/extension/extension-manager.md` (런타임 오토로드, `_bundled`/`_pending` 제외), `module-assets.md` (`loading.strategy`).
+
+전문: **`deploy/unused/MOABOM-ARCHITECTURE.md`**
+
+## 자산 4계층
+
+| # | 경로 | 담당 |
+|---|------|------|
+| ① | `/build/core/template-engine.min.js` | nginx 정적 (`public/build`) |
+| ② | `/api/templates/assets/…`, `/api/modules/assets/…` | Laravel + nginx `^~ /api/` |
+| ③ | `G7Config.moduleAssets` / `pluginAssets` | `loading.strategy: global` |
+| ④ | `deferred*` + prefetch | moabom-basic Ghost·쇼핑 경로 |
+
+PWA 새로고침 시 SW 캐시 히트는 **정상**.
+
+## 표면 분리 (moabom-system View Composer)
+
+| 표면 | 정책 |
+|------|------|
+| **관리자** `sirsoft-admin_basic` | `MoabomTemplateComposer` — `moabom-system` 등 **global** |
+| **사용자** `moabom-basic` | `MoabomUserExtensionBootPolicy` — 쇼핑·시스템 모듈 **deferred**, `moabom-auth-hardening` **global** |
+| Ghost | `MoabomUserBootDeferredAssetsGhostComposer` — 홈 최소 부트 |
+| Prefetch | `sirsoftEcommerceLayoutPrefetch` — shop/mypage/결제 진입 시만 ④ |
+
+env: `MOABOM_USER_SURFACE_*`, `MOABOM_BOOT_ASSET_GHOST*`.
+
+## _bundled vs 활성 (WSL·Run 공통 — 에이전트 내부)
+
+| | `_bundled/` | 활성 `modules/`·`templates/` |
+|---|-------------|-------------------------------|
+| 역할 | 개발 원본·`build` 기본 대상 | 런타임·Cloud Run·IDE 빌드 대상 |
+| tarball/이미지 | **제외** (`.gcloudignore`) | **포함** |
+| 반영 | 활성 경로 직접 수정 + 필요 시 `template:update` / `module:update` | 서빙 URL이 여기를 가리킴 |
+
+`build`만 하고 `update` 생략 → 브라우저 구버전 JS.
+
+## TypeScript / node_modules
+
+- `app/tsconfig.json` — `resources/js` 코어만
+- `templates/moabom-basic/tsconfig.json` — 활성 사용자 템플릿
+- `modules/moabom-system` — `@admin-basic/*` → **활성** `templates/moabom-admin_basic` (`_bundled` alias 금지)
+- WSL dev: `bash scripts/dev-install-frontend.sh` / Cloud Run: 사전 `dist` + 이미지 내 앱 루트 `npm ci`만
+
+## 앱 셸 주 패널 (`moabom-basic`)
+
+`APP_SHELL_PANEL_CLASS` = `moa-group` + border (부모). 자식 인풋에 `glass-sm`이 많을 때 부모에 `glass-sm` 중복 금지 — 대비는 `moa-group`으로 (`appShellTypography.ts`).
+
+## 검증
+
+```bash
+bash scripts/health-check.sh
+./scripts/g7 php artisan test --filter=MoabomUser
+```
+
+**부트 1회:** `moabomShellBoot.ts` — `shell-boot` 선로드 후 `frontend-defaults` / `template-routes-shell` / `providers` fetch 대체.
+
+성능·부팅 API 상세: `deploy/unused/CLOUD-RUN-PERFORMANCE.md` §7.

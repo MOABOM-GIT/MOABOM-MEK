@@ -1,0 +1,27 @@
+# 태그는 substitutions._IMAGE_TAG 한 곳만 수정 (build -t / images 자동 동기화)
+substitutions:
+  _IMAGE_TAG: v205
+
+steps:
+  # v7 성공 기준 — 직접 gcloud submit 해도 동일 검증 (재발 방지)
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - chmod +x deploy/check-before-cloud-build.sh && ./deploy/check-before-cloud-build.sh
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      # !!! 운영 이미지 빌드는 오직 이 cloudbuild step 에서만 수행 — 로컬 docker build 금지 !!!
+      # deploy/Dockerfile 첫 stage 의 MOABOM_BUILD_ENV 가드가 cloudbuild 외 빌드를 차단합니다.
+      - --build-arg
+      - MOABOM_BUILD_ENV=cloudbuild
+      - -f
+      - deploy/Dockerfile
+      - -t
+      - asia-northeast3-docker.pkg.dev/smartmek/moabom-dock/mobaom-container:${_IMAGE_TAG}
+      - .
+images:
+  - asia-northeast3-docker.pkg.dev/smartmek/moabom-dock/mobaom-container:${_IMAGE_TAG}
+options:
+  logging: CLOUD_LOGGING_ONLY

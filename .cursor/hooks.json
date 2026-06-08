@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/inject-user-workflow-context.sh"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/block-forbidden-shell.sh",
+        "failClosed": false
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": ".cursor/hooks/audit-banned-user-phrases.sh",
+        "matcher": "AgentResponse"
+      }
+    ]
+  }
+}
