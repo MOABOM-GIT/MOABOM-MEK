@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { GlassCard } from 'react-glass-ui';
 import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
 import { Icon } from '../basic/Icon';
 import { Span } from '../basic/Span';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
-import { useMoabomDarkMode } from '../../hooks/useMoabomDarkMode';
-import { isMoabomFlatTheme, useMoabomTheme } from '../../hooks/useMoabomTheme';
 
 /** 뷰포트 안에 창 위치 클램프 */
 function clampWindowPosition(x: number, y: number, w: number, h: number): { x: number; y: number } {
@@ -59,8 +56,8 @@ export const Window: React.FC<WindowProps> = ({
   initialX,
   initialY,
   isFavorite = false,
-  initialWidth = 1050,
-  initialHeight = 768,
+  initialWidth = 1280,
+  initialHeight = 800,
   minWidth = 400,
   minHeight = 300,
   isMaximized: initialMaximized = false,
@@ -81,9 +78,6 @@ export const Window: React.FC<WindowProps> = ({
   titleBarExtraStyle,
 }) => {
   const { t } = useMoabomShellT();
-  const isDark = useMoabomDarkMode();
-  const activeTheme = useMoabomTheme();
-  const isFlat = isMoabomFlatTheme(activeTheme);
   const getInitialPosition = (width: number, height: number) => {
     if (typeof initialX === 'number' || typeof initialY === 'number') {
       return clampWindowPosition(
@@ -402,40 +396,10 @@ export const Window: React.FC<WindowProps> = ({
       style={containerStyle}
       onClick={() => onFocus && onFocus()}
     >
-      <GlassCard
-        blur={isFlat ? 0 : 15}
-        distortion={isFlat ? 0 : 35}
-        flexibility={0}
-        /**
-         * 다크 테마(dark / flat-dark) 에서 채도 100 으로 고정 —
-         * 기본 채도(라이브러리 default)를 그대로 두면 다크 배경에서 색이 과장돼 보이는 문제 완화.
-         */
-        saturation={isDark ? 100 : undefined}
-        borderColor={isDark ? '#000000' : '#ffffff'}
-        borderSize={1}
-        borderRadius={isEdgeToEdge ? 0 : 16}
-        borderOpacity={isFlat ? 0 : isDark ? 0.3 : 0.4}
-        backgroundColor={isDark ? '#1b1a1d' : '#ffffff'}
-        /**
-         * 창 투명도 규칙:
-         *  - 성능(flat-light / flat-dark): 0.97 — blur 가 없는 불투명 패널이라 높게.
-         *  - 다크(일반): 0.7 — 창 밖 배경이 은은하게 비치되 내용 가독성 확보.
-         *  - 라이트(일반): 0.7 — 기존 유지.
-         */
-        backgroundOpacity={isFlat ? 0.97 : isDark ? 0.7 : 0.7}
-        innerLightColor={isDark ? '#000000' : '#ffffff'}
-        innerLightSpread={1}
-        innerLightBlur={isFlat ? 0 : isDark ? 30 : 20}
-        innerLightOpacity={isFlat ? 0 : 0.3}
-        outerLightSpread={1} outerLightBlur={isFlat ? 0 : 20}
-        outerLightOpacity={isFlat ? 0 : isDark ? 0.35 : 0.1}
-        outerLightColor="#000000"
-        className="fill-parent"
-        contentClassName={
-          titleBarVariant === 'create-app'
-            ? 'flex flex-col h-full w-full min-h-0 overflow-visible'
-            : 'flex flex-col h-full w-full overflow-hidden'
-        }
+      <Div
+        className={`moa-window-frame absolute inset-0 flex flex-col h-full w-full min-h-0 ${
+          isEdgeToEdge ? 'rounded-none' : 'rounded-2xl'
+        } ${titleBarVariant === 'create-app' ? 'overflow-visible' : 'overflow-hidden'}`}
       >
         {/* 타이틀 바 */}
         {titleBarVariant === 'create-app' ? (
@@ -542,13 +506,13 @@ export const Window: React.FC<WindowProps> = ({
 
         {/* 창 내용 — 스크롤 책임은 이 한 겹만 가진다. */}
         {fitContent && !compact ? (
-          <Div className="moa-app-window-viewport min-h-0 flex-1 overflow-y-auto overscroll-contain overflow-x-hidden">
+          <Div className="moa-app-window-viewport">
             <Div ref={fitMeasureRef} className="w-full shrink-0">
               {children}
             </Div>
           </Div>
         ) : (
-          <Div className="moa-app-window-viewport min-h-0 flex-1 overflow-auto">{children}</Div>
+          <Div className="moa-app-window-viewport">{children}</Div>
         )}
 
         {/* 리사이즈 핸들 */}
@@ -560,7 +524,7 @@ export const Window: React.FC<WindowProps> = ({
             <Icon name="grip-lines" className="text-muted text-xxs rotate-[-45deg]" />
           </Div>
         )}
-      </GlassCard>
+      </Div>
     </Div>
   );
 };

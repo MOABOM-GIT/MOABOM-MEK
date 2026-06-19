@@ -56,7 +56,7 @@
  * ======================================== */
 
 /* Card Account - 오버플로우 방지 */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .card-account {
     width: 100%;
   }

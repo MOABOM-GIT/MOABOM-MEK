@@ -20,7 +20,7 @@ final class TenantDeprovisionGuardTest extends ModuleTestCase
 
         config([
             'moabom-system.saas.platform_hosts' => ['mek360.com', 'www.mek360.com'],
-            'moabom-system.saas.deprovision.protected_slugs' => ['e2etest'],
+            'moabom-system.saas.deprovision.protected_slugs' => ['smoke'],
         ]);
 
         $this->guard = new TenantDeprovisionGuard();
@@ -55,10 +55,23 @@ final class TenantDeprovisionGuardTest extends ModuleTestCase
 
     public function test_rejects_protected_slug(): void
     {
-        $tenant = $this->tenant('e2etest');
+        $tenant = $this->tenant('smoke');
 
         $this->expectException(\RuntimeException::class);
+        $this->guard->assertPurgeAllowed($tenant, new PurgeOptions(confirmSlug: 'smoke'));
+    }
+
+    public function test_allows_e2e_test_slug_by_default(): void
+    {
+        $tenant = $this->tenant('e2etest');
+
         $this->guard->assertPurgeAllowed($tenant, new PurgeOptions(confirmSlug: 'e2etest'));
+        $this->guard->assertDestroyAllowed($tenant, new DestroyOptions(
+            confirmSlug: 'e2etest',
+            confirmHost: 'e2etest.mek360.com',
+        ));
+
+        $this->assertTrue(true);
     }
 
     public function test_rejects_purging_status(): void

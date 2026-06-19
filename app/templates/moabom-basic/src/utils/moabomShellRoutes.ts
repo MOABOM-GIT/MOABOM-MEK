@@ -8,14 +8,21 @@
  * - `/me/{tab}` · `/me` → profile
  * - `/app/{appId}` — 등록된 앱 id (mypage 는 `/me/...` 로 정규화)
  * - `/app/create-app?edit={id}` — 저장 AI 앱 편집
+ * - `/board/{slug}` · `/board/{slug}/{postId}` — 게시판 윈도우 (G7 board JSON)
  */
 import type { AuthWindowMode } from '../components/composite/Moa_AuthWindowContent';
 import type { MyPageTab } from '../components/composite/mypage/myPageTypes';
+import { isEcommerceMypageSubpath } from './moabomLegacyMypagePaths';
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
 import { isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
 import { APPS } from '../data/Moa_apps';
+import {
+  isMoaShellBoardAppId,
+  moaShellBoardSlugFromAppId,
+} from '../shell/moaShellBoardIds';
 
 const AUTH_MODES: readonly AuthWindowMode[] = ['login', 'register', 'forgot-password', 'reset-password'];
+export type BoardShellMode = 'write' | 'edit';
 
 const MY_PAGE_TABS: readonly MyPageTab[] = [
   'profile',
@@ -27,14 +34,16 @@ const MY_PAGE_TABS: readonly MyPageTab[] = [
   'subscription',
 ];
 
-/** 셸 URL `/app/{id}` 로 열 수 있는 앱 id (`create-app` 은 `APPS` 밖 셸 전용) */
+/** 셸 URL `/app/{id}` 로 열 수 있는 앱 id (`create-app` 포함, 저장 AI 앱 id 포함) */
 const APP_IDS = new Set([...APPS.map(a => a.id), createAppShellMetadata.id]);
 
 export type ParsedShellRoute =
   | { kind: 'home' }
   | { kind: 'auth'; mode: AuthWindowMode }
   | { kind: 'me'; tab: MyPageTab }
-  | { kind: 'app'; appId: string; editGeneratedAppId?: number };
+  | { kind: 'app'; appId: string; editGeneratedAppId?: number }
+  | { kind: 'board'; slug: string; postId?: string; boardMode?: BoardShellMode }
+  | { kind: 'router'; path: string; search?: string };
 
 function isAuthMode(s: string): s is AuthWindowMode {
   return (AUTH_MODES as readonly string[]).includes(s);
@@ -85,6 +94,41 @@ export function parseShellRoute(pathname: string, search = ''): ParsedShellRoute
     return { kind: 'home' };
   }
 
+  if (parts[0] === 'mypage') {
+    if (parts.length === 1) {
+      return { kind: 'me', tab: 'profile' };
+    }
+    const segment = decodeURIComponent(parts[1]);
+    if (segment === 'change-password') {
+      return { kind: 'me', tab: 'account' };
+    }
+    if (isMyPageTab(segment)) {
+      return { kind: 'me', tab: segment };
+    }
+    if (isEcommerceMypageSubpath(p)) {
+      return { kind: 'router', path: p, search: search || undefined };
+    }
+    return { kind: 'me', tab: 'profile' };
+  }
+
+  if (parts[0] === 'board' && parts[1]) {
+    const slug = decodeURIComponent(parts[1]);
+    if (parts.length === 2) {
+      return { kind: 'board', slug };
+    }
+    const third = decodeURIComponent(parts[2]);
+    if (third === 'write') {
+      return { kind: 'board', slug, boardMode: 'write' };
+    }
+    if (parts.length === 4 && parts[3] === 'edit') {
+      return { kind: 'board', slug, postId: third, boardMode: 'edit' };
+    }
+    if (parts.length === 3) {
+      return { kind: 'board', slug, postId: third };
+    }
+    return { kind: 'board', slug };
+  }
+
   if (parts[0] === 'app' && parts[1]) {
     let appId = decodeURIComponent(parts[1]);
     if (appId === 'ai-generator') {
@@ -126,9 +170,28 @@ export function formatShellPath(route: ParsedShellRoute): string {
       }
       return base;
     }
+    case 'board': {
+      const base = `/board/${encodeURIComponent(route.slug)}`;
+      if (route.boardMode === 'write') {
+        return `${base}/write`;
+      }
+      if (route.postId) {
+        const postPath = `${base}/${encodeURIComponent(route.postId)}`;
+        return route.boardMode === 'edit' ? `${postPath}/edit` : postPath;
+      }
+      return base;
+    }
     default:
       return '/';
   }
+}
+
+/** 게시판 윈도우 URL (쿼리·postId 포함) */
+export function formatBoardShellPath(slug: string, postId?: string, search = '', boardMode?: BoardShellMode): string {
+  const base = formatShellPath({ kind: 'board', slug, postId, boardMode });
+  if (!search) return base;
+  const raw = search.startsWith('?') ? search : `?${search}`;
+  return `${base}${raw}`;
 }
 
 export function pushShellPath(path: string): void {
@@ -152,6 +215,9 @@ export interface ShellWindowPathInput {
   appId: string;
   myPageInitialTab?: MyPageTab;
   editGeneratedAppId?: number;
+  boardSlug?: string;
+  boardPostId?: string;
+  boardMode?: BoardShellMode;
 }
 
 const SHELL_AUTH_IDS = new Set<string>(AUTH_MODES as unknown as string[]);
@@ -169,6 +235,17 @@ export function formatShellPathForWindow(win: ShellWindowPathInput): string {
       appId: win.appId,
       editGeneratedAppId: win.editGeneratedAppId,
     });
+  }
+  if (isMoaShellBoardAppId(win.appId)) {
+    const slug = win.boardSlug ?? moaShellBoardSlugFromAppId(win.appId);
+    if (slug) {
+      return formatShellPath({
+        kind: 'board',
+        slug,
+        postId: win.boardPostId,
+        boardMode: win.boardMode,
+      });
+    }
   }
   return formatShellPath({ kind: 'app', appId: win.appId });
 }

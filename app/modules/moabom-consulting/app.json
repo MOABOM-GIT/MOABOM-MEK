@@ -10,7 +10,7 @@
         "en": "Hospital profitability simulation & e-contract"
     },
     "icon": "handshake",
-    "gradient": "linear-gradient(135deg,#0ea5e9,#1d4ed8)",
+    "gradient": "linear-gradient(135deg,#27bfc1,#479ee2)",
     "category": "basic",
     "source": "system",
     "frontend": {

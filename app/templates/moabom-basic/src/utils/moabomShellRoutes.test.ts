@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatShellPath, parseShellPathname, parseShellRoute } from './moabomShellRoutes';
+import { formatShellPath, formatShellPathForWindow, formatBoardShellPath, parseShellPathname, parseShellRoute } from './moabomShellRoutes';
+import { moaShellBoardAppId } from '../shell/moaShellBoardIds';
 
 describe('moabomShellRoutes', () => {
   it('홈 경로를 파싱한다', () => {
@@ -22,9 +23,23 @@ describe('moabomShellRoutes', () => {
     expect(parseShellPathname('/app/mypage')).toEqual({ kind: 'me', tab: 'profile' });
   });
 
+  it('레거시 /mypage 경로를 /me 탭으로 정규화한다', () => {
+    expect(parseShellPathname('/mypage')).toEqual({ kind: 'me', tab: 'profile' });
+    expect(parseShellPathname('/mypage/activity')).toEqual({ kind: 'me', tab: 'activity' });
+    expect(parseShellPathname('/mypage/change-password')).toEqual({ kind: 'me', tab: 'account' });
+    expect(parseShellPathname('/mypage/orders/ORD-1')).toEqual({
+      kind: 'router',
+      path: '/mypage/orders/ORD-1',
+    });
+  });
+
   it('앱 경로를 파싱한다', () => {
-    const r = parseShellPathname('/app/weather');
-    expect(r).toEqual({ kind: 'app', appId: 'weather' });
+    const r = parseShellPathname('/app/cpap-mask');
+    expect(r).toEqual({ kind: 'app', appId: 'cpap-mask' });
+  });
+
+  it('제거된 더미 앱 경로는 홈으로 정규화한다', () => {
+    expect(parseShellPathname('/app/weather')).toEqual({ kind: 'home' });
   });
 
   it('create-app 편집 쿼리를 파싱한다', () => {
@@ -45,6 +60,31 @@ describe('moabomShellRoutes', () => {
     expect(parseShellPathname('/app/ai-generator')).toEqual({ kind: 'app', appId: 'create-app' });
   });
 
+  it('게시판 경로를 파싱한다', () => {
+    expect(parseShellPathname('/board/notice')).toEqual({ kind: 'board', slug: 'notice' });
+    expect(parseShellPathname('/board/notice/42')).toEqual({
+      kind: 'board',
+      slug: 'notice',
+      postId: '42',
+    });
+    expect(parseShellPathname('/board/notice/write')).toEqual({ kind: 'board', slug: 'notice', boardMode: 'write' });
+    expect(formatShellPath({ kind: 'board', slug: 'notice' })).toBe('/board/notice');
+    expect(formatShellPath({ kind: 'board', slug: 'notice', postId: '42' })).toBe('/board/notice/42');
+    expect(formatShellPath({ kind: 'board', slug: 'notice', boardMode: 'write' })).toBe('/board/notice/write');
+    expect(formatShellPath({ kind: 'board', slug: 'notice', postId: '42', boardMode: 'edit' })).toBe('/board/notice/42/edit');
+  });
+
+  it('formatBoardShellPath 가 쿼리를 붙인다', () => {
+    expect(formatBoardShellPath('notice', undefined, 'page=2')).toBe('/board/notice?page=2');
+  });
+
+  it('formatShellPathForWindow 가 게시판 윈도우 경로를 생성한다', () => {
+    const appId = moaShellBoardAppId('notice');
+    expect(formatShellPathForWindow({ appId, boardSlug: 'notice' })).toBe('/board/notice');
+    expect(formatShellPathForWindow({ appId, boardSlug: 'notice', boardPostId: '42' })).toBe('/board/notice/42');
+    expect(formatShellPathForWindow({ appId, boardSlug: 'notice', boardMode: 'write' })).toBe('/board/notice/write');
+  });
+
   it('알 수 없는 경로는 home 이다', () => {
     expect(parseShellPathname('/unknown/thing')).toEqual({ kind: 'home' });
     expect(parseShellPathname('/me/invalid-tab')).toEqual({ kind: 'home' });
@@ -55,9 +95,13 @@ describe('moabomShellRoutes', () => {
       { kind: 'home' as const },
       { kind: 'auth' as const, mode: 'login' as const },
       { kind: 'me' as const, tab: 'credit' as const },
-      { kind: 'app' as const, appId: 'weather' },
+      { kind: 'app' as const, appId: 'cpap-mask' },
       { kind: 'app' as const, appId: 'create-app' },
       { kind: 'app' as const, appId: 'generated-app-7' },
+      { kind: 'board' as const, slug: 'notice' },
+      { kind: 'board' as const, slug: 'free', postId: '9' },
+      { kind: 'board' as const, slug: 'notice', boardMode: 'write' },
+      { kind: 'board' as const, slug: 'free', postId: '9', boardMode: 'edit' },
     ] as const;
     for (const r of routes) {
       expect(parseShellPathname(formatShellPath(r))).toEqual(r);

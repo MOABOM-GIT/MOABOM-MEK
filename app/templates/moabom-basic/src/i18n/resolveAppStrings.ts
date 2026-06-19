@@ -5,6 +5,7 @@ import type { App } from '../data/Moa_apps';
 import type { MoabomSystemLanguage } from '../types/moabomSystem';
 import type { MoabomTranslateFn } from './moabomT';
 import { isMoabomOverlaySyncedToLocale, lookupMoabomOverlay } from './moabomTranslationOverlay';
+import { resolveMoabomSiteDisplayName } from '../utils/moabomSiteBranding';
 
 const MOA_APPS_PREFIX = 'moa_apps';
 
@@ -45,6 +46,15 @@ export function resolveAppStrings(
   app: App,
   locale: MoabomSystemLanguage,
 ): ResolvedAppStrings {
+  if (app.id === 'hospital-info') {
+    return {
+      name: resolveMoabomSiteDisplayName(),
+      description: app.i18n?.[locale]?.description?.trim()
+        || resolveCatalogTemplateString(`${MOA_APPS_PREFIX}.${app.id}.description`, locale)
+        || app.description,
+    };
+  }
+
   const fromLocale = app.i18n?.[locale];
   const nameFromApi = fromLocale?.name?.trim();
   const descFromApi = fromLocale?.description?.trim();

@@ -8,6 +8,9 @@ import { useLongPress } from '../../hooks/Moa_useLongPress';
 import type { App } from '../../data/Moa_apps';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
+import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
+import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
+import { Moa_GeneratedAppUserBadge } from './Moa_GeneratedAppUserBadge';
 
 export interface LeftPanelAppIconProps {
   /** 앱 데이터 */
@@ -57,6 +60,8 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
 }) => {
   const clickBlockedRef = useRef(false);
   const { name: displayName } = useResolvedAppStrings(app);
+  const isCreateApp = app.id === createAppShellMetadata.id;
+  const isGeneratedApp = isGeneratedLibraryAppId(app.id);
   const {
     attributes,
     listeners,
@@ -96,7 +101,6 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
     : 'shrink-0 w-auto max-w-full min-w-0';
 
   const buttonWidthClass = fullWidth ? 'w-full max-w-full min-w-0' : 'w-auto max-w-full min-w-0';
-
   return (
     <Div
       ref={setNodeRef}
@@ -106,10 +110,12 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
         cursor: editMode ? 'copy' : 'pointer',
         transform: transform ? CSS.Translate.toString(transform) : undefined,
         opacity: isDragging ? 0.5 : 1,
+        ...(isCreateApp ? getCreateAppShellCssVars() : {}),
       }}
       {...attributes}
       {...dndHandlers}
     >
+      <Div className="relative">
       <Button
         onClick={handleClick}
         className={`group app-btn moa-left-panel-app-btn flex flex-col items-center gap-2 p-0 border-0 bg-transparent ${buttonWidthClass} ${editMode ? 'cursor-copy' : 'cursor-pointer'} ${
@@ -119,18 +125,20 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
         {...normalModeHandlers}
       >
         <Div
-          className={`${iconSize} flex items-center justify-center shadow-lg`}
-          style={{ background: app.gradient }}
+          className={`${isCreateApp ? 'create-app-icon create-app-icon--compact' : ''} ${iconSize} relative flex items-center justify-center shadow-lg`}
+          style={isCreateApp ? undefined : { background: app.gradient }}
         >
-          <Icon name={app.icon} className={`text-white ${iconTextSize}`} />
+          <Icon name={app.icon} className={`text-white ${iconTextSize} ${isCreateApp ? 'relative z-[1]' : ''}`} />
+          {isGeneratedApp ? <Moa_GeneratedAppUserBadge size="sm" /> : null}
         </Div>
         {showName && (
           <Moa_OverflowMarqueeText
             text={displayName}
-            className="moa-left-panel-app-title font-bold text-center leading-tight text-primary"
+            className={`${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-left-panel-app-title font-bold text-center leading-tight`}
           />
         )}
       </Button>
+      </Div>
     </Div>
   );
 };

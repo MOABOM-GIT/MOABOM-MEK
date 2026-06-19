@@ -402,10 +402,23 @@
                                         "props": {
                                           "name": "{{'appearance.point_color_presets.' + presetIdx}}",
                                           "type": "color",
+                                          "autoBinding": false,
                                           "value": "{{preset ?? '#6366f1'}}",
                                           "disabled": "{{_computed.isReadOnly}}",
                                           "className": "h-10 w-full min-w-0 flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer disabled:cursor-not-allowed"
-                                        }
+                                        },
+                                        "actions": [
+                                          {
+                                            "event": "onChange",
+                                            "type": "change",
+                                            "handler": "setState",
+                                            "params": {
+                                              "target": "local",
+                                              "form.appearance.point_color_presets": "{{(Array.isArray(_local.form?.appearance?.point_color_presets) ? _local.form.appearance.point_color_presets : []).map((color, i) => i === presetIdx ? $event.target.value : color)}}",
+                                              "hasChanges": true
+                                            }
+                                          }
+                                        ]
                                       },
                                       {
                                         "type": "basic",
@@ -463,7 +476,7 @@
                                         "handler": "setState",
                                         "params": {
                                           "target": "local",
-                                          "form.appearance.point_color_presets": "{{[...(_local.form?.appearance?.point_color_presets ?? []), '#6366f1']}}",
+                                          "form.appearance.point_color_presets": "{{[...(Array.isArray(_local.form?.appearance?.point_color_presets) ? _local.form.appearance.point_color_presets : []), '#6366f1']}}",
                                           "hasChanges": true
                                         }
                                       }

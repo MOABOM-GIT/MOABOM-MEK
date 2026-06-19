@@ -56,6 +56,7 @@ declare global {
 }
 
 const shellLoadPromises = new Map<string, Promise<ComponentType>>();
+const SHELL_APP_CHUNK_LOAD_TIMEOUT_MS = 15_000;
 
 function readComponentsBundleQuery(): string {
   if (typeof document === 'undefined') {
@@ -111,10 +112,28 @@ export function loadMoabomShellAppComponent(appId: string): Promise<ComponentTyp
     const script = document.createElement('script');
     script.async = true;
     const chunkUrl = shellChunkUrl(file);
+    let settled = false;
+    const cleanup = () => {
+      shellLoadPromises.delete(appId);
+      window.clearTimeout(timeoutId);
+    };
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      script.remove();
+      reject(error);
+    };
+    const timeoutId = window.setTimeout(() => {
+      fail(new Error(`Timed out loading shell chunk: ${chunkUrl}`));
+    }, SHELL_APP_CHUNK_LOAD_TIMEOUT_MS);
+
     script.src = chunkUrl;
     postMoabomLazyPrecache([chunkUrl], appId);
     script.onload = () => {
-      shellLoadPromises.delete(appId);
+      if (settled) return;
+      settled = true;
+      cleanup();
       const Comp = window.moabomShellApps?.[appId];
       if (Comp) {
         resolve(Comp);
@@ -123,8 +142,7 @@ export function loadMoabomShellAppComponent(appId: string): Promise<ComponentTyp
       }
     };
     script.onerror = () => {
-      shellLoadPromises.delete(appId);
-      reject(new Error(`Failed to load shell chunk: ${script.src}`));
+      fail(new Error(`Failed to load shell chunk: ${script.src}`));
     };
     document.head.appendChild(script);
   });

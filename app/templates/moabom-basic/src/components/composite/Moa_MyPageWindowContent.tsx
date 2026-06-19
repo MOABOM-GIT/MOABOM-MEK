@@ -20,7 +20,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   initialTab = 'profile',
   currentUser,
   onOpenApp,
-  onEditGeneratedApp,
+  createdApps,
   favoriteApps = [],
   recentApps = [],
   onProfileUpdated,
@@ -65,6 +65,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     activeTab,
     isGuest,
     currentUser,
+    createdApps,
   });
 
   const activity = useMyPageActivityTab({
@@ -110,7 +111,6 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
             systemState={systemState}
             onSystemStateChange={handleSystemStateChange}
             onOpenApp={onOpenApp}
-            onEditGeneratedApp={onEditGeneratedApp}
             favoriteApps={favoriteApps}
             recentApps={recentApps}
             profile={{

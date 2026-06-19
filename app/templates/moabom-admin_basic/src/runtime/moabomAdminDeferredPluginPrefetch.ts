@@ -1,5 +1,6 @@
 /**
  * lazy 플러그인이 관리자 레이아웃 JSON 로드 전에 IIFE로 올라오도록 `__g7BeforeLayoutLoad`를 등록한다.
+ * 코어는 G7 순정을 유지하고, 순정 `reloadPluginHandlers` 액션으로 선로딩한다.
  * (moabom-basic의 `sirsoftEcommerceLayoutPrefetch`와 동일 훅이며, 관리자 템플릿 ID에서만 동작)
  */
 
@@ -75,9 +76,20 @@ async function ensureSirsoftTosspaymentsPluginLoaded(): Promise<void> {
     }
 
     tossLoadInFlight = (async () => {
+        const asset = cfg.deferredPluginAssets?.[TOSSPAYMENTS_PLUGIN_ID];
+        if (!asset) {
+            return;
+        }
+
         await dispatch({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: [TOSSPAYMENTS_PLUGIN_ID] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: TOSSPAYMENTS_PLUGIN_ID,
+                    assets: asset,
+                },
+            },
         });
     })();
 

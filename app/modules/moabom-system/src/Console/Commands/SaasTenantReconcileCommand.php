@@ -249,6 +249,18 @@ final class SaasTenantReconcileCommand extends Command
             $failures[] = sprintf('%s: admin_settings 검증 예외=%s', $label, $e->getMessage());
         }
 
+        // 3) 관리자 메뉴 표면 검증 — active menu 는 admin role read 매핑이 있어야 사이드바에 노출된다.
+        try {
+            $menuFailure = $this->verifyAdminRoleMenuCoverage($label);
+            if ($menuFailure !== null) {
+                $failures[] = $menuFailure;
+            } else {
+                $this->line(sprintf('  [verify] %s: admin role_menus coverage OK', $label));
+            }
+        } catch (\Throwable $e) {
+            $failures[] = sprintf('%s: admin role_menus 검증 예외=%s', $label, $e->getMessage());
+        }
+
         return $failures;
     }
 
@@ -283,6 +295,52 @@ final class SaasTenantReconcileCommand extends Command
         if (! str_contains($normalized, '/api/admin/language-packs')
             && ! str_contains($normalized, 'admin/language-packs')) {
             return sprintf('%s: admin_settings 에 language-packs data source 누락 (구형 레이아웃 잔존)', $label);
+        }
+
+        return null;
+    }
+
+    private function verifyAdminRoleMenuCoverage(string $label): ?string
+    {
+        $connection = DB::getDefaultConnection();
+        foreach (['menus', 'roles', 'role_menus'] as $table) {
+            if (! Schema::connection($connection)->hasTable($table)) {
+                return null;
+            }
+        }
+
+        $adminRoleId = DB::table('roles')->where('identifier', 'admin')->value('id');
+        if ($adminRoleId === null) {
+            return sprintf('%s: admin role 없음 — 관리자 메뉴 권한 검증 불가', $label);
+        }
+
+        $activeMenuIds = DB::table('menus')
+            ->where('is_active', true)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($activeMenuIds === []) {
+            return sprintf('%s: active admin menu 0건', $label);
+        }
+
+        $mappedMenuIds = DB::table('role_menus')
+            ->where('role_id', $adminRoleId)
+            ->where('permission_type', 'read')
+            ->whereIn('menu_id', $activeMenuIds)
+            ->pluck('menu_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $missingCount = count(array_diff($activeMenuIds, $mappedMenuIds));
+        if ($missingCount > 0) {
+            return sprintf(
+                '%s: admin role_menus read 누락 active_menus=%d mapped=%d missing=%d',
+                $label,
+                count($activeMenuIds),
+                count(array_unique($mappedMenuIds)),
+                $missingCount,
+            );
         }
 
         return null;

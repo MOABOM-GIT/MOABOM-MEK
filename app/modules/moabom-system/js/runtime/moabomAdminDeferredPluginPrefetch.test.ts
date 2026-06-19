@@ -51,8 +51,14 @@ describe('moabomAdminDeferredPluginPrefetch', () => {
 
         expect(dispatch).toHaveBeenCalledTimes(1);
         expect(dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-tosspayments'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-tosspayments',
+                    assets: { js: '/p.js' },
+                },
+            },
         });
     });
 

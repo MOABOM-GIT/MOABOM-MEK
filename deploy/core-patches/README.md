@@ -1,7 +1,7 @@
 # Moabom 최소 코어 패치 (Cloud Run SaaS)
 
-> **SSOT:** 멀티테넌트 SaaS + GCS + Cloud Run 운영에 필요한 **최소 코어 delta**만 보관.  
-> `core:update` 직후 `apply-core-patches.sh`로 재적용.
+> **SSOT:** G7 순정 코어 + Moabom 확장 레이어 + 불가피한 overlay patch.  
+> `core:update` 또는 Cloud Build overlay 단계에서 `apply-core-patches.sh`로 적용한다.
 
 ## 운영 전제 (Moabom)
 
@@ -10,13 +10,14 @@
 | 배포 | **Cloud Build → Cloud Run만** (로컬 빌드/로컬 배포 없음) |
 | 확장 SSOT | 활성 `modules/moabom-*`, `templates/moabom-*`, `plugins/moabom-*` |
 | `_bundled/*` | upstream 미러·참고용. **런타임·이미지·개발 SSOT 아님** (` .gcloudignore` 제외) |
-| 코어 철학 | 우회로로 코어 비접촉을 억지할 필요 없음 — **구조적으로 효율적인 최소 코어 수정**이 맞음 |
+| 코어 철학 | 코어 워킹트리 상시 수정 금지. 불가피한 Cloud Run/GCS/SaaS 부트 delta만 overlay patch로 유지 |
 
 ## 패치 규모 (beta.7 기준)
 
 | | |
 |---|---|
-| `moabom-core.patch` | **26파일** |
+| `moabom-core.patch` | **22파일** |
+| 분류 manifest | `deploy/core-overlay/manifest.json` — `move` / `upstream-hook` / `overlay-required` |
 | 패치 밖 필수 | `composer.json` / `composer.lock` — `spatie/laravel-google-cloud-storage` |
 
 ### 제거·분리한 것 (코어 패치에 넣지 않음)
@@ -27,8 +28,10 @@
 | `GzipEncodeResponse` + 테스트 | upstream 복원 — `deploy/nginx-cloudrun.conf` gzip 사용 |
 | `_bundled` moabom 오염·chmod 노이즈 | `git checkout HEAD -- …/_bundled` 로 미러 복원 |
 | `tests/bootstrap.php` `_bundled` 제거 | upstream 복원 (활성 확장 테스트는 CI/모듈 스위트로) |
+| `resources/js/core/template-engine/ActionDispatcher.ts` 커스텀 핸들러 | 제거 유지. deferred extension 로딩은 순정 `reloadModuleHandlers`/`reloadPluginHandlers` 사용 |
+| 코어 `tests/` 델타 | 패치에서 제거. Moabom 회귀는 `deploy/check-*.sh` 또는 `modules/moabom-system/tests` 로 이동 |
 
-## 26파일 분류
+## 22파일 분류
 
 ### ① 확장 주입 훅 (upstream PR 후보 — Moabom 하드코딩 없음)
 
@@ -51,8 +54,6 @@
 | `config/settings/defaults.json` | Moabom 파일 스토리지 기본값을 `gcs` 로 고정 |
 | `app/Http/Requests/Settings/SaveSettingsRequest.php` | 관리자 storage driver 저장 검증에서 `gcs` 허용 |
 | `app/Http/Requests/Settings/TestDriverConnectionRequest.php` | 관리자 driver test 검증에서 `gcs` 허용 |
-| `lang/ko/settings.php`, `lang/en/settings.php` | `gcs` 드라이버 라벨 |
-| `composer.json` | Spatie 패키지 (**패치 밖**, lock 동반) |
 
 ### ③ Cloud Run / SaaS 런타임 효율
 
@@ -72,9 +73,14 @@
 
 | 파일 | 역할 |
 |------|------|
-| `resources/js/core/TemplateApp.ts` | `mergeComputedRecalc()` |
-| `tests/Feature/Api/Admin/SettingsControllerTest.php` | ① 가드 회귀 테스트 |
-| `tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php` | 관리자 storage driver 선택 → 실제 파일 named disk 반영 회귀 테스트 |
+| `resources/js/core/TemplateApp.ts` | `mergeComputedRecalc()` — upstream-hook 후보 |
+| `resources/js/core/template-engine/ActionDispatcher.ts` | strict TS 타입 계약 보정 — upstream-hook 후보 |
+
+검증은 코어 `tests/`가 아니라 아래 게이트에서 담당한다.
+
+- `deploy/check-core-patches.sh`: manifest 일치, `tests/`/`ActionDispatcher` 재유입 금지, fresh G7 patch dry-run.
+- `deploy/check-g7-core-guard-regression.sh`: 범용 core hook 주입점 회귀.
+- `deploy/check-moabom-refactor-invariants.sh`: GCS 기본값, settings 저장/검증, 확장 레이어 바인딩 회귀.
 
 ## 사용
 

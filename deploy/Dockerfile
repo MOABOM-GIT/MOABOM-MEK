@@ -59,6 +59,11 @@ RUN npm run build:core 2>/dev/null || npm run build 2>/dev/null || true
 RUN cd templates/moabom-admin_basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd modules/moabom-system && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd templates/moabom-basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd modules/sirsoft-ecommerce && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd plugins/sirsoft-ckeditor5 && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd plugins/sirsoft-daum_postcode && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd plugins/sirsoft-tosspayments && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN cd plugins/moabom-auth-hardening && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 
 # --- 3) Runtime ---
 FROM php:8.4-fpm-bookworm
@@ -67,8 +72,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx supervisor \
     libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
     libicu-dev libxml2-dev libzip-dev libonig-dev \
+    libldap2-dev zlib1g-dev libmagickwand-dev \
+    $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install pdo_mysql mysqli gd zip intl opcache bcmath \
+    && docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu/ \
+    && docker-php-ext-install -j"$(nproc)" \
+        pdo_mysql mysqli gd zip intl opcache bcmath pcntl exif ldap \
+    && pecl install redis \
+    && pecl install imagick \
+    && docker-php-ext-enable redis imagick \
+    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && apt-get clean && rm -rf /var/lib/mysql /var/lib/apt/lists/*
 
 COPY deploy/nginx-cloudrun.conf /etc/nginx/conf.d/default.conf
@@ -87,6 +100,11 @@ COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 COPY --from=assets --chown=www-data:www-data /app/templates/moabom-admin_basic/dist ./templates/moabom-admin_basic/dist
 COPY --from=assets --chown=www-data:www-data /app/templates/moabom-basic/dist ./templates/moabom-basic/dist
 COPY --from=assets --chown=www-data:www-data /app/modules/moabom-system/dist ./modules/moabom-system/dist
+COPY --from=assets --chown=www-data:www-data /app/modules/sirsoft-ecommerce/dist ./modules/sirsoft-ecommerce/dist
+COPY --from=assets --chown=www-data:www-data /app/plugins/sirsoft-ckeditor5/dist ./plugins/sirsoft-ckeditor5/dist
+COPY --from=assets --chown=www-data:www-data /app/plugins/sirsoft-daum_postcode/dist ./plugins/sirsoft-daum_postcode/dist
+COPY --from=assets --chown=www-data:www-data /app/plugins/sirsoft-tosspayments/dist ./plugins/sirsoft-tosspayments/dist
+COPY --from=assets --chown=www-data:www-data /app/plugins/moabom-auth-hardening/dist ./plugins/moabom-auth-hardening/dist
 
 # Opcache 프로덕션 (Cloud Run: 요청마다 PHP 재로드 비용 절감)
 RUN { \

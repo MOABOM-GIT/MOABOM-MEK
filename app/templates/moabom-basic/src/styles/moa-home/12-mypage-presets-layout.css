@@ -5,8 +5,8 @@
   align-items: center;
 }
 
-/* Tailwind 기본 `lg` = 64rem(1024px) */
-@container (min-width: 1024px) {
+/* Tailwind `lg` = var(--moa-cq-lg) */
+@container (width >= 1024px) {
   .moa-mypage-point-presets-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
   }
@@ -43,14 +43,14 @@
   align-items: center;
 }
 
-/* Tailwind 기본 `sm` = 40rem(640px) */
-@container (min-width: 640px) {
+/* Tailwind `sm` = var(--moa-cq-sm) */
+@container (width >= 640px) {
   .moa-mypage-bg-presets-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
-@container (min-width: 1024px) {
+@container (width >= 1024px) {
   .moa-mypage-bg-presets-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
@@ -72,53 +72,49 @@
 
 .moa-shell-app-window,
 .moa-mypage-surface {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.75rem;
   color: var(--moa-text-primary);
 }
 
+/**
+ * 마이페이지 — PC(2열) 통째 스크롤 + 좌측 배경 stretch + nav sticky.
+ *   - `align-items: stretch` — 좌측 moa-group 배경이 우측 높이만큼 아래까지 채움
+ *   - sticky 는 `.moa-mypage-sidebar-nav` 만 (배경 패널은 stretch, 메뉴만 고정)
+ *   - nav 스크롤 gutter: 좌·우 동일 padding + `scrollbar-gutter: stable both-edges`
+ *   - 1열 스택: `--moa-cq-sm` (16-responsive-breakpoints.css) — 앱 공통 `sm`
+ */
 .moa-mypage-layout {
   display: grid;
-  flex: 1 1 0%;
-  min-height: 0;
   grid-template-columns: 230px 1fr;
   align-items: stretch;
-  gap: 1.25rem;
-}
-
-.moa-mypage-sidebar {
-  min-height: 0;
-  height: 100%;
+  gap: var(--moa-app-stack-gap);
 }
 
 .moa-mypage-content {
   min-width: 0;
 }
 
-/* PC(컨테이너 lg+) — 좌측 메뉴 sticky, 메뉴 많을 때 사이드바 내부 스크롤 */
-@container (min-width: 1024px) {
-  .moa-mypage-layout {
-    align-items: start;
-  }
+.moa-mypage-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 100%;
+  width: 100%;
+}
 
-  .moa-mypage-sidebar {
-    position: sticky;
-    top: 0;
-    align-self: start;
-    display: flex;
-    flex-direction: column;
-    max-height: 100cqh;
-    overflow: hidden;
-  }
-
+@container moa-app-window (width >= 640px) {
   .moa-mypage-sidebar-nav {
-    min-height: 0;
+    --moa-mypage-nav-gutter: 0.5rem;
+
+    position: sticky;
+    /** viewport `.moa-app-window-viewport` padding 과 맞춰 sticky 점프 방지 */
+    top: var(--moa-app-window-body-padding);
+    flex: 0 0 auto;
+    max-height: calc(100cqh - var(--moa-app-window-body-padding));
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    padding-inline: var(--moa-mypage-nav-gutter);
+    scrollbar-gutter: stable both-edges;
   }
 }
 

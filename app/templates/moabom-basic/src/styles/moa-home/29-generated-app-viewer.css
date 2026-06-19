@@ -1,0 +1,143 @@
+.generated-app-toolbar {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  z-index: 10;
+  display: flex;
+  width: min(16rem, calc(100% - 1.5rem));
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.generated-app-owner-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(9.375rem, 100%);
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 0.45rem 1rem rgb(15 23 42 / 18%);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.generated-app-owner-caret {
+  flex: none;
+  font-size: 0.6rem;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 2px rgb(15 23 42 / 45%));
+  transition: transform 0.18s ease;
+}
+
+.generated-app-owner-button.is-open .generated-app-owner-caret {
+  transform: rotate(180deg);
+}
+
+.generated-app-owner-button.is-static {
+  cursor: default;
+}
+
+.generated-app-owner-label {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  filter: drop-shadow(0 1px 2px rgb(15 23 42 / 45%));
+}
+
+.generated-app-action-menu {
+  border-radius: 1rem;
+  flex-flow: column;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.generated-app-action-menu.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.generated-app-action-menu.is-closed {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(0.35rem) scale(0.97);
+}
+
+.generated-app-action-button {
+  --moa-btn-color: #fff;
+  --moa-btn-bg: linear-gradient(135deg, rgb(15 23 42 / 72%), rgb(15 23 42 / 50%));
+  --moa-btn-border: rgb(255 255 255 / 45%);
+  --moa-btn-hover-color: #fff;
+  --moa-btn-hover-bg: linear-gradient(135deg, rgb(15 23 42 / 82%), rgb(15 23 42 / 60%));
+  --moa-btn-hover-border: rgb(255 255 255 / 70%);
+  --moa-btn-shadow: 0 0.35rem 0.9rem rgb(15 23 42 / 16%);
+  --moa-btn-hover-shadow: 0 0.5rem 1.1rem rgb(15 23 42 / 22%);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.generated-app-action-button.is-edit {
+  --moa-btn-bg: linear-gradient(135deg, rgb(59 130 246 / 88%), rgb(99 102 241 / 78%));
+  --moa-btn-hover-bg: linear-gradient(135deg, rgb(59 130 246 / 96%), rgb(99 102 241 / 86%));
+}
+
+.generated-app-action-button i,
+.generated-app-action-button svg {
+  color: #fff;
+}
+
+.generated-app-action-button.is-share {
+  --moa-btn-bg: linear-gradient(135deg, rgb(16 185 129 / 88%), rgb(20 184 166 / 78%));
+  --moa-btn-hover-bg: linear-gradient(135deg, rgb(16 185 129 / 96%), rgb(20 184 166 / 86%));
+}
+
+.generated-app-action-button.is-danger {
+  --moa-btn-bg: linear-gradient(135deg, rgb(244 63 94 / 88%), rgb(190 18 60 / 78%));
+  --moa-btn-hover-bg: linear-gradient(135deg, rgb(244 63 94 / 96%), rgb(190 18 60 / 86%));
+}
+
+.generated-app-preview-frame {
+  min-height: 0;
+  width: 100%;
+  flex: 1;
+  border: 1px solid rgb(255 255 255 / 60%);
+  border-radius: 1rem;
+  background: #fff;
+}
+
+@media (width <= 480px) {
+  .generated-app-toolbar {
+    width: min(13.5rem, calc(100% - 1rem));
+    bottom: 0.5rem;
+    left: 0.5rem;
+  }
+
+  .generated-app-owner-button {
+    height: 1.8rem;
+  }
+
+  .generated-app-action-menu {
+    gap: 0.3rem;
+    padding: 0.35rem;
+  }
+
+  .generated-app-action-button {
+    min-height: 1.55rem;
+    padding-inline: 0.55rem;
+  }
+}

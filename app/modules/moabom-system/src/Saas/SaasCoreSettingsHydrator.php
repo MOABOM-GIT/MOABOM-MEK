@@ -6,6 +6,7 @@ namespace Modules\Moabom\System\Saas;
 
 use App\Contracts\Repositories\ConfigRepositoryInterface;
 use Illuminate\Support\Facades\Config;
+use Modules\Moabom\System\Broadcasting\WebsocketDriverConfigApplier;
 
 /**
  * SaaS 런타임 G7 코어 설정 hydration (단일 진입점).
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\Config;
  * Cloud Run 다중 인스턴스에서는 config('app.name'), g7_settings.core.* 가 GCS SSOT 와 어긋난다.
  *
  * ResolveMoabomTenant 직후 1회 hydrate() 로 G7 부트스트랩과 동일한 config 주입을 재현한다.
- * drivers/cache/upload/debug 는 Run 인프라(env)를 덮어쓰지 않는다.
+ * cache/upload/debug·스토리지/세션/큐 드라이버는 Run 인프라(env)를 덮어쓰지 않는다.
+ * drivers.websocket_* 만 hydrate 시 Laravel broadcasting·g7.websocket.client 에 반영한다.
  */
 final class SaasCoreSettingsHydrator
 {
@@ -57,6 +59,7 @@ final class SaasCoreSettingsHydrator
         $this->applyMailRuntime($this->snapshot['mail'] ?? []);
         $this->applyGeoIpRuntime($this->snapshot['geoip'] ?? []);
         $this->applyCoreUpdateRuntime($this->snapshot['core_update'] ?? []);
+        $this->applyDriversWebsocketRuntime($this->snapshot['drivers'] ?? []);
     }
 
     /** 공개 HTML·부트 API 캐시 키 — general·seo 변경 시 자동 miss */
@@ -207,6 +210,18 @@ final class SaasCoreSettingsHydrator
         if (! empty($settings['github_token'])) {
             Config::set('app.update.github_token', $settings['github_token']);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $drivers
+     */
+    private function applyDriversWebsocketRuntime(array $drivers): void
+    {
+        if ($drivers === []) {
+            return;
+        }
+
+        WebsocketDriverConfigApplier::apply($drivers);
     }
 
     private function resolveScalarSetting(mixed $value): string

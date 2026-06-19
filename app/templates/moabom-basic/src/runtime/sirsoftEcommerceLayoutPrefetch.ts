@@ -1,7 +1,7 @@
 /**
  * sirsoft-ecommerce 모듈이 `loading.strategy: lazy`일 때,
  * 쇼핑·마이페이지 레이아웃(`shop/*`, `mypage/*`) JSON을 fetch하기 전에
- * `loadDeferredExtensionAssets`로 모듈 IIFE를 선로딩한다.
+ * G7 순정 `reloadModuleHandlers` / `reloadPluginHandlers`로 IIFE를 선로딩한다.
  *
  * `sirsoft-daum_postcode` 플러그인이 `lazy`일 때는 주소·배송·결제 관련 레이아웃 진입 전에
  * 동일 핸들러로 플러그인 IIFE를 선로딩한다.
@@ -21,6 +21,7 @@
 import { ensureMoabomFullTemplateRoutesMerged, isSirsoftEcommercePresentInG7Config } from './moabomGhostRoutesFetch';
 
 let ecommerceLoadInFlight: Promise<void> | null = null;
+let boardLoadInFlight: Promise<void> | null = null;
 let daumPostcodeLoadInFlight: Promise<void> | null = null;
 let ckeditor5LoadInFlight: Promise<void> | null = null;
 let tosspaymentsLoadInFlight: Promise<void> | null = null;
@@ -91,8 +92,46 @@ function getDispatch(): ((action: { handler: string; params?: Record<string, unk
     return typeof w.G7Core?.dispatch === 'function' ? w.G7Core.dispatch : undefined;
 }
 
+async function dispatchDeferredModuleLoad(cfg: G7ConfigShape, moduleId: string): Promise<void> {
+    const dispatch = getDispatch();
+    const asset = cfg.deferredModuleAssets?.[moduleId];
+    if (!asset || typeof dispatch !== 'function') {
+        return;
+    }
+
+    await dispatch({
+        handler: 'reloadModuleHandlers',
+        params: {
+            action: 'add',
+            moduleInfo: {
+                identifier: moduleId,
+                assets: asset,
+            },
+        },
+    });
+}
+
+async function dispatchDeferredPluginLoad(cfg: G7ConfigShape, pluginId: string): Promise<void> {
+    const dispatch = getDispatch();
+    const asset = cfg.deferredPluginAssets?.[pluginId];
+    if (!asset || typeof dispatch !== 'function') {
+        return;
+    }
+
+    await dispatch({
+        handler: 'reloadPluginHandlers',
+        params: {
+            action: 'add',
+            pluginInfo: {
+                identifier: pluginId,
+                assets: asset,
+            },
+        },
+    });
+}
+
 /**
- * sirsoft-ecommerce 모듈 에셋이 아직이면 `loadDeferredExtensionAssets`로 한 번만 로드한다.
+ * sirsoft-ecommerce 모듈 에셋이 아직이면 순정 reloadModuleHandlers로 한 번만 로드한다.
  */
 export async function ensureSirsoftEcommerceExtensionLoaded(): Promise<void> {
     const w = window as unknown as {
@@ -122,17 +161,54 @@ export async function ensureSirsoftEcommerceExtensionLoaded(): Promise<void> {
         return;
     }
 
-    ecommerceLoadInFlight = (async () => {
-        await dispatch({
-            handler: 'loadDeferredExtensionAssets',
-            params: { moduleIdentifiers: ['sirsoft-ecommerce'] },
-        });
-    })();
+    ecommerceLoadInFlight = dispatchDeferredModuleLoad(cfg, 'sirsoft-ecommerce');
 
     try {
         await ecommerceLoadInFlight;
     } finally {
         ecommerceLoadInFlight = null;
+    }
+}
+
+const BOARD_MODULE_ID = 'sirsoft-board';
+
+/**
+ * sirsoft-board 모듈이 lazy일 때, 게시판 윈도우 레이아웃(`board/*`) 직전에 IIFE를 선로딩한다.
+ */
+export async function ensureSirsoftBoardExtensionLoaded(): Promise<void> {
+    const w = window as unknown as {
+        G7Config?: G7ConfigShape;
+    };
+
+    const cfg = w.G7Config;
+    const dispatch = getDispatch();
+    if (!cfg || typeof dispatch !== 'function') {
+        return;
+    }
+
+    const mod = cfg.moduleAssets?.[BOARD_MODULE_ID];
+    if (mod && (mod.js || mod.css)) {
+        return;
+    }
+
+    hydrateDeferredModuleFromRegistry(cfg, BOARD_MODULE_ID);
+
+    if (!cfg.deferredModuleAssets?.[BOARD_MODULE_ID]) {
+        return;
+    }
+
+    if (boardLoadInFlight) {
+        await boardLoadInFlight;
+
+        return;
+    }
+
+    boardLoadInFlight = dispatchDeferredModuleLoad(cfg, BOARD_MODULE_ID);
+
+    try {
+        await boardLoadInFlight;
+    } finally {
+        boardLoadInFlight = null;
     }
 }
 
@@ -169,12 +245,7 @@ export async function ensureSirsoftDaumPostcodePluginLoaded(): Promise<void> {
         return;
     }
 
-    daumPostcodeLoadInFlight = (async () => {
-        await dispatch({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: [DAUM_PLUGIN_ID] },
-        });
-    })();
+    daumPostcodeLoadInFlight = dispatchDeferredPluginLoad(cfg, DAUM_PLUGIN_ID);
 
     try {
         await daumPostcodeLoadInFlight;
@@ -216,12 +287,7 @@ export async function ensureSirsoftCkeditor5PluginLoaded(): Promise<void> {
         return;
     }
 
-    ckeditor5LoadInFlight = (async () => {
-        await dispatch({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: [CKEDITOR_PLUGIN_ID] },
-        });
-    })();
+    ckeditor5LoadInFlight = dispatchDeferredPluginLoad(cfg, CKEDITOR_PLUGIN_ID);
 
     try {
         await ckeditor5LoadInFlight;
@@ -263,12 +329,7 @@ export async function ensureSirsoftTosspaymentsPluginLoaded(): Promise<void> {
         return;
     }
 
-    tosspaymentsLoadInFlight = (async () => {
-        await dispatch({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: [TOSSPAYMENTS_PLUGIN_ID] },
-        });
-    })();
+    tosspaymentsLoadInFlight = dispatchDeferredPluginLoad(cfg, TOSSPAYMENTS_PLUGIN_ID);
 
     try {
         await tosspaymentsLoadInFlight;
@@ -317,6 +378,9 @@ export function layoutPathSuggestsCKEditor(layoutPath: string): boolean {
         return true;
     }
     if (p.startsWith('sirsoft-page.') || p.includes('.sirsoft-page.')) {
+        return true;
+    }
+    if (p.startsWith('board/') || p.includes('partials/board/')) {
         return true;
     }
     if (p.includes('sirsoft-board.') && /write|edit|post|form|draft|compose/.test(p)) {
@@ -372,5 +436,9 @@ async function moabomBeforeLayoutLoad(
 
     if (layoutPathSuggestsTossPayments(layoutPath)) {
         await ensureSirsoftTosspaymentsPluginLoaded();
+    }
+
+    if (layoutPath.startsWith('board/')) {
+        await ensureSirsoftBoardExtensionLoaded();
     }
 }

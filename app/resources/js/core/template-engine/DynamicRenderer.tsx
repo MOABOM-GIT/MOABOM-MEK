@@ -30,6 +30,7 @@ import { RAW_PREFIX, RAW_MARKER_START, RAW_MARKER_END, RAW_PLACEHOLDER_MARKER, i
 import type { ConditionsProperty } from './helpers/ConditionEvaluator';
 import { useTransitionState } from './TransitionContext';
 import { useResponsive } from './ResponsiveContext';
+import { deepMergeStateSafe } from './stateMerge';
 import { createLogger } from '../utils/Logger';
 import { shallowObjectEqual } from '../hooks/useControllableState';
 import type { G7DevToolsInterface } from './G7CoreGlobals';
@@ -77,103 +78,11 @@ import { useParentContext } from './ParentContextProvider';
  * // source: { errors: { email: ["필수"] } }
  * // result: { errors: { email: ["필수"] } }  -- name 에러 제거됨
  */
-/**
- * 객체의 모든 키가 숫자인지 확인합니다.
- * convertDotNotationToObject가 배열 인덱스를 객체 키로 변환한 경우를 감지합니다.
- */
-function hasOnlyNumericKeys(obj: Record<string, any>): boolean {
-  const keys = Object.keys(obj);
-  return keys.length > 0 && keys.every((k) => /^\d+$/.test(k));
-}
-
 export const deepMergeState = (
   target: Record<string, any>,
   source: Record<string, any>
 ): Record<string, any> => {
-  // 깊은 병합에서 제외할 키 목록 (완전 교체되어야 하는 필드들)
-  // validation errors 등은 병합하면 이전 오류가 남아있게 됨
-  const replaceOnlyKeys = ['errors'];
-
-  const result: Record<string, any> = { ...target };
-
-  for (const key of Object.keys(source)) {
-    const sourceValue = source[key];
-    const targetValue = target[key];
-
-    // source 값이 null이면 그대로 설정
-    if (sourceValue === null) {
-      result[key] = null;
-      continue;
-    }
-
-    // errors 등 특정 키는 항상 완전히 교체 (validation 에러 등은 병합하면 안됨)
-    if (replaceOnlyKeys.includes(key)) {
-      result[key] = sourceValue;
-      continue;
-    }
-
-    // source 값이 배열이면 배열로 교체 (배열은 병합하지 않음)
-    if (Array.isArray(sourceValue)) {
-      result[key] = sourceValue;
-      continue;
-    }
-
-    // 특수 케이스: target이 배열이고 source가 숫자 키만 가진 객체인 경우
-    // convertDotNotationToObject가 "optionInputs.0.values" 같은 경로를
-    // { optionInputs: { "0": { values: ... } } } 로 변환하므로,
-    // 이를 배열 인덱스로 해석하여 해당 위치의 요소를 병합
-    if (
-      Array.isArray(targetValue) &&
-      sourceValue !== null &&
-      typeof sourceValue === 'object' &&
-      !Array.isArray(sourceValue) &&
-      hasOnlyNumericKeys(sourceValue)
-    ) {
-      const numericKeys = Object.keys(sourceValue).map((k) => parseInt(k, 10));
-      const maxKey = numericKeys.length > 0 ? Math.max(...numericKeys) : 0;
-
-      // Sparse array 방지: source 키가 배열 범위를 크게 초과하면
-      // 배열 인덱스가 아닌 ID/키 매핑으로 간주하여 객체로 교체
-      if (maxKey >= targetValue.length + numericKeys.length + 10) {
-        result[key] = { ...sourceValue };
-      } else {
-        const arrResult = [...targetValue];
-        for (const [srcKey, srcVal] of Object.entries(sourceValue)) {
-          const index = parseInt(srcKey, 10);
-          if (index >= 0 && index < arrResult.length) {
-            if (
-              srcVal !== null &&
-              typeof srcVal === 'object' &&
-              !Array.isArray(srcVal) &&
-              arrResult[index] !== null &&
-              typeof arrResult[index] === 'object'
-            ) {
-              arrResult[index] = deepMergeState(arrResult[index], srcVal);
-            } else {
-              arrResult[index] = srcVal;
-            }
-          } else if (index >= arrResult.length) {
-            arrResult[index] = srcVal;
-          }
-        }
-        result[key] = arrResult;
-      }
-    } else if (
-      // 둘 다 일반 객체인 경우 재귀적으로 깊은 병합
-      sourceValue !== null &&
-      typeof sourceValue === 'object' &&
-      targetValue !== null &&
-      typeof targetValue === 'object' &&
-      !Array.isArray(targetValue)
-    ) {
-      result[key] = deepMergeState(targetValue, sourceValue);
-    } else {
-      // 그 외의 경우 덮어쓰기
-      result[key] = sourceValue;
-    }
-  }
-
-  return result;
+  return deepMergeStateSafe(target, source, { replaceOnlyKeys: ['errors'] });
 };
 
 /**

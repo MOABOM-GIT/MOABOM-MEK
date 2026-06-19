@@ -1,6 +1,13 @@
 import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSystem';
 import { loadMoabomSettingsPayloadForMerge } from '../api/moabomSystemApi';
+import {
+  extractServerMainAppOrder,
+  loadLocalMainAppOrder,
+  mergeMainAppOrderFromPull,
+  saveLocalMainAppOrder,
+} from '../pages/home/moaHomeShellOrder';
 import { queueSaveMoabomSystemSettings, isRecentlySavedSettings } from './moabomSettingsSaveQueue';
+import { isRecentlySavedShellOrder, queueSaveShellMainAppOrder } from './moabomShellOrderSaveQueue';
 import { mergeMoabomSystemStateFromSettingsApi, writeStoredMoabomDefaultsRevision } from './moabomSystemServerMerge';
 import { areMoabomSystemStatesEqual } from './moabomSystemStateEqual';
 import { applyMoabomSystemAppearance, hasStoredMoabomSystemState, loadMoabomSystemState, saveMoabomSystemState } from './moabomSystemStore';
@@ -51,7 +58,7 @@ export async function pullMoabomServerState(input: {
   isLoggedIn: boolean;
   coreUserLanguage?: string | null;
   preserveShellPanelOpen: boolean;
-}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null } | null> {
+}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: string[] } | null> {
   const payload = await loadMoabomSettingsPayloadForMerge(input.isLoggedIn);
   if (!payload) {
     return null;
@@ -89,11 +96,33 @@ export async function pullMoabomServerState(input: {
     saveMoabomSystemState(merged);
   }
 
+  const localMainAppOrder = loadLocalMainAppOrder();
+  const serverMainAppOrder = extractServerMainAppOrder(payload.settings);
+  const trustLocalShellOrder = isRecentlySavedSettings() || isRecentlySavedShellOrder();
+  const mergedMainAppOrder = mergeMainAppOrderFromPull({
+    isLoggedIn: input.isLoggedIn,
+    trustLocalDuringCooldown: trustLocalShellOrder,
+    localOrder: localMainAppOrder,
+    serverOrder: serverMainAppOrder,
+  });
+
+  if (mergedMainAppOrder.join('\0') !== localMainAppOrder.join('\0')) {
+    saveLocalMainAppOrder(mergedMainAppOrder);
+  } else if (
+    input.isLoggedIn
+    && !trustLocalShellOrder
+    && serverMainAppOrder === null
+    && localMainAppOrder.length > 0
+  ) {
+    void queueSaveShellMainAppOrder(localMainAppOrder, true);
+  }
+
   writeStoredMoabomDefaultsRevision(serverRev);
   applyMoabomSystemAppearance(merged.appearance);
 
   return {
     state: merged,
     defaults: payload.defaults ?? null,
+    mainAppOrder: mergedMainAppOrder,
   };
 }

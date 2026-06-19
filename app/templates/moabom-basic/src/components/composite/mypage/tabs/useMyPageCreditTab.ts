@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
 import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
 import { checkAttendanceApi, fetchUserCreditsApi } from '../myPageApi';
-import type { CreditOverview, MyPageTab, MyPageUser } from '../myPageTypes';
-import { showCoreToast } from '../myPageUtils';
+import { resolveApiMessage, showCoreToast } from '../myPageUtils';
 
 interface UseMyPageCreditTabOptions {
   activeTab: MyPageTab;
@@ -66,7 +65,7 @@ export function useMyPageCreditTab({
     try {
       const result = await checkAttendanceApi();
       if (!result.ok) {
-        const message = result.errors?.message ?? result.message ?? t('moa_mypage.msg.attendance_failed');
+        const message = resolveApiMessage(result, t('moa_mypage.msg.attendance_failed'));
         setAttendanceMessage(message);
         showCoreToast('error', message, 3500);
         return;

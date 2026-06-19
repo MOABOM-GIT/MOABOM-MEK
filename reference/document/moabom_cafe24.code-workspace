@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../moabom_cafe24"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"typescript.autoClosingTags": false
+	}
+}

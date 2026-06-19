@@ -4,6 +4,10 @@
 // 부모(셸) 출처의 쿠키/스토리지/DOM 에 접근할 수 없다(stored-XSS 차단의 핵심).
 // 아래 CSP 메타는 심층 방어로, 자기완결 AI 앱(인라인 스크립트 + CDN)이 계속 동작하도록
 // https CDN·인라인은 허용하되 base-uri/form 탈출 벡터를 제한한다.
+//
+// frame-ancestors 는 <meta> 로 전달하면 브라우저가 무시(콘솔 경고)하고, 본 미리보기는
+// 셸이 의도적으로 sandbox iframe(opaque origin) 안에 프레이밍하므로 의미상으로도 맞지 않는다.
+// 프레이밍 격리는 sandbox(allow-same-origin 제거)가 담당하므로 메타 CSP 에서는 제외한다.
 export const AI_PREVIEW_CSP =
   "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; " +
   "script-src 'unsafe-inline' 'unsafe-eval' https: blob:; " +
@@ -12,7 +16,7 @@ export const AI_PREVIEW_CSP =
   "font-src 'self' data: https:; " +
   "media-src 'self' data: blob: https:; " +
   "connect-src https:; " +
-  "frame-ancestors 'none'; base-uri 'none'; form-action 'self' https:;";
+  "base-uri 'none'; form-action 'self' https:;";
 
 const SAFETY_CSP_META = `<meta http-equiv="Content-Security-Policy" content="${AI_PREVIEW_CSP}">`;
 
@@ -22,9 +26,11 @@ const SAFETY_STYLE = `
       margin: 0;
       padding: 0;
       width: 100%;
-      min-height: 100%;
-      max-height: 100vh;
-      overflow: auto;
+      height: auto !important;
+      min-height: 100% !important;
+      max-height: none !important;
+      overflow: auto !important;
+      overflow-y: auto !important;
     }
     * {
       box-sizing: border-box;

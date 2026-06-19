@@ -29,6 +29,9 @@ class GeneratedApp extends Model
         'model_id',
         'prompt',
         'html',
+        'is_shared',
+        'parent_app_id',
+        'version',
         'metadata',
     ];
 
@@ -38,12 +41,19 @@ class GeneratedApp extends Model
     protected function casts(): array
     {
         return [
+            'is_shared' => 'boolean',
             'metadata' => 'array',
+            'version' => 'integer',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function parentApp(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_app_id');
     }
 }

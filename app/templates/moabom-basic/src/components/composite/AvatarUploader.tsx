@@ -140,20 +140,6 @@ export function AvatarUploader({
     return G7Core?.t?.(key) ?? key;
   }, []);
 
-  // CSRF 토큰 가져오기
-  const getCsrfToken = useCallback((): string | null => {
-    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-    if (match) {
-      return decodeURIComponent(match[1]);
-    }
-    return null;
-  }, []);
-
-  // 인증 토큰 가져오기 (ApiClient에서 토큰 조회)
-  const getAuthToken = useCallback((): string | null => {
-    return G7Core?.api?.getToken?.() ?? null;
-  }, []);
-
   // 실제 업로드 실행 함수
   const executeUpload = useCallback(async (file: File) => {
     setShowUploadConfirm(false);
@@ -166,26 +152,13 @@ export function AvatarUploader({
       const formData = new FormData();
       formData.append('avatar', file);
 
-      // API 호출
-      const csrfToken = getCsrfToken();
-      const authToken = getAuthToken();
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          ...(csrfToken && { 'X-XSRF-TOKEN': csrfToken }),
-          ...(authToken && { Authorization: `Bearer ${authToken}` }),
-        },
-        credentials: 'include',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || t('attachment.upload_failed'));
+      if (!G7Core?.api?.post) {
+        throw new Error(t('attachment.upload_failed'));
       }
 
-      const data = await response.json();
+      const data = await G7Core.api.post(uploadEndpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       const result = data.data || data;
 
       // 로컬 상태 즉시 업데이트 (빠른 피드백)
@@ -218,7 +191,7 @@ export function AvatarUploader({
         inputRef.current.value = '';
       }
     }
-  }, [uploadEndpoint, onUploadSuccess, onUploadError, getCsrfToken, getAuthToken, t]);
+  }, [uploadEndpoint, onUploadSuccess, onUploadError, t]);
 
   // 파일 선택 핸들러
   const handleFileChange = useCallback(
@@ -266,23 +239,12 @@ export function AvatarUploader({
     setErrorMessage(null);
 
     try {
-      const csrfToken = getCsrfToken();
-      const authToken = getAuthToken();
-      const response = await fetch(deleteEndpoint, {
-        method: 'DELETE',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-XSRF-TOKEN': csrfToken }),
-          ...(authToken && { Authorization: `Bearer ${authToken}` }),
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || t('attachment.delete_failed'));
+      if (!G7Core?.api?.delete) {
+        throw new Error(t('attachment.delete_failed'));
       }
+      await G7Core.api.delete(deleteEndpoint, {
+        headers: { Accept: 'application/json' },
+      });
 
       // 로컬 상태 즉시 업데이트 (빠른 피드백)
       setLocalAvatarUrl(null);
@@ -308,7 +270,7 @@ export function AvatarUploader({
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteEndpoint, onDeleteSuccess, onDeleteError, getCsrfToken, getAuthToken, t]);
+  }, [deleteEndpoint, onDeleteSuccess, onDeleteError, t]);
 
   // 삭제 버튼 클릭 핸들러 (확인 다이얼로그 표시 또는 즉시 삭제)
   const handleDeleteClick = useCallback(() => {

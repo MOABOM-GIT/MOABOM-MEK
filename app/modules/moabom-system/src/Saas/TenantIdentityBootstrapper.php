@@ -21,12 +21,9 @@ final class TenantIdentityBootstrapper
         private readonly TenantDatabaseCloner $cloner,
     ) {}
 
-    public function bootstrap(string $sourceDb, string $targetDb, string $adminEmail = 'admin@moabom.com'): void
+    public function bootstrap(string $sourceDb, string $targetDb, string $adminEmail = SaasAdminCredentials::DEFAULT_ADMIN_EMAIL): void
     {
-        $adminEmail = trim($adminEmail);
-        if ($adminEmail === '') {
-            $adminEmail = 'admin@moabom.com';
-        }
+        $adminEmail = SaasAdminCredentials::email($adminEmail);
 
         if (! $this->cloner->databaseExists($targetDb)) {
             throw new \RuntimeException("Target DB {$targetDb} does not exist.");

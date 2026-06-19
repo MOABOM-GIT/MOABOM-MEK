@@ -12,6 +12,7 @@ import { Button } from '../../components/basic/Button';
 import { Canvas } from '../../components/basic/Canvas';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
+import { APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 import { CPAP_ICON_TEXT_ROW_CLASS, CPAP_PANEL_CLASS } from './cpapSurveyStyles';
 import {
   CpapCameraOverlayDock,
@@ -503,14 +504,14 @@ export function CpapMaskFitApp() {
   }));
 
   return (
-    <Div className="moa-shell-app-window moa-cpap-fit-app">
+    <Div className={`${APP_WINDOW_BODY_CLASS} moa-cpap-fit-app`}>
       <Div className="moa-cpap-fit-stage">
         {step === 'survey' && (
           <Div className="moa-cpap-fit-scroll">
             {error ? <CpapStatusBanner variant="error" title={error} /> : null}
             {infoMessage ? <CpapStatusBanner variant="info" title={infoMessage} /> : null}
-            <Div className="moa-cpap-fit-survey-grid grid gap-4 @lg:grid-cols-[minmax(0,1fr)_300px]">
-              <Div className={`${CPAP_PANEL_CLASS} gap-5`}>
+            <Div className="moa-cpap-fit-survey-grid moa-app-stack-grid grid @lg:grid-cols-[minmax(0,1fr)_300px]">
+              <Div className={CPAP_PANEL_CLASS}>
               <CpapChoiceGroup
                 label={t('moa_apps_cpap.profile.gender')}
                 labelIcon="fa-user"
@@ -609,7 +610,7 @@ export function CpapMaskFitApp() {
           <Div className="moa-cpap-fit-scroll">
             {error ? <CpapStatusBanner variant="error" title={error} /> : null}
             {!result ? (
-              <Div className={`${CPAP_PANEL_CLASS} gap-4`}>
+              <Div className={CPAP_PANEL_CLASS}>
                 <CpapStatusBanner
                   variant="info"
                   title={t('moa_apps_cpap.result_empty_title')}
@@ -624,7 +625,7 @@ export function CpapMaskFitApp() {
                 />
               </Div>
             ) : (
-            <Div className="moa-cpap-fit-survey-grid grid gap-4 @lg:grid-cols-[minmax(0,1fr)_280px]">
+            <Div className="moa-cpap-fit-survey-grid moa-app-stack-grid grid @lg:grid-cols-[minmax(0,1fr)_280px]">
               <Div className={CPAP_PANEL_CLASS}>
             <Div ref={recommendedMaskRef}>
               <CpapResultHero

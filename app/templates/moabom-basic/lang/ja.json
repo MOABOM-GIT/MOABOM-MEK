@@ -14,6 +14,12 @@
     "no_account": "アカウントをお持ちでないですか？",
     "have_account": "すでにアカウントをお持ちですか？"
   },
+  "common": {
+    "$partial": "partial/ja/common.json"
+  },
+  "userinfo": {
+    "$partial": "partial/ja/userinfo.json"
+  },
   "errors": {
     "404_title": "ページが見つかりません",
     "404_message": "お探しのページは存在しません。",
@@ -159,6 +165,9 @@
       "created_empty": "作成したアプリはありません。",
       "created_loading": "アプリ一覧を読み込み中…",
       "edit_app": "アプリを編集",
+      "delete_app": "アプリを削除",
+      "share_app": "アプリを登録",
+      "unshare_app": "登録を解除",
       "recent_title": "最近使ったアプリ",
       "recent_empty": "最近使ったアプリはありません。",
       "favorites_title": "お気に入り",
@@ -257,7 +266,11 @@
       "user_fallback": "ユーザー",
       "app_description_fallback": "アプリの説明",
       "badge_urgent": "緊急",
-      "badge_event": "イベント"
+      "badge_event": "イベント",
+      "badge_new": "新規",
+      "badge_popular": "人気",
+      "badge_notice": "お知らせ",
+      "badge_update": "更新"
     },
     "nav": {
       "launcher": "すべてのアプリ",
@@ -277,6 +290,12 @@
       "tabs_updates": "アップデート",
       "empty_favorites": "お気に入りのアプリがありません",
       "empty_myapps": "登録されたアプリがありません",
+      "empty_basic_apps": "基本アプリがありません",
+      "empty_user_apps": "ユーザーアプリがありません",
+      "notice_view_all": "お知らせをすべて見る",
+      "notice_loading": "投稿を読み込み中です",
+      "empty_notices": "お知らせはまだありません",
+      "empty_updates": "アップデートはまだありません",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -291,6 +310,16 @@
       "online_summary": "現在42名がアクティブ",
       "friends_summary": "フレンド12名",
       "mark_all_read": "すべて既読にする",
+      "notifications_empty": "通知はありません",
+      "notifications_loading": "通知を読み込み中…",
+      "notifications_load_more": "もっと見る",
+      "new_notification_received": "新しい通知が届きました",
+      "notification_open": "開く",
+      "notification_fallback_title": "通知",
+      "notification_time_just_now": "たった今",
+      "notification_time_minutes": "{count}分前",
+      "notification_time_hours": "{count}時間前",
+      "notification_time_days": "{count}日前",
       "admin_mode": "管理者モード",
       "avatar_alt": "{name}のプロフィール写真"
     },
@@ -306,6 +335,10 @@
       "legal_page_error": "ページを読み込めませんでした。sirsoft-page モジュールで該当スラッグが公開されているか確認してください。",
       "legal_page_empty": "公開された内容がありません。",
       "legal_page_retry": "再試行",
+      "board_window": "掲示板 · {slug}",
+      "board_loading": "掲示板を読み込み中…",
+      "board_error": "掲示板を読み込めませんでした。",
+      "board_retry": "再試行",
       "toggle_left_panel_on": "左パネルを閉じる",
       "toggle_left_panel_off": "左パネルを開く",
       "toggle_right_panel_on": "右パネルを閉じる",
@@ -356,6 +389,11 @@
       "toast_max_taskbar": "最小化ボタンは最大{max}個までです。先にウィンドウを開くか閉じてください。",
       "toast_app_added": "アプリを追加しました。",
       "toast_app_already": "すでに追加済みのアプリです。",
+      "confirm_delete_generated": "生成アプリ「{name}」を完全に削除しますか？",
+      "toast_delete_generated_failed": "生成アプリの削除に失敗しました。しばらくしてから再試行してください。",
+      "toast_share_generated_on": "共有しました。すべてのアプリのユーザーアプリに表示されます。",
+      "toast_share_generated_off": "共有を解除しました。",
+      "toast_share_generated_failed": "共有状態の変更に失敗しました。しばらくしてから再試行してください。",
       "sns_login_success": "SNSでログインしました。",
       "sns_login_failed": "SNSログインに失敗しました。",
       "sns_exchange_invalid": "SNSログインの応答が正しくありません。"
@@ -372,82 +410,6 @@
       "name": "マイページ",
       "description": "プロフィールと設定の管理"
     },
-    "app-maker": {
-      "name": "機器レンタル",
-      "description": "CPAPレンタル申請"
-    },
-    "secret-text": {
-      "name": "レンタル状況",
-      "description": "レンタル機器の確認"
-    },
-    "color-tool": {
-      "name": "機器管理",
-      "description": "点検・交換"
-    },
-    "brain-gen": {
-      "name": "睡眠分析",
-      "description": "睡眠データレポート"
-    },
-    "decision": {
-      "name": "アフターサービス申込",
-      "description": "訪問修理の受付"
-    },
-    "psych-test": {
-      "name": "ご利用ガイド",
-      "description": "機器マニュアル"
-    },
-    "quick-game": {
-      "name": "料金照会",
-      "description": "月額レンタル料の確認"
-    },
-    "community": {
-      "name": "カスタマーセンター",
-      "description": "お問い合わせ・サポート"
-    },
-    "device-info": {
-      "name": "機器情報",
-      "description": "モデル別スペック"
-    },
-    "game-coupon": {
-      "name": "割引クーポン",
-      "description": "レンタル割引特典"
-    },
-    "lotto-gen": {
-      "name": "健康レポート",
-      "description": "月次睡眠ヘルス分析"
-    },
-    "qr-tool": {
-      "name": "QR登録",
-      "description": "機器QRコード登録"
-    },
-    "mobile-guide": {
-      "name": "配送状況",
-      "description": "レンタル配送の追跡"
-    },
-    "weather": {
-      "name": "マイ機器",
-      "description": "登録機器一覧"
-    },
-    "color-user": {
-      "name": "睡眠記録",
-      "description": "日別睡眠ログ"
-    },
-    "music": {
-      "name": "通知設定",
-      "description": "機器通知の管理"
-    },
-    "task1": {
-      "name": "契約情報",
-      "description": "レンタル契約履歴"
-    },
-    "task2": {
-      "name": "お支払い履歴",
-      "description": "月次請求履歴"
-    },
-    "task3": {
-      "name": "ポイント",
-      "description": "獲得ポイントの確認"
-    },
     "create-app": {
       "name": "AIでアプリを作る",
       "description": "プロンプトからWebアプリを作成"
@@ -455,32 +417,71 @@
     "cpap-mask": {
       "name": "マスクフィッティング",
       "description": "顔測定でCPAPマスクを推薦"
+    },
+    "consulting": {
+      "name": "360コンサルティング",
+      "description": "病院収益性シミュレーション・電子契約"
+    },
+    "hospital-info": {
+      "name": "病院",
+      "description": "病院紹介とアクセス"
+    },
+    "cpap-rental": {
+      "name": "CPAPレンタル",
+      "description": "CPAPレンタル申請と管理"
+    },
+    "cpap-return": {
+      "name": "CPAP回収",
+      "description": "CPAP回収受付とスケジュール"
+    },
+    "as-request": {
+      "name": "AS依頼",
+      "description": "アフターサービス修理・点検依頼"
+    },
+    "refurb-request": {
+      "name": "リファービッシュ依頼",
+      "description": "リファービッシュ・再整備依頼"
+    },
+    "rental-dashboard": {
+      "name": "レンタル現況ダッシュボード",
+      "description": "レンタル・回収状況を一覧表示"
+    },
+    "settlement": {
+      "name": "精算書",
+      "description": "レンタル精算と明細書"
     }
+  },
+  "moa_apps_placeholder": {
+    "coming_soon_title": "準備中です",
+    "coming_soon_description": "サービスコンテンツは近日公開予定です。"
   },
   "moa_apps_ai": {
     "title": "AIでアプリを作る",
     "description": "作りたいアプリを説明するとHTML Webアプリのプレビューを生成します。",
     "field_title": "アプリ名",
-    "field_title_placeholder": "例: 睡眠レポートダッシュボード",
+    "field_title_placeholder": "例: 睡眠計算機",
     "field_type": "アプリ種別",
     "field_model": "AIモデル",
     "field_prompt": "プロンプト",
     "field_prompt_placeholder": "画面、機能、色、動作を具体的に入力してください。",
     "field_modify_placeholder": "現在のプレビューで変更したい内容を入力してください。",
     "types": {
-      "general": "一般アプリ",
-      "3d": "3Dシーン",
-      "game": "ゲーム",
-      "dataviz": "データ可視化"
+      "general": "一般Webアプリ (html)",
+      "3d": "3Dキャンバス (three.js)",
+      "game": "インタラクション (phaser.js)",
+      "dataviz": "チャート作成 (chart.js)"
     },
     "models": {
-      "claude_sonnet": "Claude Sonnet 4",
-      "gpt4o": "GPT-4o",
-      "gemini_flash": "Gemini 2.5 Flash"
+      "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
+      "claude_sonnet": "Claude Sonnet 4.6",
+      "gpt_chat_latest": "GPT-5.1 Chat",
+      "gpt4o": "GPT-5.1 Chat",
+      "gemini_flash": "Gemini 3.5 Flash"
     },
     "generate": "生成",
-    "modify": "変更を適用",
+    "modify": "変更内容を再生成",
     "generating": "生成中…",
+    "stop_generate": "生成を停止",
     "save": "保存",
     "saving": "保存中…",
     "save_success": "生成アプリを保存しました。",

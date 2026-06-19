@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-06-12
+
+### Added
+
+- AI 앱 생성 SSE 스트리밍 API: `POST /apps/ai/generate/stream`
+- 생성 세션(`moabom_ai_generation_sessions`) — 중간 저장·이어하기·리믹스 대화 히스토리
+- 세션 API: `GET /apps/ai/sessions/active`, `GET /apps/ai/sessions/{id}`
+- 프론트: 실시간 코드 패널, 토큰 잘림 「이어서 완성」, 세션 재진입 배너
+
 ## [0.2.0] - 2026-06-07
 
 ### Changed

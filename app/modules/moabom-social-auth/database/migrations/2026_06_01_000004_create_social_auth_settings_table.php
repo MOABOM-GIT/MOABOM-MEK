@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('social_auth_settings')) {
+            return;
+        }
+
         Schema::create('social_auth_settings', function (Blueprint $table): void {
             $table->id();
             $table->string('provider', 30)->unique();

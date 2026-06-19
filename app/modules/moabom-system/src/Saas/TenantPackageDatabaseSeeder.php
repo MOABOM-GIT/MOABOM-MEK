@@ -51,6 +51,7 @@ final class TenantPackageDatabaseSeeder
             $this->copyByIdentifiers($sourceDb, $targetDb, $this->t('plugins'), 'identifier', $package->plugins);
         }
 
+        $this->activatePackageExtensions($targetDb, $package);
         $this->applyActiveTemplateFlags($targetDb, $package);
         $this->languagePackMirror->mirrorFromPlatformDatabase($sourceDb, $targetDb, $package);
     }
@@ -76,6 +77,29 @@ final class TenantPackageDatabaseSeeder
             ."WHERE `{$identifierColumn}` IN ({$placeholders})";
 
         $stmt = $pdo->prepare($sql);
+        $stmt->execute($identifiers);
+    }
+
+    private function activatePackageExtensions(string $targetDb, TenantPackage $package): void
+    {
+        $this->activateIdentifiers($targetDb, $this->t('modules'), $package->modules);
+        $this->activateIdentifiers($targetDb, $this->t('plugins'), $package->plugins);
+    }
+
+    /**
+     * @param  list<string>  $identifiers
+     */
+    private function activateIdentifiers(string $targetDb, string $table, array $identifiers): void
+    {
+        if ($identifiers === []) {
+            return;
+        }
+
+        $pdo = $this->pdo();
+        $placeholders = implode(', ', array_fill(0, count($identifiers), '?'));
+        $stmt = $pdo->prepare(
+            "UPDATE `{$targetDb}`.`{$table}` SET `status` = 'active' WHERE `identifier` IN ({$placeholders})"
+        );
         $stmt->execute($identifiers);
     }
 

@@ -23,7 +23,9 @@ describe('AI 앱 HTML 유틸', () => {
 
     expect(out).toContain('http-equiv="Content-Security-Policy"');
     expect(out).toContain(AI_PREVIEW_CSP);
-    expect(out).toContain("frame-ancestors 'none'");
+    // frame-ancestors 는 <meta> 에서 무시되어 콘솔 경고를 유발하므로 제외 (sandbox iframe 격리로 대체).
+    expect(out).not.toContain('frame-ancestors');
+    expect(out).toContain("base-uri 'none'");
     // CSP 는 style(head 끝) 보다 앞에 와야 이후 리소스를 통제한다.
     expect(out.indexOf('Content-Security-Policy')).toBeLessThan(out.indexOf('moabom-ai-preview-safety'));
   });
@@ -34,5 +36,14 @@ describe('AI 앱 HTML 유틸', () => {
 
     expect(out).toContain('http-equiv="Content-Security-Policy"');
     expect(out).toContain('moabom-ai-preview-safety');
+  });
+
+  it('미리보기 문서 전체가 iframe 내부에서 세로 스크롤될 수 있게 한다', () => {
+    const html = '<html><head></head><body><main style="height:200vh">long</main></body></html>';
+    const out = injectAiPreviewSafety(html);
+
+    expect(out).toContain('min-height: 100% !important');
+    expect(out).toContain('max-height: none !important');
+    expect(out).toContain('overflow-y: auto !important');
   });
 });

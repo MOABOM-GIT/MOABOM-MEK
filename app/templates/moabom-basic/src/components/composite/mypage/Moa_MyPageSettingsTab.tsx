@@ -12,6 +12,7 @@ import { FONT_SIZE_LEVEL_PX } from '../../../utils/moabomSystemStore';
 import type { PointColorPresetItem } from './myPageConstants';
 import { Img } from '../../basic/Img';
 import { isMoabomCustomBackgroundUuid, moabomUploadedBackgroundUrl } from '../../../utils/moBackgroundAssets';
+import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
 import { MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import { useWeatherStatusLabel } from '../../../runtime/weather/useWeatherStatusLabel';
 
@@ -205,7 +206,7 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
   const weatherStatus = useWeatherStatusLabel(t, weatherToggleActive, systemState.preferences.language);
 
   return (
-    <Div className="flex flex-col gap-3">
+    <Div className={APP_STACK_CLASS}>
       <SettingSection title={t('moa_mypage.settings_ui.section_language')}>
         <Div className="moa-mypage-option-grid grid grid-cols-4 gap-2">
           {availableLanguages.map(({ id, label }) => (

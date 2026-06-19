@@ -9,6 +9,9 @@ import type { App } from '../../data/Moa_apps';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
+import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
+import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
+import { Moa_GeneratedAppUserBadge } from './Moa_GeneratedAppUserBadge';
 
 export interface DraggableAppIconProps {
   /** 앱 데이터 */
@@ -39,6 +42,8 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
 }) => {
   const { t } = useMoabomShellT();
   const { name: displayName, description: displayDescription } = useResolvedAppStrings(app);
+  const isCreateApp = app.id === createAppShellMetadata.id;
+  const isGeneratedApp = isGeneratedLibraryAppId(app.id);
   const {
     attributes,
     listeners,
@@ -110,23 +115,28 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
       )}
 
       <Button
+        data-testid={isCreateApp ? 'moa-shell-create-app' : undefined}
         onClick={handleClick}
         className={`app-btn moa-main-app-btn flex w-full flex-col items-center gap-2.5 p-0 border-0 bg-transparent group ${
           editMode ? 'wiggle is-editing' : ''
         }`}
         draggable={false}
-        style={{ cursor: editMode ? 'grab' : 'pointer' }}
+        style={{
+          cursor: editMode ? 'grab' : 'pointer',
+          ...(isCreateApp ? getCreateAppShellCssVars() : {}),
+        }}
       >
         <Div
-          className="moa-main-app-icon rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow"
-          style={{ background: app.gradient }}
+          className={`${isCreateApp ? 'create-app-icon' : ''} moa-main-app-icon relative rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}
+          style={isCreateApp ? undefined : { background: app.gradient }}
         >
-          <Icon name={app.icon} className="moa-main-app-symbol text-white drop-shadow" />
+          <Icon name={app.icon} className={`moa-main-app-symbol text-white drop-shadow ${isCreateApp ? 'relative z-[1]' : ''}`} />
+          {isGeneratedApp ? <Moa_GeneratedAppUserBadge size="lg" /> : null}
         </Div>
         <Div className="text-center w-full min-w-0">
           <Moa_OverflowMarqueeText
             text={displayName}
-            className="moa-main-app-title font-bold text-primary leading-tight text-center"
+            className={`${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-main-app-title font-bold leading-tight text-center`}
           />
           {displayDescription ? (
             <Moa_OverflowMarqueeText

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.6] - 2026-06-18
+
+### Added
+
+- 사용자 설정 API `shell.home.mainAppOrder` — 홈 셸 메인 앱 그리드 순서(일반·AI 생성 앱 id)를 계정에 저장·동기화.
+
 ## [0.7.5] - 2026-06-07
 
 ### Changed

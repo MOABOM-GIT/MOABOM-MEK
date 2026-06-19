@@ -9,13 +9,13 @@ namespace Modules\Moabom\Apps\Enums;
  */
 enum AppType: string
 {
-    /** 일반 웹 애플리케이션 */
+    /** 일반 웹앱 */
     case General = 'general';
 
-    /** Three.js 3D 씬 */
+    /** Three.js 3D 캔버스 */
     case ThreeD = '3d';
 
-    /** Phaser 3 게임 */
+    /** Phaser 3 인터랙션 캔버스 */
     case Game = 'game';
 
     /** Chart.js 데이터 시각화 */

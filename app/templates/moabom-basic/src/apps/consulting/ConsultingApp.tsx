@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { AppTabsShell, type AppTab } from '../_shared';
+import { useMoabomSiteDisplayName } from '../../utils/moabomSiteBranding';
+import { CONSULTING_GRADIENT } from './consultingTheme';
 import { IntroTab } from './tabs/IntroTab';
 import { ServicesTab } from './tabs/ServicesTab';
 import { SimulationTab } from './tabs/SimulationTab';
@@ -9,35 +11,42 @@ import { SIMULATION_DEFAULTS, type SimulationInput } from './simulationModel';
 type ConsultingTab = 'intro' | 'services' | 'simulation' | 'contract';
 
 export function ConsultingApp() {
+  const hospitalName = useMoabomSiteDisplayName();
   const [activeTab, setActiveTab] = useState<ConsultingTab>('intro');
-  // 시뮬레이션 입력값은 앱 레벨에서 보관 → 시뮬레이션 탭과 전자계약 탭이 공유.
   const [simInput, setSimInput] = useState<SimulationInput>({ ...SIMULATION_DEFAULTS });
 
   const tabs: AppTab[] = [
-    { key: 'intro', no: '01', icon: 'building', label: '회사 & 비전소개', content: <IntroTab /> },
-    { key: 'services', no: '02', icon: 'diagram-project', label: '360 서비스 소개', content: <ServicesTab /> },
+    { key: 'intro', no: '01', icon: 'building', label: '회사 & 비전', content: <IntroTab /> },
+    { key: 'services', no: '02', icon: 'diagram-project', label: '360 서비스', content: <ServicesTab /> },
     {
       key: 'simulation',
       no: '03',
       icon: 'chart-line',
-      label: '맞춤형 수익성 시뮬레이션',
+      label: '수익 시뮬레이션',
       content: (
         <SimulationTab
+          hospitalName={hospitalName}
           input={simInput}
           onInputChange={setSimInput}
           onProceedToContract={() => setActiveTab('contract')}
         />
       ),
     },
-    { key: 'contract', no: '04', icon: 'file-signature', label: '전자계약서', content: <ContractTab simInput={simInput} /> },
+    {
+      key: 'contract',
+      no: '04',
+      icon: 'file-signature',
+      label: '전자계약',
+      content: <ContractTab hospitalName={hospitalName} simInput={simInput} />,
+    },
   ];
 
   return (
     <AppTabsShell
-      title="smart care 360°"
-      subtitle="영업용 컨설팅 — 병원 방문 실시간 의사결정 지원"
+      title="스마트컨설팅 360°"
+      subtitle={`${hospitalName} — 번거로운 운영은 맡기고, 환자 케어와 수익에 집중하세요`}
       icon="handshake"
-      gradient="linear-gradient(135deg,#0ea5e9,#1d4ed8)"
+      gradient={CONSULTING_GRADIENT}
       tabs={tabs}
       activeKey={activeTab}
       onActiveKeyChange={key => setActiveTab(key as ConsultingTab)}

@@ -59,6 +59,14 @@ grep -q 'MOABOM_SAAS_MODULE_SETTINGS_BACKEND: "db"' "${ROOT}/deploy/production.e
 grep -q 'moabom_module_settings' "${SYS}/src/Saas/MoabomDbConfigRepository.php"   || fail "MoabomDbConfigRepository must use moabom_module_settings"
 grep -q "app()->environment('production')" "${SYS}/src/Saas/TenantModuleCategoryJsonStore.php"   || fail "TenantModuleCategoryJsonStore must force db backend in production"
 grep -q "return 'db';" "${SYS}/src/Saas/TenantModuleCategoryJsonStore.php"   || fail "TenantModuleCategoryJsonStore production guard must return db"
+grep -q "'storage_driver' => 'gcs'" "${SYS}/src/Saas/TenantSettingsSeeder.php" \
+  || fail "tenant settings seeder must keep new tenant storage_driver default on gcs"
+grep -q 'MoabomJsonConfigRepository::class' "${SYS}/src/Providers/SystemServiceProvider.php" \
+  || fail "moabom-system provider must bind the JSON config repository extension"
+grep -q 'MoabomDbConfigRepository::class' "${SYS}/src/Providers/SystemServiceProvider.php" \
+  || fail "moabom-system provider must bind the DB-backed G7 core settings repository"
+grep -q 'configureCoreRuntimeGuards()' "${SYS}/src/Providers/SystemServiceProvider.php" \
+  || fail "moabom-system provider must inject core runtime guards from the extension layer"
 PROVIDER="${APP}/app/Providers/SettingsServiceProvider.php"
 grep -q 'applyStorageDriverConfig' "${PROVIDER}" \
   || fail "SettingsServiceProvider must apply storage_driver beyond filesystems.default"
@@ -82,6 +90,8 @@ grep -q "SUPPORTED_STORAGE_DRIVERS = \['local', 's3', 'gcs'\]" "${APP}/app/Http/
   || fail "admin storage driver save validation must allow gcs"
 grep -q "SUPPORTED_STORAGE_DRIVERS = \['local', 's3', 'gcs'\]" "${APP}/app/Http/Requests/Settings/TestDriverConnectionRequest.php" \
   || fail "admin storage driver test validation must allow gcs"
+grep -q 'extension_loaded($ext)' "${APP}/app/Services/SettingsService.php" \
+  || fail "system info php_extensions must remain bool extension_loaded flags"
 if grep -q "'settings'" "${PROVIDER}" || grep -q '"settings"' "${PROVIDER}"; then
   fail "storage_driver must not remap settings disk out of the bootstrap SSOT plane"
 fi
@@ -111,13 +121,14 @@ grep -q "Route::prefix('apps')->middleware(\\['auth:sanctum'\\])" "${APP}/module
 grep -q 'findForUser' "${APP}/modules/moabom-apps/src/Repositories/GeneratedAppRepository.php"   || fail "generated app repository must enforce per-user reads"
 ok "app.json app SDK + shell chunk contract"
 
-# 4. Network/PWA: shell boot, lazy chunks, lazy precache, gzip core engine, deferred extension handler.
+# 4. Network/PWA: shell boot, lazy chunks, lazy precache, gzip core engine, deferred extension loading via G7 reload handlers.
 grep -q 'public/shell-boot' "${SYS}/src/routes/api.php"   || fail "shell-boot route missing"
 grep -q 'loadMoabomShellAppComponent' "${BASIC}/src/pages/home/MoabomShellAppFromChunk.tsx"   || fail "shell window must lazy-load app chunks"
 grep -q 'postMoabomLazyPrecache' "${BASIC}/src/apps/index.ts"   || fail "shell chunk loader must post lazy precache"
 grep -q 'MOABOM_LAZY_PRECACHE' "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js"   || fail "PWA SW lazy precache handler missing"
 grep -q 'template-engine.min.js' "${ROOT}/deploy/nginx-cloudrun.conf"   || fail "nginx gzip/static policy must mention template-engine.min.js"
-grep -q 'loadDeferredExtensionAssets' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts"   || fail "ActionDispatcher missing loadDeferredExtensionAssets handler"
+grep -q 'reloadModuleHandlers' "${BASIC}/src/pages/home/MoabomShellAppFromChunk.tsx"   || fail "shell window must preload deferred modules via G7 reloadModuleHandlers"
+grep -q 'reloadPluginHandlers' "${BASIC}/src/runtime/sirsoftEcommerceLayoutPrefetch.ts"   || fail "layout prefetch must preload deferred plugins via G7 reloadPluginHandlers"
 ok "network-first shell/PWA invariants"
 
 # 5. Hospital flow: note UI contract + logo multipart + public cache invalidation.
@@ -128,7 +139,7 @@ grep -q '"note"' "$CREATE" || fail "hospital create must submit note"
 grep -q 'multipart/form-data' "$CREATE" || fail "hospital create must keep multipart logos"
 grep -q 'logo_light' "$CREATE" && grep -q 'logo_dark' "$CREATE"   || fail "hospital create must keep light/dark logo upload"
 grep -q '\$event.target.files?.\[0\] || \$event.target.value' "$CREATE"   || fail "hospital logo FileInput must keep File object, not filename string"
-grep -q 'isFileLike' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts"   || fail "ActionDispatcher must keep File/Blob multipart parts"
+grep -q 'value instanceof File || value instanceof Blob' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts"   || fail "ActionDispatcher must keep G7 pure File/Blob multipart parts"
 grep -q 'item.note || item.region' "$LIST"   || fail "hospital list must display note with legacy region fallback"
 grep -q 'SiteLogoPublicCacheInvalidator' "${SYS}/src/Saas/TenantSiteLogoBootstrapper.php"   || fail "tenant logo bootstrapper must invalidate public cache"
 ok "hospital note/logo contracts"

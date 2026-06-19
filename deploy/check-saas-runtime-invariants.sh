@@ -789,9 +789,13 @@ grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/saas-tenant-ext
 ok "tenant 패키지 확장 sync (v8-19)"
 
 echo "==> [v8-20] Run PHP 확장 (system-info admin — bcmath 등)"
-grep -q 'docker-php-ext-install.*bcmath' "${ROOT}/deploy/Dockerfile" \
+grep -q 'bcmath' "${ROOT}/deploy/Dockerfile" \
   || fail "deploy/Dockerfile 에 bcmath 미포함 (system-info php_extensions)"
-ok "Run PHP 확장 bcmath (v8-20)"
+grep -q 'pcntl' "${ROOT}/deploy/Dockerfile" \
+  || fail "deploy/Dockerfile 에 pcntl 미포함 (Laravel Reverb supervisord)"
+grep -q 'docker-php-ext-enable redis' "${ROOT}/deploy/Dockerfile" \
+  || fail "deploy/Dockerfile 에 redis PHP 확장 미포함 (system-info optional)"
+ok "Run PHP 확장 bcmath·pcntl·redis (v8-20)"
 
 echo "==> [v8-21] admin template layout sync (filesystem → DB, memory_usage fix)"
 SYNC_LAYOUT_CMD="${APP}/modules/moabom-system/src/Console/Commands/SaasSyncTemplateLayoutsCommand.php"

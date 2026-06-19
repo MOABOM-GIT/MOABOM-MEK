@@ -18,6 +18,8 @@ final class TenantExperienceDefaultsReader
     private const SITE_META_KEYS = [
         'site_name',
         'site_description',
+        'site_note',
+        'site_address',
         'site_url',
         'language',
         'timezone',

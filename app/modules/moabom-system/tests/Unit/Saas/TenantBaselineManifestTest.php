@@ -20,6 +20,8 @@ final class TenantBaselineManifestTest extends ModuleTestCase
         $this->assertContains('modules', $baseline);
         $this->assertContains('users', $runtime);
         $this->assertContains('attachments', $runtime);
+        $this->assertContains('moabom_system_generated_apps', $runtime);
+        $this->assertContains('moabom_ai_generation_sessions', $runtime);
         $this->assertNotContains('users', $baseline);
     }
 

@@ -424,7 +424,7 @@
  * ======================================== */
 
 /* Input Split Responsive */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .input-split {
     flex-wrap: wrap;
   }

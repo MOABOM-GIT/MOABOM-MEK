@@ -45,8 +45,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="INSTALLER_ADMIN_NAME" value="관리자"/>
-        <env name="INSTALLER_ADMIN_EMAIL" value="admin@example.com"/>
-        <env name="INSTALLER_ADMIN_PASSWORD" value="password"/>
+        <env name="INSTALLER_ADMIN_EMAIL" value="admin@mek360.com"/>
+        <env name="INSTALLER_ADMIN_PASSWORD" value="mek360"/>
         <env name="INSTALLER_ADMIN_LANGUAGE" value="ko"/>
         <!-- RefreshDatabase 초회전 migration 중 CoreServiceProvider boot 가 DB 접근
              (g7_modules) 을 시도. installer_completed=true 면 Schema::hasTable 가드 생략되어

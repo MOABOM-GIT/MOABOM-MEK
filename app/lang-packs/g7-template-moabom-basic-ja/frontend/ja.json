@@ -349,13 +349,9 @@
     }
   },
   "moa_apps": {
-    "create-app": {
-      "name": "AIでアプリを作る",
-      "description": "プロンプトからWebアプリを作成"
-    },
-    "cpap-mask": {
-      "name": "マスクフィッティング",
-      "description": "顔測定でCPAPマスクを推薦"
+    "mypage": {
+      "name": "マイページ",
+      "description": "プロフィールと設定の管理"
     }
   },
   "moa_apps_ai": {
@@ -369,15 +365,17 @@
     "field_prompt_placeholder": "画面、機能、色、動作を具体的に入力してください。",
     "field_modify_placeholder": "現在のプレビューで変更したい内容を入力してください。",
     "types": {
-      "general": "一般アプリ",
-      "3d": "3Dシーン",
-      "game": "ゲーム",
+      "general": "一般Webアプリ",
+      "3d": "3Dキャンバス",
+      "game": "Phaserインタラクション",
       "dataviz": "データ可視化"
     },
     "models": {
-      "claude_sonnet": "Claude Sonnet 4",
-      "gpt4o": "GPT-4o",
-      "gemini_flash": "Gemini 2.5 Flash"
+      "gemini_flash_lite": "Gemini 3.1 Flash-Lite（低コスト）",
+      "claude_sonnet": "Claude Sonnet 4.6",
+      "gpt_chat_latest": "GPT-5.1 Chat",
+      "gpt4o": "GPT-5.1 Chat",
+      "gemini_flash": "Gemini 3.5 Flash"
     },
     "generate": "生成",
     "modify": "変更を適用",
@@ -514,86 +512,10 @@
     "err_reset_failed": "パスワードの再設定に失敗しました。",
     "msg_reset_success": "パスワードを変更しました。新しいパスワードでログインしてください。"
   },
-  "moa_apps": {
-    "mypage": {
-      "name": "マイページ",
-      "description": "プロフィールと設定の管理"
-    },
-    "app-maker": {
-      "name": "機器レンタル",
-      "description": "CPAPレンタル申請"
-    },
-    "secret-text": {
-      "name": "レンタル状況",
-      "description": "レンタル機器の確認"
-    },
-    "color-tool": {
-      "name": "機器管理",
-      "description": "点検・交換"
-    },
-    "brain-gen": {
-      "name": "睡眠分析",
-      "description": "睡眠データレポート"
-    },
-    "decision": {
-      "name": "アフターサービス申込",
-      "description": "訪問修理の受付"
-    },
-    "psych-test": {
-      "name": "ご利用ガイド",
-      "description": "機器マニュアル"
-    },
-    "quick-game": {
-      "name": "料金照会",
-      "description": "月額レンタル料の確認"
-    },
-    "community": {
-      "name": "カスタマーセンター",
-      "description": "お問い合わせ・サポート"
-    },
-    "device-info": {
-      "name": "機器情報",
-      "description": "モデル別スペック"
-    },
-    "game-coupon": {
-      "name": "割引クーポン",
-      "description": "レンタル割引特典"
-    },
-    "lotto-gen": {
-      "name": "健康レポート",
-      "description": "月次睡眠ヘルス分析"
-    },
-    "qr-tool": {
-      "name": "QR登録",
-      "description": "機器QRコード登録"
-    },
-    "mobile-guide": {
-      "name": "配送状況",
-      "description": "レンタル配送の追跡"
-    },
-    "weather": {
-      "name": "マイ機器",
-      "description": "登録機器一覧"
-    },
-    "color-user": {
-      "name": "睡眠記録",
-      "description": "日別睡眠ログ"
-    },
-    "music": {
-      "name": "通知設定",
-      "description": "機器通知の管理"
-    },
-    "task1": {
-      "name": "契約情報",
-      "description": "レンタル契約履歴"
-    },
-    "task2": {
-      "name": "お支払い履歴",
-      "description": "月次請求履歴"
-    },
-    "task3": {
-      "name": "ポイント",
-      "description": "獲得ポイントの確認"
-    }
+  "common": {
+    "$partial": "partial/common.json"
+  },
+  "userinfo": {
+    "$partial": "partial/userinfo.json"
   }
 }

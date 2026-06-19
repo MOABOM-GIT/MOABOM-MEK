@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Modules\Moabom\System\Saas\TenantAdminMenuSynchronizer;
 use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRecord;
@@ -36,20 +37,22 @@ final class SaasSyncTenantAdminMenusCommand extends Command
 
         if ($slugArg === '*') {
             $summary = $synchronizer->syncAllActiveTenants();
+            $repairCode = $this->repairRoleMenus('*');
             $this->info(sprintf(
-                'platform=%s tenants=%d synced=%d purged=%d linked=%d errors=%d',
+                'platform=%s tenants=%d synced=%d purged=%d linked=%d role_menus_repair=%s errors=%d',
                 ($summary['platform_synced'] ?? false) ? 'yes' : 'no',
                 $summary['tenants'],
                 $summary['synced'],
                 $summary['purged'],
                 $summary['linked'],
+                $repairCode === self::SUCCESS ? 'ok' : 'failed',
                 count($summary['errors']),
             ));
             foreach ($summary['errors'] as $error) {
                 $this->error('  '.$error);
             }
 
-            return count($summary['errors']) === 0 ? self::SUCCESS : self::FAILURE;
+            return count($summary['errors']) === 0 && $repairCode === self::SUCCESS ? self::SUCCESS : self::FAILURE;
         }
 
         $tenant = $this->loadTenant($slugArg);
@@ -69,7 +72,23 @@ final class SaasSyncTenantAdminMenusCommand extends Command
             $hygiene['linked'] ?? 0,
         ));
 
-        return self::SUCCESS;
+        return $this->repairRoleMenus($tenant->slug);
+    }
+
+    private function repairRoleMenus(string $slug): int
+    {
+        return Artisan::call('moabom:saas:tenant-repair', [
+            'slug' => $slug,
+            '--apply' => true,
+            '--skip-menu-rows' => true,
+            '--skip-purge-tenant-forbidden-menus' => true,
+            '--skip-modules' => true,
+            '--skip-templates' => true,
+            '--skip-plugins' => true,
+            '--skip-legal-pages' => true,
+            '--skip-language-packs' => true,
+            '--no-interaction' => true,
+        ], $this->output);
     }
 
     private function loadTenant(string $slug): ?TenantRecord

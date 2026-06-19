@@ -72,6 +72,8 @@ check_auth_or_ok() {
   echo "FAIL ${label} HTTP ${code} (expected 401 or 200 — inactive module → 404)"
   return 1
 }
+check_auth_or_ok "/api/modules/moabom-apps/apps/generated" "moabom-apps generated list" || FAIL=1
+check_auth_or_ok "/api/modules/moabom-apps/apps/generated/shared" "moabom-apps shared generated list" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-cpap/apps/cpap-mask/measurements/latest" "cpap latest" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-personalization/user/activities?type=all&limit=1" "personalization activities" || FAIL=1
 # 전환기 compat — dist 가 구 URL 이면 401/200 (404 금지)

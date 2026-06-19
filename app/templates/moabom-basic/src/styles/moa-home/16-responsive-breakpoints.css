@@ -1,5 +1,5 @@
 /* 데스크톱 셸(아이콘 그리드·센터 패널 등) — 뷰포트 기준, Tailwind 기본 `lg`(1024px) 미만 */
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .moa-center-panel {
     top: 10px !important;
     bottom: 10px !important;
@@ -17,16 +17,29 @@
   }
 }
 
-/* 창 내부(앱·마이페이지 표면) — 컨테이너 가로 기준, Tailwind `md`(768px) 이하 */
-@container (max-width: 768px) {
-  .moa-shell-app-window,
-  .moa-mypage-surface {
-    padding: 0.75rem 0;
+/* 창 본문 — `md` 미만: 좌우 패딩 제거 (리터럴 px — size @container 에 var() 금지) */
+@container moa-app-window (width < 768px) {
+  .moa-app-window-viewport:not(:has(.moa-cpap-fit-app)) {
+    padding: var(--moa-app-window-body-padding) 0;
+  }
+}
+
+/*
+ * 창 크롬 — 최소 모바일(≤480px, BREAKPOINT_COMPACT_CONTROLS): 패딩 최소화로 콘텐츠 영역 확보.
+ * 프레임 padding·타이틀 바는 `moa-app-window` 컨테이너 밖이라 @container 로 못 잡음 → 뷰포트 @media.
+ * (이 폭에서 창은 풀스크린 compact → 뷰포트 폭 ≈ 창 폭)
+ * 타이틀↔본문이 붙지 않도록 프레임 flex gap 으로 5px 간격만 유지한다.
+ */
+@media (width <= 480px) {
+  .moa-window-frame {
+    --moa-window-content-padding: 5px;
+    --moa-app-window-body-padding: 0px;
+    gap: 5px;
   }
 }
 
 /* 셸 — Tailwind `md`(768px) 이하 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .moa-center-grid {
     padding: 2rem 1rem !important;
   }
@@ -47,14 +60,13 @@
   }
 
   .moa-center-footer {
-    align-items: flex-start;
     flex-direction: column;
-    gap: 0.35rem;
+    max-height: 6.5rem;
   }
 }
 
 /* 셸 — Tailwind `sm`(640px) 미만 */
-@media (max-width: 639px) {
+@media (width < 640px) {
   .moa-center-grid {
     padding: 1.5rem 0.75rem !important;
   }
@@ -76,8 +88,34 @@
   }
 }
 
-/* 마이페이지 — 컨테이너 `lg`(1024px) 미만 */
-@container (max-width: 1023px) {
+/* 마이페이지 — 중간 폭: 3단 구성을 더 오래 유지하고, `lg` 미만에서만 컴팩트 처리 */
+@container moa-app-window (width < 1024px) and (width >= 640px) {
+  .moa-mypage-menu-desc {
+    display: none;
+  }
+
+  .moa-mypage-profile,
+  .moa-mypage-credit,
+  .moa-mypage-account {
+    grid-template-columns: 1fr !important;
+  }
+
+  .moa-mypage-library {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .moa-mypage-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .moa-mypage-option-grid > .moa-btn,
+  .moa-mypage-system-grid > .moa-btn {
+    min-width: 0;
+  }
+}
+
+/* 마이페이지 — `sm` 미만: 1열 스택 + sticky 해제 */
+@container moa-app-window (width < 640px) {
   .moa-mypage-layout {
     grid-template-columns: 1fr !important;
     height: auto;
@@ -85,15 +123,21 @@
 
   .moa-mypage-sidebar {
     height: auto;
-    max-height: none;
-    overflow: visible;
     min-height: 0;
+    overflow: visible;
   }
 
   .moa-mypage-sidebar > div:last-child,
   .moa-mypage-sidebar-nav {
+    position: static;
+    top: auto;
     display: grid;
     grid-template-columns: 1fr;
+    max-height: none;
+    overflow: visible;
+    flex: none;
+    padding-inline: 0;
+    scrollbar-gutter: auto;
   }
 
   .moa-mypage-sidebar > div:last-child button > div:last-child,
@@ -117,7 +161,6 @@
     padding: 0 !important;
   }
 
-  /* 세로 절약: 모바일·좁은 폭에서 탭 제목만 */
   .moa-mypage-menu-desc {
     display: none;
   }
@@ -131,10 +174,7 @@
   .moa-mypage-library {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
-}
 
-/* 마이페이지 — 컨테이너 `sm`(640px) 미만 */
-@container (max-width: 639px) {
   .moa-mypage-sidebar > div:last-child,
   .moa-mypage-sidebar-nav,
   .moa-mypage-system-grid {
@@ -148,9 +188,5 @@
   .moa-mypage-option-grid > .moa-btn,
   .moa-mypage-system-grid > .moa-btn {
     min-width: 0;
-  }
-
-  .moa-mypage-library {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }

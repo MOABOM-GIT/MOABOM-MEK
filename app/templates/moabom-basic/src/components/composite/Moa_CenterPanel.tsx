@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
@@ -11,12 +11,18 @@ import { SortableAppGrid } from './Moa_SortableAppGrid';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { resolveWindowTitle } from '../../i18n/resolveAppStrings';
 import type { App } from '../../data/Moa_apps';
+import type { BoardShellMode } from '../../utils/moabomShellRoutes';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 
 const FOOTER_HIDE_SCROLL_DISTANCE = 24;
 const FOOTER_SHOW_SCROLL_DISTANCE = 16;
 const FOOTER_TOP_VISIBLE_THRESHOLD = 8;
 const FOOTER_TRANSITION_LOCK_MS = 260;
+/** 푸터 접힘 후 레이아웃 리플로우 스크롤 이벤트 무시 */
+const FOOTER_LAYOUT_GUARD_MS = 320;
+/** 접힌 뒤에도 남아 있어야 하는 최소 스크롤 여유(px) */
+const FOOTER_MIN_REMAINING_SCROLL_PX = 24;
+const MOBILE_FOOTER_SCROLL_MQ = '(width <= 768px)';
 
 export interface WindowState {
   id: string;
@@ -32,6 +38,12 @@ export interface WindowState {
   myPageInitialTab?: MyPageTab;
   /** create-app 셸에서 편집 중인 저장 AI 앱 id */
   editGeneratedAppId?: number;
+  /** moa-shell-board:{slug} 윈도우 — 게시판 슬러그 */
+  boardSlug?: string;
+  /** 게시판 상세 글 id (목록이면 생략) */
+  boardPostId?: string;
+  /** 게시판 작성/수정 전용 모드 */
+  boardMode?: BoardShellMode;
 }
 
 export interface CenterPanelProps {
@@ -110,10 +122,13 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 }) => {
   const { t, language } = useMoabomShellT();
   const { setNodeRef: setGridDropRef } = useDroppable({ id: 'main-grid' });
+  const footerRef = useRef<HTMLDivElement | null>(null);
   const lastGridScrollTopRef = useRef(0);
   const footerScrollIntentRef = useRef({ direction: 0, distance: 0 });
   const footerHiddenRef = useRef(false);
   const footerTransitionLockedUntilRef = useRef(0);
+  const footerLayoutGuardRef = useRef(false);
+  const footerLayoutGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const taskbarRef = useRef<HTMLDivElement | null>(null);
   const taskbarDragRef = useRef({
     active: false,
@@ -123,37 +138,81 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
     windowId: '',
   });
   const [isFooterHidden, setIsFooterHidden] = useState(false);
+  const [mobileFooterScrollEnabled, setMobileFooterScrollEnabled] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_FOOTER_SCROLL_MQ).matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_FOOTER_SCROLL_MQ);
+    const sync = () => {
+      setMobileFooterScrollEnabled(mq.matches);
+      if (!mq.matches && footerHiddenRef.current) {
+        footerHiddenRef.current = false;
+        footerScrollIntentRef.current = { direction: 0, distance: 0 };
+        setIsFooterHidden(false);
+      }
+    };
+
+    sync();
+    mq.addEventListener('change', sync);
+
+    return () => {
+      mq.removeEventListener('change', sync);
+      if (footerLayoutGuardTimerRef.current) {
+        clearTimeout(footerLayoutGuardTimerRef.current);
+      }
+    };
+  }, []);
+
+  const armFooterLayoutGuard = useCallback(() => {
+    if (footerLayoutGuardTimerRef.current) {
+      clearTimeout(footerLayoutGuardTimerRef.current);
+    }
+    footerLayoutGuardRef.current = true;
+    footerLayoutGuardTimerRef.current = setTimeout(() => {
+      footerLayoutGuardRef.current = false;
+      footerLayoutGuardTimerRef.current = null;
+    }, FOOTER_LAYOUT_GUARD_MS);
+  }, []);
+
+  const setFooterHidden = useCallback((hidden: boolean) => {
+    if (footerHiddenRef.current === hidden) return;
+
+    footerHiddenRef.current = hidden;
+    footerScrollIntentRef.current = { direction: 0, distance: 0 };
+    footerTransitionLockedUntilRef.current = Date.now() + FOOTER_TRANSITION_LOCK_MS;
+    if (hidden) {
+      armFooterLayoutGuard();
+    }
+    setIsFooterHidden(hidden);
+  }, [armFooterLayoutGuard]);
 
   /** 클릭 시 편집모드 해제 (삭제 버튼 클릭은 제외) */
   const handleGridClick = (e: React.MouseEvent) => {
     if (!editMode || !onExitEditMode) return;
     const target = e.target as HTMLElement;
     if (target.closest('.edit-delete-btn')) return;
-    if (target.closest('.moa-main-app-item, .create-app-btn')) return;
+    if (target.closest('.moa-main-app-item')) return;
     onExitEditMode();
-  };
-
-  const setFooterHidden = (hidden: boolean) => {
-    if (footerHiddenRef.current === hidden) return;
-
-    footerHiddenRef.current = hidden;
-    footerScrollIntentRef.current = { direction: 0, distance: 0 };
-    footerTransitionLockedUntilRef.current = Date.now() + FOOTER_TRANSITION_LOCK_MS;
-    setIsFooterHidden(hidden);
   };
 
   /** 모바일에서 앱 목록 스크롤 방향에 따라 하단 푸터 노출을 제어합니다. */
   const handleGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const currentScrollTop = e.currentTarget.scrollTop;
-    const previousScrollTop = lastGridScrollTopRef.current;
-    const delta = currentScrollTop - previousScrollTop;
+    const el = e.currentTarget;
+    const currentScrollTop = el.scrollTop;
+    const delta = currentScrollTop - lastGridScrollTopRef.current;
 
     lastGridScrollTopRef.current = currentScrollTop;
 
+    if (!mobileFooterScrollEnabled) return;
     if (Date.now() < footerTransitionLockedUntilRef.current) return;
+    if (footerLayoutGuardRef.current) return;
 
-    if (currentScrollTop <= FOOTER_TOP_VISIBLE_THRESHOLD) {
-      setFooterHidden(false);
+    const scrollOverflow = el.scrollHeight - el.clientHeight;
+    if (scrollOverflow < FOOTER_MIN_REMAINING_SCROLL_PX) {
+      if (footerHiddenRef.current) {
+        setFooterHidden(false);
+      }
       return;
     }
 
@@ -166,10 +225,26 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
     footerScrollIntentRef.current = { direction, distance: nextDistance };
 
     if (direction > 0 && !footerHiddenRef.current && nextDistance >= FOOTER_HIDE_SCROLL_DISTANCE) {
+      const footerHeight = footerRef.current?.offsetHeight ?? 72;
+      if (scrollOverflow - footerHeight < FOOTER_MIN_REMAINING_SCROLL_PX) {
+        footerScrollIntentRef.current = { direction: 0, distance: 0 };
+        return;
+      }
       setFooterHidden(true);
+      return;
     }
 
     if (direction < 0 && footerHiddenRef.current && nextDistance >= FOOTER_SHOW_SCROLL_DISTANCE) {
+      setFooterHidden(false);
+      return;
+    }
+
+    if (
+      currentScrollTop <= FOOTER_TOP_VISIBLE_THRESHOLD
+      && footerHiddenRef.current
+      && direction < 0
+      && nextDistance >= FOOTER_SHOW_SCROLL_DISTANCE
+    ) {
       setFooterHidden(false);
     }
   };
@@ -311,6 +386,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 
       {/* 푸터 */}
       <Div
+        ref={footerRef}
         data-testid="moa-center-footer"
         className={`moa-center-footer flex items-center justify-between px-4 pt-4 pb-2 shrink-0 ${isFooterHidden ? 'is-hidden' : ''}`.trim()}
       >

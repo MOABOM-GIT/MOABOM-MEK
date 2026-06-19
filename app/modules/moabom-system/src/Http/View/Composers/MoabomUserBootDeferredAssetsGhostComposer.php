@@ -50,7 +50,7 @@ final class MoabomUserBootDeferredAssetsGhostComposer
         $fullModules = is_array($deferredModules) ? $deferredModules : [];
         $fullPlugins = is_array($deferredPlugins) ? $deferredPlugins : [];
 
-        // Ghost 표면은 비우되, 라우트 전환 후 loadDeferredExtensionAssets 가 URL을 찾을 수 있도록
+        // Ghost 표면은 비우되, 라우트 전환 후 G7 순정 reload 액션이 URL을 찾을 수 있도록
         // 전체 맵을 appConfig.moabom.extensionDeferredRegistry 에 보존한다(코어 Blade 변경 없음).
         $this->mergeExtensionRegistryIntoAppConfig($view, $fullModules, $fullPlugins);
 

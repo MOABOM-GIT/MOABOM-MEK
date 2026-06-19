@@ -24,6 +24,7 @@ use Modules\Moabom\System\Console\Commands\SaasDiffTenantCommand;
 use Modules\Moabom\System\Console\Commands\SaasInspectDbCommand;
 use Modules\Moabom\System\Console\Commands\SaasMeasureSplitBrainCommand;
 use Modules\Moabom\System\Console\Commands\SaasHydratePlatformSettingsCommand;
+use Modules\Moabom\System\Console\Commands\SaasNormalizeAdminCredentialsCommand;
 use Modules\Moabom\System\Console\Commands\SaasBackfillTenantDisplayCommand;
 use Modules\Moabom\System\Console\Commands\SaasCaptureProvisionAppearanceDefaultsCommand;
 use Modules\Moabom\System\Console\Commands\SaasSetTenantFontSizeDefaultCommand;
@@ -139,6 +140,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasTenantReapplyAppearanceDefaultsCommand::class,
         SaasSetTenantFontSizeDefaultCommand::class,
         SaasBackfillTenantDisplayCommand::class,
+        SaasNormalizeAdminCredentialsCommand::class,
         SaasSyncPackageExtensionsCommand::class,
         SaasSyncTemplateLayoutsCommand::class,
         SaasSyncModuleLayoutsCommand::class,

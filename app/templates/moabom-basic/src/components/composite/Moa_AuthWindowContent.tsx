@@ -408,9 +408,10 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
   const shouldCenterContent = stretchVertically && mode !== 'register';
 
   return (
-    <Div className={`moa-auth-window pt-3 text-primary ${stretchVertically ? 'min-h-full' : ''}`}>
-      <Div className={`mx-auto flex max-w-[440px] flex-col ${stretchVertically ? `min-h-full ${shouldCenterContent ? 'justify-center' : 'justify-start pb-3'}` : ''}`}>
-        <Div className="moa-group rounded-3xl p-6">
+    <Div
+      className={`moa-auth-window text-primary ${stretchVertically ? `min-h-full ${shouldCenterContent ? 'justify-center' : 'justify-start'}` : ''}`}
+    >
+      <Div className="moa-group rounded-3xl p-6">
           <Div className="mb-6 text-center">
             <Div
               className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-white"
@@ -740,7 +741,6 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
             )}
           </Div>
         </Div>
-      </Div>
     </Div>
   );
 };

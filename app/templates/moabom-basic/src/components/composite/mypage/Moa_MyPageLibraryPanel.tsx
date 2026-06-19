@@ -3,6 +3,7 @@ import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import type { MoabomSystemLanguage } from '../../../types/moabomSystem';
 import type { App } from '../../../data/Moa_apps';
 import { Div } from '../../basic/Div';
+import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
 import { LibrarySection, LockedLibrarySection } from './Moa_MyPageLibraryBlocks';
 
 export interface Moa_MyPageLibraryPanelProps {
@@ -10,7 +11,6 @@ export interface Moa_MyPageLibraryPanelProps {
   locale: MoabomSystemLanguage;
   isGuest: boolean;
   onOpenApp?: (app: App) => void;
-  onEditGeneratedApp?: (serverId: number) => void;
   /** 서버에 저장된 AI 생성 앱 (GET apps/generated) */
   createdApps: App[];
   createdAppsLoading?: boolean;
@@ -23,7 +23,6 @@ export const Moa_MyPageLibraryPanel: React.FC<Moa_MyPageLibraryPanelProps> = ({
   locale,
   isGuest,
   onOpenApp,
-  onEditGeneratedApp,
   createdApps,
   createdAppsLoading = false,
   favoriteApps,
@@ -35,7 +34,7 @@ export const Moa_MyPageLibraryPanel: React.FC<Moa_MyPageLibraryPanelProps> = ({
     : t('moa_mypage.library.created_empty');
 
   return (
-    <Div className="flex flex-col gap-3">
+    <Div className={APP_STACK_CLASS}>
       {isGuest ? (
         <LockedLibrarySection title={t('moa_mypage.library.created_title')} message={t('moa_mypage.library.created_guest_msg')} />
       ) : (
@@ -46,8 +45,6 @@ export const Moa_MyPageLibraryPanel: React.FC<Moa_MyPageLibraryPanelProps> = ({
           emptyText={createdEmptyText}
           appInfoFallback={appInfoFallback}
           onOpenApp={onOpenApp}
-          onEditGeneratedApp={onEditGeneratedApp}
-          editAriaLabel={t('moa_mypage.library.edit_app')}
         />
       )}
       <LibrarySection

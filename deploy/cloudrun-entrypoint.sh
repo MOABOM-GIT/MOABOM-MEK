@@ -69,18 +69,23 @@ fi
 
 # filesystem layouts/*.json → DB (부팅 시 idempotent — 배포 직후 1차 sync 는 build-and-deploy.sh)
 moabom_sync_template_layouts() {
-  if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ]; then
-    php artisan moabom:saas:sync-template-layouts \
-      --template=moabom-admin_basic \
-      --no-interaction
-  else
-    php artisan template:refresh-layout moabom-admin_basic --no-interaction
+  local template_id
+  for template_id in moabom-admin_basic moabom-basic; do
+    if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ]; then
+      php artisan moabom:saas:sync-template-layouts \
+        --template="${template_id}" \
+        --no-interaction || return 1
+    else
+      php artisan template:refresh-layout "${template_id}" --no-interaction || return 1
+    fi
+  done
+  if [ "${MOABOM_SAAS_ENABLED:-false}" != "true" ]; then
     php artisan template:cache-clear --no-interaction
   fi
 }
 
 if [ "${MOABOM_SYNC_TEMPLATE_LAYOUTS:-true}" = "true" ]; then
-  echo "[entrypoint] Syncing template layouts (filesystem → DB, moabom-admin_basic)..."
+  echo "[entrypoint] Syncing template layouts (filesystem → DB, moabom-admin_basic + moabom-basic)..."
   _layout_sync_ok=0
   _layout_sync_attempt=1
   while [ "${_layout_sync_attempt}" -le 3 ]; do

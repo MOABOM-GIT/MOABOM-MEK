@@ -7,7 +7,9 @@ use App\Extension\HookManager;
 use Modules\Moabom\Apps\Apps\AppRegistry;
 use Modules\Moabom\Apps\Apps\AppRegistryInterface;
 use Modules\Moabom\Apps\Console\Commands\MakeAppCommand;
+use Modules\Moabom\Apps\Contracts\AiGenerationSessionRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
+use Modules\Moabom\Apps\Repositories\AiGenerationSessionRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
@@ -21,6 +23,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
      */
     protected array $repositories = [
         GeneratedAppRepositoryInterface::class => GeneratedAppRepository::class,
+        AiGenerationSessionRepositoryInterface::class => AiGenerationSessionRepository::class,
     ];
 
     public function register(): void

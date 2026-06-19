@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('social_auth_codes')) {
+            return;
+        }
+
         Schema::create('social_auth_codes', function (Blueprint $table) {
             $table->id()->comment('SNS 인증 교환 코드 ID');
             $table->unsignedBigInteger('user_id')->comment('토큰을 발급할 사용자 ID');

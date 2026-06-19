@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
-# Moabom 코어 패치 재적용 스크립트
+# Moabom 코어 overlay 패치 적용 스크립트
 # ---------------------------------------------------------------------------
-# 그누보드7 코어(app/app, config, bootstrap, resources/js/core, resources/views,
-# tests)는 `core:update`/재배포마다 업스트림으로 덮어쓰여진다.
-# moabom 운영에 필요한 코어 delta(Cloud Run/GCS/SaaS 인프라 + 범용 확장 주입
-# 포인트)를 단일 패치(moabom-core.patch)로 보관하고, 코어 업데이트 직후 이
-# 스크립트로 재적용한다.
+# 그누보드7 코어(app/app, config, bootstrap, resources/js/core, resources/views)는
+# `core:update`/이미지 빌드에서 업스트림 순정으로 덮어쓸 수 있다.
+# Moabom 운영에 꼭 필요한 Cloud Run/GCS/SaaS 부트 delta와 upstream-hook 후보만
+# 단일 overlay 패치(moabom-core.patch)로 보관하고, 빌드/업데이트 단계에서 적용한다.
 #
 # 사용:
 #   bash deploy/core-patches/apply-core-patches.sh           # 적용

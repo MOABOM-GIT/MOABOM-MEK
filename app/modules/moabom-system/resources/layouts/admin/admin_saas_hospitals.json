@@ -498,7 +498,7 @@
                                                 "handler": "toast",
                                                 "params": {
                                                   "type": "error",
-                                                  "message": "$t:moabom-system.admin.saas.hospitals.action_failed"
+                                                  "message": "{{error.message || '$t:moabom-system.admin.saas.hospitals.action_failed'}}"
                                                 }
                                               }
                                             ]
@@ -546,7 +546,7 @@
                                                 "handler": "toast",
                                                 "params": {
                                                   "type": "error",
-                                                  "message": "$t:moabom-system.admin.saas.hospitals.action_failed"
+                                                  "message": "{{error.message || '$t:moabom-system.admin.saas.hospitals.action_failed'}}"
                                                 }
                                               }
                                             ]

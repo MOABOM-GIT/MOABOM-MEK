@@ -1,13 +1,23 @@
 /**
- * 모아봄 앱 창(moa-shell-app-window) 내부 타이포 통일
- *
- * 반응형: `Moa_Window`가 본문을 `.moa-app-window-viewport`로 감싼다.
- * 창 폭에 맞출 때는 뷰포트용 `sm:` 대신 Tailwind `@sm:`(컨테이너)를 쓴다. 브레이크 수치는 Tailwind 기본(sm 640px, md 768px, lg 1024px, …)과 동일.
+ * 모아봄 앱 창 본문 루트 — `.moa-app-window-viewport` 가 패딩·스크롤 SSOT.
+ * 반응형: `appWindowBreakpoints.ts` · `@sm:`/`@md:`/`@lg:`/`@xl:` (컨테이너 변형).
  */
 
 import { moaFieldControlClass, moaFieldSelectTriggerClass, moaFieldTextareaClass } from '../theme/moabomFieldSurface';
 
+export { MOA_APP_WINDOW_CQ } from './appWindowBreakpoints';
+
 export { MOA_REUSE_FIELD_LINE } from '../theme/moabomFieldSurface';
+
+/** 창 본문 직계 루트 — flex 세로 스택·gap 만 담당 (패딩 X). */
+export const APP_WINDOW_BODY_CLASS = 'moa-app-window-body';
+
+/** 앱 창 본문 블록(섹션) 사이 세로·그리드 간격 — `01-tokens.css` `--moa-app-stack-gap` */
+export const APP_STACK_CLASS = 'moa-app-stack';
+export const APP_STACK_GRID_CLASS = 'moa-app-stack-grid';
+
+/** @deprecated `APP_WINDOW_BODY_CLASS` 사용 — CSS 호환용 별칭 */
+export const APP_SHELL_WINDOW_CLASS = 'moa-shell-app-window';
 
 /** 본문·필드 라벨·입력값 기본 */
 export const APP_SHELL_BODY_CLASS = 'text-base font-bold text-primary';

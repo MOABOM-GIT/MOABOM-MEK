@@ -42,12 +42,10 @@ abstract class ModuleTestCase extends TestCase
             $this->artisan('migrate');
         }
 
-        if (! Schema::hasTable('moabom_system_generated_apps')) {
-            $this->artisan('migrate', [
-                '--path' => $this->getModuleBasePath().'/database/migrations',
-                '--realpath' => true,
-            ]);
-        }
+        $this->artisan('migrate', [
+            '--path' => $this->getModuleBasePath().'/database/migrations',
+            '--realpath' => true,
+        ]);
 
         static::$migrated = true;
     }

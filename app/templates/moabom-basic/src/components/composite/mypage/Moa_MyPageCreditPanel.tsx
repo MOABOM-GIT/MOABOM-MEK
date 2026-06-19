@@ -2,10 +2,12 @@ import React from 'react';
 import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import type { CreditOverview } from './myPageTypes';
 import { Button } from '../../basic/Button';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 import { Div } from '../../basic/Div';
 import { Icon } from '../../basic/Icon';
 import { Span } from '../../basic/Span';
 import { formatCredit } from './myPageUtils';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_TEXT_CLASS } from './myPageStyles';
 
 export interface Moa_MyPageCreditPanelProps {
@@ -29,11 +31,11 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
   attendanceMessage,
   onAttendanceCheck,
 }) => (
-  <Div className="moa-mypage-credit grid grid-cols-[240px_1fr] gap-3">
-    <Div className="rounded-3xl p-6 text-white shadow-xl" style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}>
-      <Span className="block text-sm text-white/70 mb-2">{t('moa_mypage.credit.balance_label')}</Span>
+  <Div className={`moa-mypage-credit ${APP_STACK_GRID_CLASS} grid grid-cols-[240px_1fr]`}>
+    <Div className={`rounded-3xl p-6 text-white shadow-xl ${APP_STACK_CLASS}`} style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}>
+      <Span className="block text-sm text-white/70">{t('moa_mypage.credit.balance_label')}</Span>
       <Div className="text-3xl font-bold">{formatCredit(creditBalance, t)}</Div>
-      <Div className="mt-5 grid grid-cols-2 gap-2 text-xs text-white/75">
+      <Div className="grid grid-cols-2 gap-2 text-xs text-white/75">
         <Div>
           <Span className="block text-white/55">{t('moa_mypage.credit.total_earned')}</Span>
           <Span className="font-bold">{(creditOverview?.summary.total_earned ?? 0).toLocaleString()}</Span>
@@ -49,7 +51,7 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
         size="large"
         disabled={attendanceLoading || creditLoading}
         onClick={() => void onAttendanceCheck()}
-        className="mt-5 w-full justify-center gap-2 shadow-md disabled:opacity-60"
+        className="w-full justify-center gap-2 shadow-md disabled:opacity-60"
       >
         {attendanceLoading ? (
           <Icon name="spinner" className="text-base animate-spin" aria-hidden />
@@ -74,7 +76,9 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
           <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-red-500">{creditError}</Div>
         ) : null}
         {!creditError && creditLoading ? (
-          <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-muted">{t('moa_mypage.credit.loading_rows')}</Div>
+          <Div className="glass-sm rounded-xl px-3 py-3">
+            <AppLoadingSpinner label={t('moa_mypage.credit.loading_rows')} />
+          </Div>
         ) : null}
         {!creditError && !creditLoading && (creditOverview?.transactions.length ?? 0) === 0 ? (
           <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-muted">{t('moa_mypage.credit.empty')}</Div>

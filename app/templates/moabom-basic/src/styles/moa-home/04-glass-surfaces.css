@@ -23,19 +23,6 @@
   }
 }
 
-/* GlassCard가 부모를 꽉 채우도록 강제 */
-.glass-ui-container.fill-parent {
-  width: 100% !important;
-  height: 100% !important;
-  position: absolute !important;
-  inset: 0 !important;
-}
-
-.glass-ui-container.fill-parent .glass-ui-card-content {
-  height: 100% !important;
-  overflow: hidden !important;
-}
-
 /* 글래스 효과 (기본) — 토큰 기반 */
 .glass {
   background: var(--moa-glass-surface);

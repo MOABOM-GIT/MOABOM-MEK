@@ -14,6 +14,15 @@
     "no_account": "Don't have an account?",
     "have_account": "Already have an account?"
   },
+  "common": {
+    "$partial": "partial/en/common.json"
+  },
+  "userinfo": {
+    "$partial": "partial/en/userinfo.json"
+  },
+  "board": {
+    "$partial": "partial/en/board.json"
+  },
   "errors": {
     "404_title": "Page Not Found",
     "404_message": "The page you requested does not exist.",
@@ -159,6 +168,9 @@
       "created_empty": "No apps you created.",
       "created_loading": "Loading your apps…",
       "edit_app": "Edit app",
+      "delete_app": "Delete app",
+      "share_app": "Register app",
+      "unshare_app": "Unregister",
       "recent_title": "Recently used",
       "recent_empty": "No recently used apps.",
       "favorites_title": "Favorites",
@@ -257,7 +269,11 @@
       "user_fallback": "User",
       "app_description_fallback": "App description",
       "badge_urgent": "Urgent",
-      "badge_event": "Event"
+      "badge_event": "Event",
+      "badge_new": "New",
+      "badge_popular": "Popular",
+      "badge_notice": "Notice",
+      "badge_update": "Update"
     },
     "nav": {
       "launcher": "All Apps",
@@ -277,6 +293,12 @@
       "tabs_updates": "Updates",
       "empty_favorites": "No favorite apps yet",
       "empty_myapps": "No apps registered",
+      "empty_basic_apps": "No basic apps yet",
+      "empty_user_apps": "No user apps yet",
+      "notice_view_all": "View all notices",
+      "notice_loading": "Loading posts",
+      "empty_notices": "No notices yet",
+      "empty_updates": "No updates yet",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -291,6 +313,16 @@
       "online_summary": "42 people active now",
       "friends_summary": "12 friends",
       "mark_all_read": "Mark all as read",
+      "notifications_empty": "No notifications",
+      "notifications_loading": "Loading notifications…",
+      "notifications_load_more": "Load more",
+      "new_notification_received": "You have a new notification",
+      "notification_open": "Open",
+      "notification_fallback_title": "Notification",
+      "notification_time_just_now": "Just now",
+      "notification_time_minutes": "{count}m ago",
+      "notification_time_hours": "{count}h ago",
+      "notification_time_days": "{count}d ago",
       "admin_mode": "Admin mode",
       "avatar_alt": "{name} profile photo"
     },
@@ -306,6 +338,10 @@
       "legal_page_error": "Could not load the page. Check that the slug is published in the sirsoft-page module.",
       "legal_page_empty": "No content is published yet.",
       "legal_page_retry": "Try again",
+      "board_window": "Board · {slug}",
+      "board_loading": "Loading board…",
+      "board_error": "Could not load the board.",
+      "board_retry": "Try again",
       "toggle_left_panel_on": "Close left panel",
       "toggle_left_panel_off": "Open left panel",
       "toggle_right_panel_on": "Close right panel",
@@ -356,6 +392,11 @@
       "toast_max_taskbar": "You can keep up to {max} minimized buttons. Open or close one first.",
       "toast_app_added": "App added to the home grid.",
       "toast_app_already": "This app is already on the grid.",
+      "confirm_delete_generated": "Permanently delete \"{name}\"?",
+      "toast_delete_generated_failed": "Failed to delete the generated app. Please try again shortly.",
+      "toast_share_generated_on": "Shared. It now appears under User Apps in All Apps.",
+      "toast_share_generated_off": "Sharing turned off.",
+      "toast_share_generated_failed": "Failed to update sharing. Please try again shortly.",
       "sns_login_success": "Signed in with social account.",
       "sns_login_failed": "Social sign-in failed.",
       "sns_exchange_invalid": "Invalid social sign-in response."
@@ -372,82 +413,6 @@
       "name": "My Page",
       "description": "Manage your profile and settings"
     },
-    "app-maker": {
-      "name": "Equipment rental",
-      "description": "CPAP rental application"
-    },
-    "secret-text": {
-      "name": "Rental status",
-      "description": "View your rental equipment"
-    },
-    "color-tool": {
-      "name": "Equipment management",
-      "description": "Inspection and replacement"
-    },
-    "brain-gen": {
-      "name": "Sleep analysis",
-      "description": "Sleep data reports"
-    },
-    "decision": {
-      "name": "Service request",
-      "description": "On-site repair requests"
-    },
-    "psych-test": {
-      "name": "User guide",
-      "description": "Equipment manuals"
-    },
-    "quick-game": {
-      "name": "Fee inquiry",
-      "description": "Check monthly rental fees"
-    },
-    "community": {
-      "name": "Customer center",
-      "description": "1:1 inquiry and support"
-    },
-    "device-info": {
-      "name": "Equipment info",
-      "description": "Model specifications"
-    },
-    "game-coupon": {
-      "name": "Discount coupons",
-      "description": "Rental discount benefits"
-    },
-    "lotto-gen": {
-      "name": "Health report",
-      "description": "Monthly sleep health analysis"
-    },
-    "qr-tool": {
-      "name": "QR registration",
-      "description": "Register equipment QR codes"
-    },
-    "mobile-guide": {
-      "name": "Delivery tracking",
-      "description": "Rental delivery status"
-    },
-    "weather": {
-      "name": "My equipment",
-      "description": "List of registered devices"
-    },
-    "color-user": {
-      "name": "Sleep log",
-      "description": "Daily sleep records"
-    },
-    "music": {
-      "name": "Notifications",
-      "description": "Manage equipment alerts"
-    },
-    "task1": {
-      "name": "Contract info",
-      "description": "Rental contract history"
-    },
-    "task2": {
-      "name": "Payment history",
-      "description": "Monthly billing history"
-    },
-    "task3": {
-      "name": "Points",
-      "description": "Reward points balance"
-    },
     "create-app": {
       "name": "AI App Builder",
       "description": "Build a web app from a prompt"
@@ -455,38 +420,79 @@
     "cpap-mask": {
       "name": "Mask Fitting",
       "description": "Recommend a CPAP mask from face measurements"
+    },
+    "consulting": {
+      "name": "360 Consulting",
+      "description": "Hospital profitability simulation & e-contract"
+    },
+    "hospital-info": {
+      "name": "Hospital",
+      "description": "About the hospital and directions"
+    },
+    "cpap-rental": {
+      "name": "CPAP Rental",
+      "description": "CPAP rental requests and management"
+    },
+    "cpap-return": {
+      "name": "CPAP Return",
+      "description": "CPAP return pickup scheduling"
+    },
+    "as-request": {
+      "name": "Service Request",
+      "description": "After-service repair and inspection requests"
+    },
+    "refurb-request": {
+      "name": "Refurbishment Request",
+      "description": "Refurbishment and reconditioning requests"
+    },
+    "rental-dashboard": {
+      "name": "Rental Dashboard",
+      "description": "Rental and return status at a glance"
+    },
+    "settlement": {
+      "name": "Settlement Statement",
+      "description": "Rental billing and statements"
     }
+  },
+  "moa_apps_placeholder": {
+    "coming_soon_title": "Coming soon",
+    "coming_soon_description": "Service content will be available shortly."
   },
   "moa_apps_ai": {
     "title": "AI App Builder",
     "description": "Describe the app you want and generate an HTML web app preview.",
     "field_title": "App title",
-    "field_title_placeholder": "Example: Sleep report dashboard",
+    "field_title_placeholder": "Example: Sleep calculator",
     "field_type": "App type",
     "field_model": "AI model",
     "field_prompt": "Prompt",
     "field_prompt_placeholder": "Describe the screen, features, colors, and interactions you want.",
     "field_modify_placeholder": "Describe what you want to change in the current preview.",
     "types": {
-      "general": "General app",
-      "3d": "3D scene",
-      "game": "Game",
-      "dataviz": "Data visualization"
+      "general": "General web app (html)",
+      "3d": "3D canvas (three.js)",
+      "game": "Interaction (phaser.js)",
+      "dataviz": "Chart builder (chart.js)"
     },
     "models": {
-      "claude_sonnet": "Claude Sonnet 4",
-      "gpt4o": "GPT-4o",
-      "gemini_flash": "Gemini 2.5 Flash"
+      "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
+      "claude_sonnet": "Claude Sonnet 4.6",
+      "gpt_chat_latest": "GPT-5.1 Chat",
+      "gpt4o": "GPT-5.1 Chat",
+      "gemini_flash": "Gemini 3.5 Flash"
     },
     "generate": "Generate",
-    "modify": "Apply changes",
+    "modify": "Regenerate changes",
     "generating": "Generating...",
+    "stop_generate": "Stop generation",
     "save": "Save",
     "saving": "Saving...",
     "save_success": "Generated app saved.",
     "update": "Save changes",
     "update_success": "Generated app updated.",
     "editing_saved_app": "Editing a saved app.",
+    "remixing_saved_app": "Remixing {name}'s shared app. Saving will create a new app under your account.",
+    "save_remix": "Save remix",
     "preview_title": "Generated app preview",
     "viewer_loading": "Loading saved app…",
     "viewer_error": "Could not load the saved app.",
@@ -494,6 +500,13 @@
     "preview_empty_title": "No app generated yet",
     "preview_empty_description": "Enter a prompt and generate a preview.",
     "notice_fallback": "A default preview is shown until the AI provider is configured.",
+    "notice_truncated": "Generation stopped due to token limits. Use Continue to finish the app.",
+    "stream_title": "Generated code",
+    "stream_title_loading": "AI is writing code…",
+    "continue_generate": "Continue",
+    "resume_banner": "A previous generation session can be resumed.",
+    "resume_load": "Resume",
+    "resume_dismiss": "Dismiss",
     "error_generate": "Failed to generate the app.",
     "error_save": "Failed to save the generated app.",
     "validation": {

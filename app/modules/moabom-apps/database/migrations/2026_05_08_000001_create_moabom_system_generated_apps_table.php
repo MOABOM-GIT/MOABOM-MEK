@@ -29,10 +29,12 @@ return new class extends Migration
             $table->string('model_id', 60)->nullable()->comment('AI 모델 식별자');
             $table->longText('prompt')->nullable()->comment('생성 요청 프롬프트');
             $table->longText('html')->comment('생성된 HTML 문서');
+            $table->boolean('is_shared')->default(false)->comment('공유 공개 여부');
             $table->json('metadata')->nullable()->comment('생성 앱 부가 정보');
             $table->timestamps();
 
             $table->index(['user_id', 'created_at'], 'moabom_generated_apps_user_created_idx');
+            $table->index(['is_shared', 'created_at'], 'moabom_generated_apps_shared_created_idx');
             $table->index('app_type', 'moabom_generated_apps_type_idx');
         });
     }

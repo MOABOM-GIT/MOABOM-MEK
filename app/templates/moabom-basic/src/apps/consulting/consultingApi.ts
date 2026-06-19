@@ -2,10 +2,10 @@
  * moabom-consulting 모듈 API 클라이언트.
  * canonical prefix: /api/modules/moabom-consulting/apps/consulting/*
  */
-import { createModuleApi } from '../../api/moabomModuleApi';
+import { createShellModuleApi, hasShellAccessToken } from '../../api/moabomShellHttp';
 import type { SimulationResult } from './simulationModel';
 
-const request = createModuleApi('moabom-consulting');
+const request = createShellModuleApi('moabom-consulting');
 
 /** 서버 권위 시뮬레이션 (snake_case 페이로드) */
 export async function simulateOnServer(input: Record<string, number>): Promise<unknown> {
@@ -49,6 +49,9 @@ export interface StoreContractPayload {
 }
 
 export async function fetchContracts(): Promise<ContractSummary[]> {
+  if (!hasShellAccessToken()) {
+    return [];
+  }
   const data = await request<{ items: ContractSummary[] }>('apps/consulting/contracts');
   return Array.isArray(data.items) ? data.items : [];
 }

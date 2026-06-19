@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Console\Commands;
 
 use Illuminate\Console\Command;
+use Modules\Moabom\System\Saas\SaasAdminCredentials;
 use Modules\Moabom\System\Saas\TenantIdentityBootstrapper;
 use Modules\Moabom\System\Saas\TenantRegistry;
 
@@ -17,7 +18,7 @@ class SaasTenantBootstrapIdentityCommand extends Command
 {
     protected $signature = 'moabom:saas:tenant-bootstrap-identity
         {slug : 테넌트 slug}
-        {--email=admin@moabom.com : admin email}
+        {--email=admin@mek360.com : admin email}
         {--source-db= : identity source DB (기본 schema_source_db)}';
 
     protected $description = '기존 tenant DB — identity baseline (roles + admin) 주입';
@@ -27,7 +28,7 @@ class SaasTenantBootstrapIdentityCommand extends Command
         TenantIdentityBootstrapper $bootstrapper,
     ): int {
         $slug = strtolower((string) $this->argument('slug'));
-        $email = trim((string) $this->option('email'));
+        $email = SaasAdminCredentials::email((string) $this->option('email'));
         $sourceDb = trim((string) ($this->option('source-db')
             ?? config('moabom-system.saas.provision.schema_source_db', 'moabom-db')));
 

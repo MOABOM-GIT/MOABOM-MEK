@@ -25,6 +25,8 @@ export type MoabomShellSiteMeta = {
   is_platform?: boolean;
   site_name?: string;
     site_description?: string;
+    site_note?: string;
+    site_address?: string;
     site_url?: string;
     language?: string;
     timezone?: string;
@@ -48,9 +50,41 @@ type ShellBootApiResponse = {
     data?: Partial<MoabomShellBootData>;
 };
 
+type MoabomShellBootShared = {
+    data: MoabomShellBootData | null;
+};
+
+declare global {
+    interface Window {
+        __MoabomShellBoot?: MoabomShellBootShared;
+    }
+}
+
 let shellBootData: MoabomShellBootData | null = null;
 let shellBootLoadPromise: Promise<MoabomShellBootData | null> | null = null;
 let shellBootFetchInstalled = false;
+
+function sharedShellBoot(): MoabomShellBootShared | null {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    window.__MoabomShellBoot = window.__MoabomShellBoot ?? { data: null };
+
+    return window.__MoabomShellBoot;
+}
+
+function readShellBootData(): MoabomShellBootData | null {
+    return shellBootData ?? sharedShellBoot()?.data ?? null;
+}
+
+function writeShellBootData(data: MoabomShellBootData | null): void {
+    shellBootData = data;
+    const shared = sharedShellBoot();
+    if (shared) {
+        shared.data = data;
+    }
+}
 
 function buildShellBootUrl(): string {
     const url = new URL(SHELL_BOOT_API, typeof location !== 'undefined' ? location.href : 'http://localhost');
@@ -107,13 +141,13 @@ function normalizeShellBootPayload(raw: Partial<MoabomShellBootData> | undefined
 
 /** Vitest: 메모리 캐시 초기화 */
 export function resetMoabomShellBootCacheForTest(): void {
-    shellBootData = null;
+    writeShellBootData(null);
     shellBootLoadPromise = null;
 }
 
 /** shell-boot 페이로드가 준비됐는지 (네트워크 완료 후) */
 export function getMoabomShellBootData(): MoabomShellBootData | null {
-    return shellBootData;
+    return readShellBootData();
 }
 
 /**
@@ -122,8 +156,9 @@ export function getMoabomShellBootData(): MoabomShellBootData | null {
 export async function ensureMoabomShellBootLoaded(
     fetchImpl: typeof fetch = window.fetch.bind(window),
 ): Promise<MoabomShellBootData | null> {
-    if (shellBootData) {
-        return shellBootData;
+    const cached = readShellBootData();
+    if (cached) {
+        return cached;
     }
 
     if (shellBootLoadPromise) {
@@ -148,7 +183,7 @@ export async function ensureMoabomShellBootLoaded(
 
             applyLocaleCatalog(normalized.locale_catalog);
             setShellBootApps(normalized.apps);
-            shellBootData = normalized;
+            writeShellBootData(normalized);
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
                 window.dispatchEvent(new CustomEvent(MOABOM_SHELL_BOOT_LOADED_EVENT, { detail: normalized }));
             }

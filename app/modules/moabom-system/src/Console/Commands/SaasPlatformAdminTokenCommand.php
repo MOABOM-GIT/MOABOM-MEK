@@ -7,6 +7,7 @@ namespace Modules\Moabom\System\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
+use Modules\Moabom\System\Saas\SaasAdminCredentials;
 
 /**
  * E2E·smoke — platform(mek360) DB context에서 Sanctum admin token 발급.
@@ -14,13 +15,13 @@ use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
 class SaasPlatformAdminTokenCommand extends Command
 {
     protected $signature = 'moabom:saas:platform-admin-token
-        {--email=admin@moabom.com : admin 사용자 email}';
+        {--email=admin@mek360.com : admin 사용자 email}';
 
     protected $description = '플랫폼 DB admin Sanctum token (E2E·smoke)';
 
     public function handle(PlatformRuntimeConfigurator $platformRuntimeConfigurator): int
     {
-        $email = trim((string) $this->option('email'));
+        $email = SaasAdminCredentials::email((string) $this->option('email'));
         $platformRuntimeConfigurator->applyPlatform();
 
         $user = User::query()->where('email', $email)->first();

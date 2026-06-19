@@ -24,11 +24,150 @@ class AiAppServiceTest extends ModuleTestCase
 
         $this->assertSame($user->id, $app->user_id);
         $this->assertSame('테스트 앱', $app->title);
+        $this->assertFalse($app->is_shared);
         $this->assertDatabaseHas('moabom_system_generated_apps', [
             'id' => $app->id,
             'user_id' => $user->id,
             'app_type' => 'general',
+            'is_shared' => false,
         ]);
+    }
+
+    public function test_openai_payload_omits_temperature_for_gpt_5_models(): void
+    {
+        config(['moabom-apps.ai.max_output_tokens' => 12000]);
+
+        $service = $this->app->make(AiAppService::class);
+        $payload = $service->buildOpenAiChatPayload('gpt-5.1-chat-latest', [
+            ['role' => 'user', 'content' => '테스트'],
+        ], stream: true);
+
+        $this->assertArrayNotHasKey('temperature', $payload);
+        $this->assertTrue($payload['stream']);
+        $this->assertSame(12000, $payload['max_completion_tokens']);
+    }
+
+    public function test_openai_payload_keeps_temperature_for_legacy_models(): void
+    {
+        $service = $this->app->make(AiAppService::class);
+        $payload = $service->buildOpenAiChatPayload('gpt-4o', [
+            ['role' => 'user', 'content' => '테스트'],
+        ]);
+
+        $this->assertSame(0.7, $payload['temperature']);
+    }
+
+    public function test_patch_generation_keeps_current_html_when_provider_is_disabled(): void
+    {
+        config(['moabom-apps.ai.provider' => 'disabled']);
+
+        $service = $this->app->make(AiAppService::class);
+        $currentHtml = '<!DOCTYPE html><html><head><title>x</title></head><body>old</body></html>';
+        $result = $service->generate([
+            'prompt' => '버튼 색상을 바꿔줘',
+            'app_type' => 'general',
+            'model_id' => 'claude-sonnet',
+            'current_html' => $currentHtml,
+            'generation_mode' => 'patch',
+        ]);
+
+        $this->assertTrue($result['fallback']);
+        $this->assertSame($currentHtml, $result['html']);
+        $this->assertSame($currentHtml, $result['raw']);
+    }
+
+    public function test_patch_stream_result_keeps_current_html_when_provider_fails(): void
+    {
+        $service = $this->app->make(AiAppService::class);
+        $currentHtml = '<!DOCTYPE html><html><head><title>x</title></head><body>old</body></html>';
+        $result = $service->buildStreamResult(
+            [
+                'prompt' => '버튼 색상을 바꿔줘',
+                'app_type' => 'general',
+                'model_id' => 'claude-sonnet',
+                'current_html' => $currentHtml,
+                'generation_mode' => 'patch',
+            ],
+            '',
+            'anthropic',
+            'claude-sonnet-4-6',
+            false,
+            'error',
+        );
+
+        $this->assertTrue($result['fallback']);
+        $this->assertSame($currentHtml, $result['html']);
+        $this->assertSame($currentHtml, $result['raw']);
+    }
+
+    public function test_patch_stream_result_applies_multiple_search_replace_pairs(): void
+    {
+        $service = $this->app->make(AiAppService::class);
+        $currentHtml = '<!DOCTYPE html><html><head><title>old</title></head><body><main><h1>old</h1><p>old body</p></main></body></html>';
+        $patch = <<<'PATCH'
+<<<MOABOM_PATCH>>>
+---SEARCH---
+<title>old</title>
+---REPLACE---
+<title>new</title>
+---SEARCH---
+<h1>old</h1><p>old body</p>
+---REPLACE---
+<h1>new</h1><p>new body</p>
+<<<END_PATCH>>>
+PATCH;
+
+        $result = $service->buildStreamResult(
+            [
+                'prompt' => '제목과 본문을 바꿔줘',
+                'app_type' => 'general',
+                'model_id' => 'claude-sonnet',
+                'current_html' => $currentHtml,
+                'generation_mode' => 'patch',
+            ],
+            $patch,
+            'anthropic',
+            'claude-sonnet-4-6',
+            false,
+            'stop',
+        );
+
+        $this->assertStringContainsString('<title>new</title>', $result['html']);
+        $this->assertStringContainsString('<h1>new</h1><p>new body</p>', $result['html']);
+        $this->assertStringNotContainsString('<<<MOABOM_PATCH>>>', $result['html']);
+        $this->assertSame($patch, $result['raw']);
+    }
+
+    public function test_patch_stream_result_keeps_current_html_when_no_patch_matches(): void
+    {
+        $service = $this->app->make(AiAppService::class);
+        $currentHtml = '<!DOCTYPE html><html><head><title>x</title></head><body><main>old</main></body></html>';
+        $patch = <<<'PATCH'
+<<<MOABOM_PATCH>>>
+---SEARCH---
+<main>missing</main>
+---REPLACE---
+<main>new</main>
+<<<END_PATCH>>>
+PATCH;
+
+        $result = $service->buildStreamResult(
+            [
+                'prompt' => '본문을 바꿔줘',
+                'app_type' => 'general',
+                'model_id' => 'claude-sonnet',
+                'current_html' => $currentHtml,
+                'generation_mode' => 'patch',
+            ],
+            $patch,
+            'anthropic',
+            'claude-sonnet-4-6',
+            false,
+            'stop',
+        );
+
+        $this->assertSame($currentHtml, $result['html']);
+        $this->assertStringNotContainsString('<<<MOABOM_PATCH>>>', $result['html']);
     }
 
     public function test_store_injects_csp_meta_into_generated_html(): void
@@ -43,7 +182,9 @@ class AiAppServiceTest extends ModuleTestCase
         ]);
 
         $this->assertStringContainsString('http-equiv="Content-Security-Policy"', (string) $app->html);
-        $this->assertStringContainsString("frame-ancestors 'none'", (string) $app->html);
+        // frame-ancestors 는 <meta> 에서 무시되어 콘솔 경고를 유발하므로 제외 (sandbox iframe 격리로 대체).
+        $this->assertStringNotContainsString('frame-ancestors', (string) $app->html);
+        $this->assertStringContainsString("base-uri 'none'", (string) $app->html);
     }
 
     public function test_store_is_idempotent_when_csp_already_present(): void
@@ -99,6 +240,103 @@ class AiAppServiceTest extends ModuleTestCase
         $this->assertNotNull($service->findForUser($owner->id, $app->id));
         $this->assertNull($service->findForUser($other->id, $app->id));
         $this->assertNull($service->findForUser($owner->id, 999999));
+    }
+
+    public function test_shared_generated_apps_are_visible_but_not_manageable_by_other_users(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $app = $service->store($owner->id, [
+            'title' => '공유 앱',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>shared</body></html>',
+            'is_shared' => true,
+        ]);
+
+        $this->assertNotNull($service->findVisibleForUser($other->id, $app->id));
+        $this->assertNull($service->findForUser($other->id, $app->id));
+        $this->assertNull($service->setSharedForUser($other->id, $app->id, false));
+    }
+
+    public function test_shared_list_contains_only_shared_generated_apps(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $private = $service->store($user->id, [
+            'title' => '비공개',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>private</body></html>',
+        ]);
+        $shared = $service->store($user->id, [
+            'title' => '공유',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>shared</body></html>',
+            'is_shared' => true,
+        ]);
+
+        $ids = array_column($service->listShared(), 'id');
+
+        $this->assertNotContains($private->id, $ids);
+        $this->assertContains($shared->id, $ids);
+    }
+
+    public function test_serialize_includes_owner_and_viewer_permissions(): void
+    {
+        $owner = User::factory()->create([
+            'nickname' => 'A',
+        ]);
+        $viewer = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $app = $service->store($owner->id, [
+            'title' => '공유',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>shared</body></html>',
+            'is_shared' => true,
+        ]);
+
+        $ownerPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $owner->id);
+        $viewerPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $viewer->id);
+        $guestPayload = $service->serialize($app->fresh(['user']), includeHtml: false);
+
+        $this->assertSame('A', $ownerPayload['owner']['nickname']);
+        $this->assertTrue($ownerPayload['permissions']['is_owner']);
+        $this->assertTrue($ownerPayload['permissions']['can_share']);
+        $this->assertSame('owner', $ownerPayload['permissions']['edit_mode']);
+        $this->assertFalse($viewerPayload['permissions']['is_owner']);
+        $this->assertTrue($viewerPayload['permissions']['can_edit']);
+        $this->assertFalse($viewerPayload['permissions']['can_delete']);
+        $this->assertSame('remix', $viewerPayload['permissions']['edit_mode']);
+        $this->assertFalse($guestPayload['permissions']['can_edit']);
+        $this->assertSame('none', $guestPayload['permissions']['edit_mode']);
+    }
+
+    public function test_store_allows_shared_app_as_remix_parent_for_other_user(): void
+    {
+        $owner = User::factory()->create();
+        $remixer = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $source = $service->store($owner->id, [
+            'title' => '원본',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>source</body></html>',
+            'is_shared' => true,
+        ]);
+
+        $remix = $service->store($remixer->id, [
+            'title' => '리믹스',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>remix</body></html>',
+            'parent_app_id' => $source->id,
+            'metadata' => ['remix_source_id' => $source->id],
+        ]);
+
+        $this->assertSame($source->id, $remix->parent_app_id);
+        $this->assertSame($remixer->id, $remix->user_id);
     }
 
     public function test_ai_app_service_update_for_user_updates_owned_app_only(): void

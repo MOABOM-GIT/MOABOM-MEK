@@ -29,6 +29,7 @@ import { evaluateConditionBranches } from './helpers/ConditionEvaluator';
 import { triggerModalParentUpdate } from './ParentContextProvider';
 import type { GlobalHeaderRule } from './LayoutLoader';
 import { IdentityGuardInterceptor } from '../identity/IdentityGuardInterceptor';
+import { isNonPlainObject, isPlainObject } from './stateMerge';
 
 const logger = createLogger('ActionDispatcher');
 
@@ -162,6 +163,8 @@ export interface ActionDefinition {
   target?: string;
   /** 액션 파라미터 */
   params?: Record<string, any>;
+  /** false이면 상태만 저장하고 React 렌더링을 건너뜁니다. */
+  render?: boolean;
   /** 액션 성공 시 실행할 후속 액션 (단일 또는 배열) */
   onSuccess?: ActionDefinition | ActionDefinition[];
   /** 액션 실패 시 실행할 후속 액션 (단일 또는 배열) - errorHandling에 매칭되지 않을 때 실행 */
@@ -396,6 +399,8 @@ export interface ActionContext {
   setState?: (updates: any) => void;
   /** React Router navigate 함수 */
   navigate?: (path: string, options?: NavigateOptions) => void;
+  /** DevTools 상태 변경 추적에서 액션과 setState를 연결하는 ID */
+  actionId?: string;
   /**
    * 격리된 상태 컨텍스트
    *
@@ -1237,59 +1242,6 @@ export class ActionDispatcher {
           logger.error('reloadTranslations: Failed to reload translations', error);
           throw error;
         }
-      }
-    });
-
-    // loadDeferredExtensionAssets: lazy/layout 전략 확장을 실제 진입 시점에만 로드
-    // params.moduleIdentifiers / params.pluginIdentifiers 로 지정된 항목만 G7Config.deferred*에서
-    // 활성 moduleAssets/pluginAssets로 승격한 뒤 ModuleAssetLoader가 중복 로드를 방지한다.
-    this.registerHandler('loadDeferredExtensionAssets', async (action: ActionDefinition, _context: ActionContext) => {
-      if (typeof window === 'undefined') {
-        logger.warn('loadDeferredExtensionAssets: window is not available');
-        return;
-      }
-
-      const G7Config = (window as any).G7Config;
-      if (!G7Config) {
-        logger.warn('loadDeferredExtensionAssets: G7Config not available');
-        return;
-      }
-
-      const moduleIdentifiers = Array.isArray(action.params?.moduleIdentifiers)
-        ? action.params.moduleIdentifiers.map(String)
-        : [];
-      const pluginIdentifiers = Array.isArray(action.params?.pluginIdentifiers)
-        ? action.params.pluginIdentifiers.map(String)
-        : [];
-      const assetLoader = getModuleAssetLoader();
-
-      const modules = moduleIdentifiers.flatMap((identifier: string) => {
-        const asset = G7Config.deferredModuleAssets?.[identifier];
-        if (!asset) {
-          logger.warn(`loadDeferredExtensionAssets: missing deferred module asset for ${identifier}`);
-          return [];
-        }
-        G7Config.moduleAssets = G7Config.moduleAssets || {};
-        G7Config.moduleAssets[identifier] = asset;
-        return [{ identifier, ...asset }];
-      });
-
-      const plugins = pluginIdentifiers.flatMap((identifier: string) => {
-        const asset = G7Config.deferredPluginAssets?.[identifier];
-        if (!asset) {
-          logger.warn(`loadDeferredExtensionAssets: missing deferred plugin asset for ${identifier}`);
-          return [];
-        }
-        G7Config.pluginAssets = G7Config.pluginAssets || {};
-        G7Config.pluginAssets[identifier] = asset;
-        return [{ identifier, ...asset }];
-      });
-
-      if (modules.length > 0) {
-        await assetLoader.loadActiveExtensionAssets(modules);
-      }
-      if (plugins.length > 0) {
-        await assetLoader.loadActiveExtensionAssets(plugins);
       }
     });
 
@@ -2288,8 +2240,8 @@ export class ActionDispatcher {
             startTime,
             endTime: performance.now(),
             duration: performance.now() - startTime,
-            status: 'skipped',
-            metadata: { reason: 'preview_mode_suppressed' },
+            status: 'success',
+            result: { skipped: true, reason: 'preview_mode_suppressed' },
           });
         }
 
@@ -2577,7 +2529,6 @@ export class ActionDispatcher {
               action,
               error instanceof Error ? error : undefined
             );
-
       // API 응답에서 에러 정보 추출
       const apiResponse = (actionError.originalError as any)?.response || {};
       const responseData = apiResponse.data || {};
@@ -3454,13 +3405,6 @@ export class ActionDispatcher {
     return true;
   }
 
-  private isFileLike(value: unknown): value is Blob {
-    return (
-      (typeof File !== 'undefined' && value instanceof File) ||
-      (typeof Blob !== 'undefined' && value instanceof Blob)
-    );
-  }
-
   /**
    * apiCall 액션을 처리합니다.
    *
@@ -3552,16 +3496,15 @@ export class ActionDispatcher {
     if (body && method !== 'GET') {
       if (isMultipart) {
         // multipart/form-data: FormData 객체로 변환
-        const formData = new FormData();
+        const FormDataCtor = (typeof window !== 'undefined' && window.FormData) ? window.FormData : FormData;
+        const formData = new FormDataCtor();
         for (const [key, value] of Object.entries(body)) {
-          if (this.isFileLike(value)) {
-            formData.append(key, value);
-          } else if (Array.isArray(value)) {
-            value.forEach((item) => {
-              if (item !== null && item !== undefined) {
-                formData.append(key, this.isFileLike(item) ? item : String(item));
-              }
-            });
+          const uploadBinary = await this.toUploadBinaryValue(value);
+          if (uploadBinary) {
+            const filename = this.getUploadBinaryFilename(value);
+            await this.appendUploadBinary(formData, key, uploadBinary, FormDataCtor, filename);
+          } else if (value === null || value === undefined || value === '') {
+            continue;
           } else if (value !== null && value !== undefined) {
             formData.append(
               key,
@@ -3941,7 +3884,9 @@ export class ActionDispatcher {
         // context.state는 아직 이전 값(React setState 비동기).
         // __g7PendingLocalState에 자동 바인딩이 반영된 최신 상태가 있으므로 우선 사용.
         const pendingLocal = (window as any).__g7PendingLocalState;
-        const currentState = pendingLocal || context.state || {};
+        const currentState = pendingLocal
+          ? this.deepMergeWithState(pendingLocal, context.state || {})
+          : context.state || {};
 
         // engine-v1.24.6: context.setState에는 변경 필드만 전달 (전체 _local 축적 방지)
         // 이전: deep 모드에서 deepMerge(resolvedPayload, currentState) = 전체 _local 스냅샷을 전달
@@ -3949,7 +3894,7 @@ export class ActionDispatcher {
         // 수정: resolvedPayload(변경 필드)만 전달, handleLocalSetState가 effectivePrev와 병합 처리
         // 주의: deepMergeWithState({}, payload)로 dot notation 변환 수행 (전체 상태 병합은 하지 않음)
         const convertedPayload = mergeMode === 'deep'
-          ? this.deepMergeWithState(resolvedPayload, {})
+          ? this.deepMergeWithState(resolvedPayload, currentState)
           : resolvedPayload;
         logger.log('[handleSetState] convertedPayload (변경 필드만, dot notation 변환):', convertedPayload);
         context.setState!(convertedPayload);
@@ -4324,13 +4269,7 @@ export class ActionDispatcher {
 
       // File, Blob, Date 등 non-plain 객체는 재귀 병합하지 않고 직접 할당
       // (spread 연산자로 복사하면 내부 데이터가 소실됨)
-      if (
-        value !== null &&
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
-        Object.getPrototypeOf(value) !== Object.prototype &&
-        Object.getPrototypeOf(value) !== null
-      ) {
+      if (this.isNonPlainObject(value)) {
         result[key] = value;
         continue;
       }
@@ -4338,10 +4277,10 @@ export class ActionDispatcher {
       // 값이 일반 객체이고, 현재 상태에도 해당 키가 객체로 존재하면 재귀적 깊은 병합
       if (
         value !== null &&
-        typeof value === 'object' &&
+        this.isPlainObject(value) &&
         !Array.isArray(value) &&
         currentState[key] !== null &&
-        typeof currentState[key] === 'object' &&
+        this.isPlainObject(currentState[key]) &&
         !Array.isArray(currentState[key])
       ) {
         // 중첩 객체: 재귀적으로 깊은 병합 수행
@@ -4380,13 +4319,13 @@ export class ActionDispatcher {
         continue;
       }
 
-      if (
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
+      if (this.isNonPlainObject(value)) {
+        target[key] = value;
+      } else if (
+        this.isPlainObject(value) &&
         target[key] !== undefined &&
         target[key] !== null &&
-        typeof target[key] === 'object' &&
-        !Array.isArray(target[key])
+        this.isPlainObject(target[key])
       ) {
         // 원본 상태와 같은 참조면 shallow copy 후 병합 (원본 변이 방지)
         if (target[key] === currentState[key]) {
@@ -4395,12 +4334,10 @@ export class ActionDispatcher {
         // 두 값이 모두 객체인 경우 재귀적으로 병합
         this.deepMergeInto(target[key], value, currentState[key] || {});
       } else if (
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
+        this.isPlainObject(value) &&
         target[key] === undefined &&
         currentState[key] !== null &&
-        typeof currentState[key] === 'object' &&
-        !Array.isArray(currentState[key])
+        this.isPlainObject(currentState[key])
       ) {
         // target에 없지만 currentState에 있으면 currentState와 병합
         target[key] = { ...currentState[key], ...value };
@@ -4446,11 +4383,7 @@ export class ActionDispatcher {
       // 현재 상태의 해당 키 값을 얕은 복사
       // stateCursor가 null이거나 객체가 아닌 경우 빈 객체로 처리
       const stateValue: unknown = stateCursor?.[key];
-      const isPlainObject =
-        stateValue !== null &&
-        stateValue !== undefined &&
-        typeof stateValue === 'object' &&
-        !Array.isArray(stateValue);
+      const isPlainObject = this.isPlainObject(stateValue);
 
       if (isPlainObject) {
         current[key] = { ...(stateValue as Record<string, unknown>) };
@@ -4505,6 +4438,115 @@ export class ActionDispatcher {
 
     current[keys[keys.length - 1]] = value;
     return result;
+  }
+
+  private isPlainObject(value: unknown): value is Record<string, any> {
+    return isPlainObject(value);
+  }
+
+  private isNonPlainObject(value: unknown): boolean {
+    return isNonPlainObject(value);
+  }
+
+  private isUploadBinaryValue(value: unknown): value is Blob {
+    if (
+      typeof File !== 'undefined' &&
+      typeof Blob !== 'undefined' &&
+      (value instanceof File || value instanceof Blob)
+    ) {
+      return true;
+    }
+
+    const tag = Object.prototype.toString.call(value);
+    return tag === '[object File]' || tag === '[object Blob]';
+  }
+
+  private async toUploadBinaryValue(value: unknown): Promise<Blob | null> {
+    if (!this.isUploadBinaryValue(value)) {
+      return null;
+    }
+
+    return value as Blob;
+  }
+
+  private async appendUploadBinary(
+    formData: FormData,
+    key: string,
+    value: Blob,
+    FormDataCtor: typeof FormData,
+    filename?: string
+  ): Promise<void> {
+    const candidates = [value, ...await this.rebuildUploadBlobCandidates(value, FormDataCtor)];
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        if (filename) {
+          formData.append(key, candidate, filename);
+        } else {
+          formData.append(key, candidate);
+        }
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError;
+  }
+
+  private async rebuildUploadBlobCandidates(value: Blob, FormDataCtor: typeof FormData): Promise<Blob[]> {
+    const browserBlob = typeof window !== 'undefined' ? window.Blob : undefined;
+    const globalBlob = typeof Blob !== 'undefined' ? Blob : undefined;
+    const ctors = FormDataCtor === globalThis.FormData
+      ? [globalBlob, browserBlob]
+      : [browserBlob, globalBlob];
+    const candidates: Blob[] = [];
+    const type = value.type || 'application/octet-stream';
+    const part = await this.readUploadBinaryPart(value);
+
+    if (part !== null && typeof Response !== 'undefined') {
+      try {
+        const responseBlob = await new Response(part, {
+          headers: type ? { 'Content-Type': type } : undefined,
+        }).blob();
+        candidates.push(responseBlob);
+      } catch {
+        // Response.blob() is the best fallback for mixed FormData/Blob runtimes.
+      }
+    }
+
+    for (const BlobCtor of ctors.filter(Boolean) as Array<typeof Blob>) {
+      try {
+        const blob = new BlobCtor([part ?? value], { type });
+        if (blob !== value && !candidates.includes(blob)) {
+          candidates.push(blob);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return candidates;
+  }
+
+  private async readUploadBinaryPart(value: Blob): Promise<ArrayBuffer | Blob | null> {
+    try {
+      return typeof value.arrayBuffer === 'function'
+        ? await value.arrayBuffer()
+        : value;
+    } catch {
+      return null;
+    }
+  }
+
+  private getUploadBinaryFilename(value: unknown): string | undefined {
+    const name = (value as { name?: unknown } | null)?.name;
+    return typeof name === 'string' && name !== '' ? name : undefined;
+  }
+
+  private isSimpleBindingPath(expression: string): boolean {
+    return /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[(?:\d+|'[^']+'|"[^"]+")\])*$/.test(expression);
   }
 
   /**
@@ -5179,7 +5221,6 @@ export class ActionDispatcher {
                 _global: { ...(currentState._global || {}), ...globalPayload }
               };
             }
-
             logger.log('[handleSequence] global state synchronized (mergeMode=%s):', __mergeMode || 'deep', currentState._global);
           } else if (result.data.__target === 'isolated') {
             // isolated 상태 동기화
@@ -5976,7 +6017,7 @@ export class ActionDispatcher {
    */
   private async handleSaveToLocalStorage(
     params: Record<string, any>,
-    context: ActionContext
+    _context: ActionContext
   ): Promise<boolean> {
     const { key, value } = params;
 
@@ -6019,7 +6060,7 @@ export class ActionDispatcher {
     params: Record<string, any>,
     context: ActionContext
   ): Promise<any> {
-    const { key, target, stateKey, defaultValue } = params;
+    const { key, stateKey, defaultValue } = params;
 
     if (!key) {
       logger.error('loadFromLocalStorage: key parameter is required');
@@ -6154,65 +6195,6 @@ export class ActionDispatcher {
   }
 
   /**
-   * 객체 내의 모든 {{}} 표현식을 평가합니다.
-   *
-   * "..." 키는 JavaScript spread 연산자처럼 동작합니다.
-   * 예: { "...": "{{_local.form}}", "name": "new" } → { ...oldForm, name: "new" }
-   *
-   * @param obj 평가할 객체
-   * @param dataContext 데이터 컨텍스트
-   */
-  private evaluateExpressions(obj: Record<string, any>, dataContext?: any): Record<string, any> {
-    let result: Record<string, any> = {};
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (key === '...') {
-        // "..." 키는 spread 연산자로 처리
-        // 값이 {{}} 표현식이면 평가하고, 객체면 병합
-        let spreadValue = value;
-        if (typeof value === 'string' && value.includes('{{')) {
-          spreadValue = this.evaluateExpression(value, dataContext);
-        }
-        // spreadValue가 객체인 경우에만 병합
-        if (spreadValue && typeof spreadValue === 'object' && !Array.isArray(spreadValue)) {
-          result = { ...result, ...spreadValue };
-        }
-        // spreadValue가 null, undefined, 또는 객체가 아닌 경우 무시
-      } else if (typeof value === 'string' && value.includes('{{')) {
-        // {{}} 표현식 평가
-        result[key] = this.evaluateExpression(value, dataContext);
-      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        // 중첩 객체 재귀 처리
-        result[key] = this.evaluateExpressions(value, dataContext);
-      } else {
-        result[key] = value;
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * 이미 resolve된 payload에서 남아있는 {{}} 표현식만 평가합니다.
-   * 배열, 객체 등 이미 평가된 값은 그대로 유지합니다.
-   */
-  private evaluateExpressionsIfNeeded(obj: Record<string, any>, dataContext?: any): Record<string, any> {
-    const result: Record<string, any> = {};
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string' && value.includes('{{')) {
-        // 문자열이고 {{}}를 포함하면 평가
-        result[key] = this.evaluateExpression(value, dataContext);
-      } else {
-        // 그 외는 그대로 유지 (배열, 객체, 기본값 등)
-        result[key] = value;
-      }
-    }
-
-    return result;
-  }
-
-  /**
    * {{}} 표현식을 평가합니다.
    *
    * DataBindingEngine.evaluateExpression을 사용하여 $t: 토큰 등을 올바르게 처리합니다.
@@ -6300,8 +6282,10 @@ export class ActionDispatcher {
     }
 
     try {
-      // DataBindingEngine.evaluateExpression을 사용하여 $t: 토큰 등을 올바르게 처리
-      const result = this.bindingEngine.evaluateExpression(expression, effectiveDataContext);
+      // 단순 경로는 resolve()로 읽어 File/Blob 같은 객체 참조를 보존한다.
+      const result = this.isSimpleBindingPath(expression)
+        ? this.bindingEngine.resolve(expression, effectiveDataContext, { skipCache: true })
+        : this.bindingEngine.evaluateExpression(expression, effectiveDataContext);
 
       // 디버그 로그 (init_actions 바인딩 문제 진단용)
       if (expression.includes('_global.modules')) {
@@ -6548,7 +6532,6 @@ export class ActionDispatcher {
         target: {
           value: (target as any).value,
           name: (target as any).name ?? '',
-          files: (target as any).files,
         },
       };
 
@@ -6568,7 +6551,6 @@ export class ActionDispatcher {
           checked: (target as HTMLInputElement).checked ?? false,
           type: target.type ?? '',
           tagName: target.tagName,
-          files: (target as HTMLInputElement).files,
         }
       : {};
 
@@ -6676,7 +6658,7 @@ export class ActionDispatcher {
     // DevTools 추적 - pending 상태
     const devTools = getDevTools();
     if (devTools?.isEnabled()) {
-      devTools.trackAction({
+      devTools.trackAction?.({
         handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
         type: action.type,
         status: 'pending',
@@ -6697,7 +6679,7 @@ export class ActionDispatcher {
 
       // DevTools 추적 - leading 실행
       if (devTools?.isEnabled()) {
-        devTools.trackAction({
+        devTools.trackAction?.({
           handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
           type: action.type,
           status: 'success',
@@ -6720,7 +6702,7 @@ export class ActionDispatcher {
 
         // DevTools 추적 - trailing 실행
         if (devTools?.isEnabled()) {
-          devTools.trackAction({
+          devTools.trackAction?.({
             handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
             type: action.type,
             status: 'success',

@@ -21,16 +21,16 @@ class TenantIdentityBootstrapperTest extends ModuleTestCase
         $cloner->cloneSchemaOnly($sourceDb, $targetDb);
 
         $bootstrapper = app(TenantIdentityBootstrapper::class);
-        $bootstrapper->bootstrap($sourceDb, $targetDb, 'admin@moabom.com');
+        $bootstrapper->bootstrap($sourceDb, $targetDb, 'admin@mek360.com');
 
         config(['database.connections.mysql.database' => $targetDb]);
         \Illuminate\Support\Facades\DB::purge('mysql');
         \Illuminate\Support\Facades\DB::reconnect('mysql');
 
         $this->assertGreaterThan(0, \App\Models\Role::query()->where('identifier', 'admin')->count());
-        $this->assertGreaterThan(0, \App\Models\User::query()->where('email', 'admin@moabom.com')->count());
+        $this->assertGreaterThan(0, \App\Models\User::query()->where('email', 'admin@mek360.com')->count());
 
-        $admin = \App\Models\User::query()->where('email', 'admin@moabom.com')->firstOrFail();
+        $admin = \App\Models\User::query()->where('email', 'admin@mek360.com')->firstOrFail();
         $this->assertTrue($admin->roles()->where('identifier', 'admin')->exists());
 
         $pdo = $cloner->pdo();

@@ -38,6 +38,16 @@ class NotificationDispatcher extends NotificationSender
         try {
             $result = parent::sendToNotifiable($notifiable, $id, $notification, $channel);
 
+            if ($channel === 'database' && $notification instanceof GenericNotification) {
+                $context['notification_id'] = $id;
+
+                $databasePayload = $notification->toArray($notifiable);
+                $innerData = is_array($databasePayload['data'] ?? null) ? $databasePayload['data'] : [];
+                $context['url'] = $databasePayload['click_url']
+                    ?? $innerData['action_url']
+                    ?? null;
+            }
+
             // After 훅: 발송 성공 (로깅, 통계 등)
             HookManager::doAction('core.notification.after_channel_send', $channel, $context);
 

@@ -17,8 +17,7 @@
   min-width: 0;
 }
 
-.moa-main-app-item,
-.create-app-btn {
+.moa-main-app-item {
   width: 100%;
   max-width: var(--moa-main-app-size);
   margin-inline: auto;

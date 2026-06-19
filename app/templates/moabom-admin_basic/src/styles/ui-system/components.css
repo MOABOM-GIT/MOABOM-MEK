@@ -712,7 +712,7 @@
  * ======================================== */
 
 /* Mobile Card View - 768px 이하에서 표시 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .table-mobile-cards {
     display: block;
   }
@@ -725,7 +725,7 @@
 }
 
 /* Modal Responsive */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .modal {
     margin-left: 1rem;
     margin-right: 1rem;
@@ -748,7 +748,7 @@
 }
 
 /* Card Account - 오버플로우 방지 */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .card-account {
     width: 100%;
   }

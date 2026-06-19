@@ -1,3 +1,5 @@
+import { enqueueMoabomToast } from '../../runtime/moabomToastEnqueue';
+
 export function showAppEditToast(type: 'success' | 'warning', message: string): void {
   const G7Core = (window as any).G7Core;
   if (type === 'success') {
@@ -23,6 +25,26 @@ export function pushWarningToast(message: string, duration = 3000): void {
     return;
   }
   G7Core?.dispatch?.({ handler: 'toast', params: { type: 'warning', message, duration } });
+}
+
+/** 실시간 알림 토스트 — 사용자 `toast` 옵션(content)과 동일한 severity. */
+export function pushNotificationToast(
+  message: string,
+  duration = 2800,
+  action?: { label: string; onClick: () => void | Promise<void> },
+): void {
+  if (
+    enqueueMoabomToast({
+      type: 'info',
+      severity: 'content',
+      duration,
+      message,
+      ...(action ? { action } : {}),
+    })
+  ) {
+    return;
+  }
+  pushInfoToast(message, duration);
 }
 
 export function pushInfoToast(message: string, duration = 2800): void {

@@ -235,7 +235,7 @@ export const Toast: React.FC<ToastProps> = ({
       });
 
       // 자동 제거 타이머 설정
-      const effectiveDuration = toast.duration || duration;
+      const effectiveDuration = toast.duration !== undefined ? toast.duration : duration;
       if (effectiveDuration > 0) {
         setTimeout(() => {
           handleRemove(toast.id);

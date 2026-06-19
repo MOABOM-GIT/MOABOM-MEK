@@ -70,7 +70,7 @@ export function shellBootAppToGrid(manifest: ShellAppManifest): App {
 
 /**
  * 기존 그리드 목록에 없는(id 기준) 부트 앱만 끝에 추가한다.
- * `create-app` 은 셸 특수 타일(별도 주입)이라 기본 제외 → 중복 방지.
+ * `create-app` 은 셸 기본 앱으로 직접 주입되므로 부트 매니페스트에서는 중복 제외한다.
  */
 export function appendNewShellBootApps(
   base: App[],

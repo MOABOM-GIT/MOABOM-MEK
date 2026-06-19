@@ -9,6 +9,14 @@ import {
   type ScenarioResult,
   type SimulationInput,
 } from '../simulationModel';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../appShellTypography';
+import {
+  CONSULTING_HERO_GRADIENT,
+  CONSULTING_MINT_TEXT,
+  CONSULTING_ORANGE_TEXT,
+  CONSULTING_PANEL,
+  CONSULTING_PRIMARY_CTA,
+} from '../consultingTheme';
 
 interface FieldDef {
   key: keyof SimulationInput;
@@ -34,12 +42,13 @@ const FIELDS: FieldDef[] = [
 ];
 
 interface SimulationTabProps {
+  hospitalName: string;
   input: SimulationInput;
   onInputChange: (next: SimulationInput) => void;
   onProceedToContract: () => void;
 }
 
-export function SimulationTab({ input, onInputChange, onProceedToContract }: SimulationTabProps) {
+export function SimulationTab({ hospitalName, input, onInputChange, onProceedToContract }: SimulationTabProps) {
   const result = useMemo(() => runSimulation(input), [input]);
 
   const setField = (field: FieldDef, raw: string) => {
@@ -59,13 +68,13 @@ export function SimulationTab({ input, onInputChange, onProceedToContract }: Sim
   const advantage = smartY5 - selfY5;
 
   return (
-    <Div className="flex flex-col gap-4">
-      {/* 입력: 병원 운영 변수 설정 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
-        <Div className="flex items-center gap-2 text-base font-bold text-primary">
-          <Icon name="sliders" className="text-sky-500" /> 병원 운영 변수 설정
-        </Div>
-        <Div className="mt-3 grid grid-cols-1 gap-3 @md:grid-cols-3">
+    <Div className={APP_STACK_CLASS}>
+      <Div className={CONSULTING_PANEL}>
+        <Div className={APP_STACK_CLASS}>
+          <Div className="flex items-center gap-2 text-lg font-bold text-primary">
+            <Icon name="sliders" className="text-[#479ee2]" /> {hospitalName} 운영 변수
+          </Div>
+          <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1 @md:grid-cols-3`}>
           {FIELDS.map(field => (
             <label key={field.key} className="flex flex-col gap-1">
               <Span className="text-xs font-bold text-muted">{field.label}</Span>
@@ -83,52 +92,50 @@ export function SimulationTab({ input, onInputChange, onProceedToContract }: Sim
               </Div>
             </label>
           ))}
-        </Div>
-        <Div className="mt-3 text-xs leading-relaxed text-muted">
-          입력값을 활용해 기존 <Span className="font-bold">자체운영방식</Span>과 <Span className="font-bold">smart care 360</Span> 도입 시
-          {' '}{input.years}개년 EBIT(영업이익) 추세를 실시간으로 비교합니다. (값을 바꾸면 즉시 갱신)
+          </Div>
+          <Div className="text-base leading-relaxed text-muted">
+            직접 다 하시는 방식과 <Span className="font-bold text-primary">스마트케어360에 맡기는 방식</Span>을 {input.years}년 기준으로 나란히 비교합니다.
+            숫자를 바꾸면 바로 반영됩니다.
+          </Div>
         </Div>
       </Div>
 
-      {/* 핵심 결과 카드 */}
-      <Div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
+      <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1 @md:grid-cols-2`}>
         <ScenarioCard
           tone="self"
-          title="비 도입 상태 (자체 운영)"
-          subtitle="기존 인력 중심 시스템 및 아날로그 방식 지속 운영 시"
+          title="직접 운영"
+          subtitle="인력·장비·청구를 병원에서 직접 챙기는 경우"
           scenario={result.self}
         />
         <ScenarioCard
           tone="smart"
-          title="smart care 360 도입"
-          subtitle="스마트케어360 시스템 도입으로 초기 안정성·수익성 도모"
+          title="스마트케어360과 함께"
+          subtitle="렌탈·환자관리·청구·교육까지 전문 인프라에 맡기는 경우"
           scenario={result.smart}
         />
       </Div>
 
-      {/* EBIT 추세 비교 차트 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
+      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
         <Div className="text-base font-bold text-primary">Y1 ~ Y{input.years} 영업이익(EBIT) 트렌드 비교</Div>
         <EbitTrendChart self={result.self} smart={result.smart} />
-        <Div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
-          <Span className="flex items-center gap-1.5"><Span className="inline-block h-3 w-3 rounded-sm bg-rose-400" /> 자체 운영</Span>
-          <Span className="flex items-center gap-1.5"><Span className="inline-block h-3 w-3 rounded-sm bg-blue-500" /> smart care 360</Span>
+        <Div className="flex flex-wrap items-center gap-5 text-sm font-bold">
+          <Span className={`flex items-center gap-2 ${CONSULTING_ORANGE_TEXT}`}><Span className="inline-block h-3 w-3 rounded-sm bg-[#fe8540]" /> 직접 운영</Span>
+          <Span className={`flex items-center gap-2 ${CONSULTING_MINT_TEXT}`}><Span className="inline-block h-3 w-3 rounded-sm bg-[#27bfc1]" /> 스마트케어360</Span>
         </Div>
       </Div>
 
-      {/* 결론 + 계약 진행 */}
-      <Div className="rounded-3xl bg-gradient-to-br from-blue-600 to-sky-500 p-5 text-white shadow-lg">
-        <Div className="flex items-center gap-2 text-sm font-bold text-white/80">
-          <Icon name="trophy" /> {input.years}개년 누적 영업이익 차이
+      <Div className={`rounded-[1.75rem] p-6 shadow-sm ${CONSULTING_HERO_GRADIENT} ${APP_STACK_CLASS}`}>
+        <Div className="flex items-center gap-2 text-sm font-semibold text-white/80">
+          <Icon name="trophy" /> {input.years}년 누적 이익 차이
         </Div>
-        <Div className="mt-1 text-3xl font-extrabold">{formatKrwManwon(advantage)} 우위</Div>
-        <Div className="mt-1 text-sm text-white/85">
-          smart care 360 도입 시 누적 EBIT {formatKrwManwon(smartY5)} vs 자체 운영 {formatKrwManwon(selfY5)}
+        <Div className="text-3xl font-extrabold tracking-tight">{formatKrwManwon(advantage)} 더 유리</Div>
+        <Div className="text-base leading-relaxed text-white/85">
+          스마트케어360 {formatKrwManwon(smartY5)} · 직접 운영 {formatKrwManwon(selfY5)}
         </Div>
         <Button
-          variant="neutral"
+          variant="primary"
           size="large"
-          className="mt-4 w-full !rounded-2xl"
+          className={`w-full !rounded-2xl ${CONSULTING_PRIMARY_CTA}`}
           onClick={onProceedToContract}
         >
           <Icon name="file-signature" className="mr-2" /> 이 조건으로 전자계약 진행하기
@@ -157,17 +164,17 @@ function ScenarioCard({
 
   return (
     <Div
-      className={`rounded-3xl border p-5 shadow-sm ${
+      className={`rounded-[1.75rem] border p-6 shadow-sm ${
         isSmart
-          ? 'border-blue-300 bg-blue-500/5 dark:border-blue-500/40'
-          : 'border-rose-200 bg-rose-500/5 dark:border-rose-500/30'
+          ? 'border-[#27bfc1]/45 bg-[#27bfc1]/8 dark:border-[#27bfc1]/35 dark:bg-[#27bfc1]/8'
+          : 'border-[#fe8540]/35 bg-[#fe8540]/8 dark:border-[#fe8540]/35 dark:bg-[#fe8540]/8'
       }`}
     >
       <Div className="flex items-center gap-2">
-        <Icon name={isSmart ? 'rocket' : 'triangle-exclamation'} className={isSmart ? 'text-blue-500' : 'text-rose-500'} />
-        <Span className="text-base font-bold text-primary">{title}</Span>
+        <Icon name={isSmart ? 'rocket' : 'triangle-exclamation'} className={isSmart ? CONSULTING_MINT_TEXT : CONSULTING_ORANGE_TEXT} />
+        <Span className="text-lg font-bold text-primary">{title}</Span>
       </Div>
-      <Div className="mt-1 text-xs leading-snug text-muted">{subtitle}</Div>
+      <Div className="mt-2 text-sm leading-relaxed text-muted">{subtitle}</Div>
 
       <Div className="mt-4 grid grid-cols-3 gap-2 text-center">
         <Metric label="1년차 EBIT" value={y1} />
@@ -175,8 +182,8 @@ function ScenarioCard({
         <Metric label="누적 EBIT" value={cumY5} highlight={isSmart} />
       </Div>
 
-      <Div className="mt-3 flex items-center gap-2 rounded-xl bg-black/5 px-3 py-2 text-xs dark:bg-white/5">
-        <Icon name={breakeven ? 'check-circle' : 'clock'} size="sm" className={breakeven ? 'text-emerald-500' : 'text-amber-500'} />
+      <Div className="mt-3 flex items-center gap-2 rounded-xl bg-black/5 px-3 py-2 text-xs dark:bg-[#479ee2]/8">
+        <Icon name={breakeven ? 'check-circle' : 'clock'} size="sm" className={breakeven ? 'text-[#87c426]' : 'text-[#fe8540]'} />
         <Span className="text-muted">
           손익분기:{' '}
           <Span className="font-bold text-primary">
@@ -193,7 +200,7 @@ function Metric({ label, value, highlight }: { label: string; value: number; hig
   return (
     <Div className="rounded-xl bg-white/60 px-2 py-2 dark:bg-slate-800/60">
       <Div className="text-xs font-bold text-muted">{label}</Div>
-      <Div className={`mt-0.5 text-sm font-extrabold ${negative ? 'text-rose-600 dark:text-rose-400' : highlight ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`}>
+      <Div className={`mt-0.5 text-sm font-extrabold ${negative ? 'text-[#fe8540]' : highlight ? 'text-[#87c426] dark:text-[#a7dd58]' : 'text-primary'}`}>
         {formatKrwManwon(value)}
       </Div>
     </Div>
@@ -212,10 +219,10 @@ function EbitTrendChart({ self, smart }: { self: ScenarioResult; smart: Scenario
   const barHeight = (v: number) => (Math.abs(v) / range) * chartHeight;
 
   return (
-    <Div className="relative mt-4" style={{ height: `${chartHeight}px` }}>
+    <Div className="relative" style={{ height: `${chartHeight}px` }}>
       {/* 0 기준선 */}
       <Div
-        className="absolute left-0 right-0 border-t border-dashed border-black/20 dark:border-white/20"
+        className="absolute left-0 right-0 border-t border-dashed border-black/20 dark:border-[#479ee2]/30"
         style={{ top: `${zeroRatio * chartHeight}px` }}
       />
       <Div className="flex h-full items-stretch gap-2">
@@ -225,8 +232,8 @@ function EbitTrendChart({ self, smart }: { self: ScenarioResult; smart: Scenario
           return (
             <Div key={i} className="flex flex-1 flex-col items-center">
               <Div className="relative w-full flex-1">
-                <Bar value={sv} color="bg-rose-400" chartHeight={chartHeight} zeroRatio={zeroRatio} barHeight={barHeight} side="left" />
-                <Bar value={mv} color="bg-blue-500" chartHeight={chartHeight} zeroRatio={zeroRatio} barHeight={barHeight} side="right" />
+                <Bar value={sv} color="bg-[#fe8540]" chartHeight={chartHeight} zeroRatio={zeroRatio} barHeight={barHeight} side="left" />
+                <Bar value={mv} color="bg-[#27bfc1]" chartHeight={chartHeight} zeroRatio={zeroRatio} barHeight={barHeight} side="right" />
               </Div>
               <Span className="mt-1 text-xs font-bold text-muted">Y{i + 1}</Span>
             </Div>

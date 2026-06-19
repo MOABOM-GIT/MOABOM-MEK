@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
+use Modules\Moabom\System\Saas\SaasAdminCredentials;
 use Modules\Moabom\System\Saas\TenantBaselineManifest;
 use Modules\Moabom\System\Saas\TenantCachePurger;
 use Modules\Moabom\System\Saas\TenantDatabaseCloner;
@@ -59,10 +60,7 @@ final class TenantDeprovisioner implements TenantDeprovisionerInterface
             $truncated = $this->truncateRuntimeTables($tenant->dbDatabase);
 
             $sourceDb = (string) config('moabom-system.saas.provision.schema_source_db', 'moabom-db');
-            $adminEmail = trim((string) config('mail.from.address', 'admin@moabom.com'));
-            if ($adminEmail === '') {
-                $adminEmail = 'admin@moabom.com';
-            }
+            $adminEmail = SaasAdminCredentials::email();
 
             $this->identityBootstrapper->bootstrap($sourceDb, $tenant->dbDatabase, $adminEmail);
             $this->appearanceDefaultsApplier->apply($tenant);

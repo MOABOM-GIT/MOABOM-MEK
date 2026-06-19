@@ -1,9 +1,9 @@
 import type { ButtonProps } from '../../basic/Button';
 import { moaFieldControlClass, moaFieldTextareaClass } from '../../../theme/moabomFieldSurface';
 
-/** 마이페이지 창 루트. 레이아웃 책임은 `.moa-mypage-surface` CSS에 둔다. */
+/** 마이페이지 창 루트 — 패딩은 `.moa-app-window-viewport` SSOT */
 export const OUTER_GLASS = 'moa-mypage-surface';
-export const SIDEBAR_GROUP = 'moa-group rounded-2xl p-4';
+export const SIDEBAR_GROUP = 'moa-group rounded-2xl py-4 px-1';
 export const GROUP_PANEL = 'moa-group rounded-2xl';
 /** 단일 라인 텍스트 인풋 — `.moa-field` + 버튼 `medium` 티어 치수 (`moa-home/09-form-fields.css`). */
 export const INPUT_SURFACE = moaFieldControlClass('medium');

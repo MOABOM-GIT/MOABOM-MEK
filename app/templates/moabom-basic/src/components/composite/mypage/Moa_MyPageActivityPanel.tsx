@@ -1,7 +1,9 @@
 import React from 'react';
 import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import type { ActivityItem, ActivityOverview } from './myPageTypes';
+import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
 import { Button } from '../../basic/Button';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 import { Div } from '../../basic/Div';
 import { Icon } from '../../basic/Icon';
 import { Span } from '../../basic/Span';
@@ -36,7 +38,7 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
   const interactionsCount = activityOverview?.summary?.interactions_count ?? 0;
 
   return (
-    <Div className={`${GROUP_PANEL} p-5`}>
+    <Div className={`${GROUP_PANEL} p-5 ${APP_STACK_CLASS}`}>
     <Div className="grid grid-cols-3 gap-2 @sm:gap-3 text-center">
       <Div className="glass-sm min-w-0 rounded-2xl px-2 py-3 @sm:px-4 @sm:py-4">
         <Div className="text-lg @sm:text-2xl font-bold text-primary leading-tight">{postsCount.toLocaleString()}</Div>
@@ -54,14 +56,14 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
 
     {showAdminSessionNotice ? (
       <Div
-        className="mt-4 glass-sm px-3 py-3 rounded-xl text-xs text-muted leading-relaxed border border-amber-500/25 dark:border-amber-400/20"
+        className="glass-sm px-3 py-3 rounded-xl text-xs text-muted leading-relaxed border border-amber-500/25 dark:border-amber-400/20"
         data-testid="mypage-activity-admin-notice"
       >
         {t('moa_mypage.activity.admin_session_notice')}
       </Div>
     ) : null}
 
-    <Div className="mt-5 grid grid-cols-2 gap-2 @sm:flex @sm:flex-wrap">
+    <Div className="grid grid-cols-2 gap-2 @sm:flex @sm:flex-wrap">
       {ACTIVITY_FILTER_IDS.map(filterId => (
         <Button
           key={filterId}
@@ -77,17 +79,19 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
     </Div>
 
     {activityOverview != null && !activityOverview.summary.likes_supported ? (
-      <Div className="mt-4 glass-sm px-3 py-3 rounded-xl text-xs text-muted leading-relaxed">
+      <Div className="glass-sm px-3 py-3 rounded-xl text-xs text-muted leading-relaxed">
         {t('moa_mypage.activity.likes_notice')}
       </Div>
     ) : null}
 
-    <Div className="mt-5 flex flex-col gap-3">
+    <Div className={APP_STACK_CLASS}>
       {activityError ? (
         <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-red-500">{activityError}</Div>
       ) : null}
       {!activityError && activityLoading ? (
-        <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-muted">{t('moa_mypage.activity.loading')}</Div>
+        <Div className="glass-sm rounded-xl px-3 py-3">
+          <AppLoadingSpinner label={t('moa_mypage.activity.loading')} />
+        </Div>
       ) : null}
       {!activityError && !activityLoading && (activityOverview?.items.length ?? 0) === 0 ? (
         <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-muted">{t('moa_mypage.activity.empty')}</Div>

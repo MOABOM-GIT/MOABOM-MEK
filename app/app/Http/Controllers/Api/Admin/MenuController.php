@@ -95,7 +95,12 @@ class MenuController extends AdminBaseController
             // 네비게이션용 계층 구조로 변환
             $navigationData = $collection->toNavigationArray();
 
-            return $this->success('menu.fetch_success', $navigationData['data']);
+            $response = $this->success('menu.fetch_success', $navigationData['data']);
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('Expires', '0');
+
+            return $response;
         } catch (\Exception $e) {
             return $this->error('menu.active_fetch_failed', 500, $e->getMessage());
         }

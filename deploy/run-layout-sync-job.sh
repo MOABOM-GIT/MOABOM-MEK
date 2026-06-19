@@ -13,10 +13,22 @@ source "${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
 echo "[run-layout-sync-job] template=${TEMPLATE} image=$(moabom_image_tag)"
 echo "[run-layout-sync-job] slug 생략 = platform + active tenants (절대 '*' 전달 금지)"
 
-moabom_run_artisan_job moabom-layout-sync "${TIMEOUT}" \
-  moabom:saas:sync-template-layouts \
-  --template="${TEMPLATE}" \
-  --no-interaction
+sync_template_layouts() {
+  local template_id="$1"
+  local job_suffix
+  job_suffix="$(printf '%s' "${template_id}" | tr '_' '-')"
+  echo "[run-layout-sync-job] sync-template-layouts --template=${template_id}"
+  moabom_run_artisan_job "moabom-layout-sync-${job_suffix}" "${TIMEOUT}" \
+    moabom:saas:sync-template-layouts \
+    --template="${template_id}" \
+    --no-interaction
+}
+
+sync_template_layouts "${TEMPLATE}"
+# 사용자 템플릿(moabom-basic) — board/* 등 홈 셸 게시판 윈도우 레이아웃 DB 반영
+if [[ "${TEMPLATE}" != "moabom-basic" ]]; then
+  sync_template_layouts moabom-basic
+fi
 
 # moabom-system 모듈 레이아웃(admin_saas_hospitals 등)은 template 이 아닌 module_layouts — 별도 refresh 필수
 echo "[run-layout-sync-job] moabom:saas:sync-module-layouts (platform + tenants — admin_mypage_settings SSOT)"

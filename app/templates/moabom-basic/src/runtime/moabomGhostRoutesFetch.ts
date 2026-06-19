@@ -5,6 +5,8 @@
  * @see docs/moabom-routes-ghost-api.md
  */
 
+import { pathNeedsLegacyG7RouterPath } from '../utils/moabomLegacyMypagePaths';
+
 const SHELL_ROUTES_API = '/api/modules/moabom-system/public/template-routes-shell';
 
 const ECOMMERCE_MODULE_ID = 'sirsoft-ecommerce';
@@ -85,29 +87,9 @@ function routesCacheVersionFromUrl(url: string): string {
     }
 }
 
-function normalizePathnameForShopCheck(pathname: string): string {
-    let p = pathname || '/';
-    const loc = p.match(/^\/([a-z]{2})(?=\/|$)/);
-    if (loc) {
-        p = p.slice(3) || '/';
-    }
-    if (!p.startsWith('/')) {
-        p = `/${p}`;
-    }
-
-    return p;
-}
-
-/** 이커머스 병합 라인이 필요한 URL 경로인지 (직접 진입 시 전체 routes.json 사용). */
+/** 이커머스·레거시 G7 경로 — 전체 routes.json 병합이 필요한지 */
 export function pathNeedsEcommerceMergedRoutes(pathname: string): boolean {
-    const p = normalizePathnameForShopCheck(pathname);
-
-    return (
-        p.startsWith('/shop') ||
-        p.startsWith('/cart') ||
-        p.startsWith('/checkout') ||
-        p.startsWith('/orders')
-    );
+    return pathNeedsLegacyG7RouterPath(pathname);
 }
 
 /** 초기 부트에서 셸 스냅샷 routes fetch를 쓸지 (이커머스 직접 진입이면 false). */

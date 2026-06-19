@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "policy": "G7 pure core plus Moabom extension layer plus minimal overlay patch.",
+  "patch": "deploy/core-patches/moabom-core.patch",
+  "upstream": "https://github.com/gnuboard/g7",
+  "categories": {
+    "remove": [],
+    "move": [
+      {
+        "path": "app/Http/Requests/Settings/SaveSettingsRequest.php",
+        "reason": "GCS driver validation should move to a settings-driver extension hook when upstream supports runtime driver registration."
+      },
+      {
+        "path": "app/Http/Requests/Settings/TestDriverConnectionRequest.php",
+        "reason": "GCS driver validation should move with SaveSettingsRequest to an extension-owned registry contract."
+      },
+      {
+        "path": "app/Providers/SettingsServiceProvider.php",
+        "reason": "Storage-driver named disk mapping is Moabom runtime policy and should move behind an extension provider hook after upstream exposes one."
+      },
+      {
+        "path": "app/Repositories/JsonConfigRepository.php",
+        "reason": "Bootstrap settings cache/storage behavior is mostly covered by Moabom repositories and should be reduced once provider construction is injectable."
+      },
+      {
+        "path": "app/Services/DriverRegistryService.php",
+        "reason": "GCS registry/default should become extension-provided driver metadata instead of a core list edit."
+      },
+      {
+        "path": "config/settings/defaults.json",
+        "reason": "Moabom default storage driver should be seeded by tenant/system settings rather than changing upstream defaults."
+      },
+      {
+        "path": "resources/views/admin.blade.php",
+        "reason": "Absolute core asset URL and font policy can move to template/view overlay or asset URL configuration."
+      },
+      {
+        "path": "resources/views/app.blade.php",
+        "reason": "Absolute core asset URL and font policy can move to template/view overlay or asset URL configuration."
+      }
+    ],
+    "upstream-hook": [
+      {
+        "path": "app/Http/Middleware/EnforceIdentityPolicy.php",
+        "reason": "Generic skip_request_patterns and skip_route_names hooks contain no Moabom hardcoding."
+      },
+      {
+        "path": "app/Services/SettingsService.php",
+        "reason": "Generic config_clear_guards hook lets extensions suppress destructive clears safely."
+      },
+      {
+        "path": "config/core.php",
+        "reason": "Generic extension hook configuration for config clear and identity policy middleware."
+      },
+      {
+        "path": "resources/js/core/TemplateApp.ts",
+        "reason": "Computed-state recalculation hook is a generic template-engine improvement, but remains overlay until upstream accepts it."
+      },
+      {
+        "path": "resources/js/core/template-engine/ActionDispatcher.ts",
+        "reason": "Type contract cleanup for render/actionId/devtools debounce tracking; no Moabom-specific handler logic."
+      }
+    ],
+    "overlay-required": [
+      {
+        "path": "app/Http/Controllers/Api/Public/PublicTemplateController.php",
+        "reason": "Cloud Run public boot cache version fallback is needed before a cleaner upstream cache hook exists."
+      },
+      {
+        "path": "app/Providers/ModuleRouteServiceProvider.php",
+        "reason": "Cloud Run boot without .env plus module route cache behavior is required during Laravel bootstrap."
+      },
+      {
+        "path": "app/Providers/PluginRouteServiceProvider.php",
+        "reason": "Cloud Run boot without .env guard is required during Laravel bootstrap."
+      },
+      {
+        "path": "bootstrap/app.php",
+        "reason": "Cloud Run proxy trust must be active at HTTP bootstrap time."
+      },
+      {
+        "path": "bootstrap/providers.php",
+        "reason": "GCS filesystem provider must be registered before settings are loaded."
+      },
+      {
+        "path": "config/cache.php",
+        "reason": "Runtime cache TTL keys must exist in config cache for Cloud Run/SaaS boot."
+      },
+      {
+        "path": "config/database.php",
+        "reason": "Cloud SQL persistent/SSL settings must be present before database bootstrap."
+      },
+      {
+        "path": "config/filesystems.php",
+        "reason": "GCS disk and named disk templates must exist before storage manager resolution."
+      },
+      {
+        "path": "config/moabom-saas.php",
+        "reason": "SaaS environment SSOT must be available under Laravel config cache."
+      }
+    ]
+  }
+}

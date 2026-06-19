@@ -56,6 +56,10 @@ if (class_exists(AiAppController::class)) {
             ->middleware('throttle:20,1')
             ->name('decomposition_compat.apps.ai.generate');
 
+        Route::post('ai/generate/stream', [AiAppController::class, 'stream'])
+            ->middleware('throttle:20,1')
+            ->name('decomposition_compat.apps.ai.generate.stream');
+
         Route::get('generated', [AiAppController::class, 'index'])
             ->name('decomposition_compat.apps.generated.index');
         Route::get('generated/{id}', [AiAppController::class, 'show'])

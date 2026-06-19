@@ -50,6 +50,7 @@ import {
 } from '../hooks/useControllableState';
 import { triggerModalParentUpdate } from './ParentContextProvider';
 import { IdentityGuardInterceptor, IDENTITY_REDIRECT_STASH_KEY } from '../identity/IdentityGuardInterceptor';
+import { deepMergeStateSafe, isPlainObject } from './stateMerge';
 
 const logger = createLogger('G7CoreGlobals');
 
@@ -1399,14 +1400,7 @@ function addMissingLeafKeys(base: Record<string, any>, extra: Record<string, any
     if (!(key in result)) {
       // base에 없는 키: extra 값 그대로 추가
       result[key] = extra[key];
-    } else if (
-      result[key] !== null &&
-      typeof result[key] === 'object' &&
-      !Array.isArray(result[key]) &&
-      extra[key] !== null &&
-      typeof extra[key] === 'object' &&
-      !Array.isArray(extra[key])
-    ) {
+    } else if (isPlainObject(result[key]) && isPlainObject(extra[key])) {
       // 양쪽 모두 plain object: 재귀적으로 처리
       result[key] = addMissingLeafKeys(result[key], extra[key]);
     }
@@ -1416,61 +1410,7 @@ function addMissingLeafKeys(base: Record<string, any>, extra: Record<string, any
 }
 
 function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
-  // 특수 케이스: target이 배열이고 source가 숫자 키만 가진 객체인 경우
-  // → 배열 요소를 인덱스별로 병합
-  if (Array.isArray(target) && !Array.isArray(source) && hasOnlyNumericKeys(source)) {
-    const numericKeys = Object.keys(source).map((k) => parseInt(k, 10));
-    const maxKey = numericKeys.length > 0 ? Math.max(...numericKeys) : 0;
-
-    // Sparse array 방지: source의 최대 키가 target 배열 범위를 크게 초과하면
-    // 배열 인덱스가 아닌 ID/키 매핑(예: product_option_id → coupon)으로 간주
-    // → 배열 병합 대신 일반 객체 병합으로 처리 (sparse array 생성 방지)
-    if (maxKey >= target.length + numericKeys.length + 10) {
-      // Fall through to normal object merge below
-    } else {
-      const result = [...target];
-      for (const [key, value] of Object.entries(source)) {
-        const index = parseInt(key, 10);
-        if (index >= 0 && index < result.length) {
-          // 인덱스가 범위 내에 있으면 해당 요소와 병합
-          if (
-            value !== null &&
-            typeof value === 'object' &&
-            !Array.isArray(value) &&
-            result[index] !== null &&
-            typeof result[index] === 'object'
-          ) {
-            result[index] = deepMerge(result[index], value);
-          } else {
-            result[index] = value;
-          }
-        } else if (index >= result.length) {
-          // 인덱스가 범위를 초과하면 배열 확장
-          result[index] = value;
-        }
-      }
-      return result as any;
-    }
-  }
-
-  const result = { ...target };
-
-  for (const [key, value] of Object.entries(source)) {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      // 중첩 객체인 경우 재귀적으로 병합
-      if (result[key] !== null && typeof result[key] === 'object') {
-        // target[key]가 배열이든 객체든 deepMerge가 처리
-        result[key] = deepMerge(result[key], value);
-      } else {
-        result[key] = { ...value };
-      }
-    } else {
-      // 원시 값 또는 배열인 경우 그대로 할당
-      result[key] = value;
-    }
-  }
-
-  return result;
+  return deepMergeStateSafe(target, source);
 }
 
 /**

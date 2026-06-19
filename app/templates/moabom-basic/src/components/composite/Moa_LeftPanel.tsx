@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMoabomDarkMode } from '../../hooks/useMoabomDarkMode';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { useDroppable } from '@dnd-kit/core';
@@ -12,13 +12,119 @@ import { SubTabBar } from './Moa_SubTabBar';
 import { LeftPanelAppIcon } from './Moa_LeftPanelAppIcon';
 import { APPS, type App } from '../../data/Moa_apps';
 import { NAV_ITEMS } from '../../data/Moa_navigation';
-import { RANKING_DATA, MY_APPS_DATA, NOTICE_DATA } from '../../data/Moa_mockData';
+import { RANKING_DATA } from '../../data/Moa_mockData';
+import {
+  MOA_SHELL_NOTICE_BOARD_SLUG,
+  openShellNoticeBoard,
+} from '../../shell/moaShellNoticeBoard';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 
 /** 메인 좌측 패널 하단 고정 네비 슬롯 높이 */
 const NAV_H = 78;
+
+type BoardNoticePreview = {
+  id?: number | string;
+  title?: string | null;
+  content_preview?: string | null;
+  created_at_formatted?: string | null;
+  created_at?: string | null;
+  category?: string | null;
+  is_notice?: boolean;
+  is_new?: boolean;
+  view_count?: number;
+  row_type?: string | null;
+};
+
+type NoticeBadgeKind = 'new' | 'popular' | 'notice' | 'update';
+
+type LeftPanelNoticeItem = {
+  id: string;
+  title: string;
+  desc: string;
+  date: string;
+  category: '공지사항' | '업데이트';
+  boardSlug: string;
+  postId: string;
+  badges: NoticeBadgeKind[];
+};
+
+const NOTICE_BOARD_CATEGORIES = {
+  notices: '공지사항',
+  updates: '업데이트',
+} as const;
+
+const POPULAR_NOTICE_VIEW_THRESHOLD = 100;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function extractBoardNoticePreviews(payload: unknown): BoardNoticePreview[] {
+  const body = isRecord(payload) && 'data' in payload ? payload.data : payload;
+  const data = isRecord(body) && Array.isArray(body.data) ? body.data : Array.isArray(body) ? body : [];
+
+  return data.filter(isRecord).map(item => item as BoardNoticePreview);
+}
+
+function createNoticeBadges(post: BoardNoticePreview, category: LeftPanelNoticeItem['category']): NoticeBadgeKind[] {
+  const badges: NoticeBadgeKind[] = [];
+  if (post.is_new) {
+    badges.push('new');
+  }
+  if (Number(post.view_count ?? 0) >= POPULAR_NOTICE_VIEW_THRESHOLD) {
+    badges.push('popular');
+  }
+  if (post.is_notice || post.row_type === 'notice') {
+    badges.push('notice');
+  }
+  if (category === NOTICE_BOARD_CATEGORIES.updates) {
+    badges.push('update');
+  }
+
+  return badges;
+}
+
+function getNoticeBadgeClassName(kind: NoticeBadgeKind): string {
+  switch (kind) {
+    case 'new':
+      return 'bg-emerald-500 text-white';
+    case 'popular':
+      return 'bg-amber-500 text-white';
+    case 'notice':
+      return 'bg-sky-500 text-white';
+    case 'update':
+      return 'text-white';
+    default:
+      return 'bg-slate-500 text-white';
+  }
+}
+
+function toLiveNoticeItem(
+  post: BoardNoticePreview,
+  category: LeftPanelNoticeItem['category'],
+): LeftPanelNoticeItem | null {
+  if (post.id == null || !post.title) {
+    return null;
+  }
+  if (post.category !== category) {
+    return null;
+  }
+
+  const badges = createNoticeBadges(post, category);
+
+  return {
+    id: `live-${category}-${post.id}`,
+    title: post.title,
+    desc: post.content_preview?.trim() || `${category} 게시글`,
+    date: post.created_at_formatted ?? post.created_at ?? '',
+    category,
+    boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    postId: String(post.id),
+    badges,
+  };
+}
 
 export interface LeftPanelProps {
   /** 패널 너비 */
@@ -39,6 +145,10 @@ export interface LeftPanelProps {
   onEnterEditMode: () => void;
   /** 즐겨찾기 앱 목록 */
   favoriteApps: App[];
+  /** 사용자가 저장한 AI 생성 앱 목록 */
+  createdApps?: App[];
+  /** 다른 사용자가 공유 공개한 AI 생성 앱 목록 */
+  sharedApps?: App[];
   /** 좁은 화면 오버레이 모드 여부 */
   isOverlay?: boolean;
   /**
@@ -48,6 +158,8 @@ export interface LeftPanelProps {
   overlayFlushEdges?: boolean;
   /** 오버레이 닫기 핸들러 */
   onClose?: () => void;
+  /** 게시판 윈도우 열기 (좌측 공지·업데이트 더미 → notice 보드) */
+  onOpenBoard?: (slug: string, postId?: string) => void;
 }
 
 /** 랭킹 행 — 앱 이름·설명(좁은 패널·마퀴 높이 이슈 없이 말줄임으로 항상 표시) */
@@ -140,9 +252,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   editMode,
   onEnterEditMode,
   favoriteApps,
+  createdApps = [],
+  sharedApps = [],
   isOverlay = false,
   overlayFlushEdges = false,
   onClose,
+  onOpenBoard,
 }) => {
   const isDark = useMoabomDarkMode();
   const { t } = useMoabomShellT();
@@ -152,12 +267,78 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [rankingSubTab, setRankingSubTab] = useState<'apps' | 'users'>('apps');
   const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('favorites');
   const [noticeSubTab, setNoticeSubTab] = useState<'notices' | 'updates'>('notices');
+  const [noticeBoardItems, setNoticeBoardItems] = useState<{
+    notices: LeftPanelNoticeItem[];
+    updates: LeftPanelNoticeItem[];
+  }>({ notices: [], updates: [] });
+  const [noticeBoardLoading, setNoticeBoardLoading] = useState(true);
   const isOpen = leftOffset >= 0;
   /** 데스크톱 20px / 오버레이 기본 10px / ±480px 이하 flush 시 0 */
   const panelEdge = !isOverlay ? 20 : overlayFlushEdges ? 0 : 10;
   const tapToAdd = isOverlay && editMode;
 
-  const filteredApps = APPS.filter(a => a.category === activeTab);
+  const filteredApps = activeTab === 'user'
+    ? [
+        ...APPS.filter(a => a.category === 'user'),
+        ...sharedApps.filter(app => !APPS.some(baseApp => baseApp.id === app.id)),
+      ]
+    : APPS.filter(a => a.category === 'basic');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadByCategory(category: LeftPanelNoticeItem['category']): Promise<LeftPanelNoticeItem[]> {
+      const params = new URLSearchParams({
+        page: '1',
+        per_page: '5',
+        category,
+      });
+      const response = await fetch(
+        `/api/modules/sirsoft-board/boards/${encodeURIComponent(MOA_SHELL_NOTICE_BOARD_SLUG)}/posts?${params.toString()}`,
+        {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
+        },
+      );
+      if (!response.ok) {
+        return [];
+      }
+
+      const payload: unknown = await response.json();
+      return extractBoardNoticePreviews(payload)
+        .map(post => toLiveNoticeItem(post, category))
+        .filter((item): item is LeftPanelNoticeItem => item !== null);
+    }
+
+    async function loadNoticeBoardItems(): Promise<void> {
+      try {
+        setNoticeBoardLoading(true);
+        const [notices, updates] = await Promise.all([
+          loadByCategory(NOTICE_BOARD_CATEGORIES.notices),
+          loadByCategory(NOTICE_BOARD_CATEGORIES.updates),
+        ]);
+
+        if (!controller.signal.aborted) {
+          setNoticeBoardItems({ notices, updates });
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setNoticeBoardItems({ notices: [], updates: [] });
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setNoticeBoardLoading(false);
+        }
+      }
+    }
+
+    void loadNoticeBoardItems();
+
+    return () => controller.abort();
+  }, []);
+
+  const noticeItems = noticeSubTab === 'updates' ? noticeBoardItems.updates : noticeBoardItems.notices;
 
   /** 현재 activeNav에 따른 서브탭 설정 */
   const getSubTabConfig = () => {
@@ -232,14 +413,26 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {/* 라이브러리 탭 - 앱 그리드 */}
           {activeNav === 'launcher' && (
             <Div className="py-1">
-              <LeftPanelAppGrid
-                apps={filteredApps}
-                editMode={editMode}
-                onEnterEditMode={onEnterEditMode}
-                onOpenApp={onOpenApp}
-                onAddApp={onAddApp}
-                tapToAdd={tapToAdd}
-              />
+              {filteredApps.length > 0 ? (
+                <LeftPanelAppGrid
+                  apps={filteredApps}
+                  editMode={editMode}
+                  onEnterEditMode={onEnterEditMode}
+                  onOpenApp={onOpenApp}
+                  onAddApp={onAddApp}
+                  tapToAdd={tapToAdd}
+                />
+              ) : (
+                <Div className="text-center py-8 text-muted">
+                  <Icon
+                    name={activeTab === 'user' ? 'users' : 'cube'}
+                    className="text-3xl mb-2 opacity-30"
+                  />
+                  <Div className="text-sm">
+                    {t(activeTab === 'user' ? 'moa_shell.left.empty_user_apps' : 'moa_shell.left.empty_basic_apps')}
+                  </Div>
+                </Div>
+              )}
             </Div>
           )}
 
@@ -342,9 +535,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               )}
               {myappSubTab === 'myapps' && (
                 <Div>
-                  {MY_APPS_DATA.myapps.length > 0 ? (
+                  {createdApps.length > 0 ? (
                     <LeftPanelAppGrid
-                      apps={MY_APPS_DATA.myapps.map(toApp)}
+                      apps={createdApps}
                       editMode={editMode}
                       onEnterEditMode={onEnterEditMode}
                       onOpenApp={onOpenApp}
@@ -365,33 +558,44 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {/* 공지 탭 */}
           {activeNav === 'notice' && (
             <Div className="py-1">
-              {noticeSubTab === 'notices' && (
+              {noticeBoardLoading ? (
+                <Div className="text-center py-8 text-muted">
+                  <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
+                  <Div className="text-sm">{t('moa_shell.left.notice_loading')}</Div>
+                </Div>
+              ) : noticeItems.length > 0 ? (
                 <Div className="flex flex-col gap-1">
-                  {NOTICE_DATA.notices.map(notice => (
-                    <Div key={notice.id} className="py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
+                  {noticeItems.map((notice, index) => (
+                    <Div
+                      key={notice.id}
+                      role="button"
+                      tabIndex={0}
+                      className="py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
+                      onClick={() => openShellNoticeBoard(onOpenBoard, notice)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openShellNoticeBoard(onOpenBoard, notice);
+                        }
+                      }}
+                    >
                       <Div className="flex items-start gap-2">
-                        <Div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          notice.type === 'urgent'
-                            ? 'bg-red-100 dark:bg-red-950/40'
-                            : notice.type === 'event'
-                              ? 'bg-amber-100 dark:bg-amber-950/35'
-                              : 'bg-slate-100 dark:bg-slate-800/55'
-                        }`}>
-                          <Icon
-                            name={notice.type === 'urgent' ? 'exclamation-circle' : notice.type === 'event' ? 'gift' : 'info-circle'}
-                            className={`text-sm ${
-                              notice.type === 'urgent'
-                                ? 'text-red-500 dark:text-red-400'
-                                : notice.type === 'event'
-                                  ? 'text-amber-500 dark:text-amber-400'
-                                  : 'text-muted'
-                            }`}
-                          />
+                        <Div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-800/55">
+                          <Span className="text-sm font-bold text-primary leading-none tabular-nums">
+                            {index + 1}
+                          </Span>
                         </Div>
                         <Div className="flex-1 min-w-0">
-                          <Div className="flex items-center gap-2">
-                            {notice.type === 'urgent' && <Span className="text-xxs px-1.5 py-0.5 rounded bg-red-500 text-white font-bold">{t('moa_shell.common.badge_urgent')}</Span>}
-                            {notice.type === 'event' && <Span className="text-xxs px-1.5 py-0.5 rounded bg-amber-500 text-white font-bold">{t('moa_shell.common.badge_event')}</Span>}
+                          <Div className="flex items-center gap-1.5">
+                            {notice.badges.map(badge => (
+                              <Span
+                                key={`${notice.id}-${badge}`}
+                                className={`text-xxs px-1.5 py-0.5 rounded font-bold ${getNoticeBadgeClassName(badge)}`}
+                                style={badge === 'update' ? { background: 'var(--moa-point-color)' } : undefined}
+                              >
+                                {t(`moa_shell.common.badge_${badge}`)}
+                              </Span>
+                            ))}
                             <Span className="font-bold text-primary text-sm truncate">{notice.title}</Span>
                           </Div>
                           <Div className="text-xs text-secondary mt-1 truncate">{notice.desc}</Div>
@@ -401,26 +605,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     </Div>
                   ))}
                 </Div>
-              )}
-              {noticeSubTab === 'updates' && (
-                <Div className="flex flex-col gap-1">
-                  {NOTICE_DATA.updates.map(update => (
-                    <Div key={update.id} className="py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
-                      <Div className="flex items-start gap-2">
-                        <Div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[color-mix(in_srgb,var(--moa-point-color)_14%,white)] dark:bg-[color-mix(in_srgb,var(--moa-point-color)_32%,rgb(15_23_42))]">
-                          <Icon name="code-branch" className="text-sm" style={{ color: 'var(--moa-point-color)' }} />
-                        </Div>
-                        <Div className="flex-1 min-w-0">
-                          <Div className="flex items-center gap-2">
-                            <Span className="text-xxs px-1.5 py-0.5 rounded text-white font-bold" style={{ background: 'var(--moa-point-color)' }}>{update.version}</Span>
-                            <Span className="font-bold text-primary text-sm truncate">{update.title}</Span>
-                          </Div>
-                          <Div className="text-xs text-secondary mt-1 truncate">{update.desc}</Div>
-                          <Div className="text-xs text-muted mt-1">{update.date}</Div>
-                        </Div>
-                      </Div>
-                    </Div>
-                  ))}
+              ) : (
+                <Div className="text-center py-8 text-muted">
+                  <Icon name={noticeSubTab === 'updates' ? 'sync' : 'bell'} className="text-3xl mb-2 opacity-30" />
+                  <Div className="text-sm">
+                    {t(noticeSubTab === 'updates' ? 'moa_shell.left.empty_updates' : 'moa_shell.left.empty_notices')}
+                  </Div>
                 </Div>
               )}
             </Div>

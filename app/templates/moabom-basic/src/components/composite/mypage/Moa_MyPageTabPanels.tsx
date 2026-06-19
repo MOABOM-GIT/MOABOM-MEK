@@ -38,7 +38,6 @@ export interface Moa_MyPageTabPanelsProps {
   systemState: MoabomSystemState;
   onSystemStateChange: (next: MoabomSystemState) => void;
   onOpenApp?: (app: App) => void;
-  onEditGeneratedApp?: (serverId: number) => void;
   favoriteApps: App[];
   recentApps: App[];
   profile: {
@@ -118,7 +117,6 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
   systemState,
   onSystemStateChange,
   onOpenApp,
-  onEditGeneratedApp,
   favoriteApps,
   recentApps,
   profile,
@@ -231,7 +229,6 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
         locale={shellLanguage}
         isGuest={isGuest}
         onOpenApp={onOpenApp}
-        onEditGeneratedApp={onEditGeneratedApp}
         createdApps={library.createdLibraryApps}
         createdAppsLoading={library.createdLibraryLoading}
         favoriteApps={favoriteApps}

@@ -1,12 +1,13 @@
 import { DndContext } from '@dnd-kit/core';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MoabomUiI18nTestProvider } from '../../i18n/moabomShellTestI18n';
 import { createAppShellMetadata } from '../../apps/ai-generator';
 import { CenterPanel } from './Moa_CenterPanel';
 import type { App } from '../../data/Moa_apps';
 
 const apps: App[] = [
+  createAppShellMetadata,
   {
     id: 'test-app',
     name: '테스트 앱',
@@ -20,6 +21,18 @@ const apps: App[] = [
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+});
+
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+    matches: query === '(width <= 768px)',
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })));
 });
 
 const appsById = new Map(apps.map(a => [a.id, a]));
@@ -132,6 +145,9 @@ describe('CenterPanel', () => {
   it('앱 그리드를 아래로 스크롤하면 푸터를 숨기고 위로 스크롤하면 다시 표시한다', async () => {
     const { grid, footer } = renderCenterPanel();
 
+    Object.defineProperty(grid, 'scrollHeight', { configurable: true, value: 1200 });
+    Object.defineProperty(grid, 'clientHeight', { configurable: true, value: 600 });
+
     grid.scrollTop = 80;
     fireEvent.scroll(grid);
 
@@ -139,7 +155,7 @@ describe('CenterPanel', () => {
       expect(footer).toHaveClass('is-hidden');
     });
 
-    await new Promise(resolve => setTimeout(resolve, 280));
+    await new Promise(resolve => setTimeout(resolve, 350));
 
     grid.scrollTop = 20;
     fireEvent.scroll(grid);
@@ -149,8 +165,23 @@ describe('CenterPanel', () => {
     });
   });
 
+  it('스크롤 여유가 없으면 푸터를 숨기지 않는다', () => {
+    const { grid, footer } = renderCenterPanel();
+
+    Object.defineProperty(grid, 'scrollHeight', { configurable: true, value: 500 });
+    Object.defineProperty(grid, 'clientHeight', { configurable: true, value: 490 });
+
+    grid.scrollTop = 80;
+    fireEvent.scroll(grid);
+
+    expect(footer).not.toHaveClass('is-hidden');
+  });
+
   it('작은 스크롤 흔들림만으로는 푸터 표시 상태를 바꾸지 않는다', () => {
     const { grid, footer } = renderCenterPanel();
+
+    Object.defineProperty(grid, 'scrollHeight', { configurable: true, value: 1200 });
+    Object.defineProperty(grid, 'clientHeight', { configurable: true, value: 600 });
 
     grid.scrollTop = 10;
     fireEvent.scroll(grid);

@@ -1,0 +1,37 @@
+{
+    "meta": {
+        "is_partial": true,
+        "description": "글쓰기 버튼 (권한/로그인 체크 포함)"
+    },
+    "comment": "글쓰기 버튼 - 작성 권한이 있을 때만 표시",
+    "type": "basic",
+    "name": "Button",
+    "if": "{{posts?.data?.abilities?.can_write === true}}",
+    "props": {
+        "className": "moa-board-write-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+    },
+    "actions": [
+        {
+            "type": "click",
+            "handler": "navigate",
+            "params": {
+                "path": "/board/{{route.slug}}/write"
+            }
+        }
+    ],
+    "children": [
+        {
+            "type": "basic",
+            "name": "Icon",
+            "props": {
+                "name": "pencil",
+                "size": "sm"
+            }
+        },
+        {
+            "type": "basic",
+            "name": "Span",
+            "text": "$t:board.write"
+        }
+    ]
+}

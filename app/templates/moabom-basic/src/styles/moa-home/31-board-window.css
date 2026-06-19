@@ -1,0 +1,161 @@
+/**
+ * 게시판 윈도우 본문 — G7 board partial을 Moa_Window 안에서 읽기 좋게 보정.
+ * 반응형 컨테이너 SSOT: `.moa-g7-window-host` (`g7WindowContainerResponsive.ts`).
+ */
+.moa-g7-window-host {
+  width: 100%;
+  max-width: none;
+  container-type: inline-size;
+  container-name: moa-g7-window;
+}
+
+.moa-board-window-host {
+  padding: 0;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/** 윈도우 안에서는 G7 board JSON의 max-w-* / mx-auto 를 풀어 100% 폭 사용 */
+.moa-g7-window-host .max-w-4xl,
+.moa-g7-window-host .max-w-5xl,
+.moa-g7-window-host .max-w-6xl,
+.moa-g7-window-host .max-w-7xl,
+.moa-board-window-host .max-w-4xl,
+.moa-board-window-host .max-w-5xl,
+.moa-board-window-host .max-w-6xl,
+.moa-board-window-host .max-w-7xl {
+  max-width: none;
+  width: 100%;
+}
+
+.moa-g7-window-host .mx-auto,
+.moa-board-window-host .mx-auto {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.moa-board-window-host .py-8 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.moa-g7-window-host a,
+.moa-board-window-host a {
+  text-decoration: none;
+}
+
+.moa-g7-window-host button:not(.moa-btn),
+.moa-board-window-host button:not(.moa-btn) {
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.moa-g7-window-host table,
+.moa-board-window-host table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.moa-g7-window-host .grid,
+.moa-board-window-host .grid {
+  gap: 0.75rem;
+}
+
+/** 게시판 Pagination — composite 기본 opaque 배경을 글래스 톤으로 */
+.moa-board-window-host [role='navigation'][aria-label] button:not([aria-current='page']) {
+  background: var(--moa-glass-panel-surface);
+  border-color: var(--moa-glass-panel-border);
+}
+
+.moa-board-window-host [role='navigation'][aria-label] button:not([aria-current='page']):hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* ── NEW 배지 (목록·상세 공통, 기존 대비 약 50%) ── */
+.moa-board-window-host .moa-board-badge-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 0.0625rem 0.3125rem;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 0.2rem;
+  background-color: rgb(239 68 68);
+  color: #fff;
+}
+
+/* ── 글쓰기 — 시스템 포인트 컬러 ── */
+.moa-board-window-host .moa-board-write-btn {
+  background: var(--moa-point-color);
+  color: #fff;
+  box-shadow: var(--moa-point-fill-shadow);
+}
+
+.moa-board-window-host .moa-board-write-btn:hover {
+  filter: brightness(0.94);
+  box-shadow: var(--moa-point-fill-hover-shadow);
+}
+
+/* ── 게시판 액션·폼 버튼 (한 단계 축소) ── */
+.moa-board-window-host .moa-board-btn,
+.moa-board-window-host .moa-board-btn-primary {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.moa-board-window-host .moa-board-btn-primary {
+  background: var(--moa-point-color);
+  color: #fff;
+  border: none;
+  box-shadow: var(--moa-point-fill-shadow);
+}
+
+.moa-board-window-host .moa-board-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+/* ── 댓글 입력 — 모바일 overflow 방지 ── */
+.moa-board-window-host .moa-board-comment-form,
+.moa-board-window-host .moa-board-comment-form-row,
+.moa-board-window-host .moa-board-comment-guest-fields {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.moa-board-window-host .moa-board-comment-form input,
+.moa-board-window-host .moa-board-comment-form textarea {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@container moa-g7-window (max-width: 480px) {
+  .moa-board-window-host .moa-board-comment-form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .moa-board-window-host .moa-board-comment-form-row > .flex-shrink-0,
+  .moa-board-window-host .moa-board-comment-form-row [class*='Avatar'] {
+    align-self: flex-start;
+  }
+
+  .moa-board-window-host .p-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .moa-board-window-host .px-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

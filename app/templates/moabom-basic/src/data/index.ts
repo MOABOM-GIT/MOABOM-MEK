@@ -9,5 +9,4 @@ export {
   NOTICE_DATA,
   ONLINE_USERS,
   FRIENDS_DATA,
-  NOTIFICATIONS_DATA,
 } from './Moa_mockData';

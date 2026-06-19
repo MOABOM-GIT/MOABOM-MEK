@@ -102,6 +102,14 @@ index a978fc4..02af924 100644
  
      /**
       * 지원되는 S3 리전 목록
+@@ -167,6 +167,7 @@ class SaveSettingsRequest extends FormRequest
+             'general.site_name' => $this->getTabRules($tab, 'general', 'string|max:100'),
+             'general.site_url' => $this->getTabRules($tab, 'general', 'url|max:255'),
+             'general.site_description' => ['nullable', 'string', 'max:500'],
++            'general.site_address' => ['nullable', 'string', 'max:500'],
+             'general.admin_email' => $this->getTabRules($tab, 'general', 'email|max:255'),
+             'general.timezone' => $this->getTabRules($tab, 'general', ['timezone']),
+             'general.language' => $this->getTabRules($tab, 'general', [Rule::in(config('app.supported_locales', ['ko', 'en']))]),
 diff --git a/app/Http/Requests/Settings/TestDriverConnectionRequest.php b/app/Http/Requests/Settings/TestDriverConnectionRequest.php
 index 45968f9..e022881 100644
 --- a/app/Http/Requests/Settings/TestDriverConnectionRequest.php
@@ -813,6 +821,10 @@ diff --git a/config/settings/defaults.json b/config/settings/defaults.json
 index 771cea1..4aceb35 100644
 --- a/config/settings/defaults.json
 +++ b/config/settings/defaults.json
+@@ -11,2 +11,3 @@
+             "site_description": "",
++            "site_address": "",
+             "admin_email": "",
 @@ -106,7 +106,7 @@
              "last_updated_at": ""
          },
@@ -822,6 +834,10 @@ index 771cea1..4aceb35 100644
              "s3_bucket": "",
              "s3_region": "ap-northeast-2",
              "s3_access_key": "",
+@@ -166,2 +167,3 @@
+                 "site_description": { "type": "string", "sensitive": false },
++                "site_address": { "type": "string", "sensitive": false, "expose": false },
+                 "admin_email": { "type": "string", "sensitive": false, "expose": false },
 diff --git a/resources/js/core/TemplateApp.ts b/resources/js/core/TemplateApp.ts
 index 5652323..35f8774 100644
 --- a/resources/js/core/TemplateApp.ts
@@ -892,211 +908,149 @@ index 5652323..35f8774 100644
       * computed 값 계산
       *
 diff --git a/resources/js/core/template-engine/ActionDispatcher.ts b/resources/js/core/template-engine/ActionDispatcher.ts
-index f13c1be..e27be5e 100644
+index f13c1be..ddce219 100644
 --- a/resources/js/core/template-engine/ActionDispatcher.ts
 +++ b/resources/js/core/template-engine/ActionDispatcher.ts
-@@ -1240,6 +1240,59 @@ export class ActionDispatcher {
-       }
-     });
+@@ -162,6 +162,8 @@ export interface ActionDefinition {
+   target?: string;
+   /** 액션 파라미터 */
+   params?: Record<string, any>;
++  /** false이면 상태만 저장하고 React 렌더링을 건너뜁니다. */
++  render?: boolean;
+   /** 액션 성공 시 실행할 후속 액션 (단일 또는 배열) */
+   onSuccess?: ActionDefinition | ActionDefinition[];
+   /** 액션 실패 시 실행할 후속 액션 (단일 또는 배열) - errorHandling에 매칭되지 않을 때 실행 */
+@@ -396,6 +398,8 @@ export interface ActionContext {
+   setState?: (updates: any) => void;
+   /** React Router navigate 함수 */
+   navigate?: (path: string, options?: NavigateOptions) => void;
++  /** DevTools 상태 변경 추적에서 액션과 setState를 연결하는 ID */
++  actionId?: string;
+   /**
+    * 격리된 상태 컨텍스트
+    *
+@@ -2235,8 +2239,8 @@ export class ActionDispatcher {
+             startTime,
+             endTime: performance.now(),
+             duration: performance.now() - startTime,
+-            status: 'skipped',
+-            metadata: { reason: 'preview_mode_suppressed' },
++            status: 'success',
++            result: { skipped: true, reason: 'preview_mode_suppressed' },
+           });
+         }
  
-+    // loadDeferredExtensionAssets: lazy/layout 전략 확장을 실제 진입 시점에만 로드
-+    // params.moduleIdentifiers / params.pluginIdentifiers 로 지정된 항목만 G7Config.deferred*에서
-+    // 활성 moduleAssets/pluginAssets로 승격한 뒤 ModuleAssetLoader가 중복 로드를 방지한다.
-+    this.registerHandler('loadDeferredExtensionAssets', async (action: ActionDefinition, _context: ActionContext) => {
-+      if (typeof window === 'undefined') {
-+        logger.warn('loadDeferredExtensionAssets: window is not available');
-+        return;
-+      }
-+
-+      const G7Config = (window as any).G7Config;
-+      if (!G7Config) {
-+        logger.warn('loadDeferredExtensionAssets: G7Config not available');
-+        return;
-+      }
-+
-+      const moduleIdentifiers = Array.isArray(action.params?.moduleIdentifiers)
-+        ? action.params.moduleIdentifiers.map(String)
-+        : [];
-+      const pluginIdentifiers = Array.isArray(action.params?.pluginIdentifiers)
-+        ? action.params.pluginIdentifiers.map(String)
-+        : [];
-+      const assetLoader = getModuleAssetLoader();
-+
-+      const modules = moduleIdentifiers.flatMap((identifier: string) => {
-+        const asset = G7Config.deferredModuleAssets?.[identifier];
-+        if (!asset) {
-+          logger.warn(`loadDeferredExtensionAssets: missing deferred module asset for ${identifier}`);
-+          return [];
-+        }
-+        G7Config.moduleAssets = G7Config.moduleAssets || {};
-+        G7Config.moduleAssets[identifier] = asset;
-+        return [{ identifier, ...asset }];
-+      });
-+
-+      const plugins = pluginIdentifiers.flatMap((identifier: string) => {
-+        const asset = G7Config.deferredPluginAssets?.[identifier];
-+        if (!asset) {
-+          logger.warn(`loadDeferredExtensionAssets: missing deferred plugin asset for ${identifier}`);
-+          return [];
-+        }
-+        G7Config.pluginAssets = G7Config.pluginAssets || {};
-+        G7Config.pluginAssets[identifier] = asset;
-+        return [{ identifier, ...asset }];
-+      });
-+
-+      if (modules.length > 0) {
-+        await assetLoader.loadActiveExtensionAssets(modules);
-+      }
-+      if (plugins.length > 0) {
-+        await assetLoader.loadActiveExtensionAssets(plugins);
-+      }
-+    });
-+
-     // reloadModuleHandlers: 모듈 핸들러 동적 로드/제거
-     // 모듈 활성화/비활성화 시 window.G7Config.moduleAssets 병합/제거 및 JS 로드
-     this.registerHandler('reloadModuleHandlers', async (action: ActionDefinition, _context: ActionContext) => {
-@@ -3401,6 +3454,13 @@ export class ActionDispatcher {
-     return true;
+@@ -5909,7 +5913,7 @@ export class ActionDispatcher {
+    */
+   private async handleSaveToLocalStorage(
+     params: Record<string, any>,
+-    context: ActionContext
++    _context: ActionContext
+   ): Promise<boolean> {
+     const { key, value } = params;
+ 
+@@ -5952,7 +5956,7 @@ export class ActionDispatcher {
+     params: Record<string, any>,
+     context: ActionContext
+   ): Promise<any> {
+-    const { key, target, stateKey, defaultValue } = params;
++    const { key, stateKey, defaultValue } = params;
+ 
+     if (!key) {
+       logger.error('loadFromLocalStorage: key parameter is required');
+@@ -6086,65 +6090,6 @@ export class ActionDispatcher {
+     return this.bindingEngine.resolveBindings(value, dataContext, { skipCache: true });
    }
  
-+  private isFileLike(value: unknown): value is Blob {
-+    return (
-+      (typeof File !== 'undefined' && value instanceof File) ||
-+      (typeof Blob !== 'undefined' && value instanceof Blob)
-+    );
-+  }
-+
+-  /**
+-   * 객체 내의 모든 {{}} 표현식을 평가합니다.
+-   *
+-   * "..." 키는 JavaScript spread 연산자처럼 동작합니다.
+-   * 예: { "...": "{{_local.form}}", "name": "new" } → { ...oldForm, name: "new" }
+-   *
+-   * @param obj 평가할 객체
+-   * @param dataContext 데이터 컨텍스트
+-   */
+-  private evaluateExpressions(obj: Record<string, any>, dataContext?: any): Record<string, any> {
+-    let result: Record<string, any> = {};
+-
+-    for (const [key, value] of Object.entries(obj)) {
+-      if (key === '...') {
+-        // "..." 키는 spread 연산자로 처리
+-        // 값이 {{}} 표현식이면 평가하고, 객체면 병합
+-        let spreadValue = value;
+-        if (typeof value === 'string' && value.includes('{{')) {
+-          spreadValue = this.evaluateExpression(value, dataContext);
+-        }
+-        // spreadValue가 객체인 경우에만 병합
+-        if (spreadValue && typeof spreadValue === 'object' && !Array.isArray(spreadValue)) {
+-          result = { ...result, ...spreadValue };
+-        }
+-        // spreadValue가 null, undefined, 또는 객체가 아닌 경우 무시
+-      } else if (typeof value === 'string' && value.includes('{{')) {
+-        // {{}} 표현식 평가
+-        result[key] = this.evaluateExpression(value, dataContext);
+-      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+-        // 중첩 객체 재귀 처리
+-        result[key] = this.evaluateExpressions(value, dataContext);
+-      } else {
+-        result[key] = value;
+-      }
+-    }
+-
+-    return result;
+-  }
+-
+-  /**
+-   * 이미 resolve된 payload에서 남아있는 {{}} 표현식만 평가합니다.
+-   * 배열, 객체 등 이미 평가된 값은 그대로 유지합니다.
+-   */
+-  private evaluateExpressionsIfNeeded(obj: Record<string, any>, dataContext?: any): Record<string, any> {
+-    const result: Record<string, any> = {};
+-
+-    for (const [key, value] of Object.entries(obj)) {
+-      if (typeof value === 'string' && value.includes('{{')) {
+-        // 문자열이고 {{}}를 포함하면 평가
+-        result[key] = this.evaluateExpression(value, dataContext);
+-      } else {
+-        // 그 외는 그대로 유지 (배열, 객체, 기본값 등)
+-        result[key] = value;
+-      }
+-    }
+-
+-    return result;
+-  }
+-
    /**
-    * apiCall 액션을 처리합니다.
+    * {{}} 표현식을 평가합니다.
     *
-@@ -3494,8 +3554,14 @@ export class ActionDispatcher {
-         // multipart/form-data: FormData 객체로 변환
-         const formData = new FormData();
-         for (const [key, value] of Object.entries(body)) {
--          if (value instanceof File || value instanceof Blob) {
-+          if (this.isFileLike(value)) {
-             formData.append(key, value);
-+          } else if (Array.isArray(value)) {
-+            value.forEach((item) => {
-+              if (item !== null && item !== undefined) {
-+                formData.append(key, this.isFileLike(item) ? item : String(item));
-+              }
-+            });
-           } else if (value !== null && value !== undefined) {
-             formData.append(
-               key,
-@@ -5113,6 +5179,7 @@ export class ActionDispatcher {
-                 _global: { ...(currentState._global || {}), ...globalPayload }
-               };
-             }
-+
-             logger.log('[handleSequence] global state synchronized (mergeMode=%s):', __mergeMode || 'deep', currentState._global);
-           } else if (result.data.__target === 'isolated') {
-             // isolated 상태 동기화
-@@ -6481,6 +6548,7 @@ export class ActionDispatcher {
-         target: {
-           value: (target as any).value,
-           name: (target as any).name ?? '',
-+          files: (target as any).files,
-         },
-       };
+@@ -6607,7 +6552,7 @@ export class ActionDispatcher {
+     // DevTools 추적 - pending 상태
+     const devTools = getDevTools();
+     if (devTools?.isEnabled()) {
+-      devTools.trackAction({
++      devTools.trackAction?.({
+         handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
+         type: action.type,
+         status: 'pending',
+@@ -6628,7 +6573,7 @@ export class ActionDispatcher {
  
-@@ -6500,6 +6568,7 @@ export class ActionDispatcher {
-           checked: (target as HTMLInputElement).checked ?? false,
-           type: target.type ?? '',
-           tagName: target.tagName,
-+          files: (target as HTMLInputElement).files,
-         }
-       : {};
+       // DevTools 추적 - leading 실행
+       if (devTools?.isEnabled()) {
+-        devTools.trackAction({
++        devTools.trackAction?.({
+           handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
+           type: action.type,
+           status: 'success',
+@@ -6651,7 +6596,7 @@ export class ActionDispatcher {
  
-diff --git a/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts b/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
-index 4997c0b..942caa6 100644
---- a/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
-+++ b/resources/js/core/template-engine/__tests__/ActionDispatcher.test.ts
-@@ -6925,6 +6925,43 @@ describe('ActionDispatcher', () => {
-       expect(callArgs.value).toBe('custom_value');
-     });
- 
-+    it('FileInput 커스텀 이벤트의 File 참조를 setState에 보존해야 함', async () => {
-+      const mockGlobalUpdater = vi.fn();
-+      dispatcher.setGlobalStateUpdater(mockGlobalUpdater);
-+      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
-+
-+      const props = {
-+        actions: [
-+          {
-+            type: 'change' as const,
-+            handler: 'setState',
-+            params: {
-+              target: 'global',
-+              'form.logo_light': '{{$event.target.files?.[0] || $event.target.value}}',
-+            },
-+          },
-+        ],
-+      };
-+
-+      const boundProps = dispatcher.bindActionsToProps(props);
-+
-+      boundProps.onChange({
-+        target: {
-+          value: logoFile,
-+          files: [logoFile],
-+          name: 'logo_light',
-+        },
-+      });
-+
-+      await vi.waitFor(() => {
-+        expect(mockGlobalUpdater).toHaveBeenCalled();
-+      });
-+
-+      const callArgs = mockGlobalUpdater.mock.calls[0][0];
-+      expect(callArgs.form.logo_light).toBe(logoFile);
-+      expect(callArgs.form.logo_light.name).toBe('logo_moabom.svg');
-+    });
-+
-     it('raw value (File/null/boolean 등)를 전달하면 핸들러가 실행되지 않아야 함', () => {
-       // 사례 26 회귀 테스트: raw value fallback 의도적 제거
-       // (컴포넌트 마운트 시 초기 setState 로 API 로드 데이터가 덮어쓰이는 버그 방지)
-@@ -7221,6 +7258,39 @@ describe('ActionDispatcher', () => {
-       expect(formData.get('metadata')).toBe(JSON.stringify({ version: '1.0' }));
-     });
- 
-+    it('multipart body에서 배열 안의 File 값을 파일 파트로 유지해야 함', async () => {
-+      const logoFile = new File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
-+
-+      const action: ActionDefinition = {
-+        type: 'click',
-+        handler: 'apiCall',
-+        target: '/api/modules/moabom-system/platform/saas/hospitals',
-+        params: {
-+          method: 'POST',
-+          contentType: 'multipart/form-data',
-+          body: {
-+            slug: 'clinic88',
-+            logo_light: [logoFile],
-+          },
-+        },
-+      };
-+
-+      const handler = dispatcher.createHandler(action);
-+      await handler({
-+        preventDefault: vi.fn(),
-+        type: 'click',
-+        target: null,
-+      } as unknown as Event);
-+
-+      const [, fetchOptions] = mockFetchLocal.mock.calls.find(
-+        (call: unknown[]) => (call[0] as string).includes('/platform/saas/hospitals')
-+      )!;
-+
-+      const formData = fetchOptions.body as FormData;
-+      expect(formData.has('logo_light')).toBe(true);
-+      expect(formData.get('slug')).toBe('clinic88');
-+    });
-+
-     it('multipart body에서 null/undefined 값은 FormData에 포함되지 않아야 함', async () => {
-       const action: ActionDefinition = {
-         type: 'click',
+         // DevTools 추적 - trailing 실행
+         if (devTools?.isEnabled()) {
+-          devTools.trackAction({
++          devTools.trackAction?.({
+             handler: typeof action.handler === 'string' ? action.handler : String(action.handler),
+             type: action.type,
+             status: 'success',
 diff --git a/resources/views/admin.blade.php b/resources/views/admin.blade.php
 index 2574d8d..f117e96 100644
 --- a/resources/views/admin.blade.php
@@ -1136,179 +1090,3 @@ index 14867b2..e185dbc 100644
  
          <!-- 템플릿 컴포넌트 번들 (IIFE) -->
          <script src="/api/templates/assets/{{ $activeUserTemplate }}/js/components.iife.js?v={{ time() }}"></script>
-diff --git a/tests/Feature/Api/Admin/SettingsControllerTest.php b/tests/Feature/Api/Admin/SettingsControllerTest.php
-index 0b89306..05f9faa 100644
---- a/tests/Feature/Api/Admin/SettingsControllerTest.php
-+++ b/tests/Feature/Api/Admin/SettingsControllerTest.php
-@@ -711,6 +711,37 @@ public function test_system_info_memory_usage_has_disk_like_structure(): void
-         $this->assertLessThanOrEqual(100, $memory['percentage']);
-     }
- 
-+    /**
-+     * php_extensions 는 required/optional 맵이며 값은 bool 이어야 한다.
-+     *
-+     * 회귀: admin 정보 탭 Object.entries(ext) — ext[1] 이 bool 이 아니면
-+     * 아이콘이 전부 disconnected 로 보일 수 있다.
-+     */
-+    public function test_system_info_php_extensions_are_boolean_flags(): void
-+    {
-+        $response = $this->authRequest()->getJson('/api/admin/settings/system-info');
-+
-+        $response->assertStatus(200)
-+            ->assertJsonStructure([
-+                'data' => [
-+                    'php_extensions' => [
-+                        'required',
-+                        'optional',
-+                    ],
-+                ],
-+            ]);
-+
-+        $extensions = $response->json('data.php_extensions');
-+        $this->assertNotEmpty($extensions['required']);
-+        foreach ($extensions['required'] as $name => $loaded) {
-+            $this->assertIsBool($loaded, "required extension {$name} must be bool");
-+        }
-+        $this->assertTrue(
-+            $extensions['required']['openssl'] ?? false,
-+            'openssl must be loaded in test/runtime PHP'
-+        );
-+    }
-+
-     /**
-      * CPU 정보는 비어있지 않은 문자열이며, 명령 실행 오류 메시지의 꼬리말이
-      * 그대로 노출되지 않는다.
-diff --git a/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php b/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php
-new file mode 100644
-index 0000000..fdb1c17
---- /dev/null
-+++ b/tests/Unit/Providers/SettingsServiceProviderStorageDriverTest.php
-@@ -0,0 +1,86 @@
-+<?php
-+
-+namespace Tests\Unit\Providers;
-+
-+use App\Providers\SettingsServiceProvider;
-+use Illuminate\Support\Facades\Config;
-+use PHPUnit\Framework\Attributes\Test;
-+use ReflectionMethod;
-+use Tests\TestCase;
-+
-+class SettingsServiceProviderStorageDriverTest extends TestCase
-+{
-+    private function callApplyStorageDriverConfig(string $driver): void
-+    {
-+        $provider = new SettingsServiceProvider($this->app);
-+        $method = new ReflectionMethod($provider, 'applyStorageDriverConfig');
-+        $method->invoke($provider, $driver);
-+    }
-+
-+    #[Test]
-+    public function local_storage_driver_preserves_g7_named_file_disks(): void
-+    {
-+        Config::set('filesystems.disks.attachments.driver', 'local');
-+        Config::set('filesystems.disks.attachments.root', storage_path('app/attachments'));
-+        Config::set('filesystems.disks.modules.driver', 'local');
-+        Config::set('filesystems.disks.modules.root', storage_path('app/modules'));
-+
-+        $this->callApplyStorageDriverConfig('local');
-+
-+        $this->assertSame('local', config('filesystems.default'));
-+        $this->assertSame('local', config('filesystems.disks.attachments.driver'));
-+        $this->assertSame(storage_path('app/attachments'), config('filesystems.disks.attachments.root'));
-+        $this->assertSame('local', config('filesystems.disks.modules.driver'));
-+        $this->assertSame(storage_path('app/modules'), config('filesystems.disks.modules.root'));
-+    }
-+
-+    #[Test]
-+    public function s3_storage_driver_preserves_g7_named_file_disks(): void
-+    {
-+        Config::set('filesystems.disks.s3', [
-+            'driver' => 's3',
-+            'key' => 'key',
-+            'secret' => 'secret',
-+            'region' => 'ap-northeast-2',
-+            'bucket' => 'bucket',
-+        ]);
-+        Config::set('filesystems.disks.attachments.driver', 'local');
-+        Config::set('filesystems.disks.attachments.root', storage_path('app/attachments'));
-+        Config::set('filesystems.disks.modules.driver', 'local');
-+        Config::set('filesystems.disks.modules.root', storage_path('app/modules'));
-+
-+        $this->callApplyStorageDriverConfig('s3');
-+
-+        $this->assertSame('s3', config('filesystems.default'));
-+        $this->assertSame('local', config('filesystems.disks.attachments.driver'));
-+        $this->assertSame(storage_path('app/attachments'), config('filesystems.disks.attachments.root'));
-+        $this->assertSame('local', config('filesystems.disks.modules.driver'));
-+        $this->assertSame(storage_path('app/modules'), config('filesystems.disks.modules.root'));
-+    }
-+
-+    #[Test]
-+    public function gcs_storage_driver_updates_core_named_file_disks_with_isolated_prefixes(): void
-+    {
-+        Config::set('filesystems.disks.gcs', [
-+            'driver' => 'gcs',
-+            'project_id' => 'smartmek',
-+            'bucket' => 'smartmek',
-+            'path_prefix' => '',
-+            'visibility' => 'private',
-+        ]);
-+
-+        $this->callApplyStorageDriverConfig('gcs');
-+
-+        $this->assertSame('gcs', config('filesystems.default'));
-+        $this->assertSame('attachments', config('attachment.disk'));
-+        $this->assertSame('gcs', config('filesystems.disks.attachments.driver'));
-+        $this->assertSame('attachments', config('filesystems.disks.attachments.path_prefix'));
-+        $this->assertSame('gcs', config('filesystems.disks.modules.driver'));
-+        $this->assertSame('modules', config('filesystems.disks.modules.path_prefix'));
-+        $this->assertSame('gcs', config('filesystems.disks.plugins.driver'));
-+        $this->assertSame('plugins', config('filesystems.disks.plugins.path_prefix'));
-+        $this->assertSame('gcs', config('filesystems.disks.public.driver'));
-+        $this->assertSame('public', config('filesystems.disks.public.path_prefix'));
-+        $this->assertSame('public', config('filesystems.disks.public.visibility'));
-+    }
-+}
-diff --git a/tests/Unit/Services/DriverExtensionIntegrationTest.php b/tests/Unit/Services/DriverExtensionIntegrationTest.php
-index c31629e..7e4ccc4 100644
---- a/tests/Unit/Services/DriverExtensionIntegrationTest.php
-+++ b/tests/Unit/Services/DriverExtensionIntegrationTest.php
-@@ -567,7 +567,7 @@ public function mail_driver_actual_send_with_log_transport(): void
-     public function fallback_to_default_driver_for_all_categories(): void
-     {
-         $expectedDefaults = [
--            'storage' => ['local', 'filesystems.default'],
-+            'storage' => ['gcs', 'filesystems.default'],
-             'cache' => ['file', 'cache.default'],
-             'session' => ['database', 'session.driver'],
-             'queue' => ['database', 'queue.default'],
-diff --git a/tests/Unit/Services/DriverRegistryServiceTest.php b/tests/Unit/Services/DriverRegistryServiceTest.php
-index fb46df2..5e2abaa 100644
---- a/tests/Unit/Services/DriverRegistryServiceTest.php
-+++ b/tests/Unit/Services/DriverRegistryServiceTest.php
-@@ -60,6 +60,7 @@ public function it_returns_core_drivers_for_each_category(): void
- 
-         $this->assertContains('local', $driverIds);
-         $this->assertContains('s3', $driverIds);
-+        $this->assertContains('gcs', $driverIds);
-     }
- 
-     /**
-@@ -102,6 +103,7 @@ public function it_identifies_core_drivers_correctly(): void
-     {
-         $this->assertTrue($this->service->isCoreDriver('storage', 'local'));
-         $this->assertTrue($this->service->isCoreDriver('storage', 's3'));
-+        $this->assertTrue($this->service->isCoreDriver('storage', 'gcs'));
-         $this->assertTrue($this->service->isCoreDriver('mail', 'smtp'));
- 
-         $this->assertFalse($this->service->isCoreDriver('storage', 'custom_storage'));
-@@ -136,7 +138,7 @@ public function it_reports_unregistered_drivers_as_unavailable(): void
-     #[Test]
-     public function it_returns_correct_default_drivers(): void
-     {
--        $this->assertEquals('local', $this->service->getDefaultDriver('storage'));
-+        $this->assertEquals('gcs', $this->service->getDefaultDriver('storage'));
-         $this->assertEquals('file', $this->service->getDefaultDriver('cache'));
-         $this->assertEquals('database', $this->service->getDefaultDriver('session'));
-         $this->assertEquals('database', $this->service->getDefaultDriver('queue'));

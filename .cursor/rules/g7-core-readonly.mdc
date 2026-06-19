@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Moabom + G7 — 필수 규칙
 
+## 작업전에 현재 배정된 AI 에이전트 명을 명시하고 진행한다. 이 문서를 읽었는지 테스트와 에이전트 확인 절차.
+
 ## 문서 SSOT
 
 - G7 가이드: `app/AGENTS.md`, `app/docs/`

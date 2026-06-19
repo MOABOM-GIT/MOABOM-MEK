@@ -19,7 +19,7 @@ SPA 가 관리자의 모듈/플러그인 상태 변경 이후 **캐시 세대(Ep
 |------|------|------|
 | `extension_epoch` | `integer` | 코어 `ClearsTemplateCaches` 와 동일한 확장 캐시 버전(Unix 시각 기반). Blade `G7Config.appConfig.moabom.extension_epoch` 와 비교 가능. |
 | `client_actions` | `object` | 향후 서버 주도 UX 힌트(현재는 모두 기본값). |
-| `client_actions.reload_deferred_assets` | `boolean` | `true` 이면 클라이언트가 `loadDeferredExtensionAssets` 등으로 **지연 확장만** 재수집하도록 권장. |
+| `client_actions.reload_deferred_assets` | `boolean` | `true` 이면 클라이언트가 G7 순정 `reloadModuleHandlers` / `reloadPluginHandlers` 등으로 **지연 확장만** 재수집하도록 권장. |
 | `client_actions.notify_user` | `boolean` | `true` 이면 토스트 등 **가벼운 알림** 표시 권장. |
 | `client_actions.message_key` | `string\|null` | 알림 시 사용할 i18n 키(모듈 번역). |
 | `module_hints` | `array` | 향후 모듈 단위 힌트(예: `{ "identifier": "x", "action": "reload_layout" }`). 현재는 빈 배열. |
@@ -29,7 +29,7 @@ SPA 가 관리자의 모듈/플러그인 상태 변경 이후 **캐시 세대(Ep
 1. 초기 HTML 의 `G7Config.appConfig.moabom.extension_epoch` 를 보관한다.
 2. 주기적(또는 포커스 복귀) `GET .../extension-boot-meta` 호출.
 3. `data.extension_epoch` 가 로컬 값보다 크면:
-   - `client_actions.reload_deferred_assets === true` 인 모듈만 선택적으로 `loadDeferredExtensionAssets` 호출.
+  - `client_actions.reload_deferred_assets === true` 인 모듈만 선택적으로 G7 순정 reload 액션 호출.
    - `notify_user === true` 이면 `message_key` 로 알림.
 4. SW/템플릿 JSON 캐시는 기존 `?v=`(동일 epoch) 정책과 병행한다.
 

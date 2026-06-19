@@ -3,6 +3,7 @@ import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 
 /**
  * 앱 공용 탭 셸 (헤더 + 번호 탭 바 + 활성 콘텐츠) — SSOT.
@@ -41,22 +42,22 @@ export function AppTabsShell({
   const active = tabs.find(t => t.key === activeKey) ?? tabs[0];
 
   return (
-    <Div className="flex min-h-full flex-col">
+    <Div className={`${APP_WINDOW_BODY_CLASS} min-h-full`}>
       {/* 헤더 */}
-      <Div className="rounded-3xl p-5 text-white shadow-lg" style={{ background: gradient }}>
-        <Div className="flex items-center gap-3">
-          <Div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+      <Div className="rounded-[1.75rem] px-6 py-8 text-white shadow-xl" style={{ background: gradient }}>
+        <Div className="flex items-center gap-4">
+          <Div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/35 ring-1 ring-white/45">
             <Icon name={icon} className="text-2xl text-white" />
           </Div>
-          <Div>
-            <Div className="text-xl font-bold leading-tight">{title}</Div>
-            {subtitle && <Div className="text-sm text-white/80">{subtitle}</Div>}
+          <Div className="min-w-0">
+            <Div className="text-2xl font-bold leading-tight tracking-tight">{title}</Div>
+            {subtitle && <Div className="mt-1.5 text-sm font-semibold leading-relaxed text-white/85">{subtitle}</Div>}
           </Div>
         </Div>
       </Div>
 
       {/* 탭 바 */}
-      <Div className="mt-4 grid grid-cols-2 gap-2 @lg:grid-cols-4">
+      <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-2 @lg:grid-cols-4`}>
         {tabs.map(tab => {
           const isActive = tab.key === active?.key;
           return (
@@ -64,7 +65,11 @@ export function AppTabsShell({
               key={tab.key}
               variant={isActive ? 'primary' : 'secondary'}
               onClick={() => onActiveKeyChange(tab.key)}
-              className="flex h-auto flex-col items-start gap-1 !rounded-2xl !px-4 !py-3 text-left"
+              className={`flex h-auto min-h-[4.5rem] flex-col items-start justify-center gap-1 !rounded-2xl !px-4 !py-3.5 text-left ${
+                isActive
+                  ? '!border-transparent !bg-[#479ee2] !text-white shadow-md shadow-[#479ee2]/20'
+                  : '!border-slate-200/80 !bg-white !text-[#0f2d3a] hover:!border-[#27bfc1]/45 hover:!bg-[#27bfc1]/8 dark:!border-white/10 dark:!bg-slate-900/70 dark:!text-slate-200'
+              }`}
               aria-current={isActive ? 'page' : undefined}
             >
               {tab.no && (
@@ -80,7 +85,7 @@ export function AppTabsShell({
       </Div>
 
       {/* 활성 콘텐츠 */}
-      <Div className="mt-4 flex-1">{active?.content}</Div>
+      <Div className="min-h-0 flex-1 pb-2">{active?.content}</Div>
     </Div>
   );
 }

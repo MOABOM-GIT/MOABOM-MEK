@@ -12,22 +12,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('moabom_credit_attendances', function (Blueprint $table) {
-            $table->id()->comment('크레딧 출석체크 ID');
-            $table->foreignId('user_id')
-                ->comment('사용자 ID')
-                ->constrained('users')
-                ->cascadeOnDelete();
-            $table->date('attendance_date')->comment('출석체크 일자');
-            $table->unsignedBigInteger('reward_amount')->default(0)->comment('출석 적립 크레딧');
-            $table->boolean('ad_watched')->default(false)->comment('광고 시청 여부');
-            $table->json('meta')->nullable()->comment('출석체크 부가 정보');
-            $table->timestamps();
+        if (! Schema::hasTable('moabom_credit_attendances')) {
+            Schema::create('moabom_credit_attendances', function (Blueprint $table) {
+                $table->id()->comment('크레딧 출석체크 ID');
+                $table->foreignId('user_id')
+                    ->comment('사용자 ID')
+                    ->constrained('users')
+                    ->cascadeOnDelete();
+                $table->date('attendance_date')->comment('출석체크 일자');
+                $table->unsignedBigInteger('reward_amount')->default(0)->comment('출석 적립 크레딧');
+                $table->boolean('ad_watched')->default(false)->comment('광고 시청 여부');
+                $table->json('meta')->nullable()->comment('출석체크 부가 정보');
+                $table->timestamps();
 
-            $table->unique(['user_id', 'attendance_date']);
-        });
+                $table->unique(['user_id', 'attendance_date']);
+            });
+        }
 
-        if (DB::getDriverName() === 'mysql') {
+        if (DB::getDriverName() === 'mysql' && Schema::hasTable('moabom_credit_attendances')) {
             Schema::table('moabom_credit_attendances', function (Blueprint $table) {
                 $table->comment('모아봄 크레딧 출석체크 기록');
             });

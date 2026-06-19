@@ -1,16 +1,7 @@
 {
   "folders": [
     {
-      "name": "G7 Core (app)",
-      "path": "app"
-    },
-    {
-      "name": "moabom-basic",
-      "path": "app/templates/moabom-basic"
-    },
-    {
-      "name": "moabom-system",
-      "path": "app/modules/moabom-system"
+      "path": "."
     }
   ],
   "settings": {

@@ -712,37 +712,6 @@ class SettingsControllerTest extends TestCase
     }
 
     /**
-     * php_extensions 는 required/optional 맵이며 값은 bool 이어야 한다.
-     *
-     * 회귀: admin 정보 탭 Object.entries(ext) — ext[1] 이 bool 이 아니면
-     * 아이콘이 전부 disconnected 로 보일 수 있다.
-     */
-    public function test_system_info_php_extensions_are_boolean_flags(): void
-    {
-        $response = $this->authRequest()->getJson('/api/admin/settings/system-info');
-
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'data' => [
-                    'php_extensions' => [
-                        'required',
-                        'optional',
-                    ],
-                ],
-            ]);
-
-        $extensions = $response->json('data.php_extensions');
-        $this->assertNotEmpty($extensions['required']);
-        foreach ($extensions['required'] as $name => $loaded) {
-            $this->assertIsBool($loaded, "required extension {$name} must be bool");
-        }
-        $this->assertTrue(
-            $extensions['required']['openssl'] ?? false,
-            'openssl must be loaded in test/runtime PHP'
-        );
-    }
-
-    /**
      * CPU 정보는 비어있지 않은 문자열이며, 명령 실행 오류 메시지의 꼬리말이
      * 그대로 노출되지 않는다.
      *

@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Apps\Http\Controllers\AiAppController;
+use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
+use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,10 +18,33 @@ use Modules\Moabom\Apps\Http\Controllers\AiAppController;
 |
 */
 
+Route::prefix('apps')->middleware(['optional.sanctum'])->group(function () {
+    Route::get('generated/shared', [PublicGeneratedAppController::class, 'shared'])
+        ->name('apps.generated.shared.public');
+    Route::get('generated/shared/{id}', [PublicGeneratedAppController::class, 'show'])
+        ->whereNumber('id')
+        ->name('apps.generated.show.public');
+});
+
 Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
     Route::post('ai/generate', [AiAppController::class, 'generate'])
         ->middleware('throttle:20,1')
         ->name('apps.ai.generate');
+
+    Route::post('ai/generate/stream', [AiAppController::class, 'stream'])
+        ->middleware('throttle:20,1')
+        ->name('apps.ai.generate.stream');
+
+    Route::get('ai/sessions/active', [AiGenerationSessionController::class, 'active'])
+        ->name('apps.ai.sessions.active');
+    Route::delete('ai/sessions/streaming', [AiGenerationSessionController::class, 'cancelStreaming'])
+        ->name('apps.ai.sessions.cancel_streaming');
+    Route::get('ai/sessions/{id}', [AiGenerationSessionController::class, 'show'])
+        ->whereNumber('id')
+        ->name('apps.ai.sessions.show');
+    Route::delete('ai/sessions/{id}', [AiGenerationSessionController::class, 'destroy'])
+        ->whereNumber('id')
+        ->name('apps.ai.sessions.destroy');
 
     Route::get('generated', [AiAppController::class, 'index'])
         ->name('apps.generated.index');
@@ -31,4 +56,10 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
     Route::put('generated/{id}', [AiAppController::class, 'update'])
         ->whereNumber('id')
         ->name('apps.generated.update');
+    Route::patch('generated/{id}/share', [AiAppController::class, 'share'])
+        ->whereNumber('id')
+        ->name('apps.generated.share');
+    Route::delete('generated/{id}', [AiAppController::class, 'destroy'])
+        ->whereNumber('id')
+        ->name('apps.generated.destroy');
 });

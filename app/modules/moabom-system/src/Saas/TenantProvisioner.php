@@ -117,10 +117,9 @@ final class TenantProvisioner implements TenantProvisionerInterface
             address: $address !== '' ? $address : null,
         );
 
-        $adminEmail = trim((string) ($input['admin_email'] ?? config('mail.from.address', 'admin@moabom.com')));
-        if ($adminEmail === '') {
-            $adminEmail = 'admin@moabom.com';
-        }
+        $this->upsertTenantRegistry($slug, $host, $database, $gcsPrefix, $packageId, 'provisioning', $tenantRecord);
+
+        $adminEmail = SaasAdminCredentials::email($input['admin_email'] ?? null);
 
         if ($mode === 'package') {
             $this->identityBootstrapper->bootstrap($sourceDb, $database, $adminEmail);
@@ -145,38 +144,7 @@ final class TenantProvisioner implements TenantProvisionerInterface
 
         $this->localStorageEnsurer->ensure($tenantRecord);
 
-        $now = now();
-        $payload = [
-            'host' => $host,
-            'db_database' => $database,
-            'gcs_prefix' => $gcsPrefix,
-            'package_id' => $packageId,
-            'status' => 'active',
-            'app_url' => $appUrl,
-            'updated_at' => $now,
-        ];
-
-        // 신규 컬럼은 platform 마이그레이션 적용 이후에만 채운다 (legacy 운영 안전망).
-        $displayColumns = [
-            'display_name' => $tenantRecord->displayName,
-            'region' => $tenantRecord->region,
-            'address' => $tenantRecord->address,
-        ];
-        foreach ($displayColumns as $column => $value) {
-            if (Schema::connection('moabom_platform')->hasColumn('moabom_saas_tenants', $column)) {
-                $payload[$column] = $value;
-            }
-        }
-
-        $table = DB::connection('moabom_platform')->table('moabom_saas_tenants');
-        if ($table->where('slug', $slug)->exists()) {
-            $table->where('slug', $slug)->update($payload);
-        } else {
-            $table->insert(array_merge($payload, [
-                'slug' => $slug,
-                'created_at' => $now,
-            ]));
-        }
+        $this->upsertTenantRegistry($slug, $host, $database, $gcsPrefix, $packageId, 'active', $tenantRecord);
 
         $this->registry->forgetHostCache($host);
 
@@ -195,5 +163,50 @@ final class TenantProvisioner implements TenantProvisionerInterface
             'note' => $tenantRecord->note(),
             'address' => $tenantRecord->address,
         ];
+    }
+
+    private function upsertTenantRegistry(
+        string $slug,
+        string $host,
+        string $database,
+        string $gcsPrefix,
+        string $packageId,
+        string $status,
+        TenantRecord $tenantRecord,
+    ): void {
+        $now = now();
+        $payload = [
+            'host' => $host,
+            'db_database' => $database,
+            'gcs_prefix' => $gcsPrefix,
+            'package_id' => $packageId,
+            'status' => $status,
+            'app_url' => $tenantRecord->appUrl,
+            'updated_at' => $now,
+        ];
+
+        // 신규 컬럼은 platform 마이그레이션 적용 이후에만 채운다 (legacy 운영 안전망).
+        $displayColumns = [
+            'display_name' => $tenantRecord->displayName,
+            'region' => $tenantRecord->region,
+            'address' => $tenantRecord->address,
+        ];
+        foreach ($displayColumns as $column => $value) {
+            if (Schema::connection('moabom_platform')->hasColumn('moabom_saas_tenants', $column)) {
+                $payload[$column] = $value;
+            }
+        }
+
+        $table = DB::connection('moabom_platform')->table('moabom_saas_tenants');
+        if ($table->where('slug', $slug)->exists()) {
+            $table->where('slug', $slug)->update($payload);
+
+            return;
+        }
+
+        $table->insert(array_merge($payload, [
+            'slug' => $slug,
+            'created_at' => $now,
+        ]));
     }
 }

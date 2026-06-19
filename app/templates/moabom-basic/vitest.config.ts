@@ -36,6 +36,7 @@ export default defineConfig({
             'src/runtime/**/*.{test,spec}.{ts,tsx}',
             // Pages(Moa_HomePage 통합 테스트 — 날씨 훅 · Provider 설치 회귀 포함)
             'src/pages/**/*.{test,spec}.{ts,tsx}',
+            'src/shell/**/*.{test,spec}.{ts,tsx}',
         ],
     },
     resolve: {

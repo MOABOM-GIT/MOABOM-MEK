@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('moabom_system_user_settings')) {
+            return;
+        }
+
         Schema::create('moabom_system_user_settings', function (Blueprint $table) {
             $table->id()->comment('사용자 시스템 설정 ID');
             $table->foreignId('user_id')
@@ -25,9 +29,11 @@ return new class extends Migration
         });
 
         if (DB::getDriverName() === 'mysql') {
-            Schema::table('moabom_system_user_settings', function (Blueprint $table) {
-                $table->comment('Moabom 사용자별 시스템 설정');
-            });
+            if (Schema::hasTable('moabom_system_user_settings')) {
+                Schema::table('moabom_system_user_settings', function (Blueprint $table) {
+                    $table->comment('Moabom 사용자별 시스템 설정');
+                });
+            }
         }
     }
 

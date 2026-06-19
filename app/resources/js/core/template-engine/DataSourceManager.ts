@@ -1585,6 +1585,10 @@ export class DataSourceManager {
           ...globalHeadersResolved,
           ...sourceHeaders,
         };
+        if (endpoint.includes('/api/admin/menus/active')) {
+          customHeaders['Cache-Control'] = 'no-cache';
+          customHeaders['Pragma'] = 'no-cache';
+        }
 
         // 커스텀 헤더가 있는 경우 config에 포함
         const hasCustomHeaders = Object.keys(customHeaders).length > 0;
@@ -1683,10 +1687,16 @@ export class DataSourceManager {
           }
         }
 
+        const cacheMode = endpoint.includes('/api/admin/menus/active') ? 'no-store' : 'default';
+        if (cacheMode === 'no-store') {
+          requestHeaders['Cache-Control'] = 'no-cache';
+        }
+
         const response = await fetch(url, {
           method,
           headers: requestHeaders,
           body: fetchBody,
+          cache: cacheMode,
         });
 
         // 응답 본문 파싱 (성공/실패 모두)

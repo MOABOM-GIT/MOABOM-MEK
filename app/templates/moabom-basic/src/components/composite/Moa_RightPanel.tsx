@@ -10,11 +10,18 @@ import { GlassPanel } from './Moa_GlassPanel';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LoginPrompt } from './Moa_LoginPrompt';
-import { ONLINE_USERS, FRIENDS_DATA, NOTIFICATIONS_DATA } from '../../data/Moa_mockData';
+import { ONLINE_USERS, FRIENDS_DATA } from '../../data/Moa_mockData';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 import type { AuthWindowMode } from './Moa_AuthWindowContent';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { loadMoabomSystemState } from '../../utils/moabomSystemStore';
+import { useMoabomShellNotifications } from '../../hooks/useMoabomShellNotifications';
+import {
+  formatNotificationRelativeTime,
+  getNotificationVisual,
+  resolveRelativeTimeLabel,
+} from '../../utils/moabomNotificationPresentation';
+import { isShellNotificationUnread } from '../../utils/moabomShellNotificationUtils';
 
 export interface RightPanelProps {
   /** 패널 너비 */
@@ -72,6 +79,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onClose,
 }) => {
   const { t } = useMoabomShellT();
+  const { setNodeRef: setRightPanelDropRef } = useDroppable({ id: 'right-panel' });
+  const [rightTab, setRightTab] = useState('connect');
   const profileActions = useMemo(
     () => PROFILE_ACTION_KEYS.map(row => ({ ...row, label: t(row.labelKey) })),
     [t],
@@ -81,8 +90,27 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     [t],
   );
 
-  const { setNodeRef: setRightPanelDropRef } = useDroppable({ id: 'right-panel' });
-  const [rightTab, setRightTab] = useState('connect');
+  const {
+    items: notificationItems,
+    unreadCount,
+    loading: notificationsLoading,
+    markingAll,
+    hasMore: notificationsHasMore,
+    markAllRead,
+    openNotification,
+    loadMore: loadMoreNotifications,
+  } = useMoabomShellNotifications({
+    isLoggedIn,
+    alarmTabActive: rightTab === 'alarm',
+    newNotificationToastText: t('moa_shell.right.new_notification_received'),
+    newNotificationOpenText: t('moa_shell.right.notification_open'),
+  });
+
+  const rightTabsWithBadges = useMemo(
+    () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
+    [rightTabs, unreadCount],
+  );
+
   const isOpen = rightOffset >= 0;
   /** 데스크톱 20px / 오버레이 기본 10px / 최소 구간 flush 시 0 */
   const panelEdge = !isOverlay ? 20 : overlayFlushEdges ? 0 : 10;
@@ -99,11 +127,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       if (G7Core?.AuthManager) {
         G7Core.AuthManager.getInstance().logout();
       } else {
-        localStorage.removeItem('auth_token');
         window.location.reload();
       }
     } catch {
-      localStorage.removeItem('auth_token');
       window.location.reload();
     }
   };
@@ -279,19 +305,63 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {rightTab === 'alarm' && (
                 <Div className="py-3">
                   <Div className="flex flex-col gap-1">
-                    {NOTIFICATIONS_DATA.map((a, i) => (
-                      <Div key={i} className={`flex items-start gap-2 p-3 rounded-lg transition-all cursor-pointer hover:opacity-90 ${a.unread ? 'glass-sm' : ''}`}>
-                        <Div className={`w-9 h-9 rounded-full ${a.iconBg} flex items-center justify-center shrink-0`}>
-                          <Icon name={a.icon} className={`text-base ${a.iconColor}`} />
+                    {notificationsLoading && notificationItems.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.notifications_loading')}
+                      </Span>
+                    )}
+                    {!notificationsLoading && notificationItems.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.notifications_empty')}
+                      </Span>
+                    )}
+                    {notificationItems.map(item => {
+                      const visual = getNotificationVisual(item.type);
+                      const title = item.subject?.trim() || item.type_label || t('moa_shell.right.notification_fallback_title');
+                      const desc = item.body?.trim() || '';
+                      const timeLabel = resolveRelativeTimeLabel(
+                        formatNotificationRelativeTime(item.created_at),
+                        t,
+                      );
+                      const unread = isShellNotificationUnread(item.read_at);
+
+                      return (
+                        <Div
+                          key={item.id}
+                          onClick={() => { void openNotification(item); }}
+                          className={`flex items-start gap-2 p-3 rounded-lg transition-all cursor-pointer hover:opacity-90 ${unread ? 'glass-sm' : ''}`}
+                        >
+                          <Div className={`w-9 h-9 rounded-full ${visual.iconBg} flex items-center justify-center shrink-0`}>
+                            <Icon name={visual.icon} className={`text-base ${visual.iconColor}`} />
+                          </Div>
+                          <Div className="flex-1 min-w-0">
+                            <Moa_OverflowMarqueeText text={title} className="text-sm font-bold text-primary" />
+                            {desc ? (
+                              <Moa_OverflowMarqueeText text={desc} className="text-xs text-muted mt-0.5" />
+                            ) : null}
+                          </Div>
+                          <Span className="text-xs text-muted shrink-0 mt-0.5">{timeLabel}</Span>
                         </Div>
-                        <Div className="flex-1 min-w-0">
-                          <Moa_OverflowMarqueeText text={a.title} className="text-sm font-bold text-primary" />
-                          <Moa_OverflowMarqueeText text={a.desc} className="text-xs text-muted mt-0.5" />
-                        </Div>
-                        <Span className="text-xs text-muted shrink-0 mt-0.5">{a.time}</Span>
-                      </Div>
-                    ))}
-                    <Button variant="dark-outline" size="medium" className="w-full mt-2">
+                      );
+                    })}
+                    {notificationsHasMore && (
+                      <Button
+                        variant="dark-outline"
+                        size="medium"
+                        className="w-full mt-1"
+                        disabled={notificationsLoading}
+                        onClick={() => { void loadMoreNotifications(); }}
+                      >
+                        {t('moa_shell.right.notifications_load_more')}
+                      </Button>
+                    )}
+                    <Button
+                      variant="dark-outline"
+                      size="medium"
+                      className="w-full mt-2"
+                      disabled={markingAll || unreadCount === 0}
+                      onClick={() => { void markAllRead(); }}
+                    >
                       {t('moa_shell.right.mark_all_read')}
                     </Button>
                   </Div>
@@ -300,7 +370,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </Div>
 
             <Div className="absolute top-0 left-0 right-0 z-10 py-2">
-              <SubTabBar tabs={rightTabs} activeTab={rightTab} onTabChange={setRightTab} />
+              <SubTabBar tabs={rightTabsWithBadges} activeTab={rightTab} onTabChange={setRightTab} />
             </Div>
           </Div>
         </>

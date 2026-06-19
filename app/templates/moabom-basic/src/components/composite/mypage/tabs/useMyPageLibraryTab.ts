@@ -8,17 +8,29 @@ interface UseMyPageLibraryTabOptions {
   activeTab: MyPageTab;
   isGuest: boolean;
   currentUser: MyPageUser | null;
+  createdApps?: App[];
 }
 
 export function useMyPageLibraryTab({
   activeTab,
   isGuest,
   currentUser,
+  createdApps,
 }: UseMyPageLibraryTabOptions) {
   const [createdLibraryApps, setCreatedLibraryApps] = useState<App[]>([]);
   const [createdLibraryLoading, setCreatedLibraryLoading] = useState(false);
 
   useEffect(() => {
+    if (createdApps) {
+      setCreatedLibraryApps(createdApps);
+      setCreatedLibraryLoading(false);
+    }
+  }, [createdApps]);
+
+  useEffect(() => {
+    if (createdApps) {
+      return;
+    }
     if (activeTab !== 'library' || isGuest) {
       return;
     }
@@ -47,7 +59,7 @@ export function useMyPageLibraryTab({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, isGuest, currentUser?.memberKey]);
+  }, [activeTab, isGuest, currentUser?.memberKey, createdApps]);
 
   return {
     createdLibraryApps,

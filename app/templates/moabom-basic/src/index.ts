@@ -18,6 +18,7 @@ import './components/composite/imageGalleryLightboxStyles';
 import { installMoabomTemplateLangFetchDedupe } from './i18n/moabomTemplateLangJsonFetch';
 import { installMoabomGhostRoutesFetch } from './runtime/moabomGhostRoutesFetch';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
+import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
 
 // 지연 로드 셸 IIFE가 메인과 동일한 React Context를 쓰도록 싱글톤 모듈을 전역에 노출 (vite.shell-*.config.ts external)
@@ -212,7 +213,13 @@ export function initTemplate(): void {
 
 // 템플릿 초기화 자동 실행
 if (typeof window !== 'undefined') {
+    import('./runtime/moabomToastEnqueue')
+      .then((module) => module.installMoabomToastEnqueue())
+      .catch(() => {
+        // G7Core 부트 전이면 Toast 마운트 시 재시도한다.
+      });
     installMoabomTemplateLangFetchDedupe();
+    bootstrapMoabomShellAuthConfig();
     installMoabomShellBootFetch();
     prefetchMoabomShellBoot();
     installMoabomGhostRoutesFetch();

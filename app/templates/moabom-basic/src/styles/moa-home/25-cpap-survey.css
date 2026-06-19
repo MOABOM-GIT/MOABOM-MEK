@@ -1,4 +1,5 @@
 /** CPAP 피팅 앱 — 고정 스테이지 + 상·하단 오버레이 (페이지 전환 시 레이아웃 변동 없음) */
+.moa-app-window-body.moa-cpap-fit-app,
 .moa-shell-app-window.moa-cpap-fit-app {
   position: relative;
   gap: 0;
@@ -14,6 +15,9 @@
 .moa-cpap-fit-scroll {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--moa-app-stack-gap);
   overflow-y: auto;
   padding: 5.25rem 0.75rem 0.75rem;
 }
@@ -22,7 +26,7 @@
  * 창 본문 컨테이너 기준 반응형 — `.moa-app-window-viewport` (container-type: size).
  * 뷰포트 @media 가 아닌 창 폭이 줄면 모바일 레이아웃 적용.
  */
-@container (max-width: 63.99rem) {
+@container moa-app-window (width < 1024px) {
   .moa-cpap-fit-survey-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -51,7 +55,7 @@
   }
 }
 
-@container (max-width: 39.99rem) {
+@container moa-app-window (width < 640px) {
   .moa-cpap-fit-scroll {
     padding: 8rem 0.75rem 0.75rem;
   }
@@ -238,7 +242,41 @@
 }
 
 /** 창 폭 480px 이하 — STEP 버튼에서 설명 라벨(설문·스캔·결과) 숨김 */
-@container (max-width: 30rem) {
+@container moa-app-window (width <= 480px) {
+  .moa-cpap-fit-scroll {
+    padding: calc(7.25rem + 5px) 5px 5px;
+  }
+
+  .moa-cpap-fit-survey-grid {
+    gap: 5px;
+  }
+
+  .moa-cpap-fit-overlay-top {
+    margin: 5px;
+    gap: 5px;
+    padding: 0.75rem;
+    border-radius: 1.25rem;
+  }
+
+  .moa-cpap-fit-overlay-bottom {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .moa-cpap-fit-dock {
+    gap: 5px;
+    padding: 0.75rem;
+    border-radius: 1.25rem;
+  }
+
+  .moa-cpap-process-steps {
+    gap: 5px;
+  }
+
+  .moa-cpap-result-actions {
+    gap: 5px;
+  }
+
   .moa-cpap-process-step-detail {
     display: none;
   }

@@ -36,6 +36,7 @@ describe('registerMoabomPwaServiceWorker', () => {
       value: {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
+        getRegistration: vi.fn().mockResolvedValue(undefined),
       },
       configurable: true,
     });

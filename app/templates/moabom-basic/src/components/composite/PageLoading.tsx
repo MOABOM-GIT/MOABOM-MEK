@@ -1,4 +1,5 @@
 import React from 'react';
+import AppLoadingSpinner from './AppLoadingSpinner';
 
 /**
  * 페이지 로딩 컴포넌트 Props (엔진에서 전달)
@@ -28,12 +29,6 @@ const t = (key: string, params?: Record<string, string | number>) =>
  * @since engine-v1.29.0
  */
 const PageLoading: React.FC<PageLoadingProps> = ({ options }) => {
-    const isDark = document.documentElement.classList.contains('dark');
-
-    const bgColor = isDark ? 'rgb(17,24,39)' : 'rgb(249,250,251)';
-    const spinnerColor = isDark ? '#6b7280' : '#9ca3af';
-    const textColor = isDark ? '#9ca3af' : '#6b7280';
-
     return (
         <div
             style={{
@@ -41,28 +36,14 @@ const PageLoading: React.FC<PageLoadingProps> = ({ options }) => {
                 inset: 0,
                 zIndex: 2147483647,
                 overflow: 'hidden',
-                background: bgColor,
+                background: 'transparent',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                paddingTop: '15%',
-                gap: '12px',
+                justifyContent: 'center',
+                pointerEvents: 'none',
             }}
         >
-            <div
-                style={{
-                    width: '32px',
-                    height: '32px',
-                    border: `3px solid ${spinnerColor}`,
-                    borderTopColor: 'transparent',
-                    borderRadius: '50%',
-                    animation: 'g7-spin 0.8s linear infinite',
-                }}
-            />
-            <span style={{ color: textColor, fontSize: '14px' }}>
-                {options?.text || t('nav.loading')}
-            </span>
+            <AppLoadingSpinner label={options?.text || t('nav.loading')} />
         </div>
     );
 };

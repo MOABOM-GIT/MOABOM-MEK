@@ -4,14 +4,12 @@ namespace Modules\Sirsoft\Board\Http\Controllers\User;
 
 use App\Http\Controllers\Api\Base\PublicBaseController;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\ReorderAttachmentsRequest;
 use Modules\Sirsoft\Board\Http\Requests\UploadAttachmentRequest;
 use Modules\Sirsoft\Board\Services\AttachmentService;
 use Modules\Sirsoft\Board\Services\BoardService;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -83,9 +81,9 @@ class AttachmentController extends PublicBaseController
      *
      * @param  string  $slug  게시판 슬러그
      * @param  string  $hash  첨부파일 해시 (12자)
-     * @return BinaryFileResponse|Response|JsonResponse 이미지 응답 또는 에러 응답
+     * @return StreamedResponse|JsonResponse 이미지 응답 또는 에러 응답
      */
-    public function preview(string $slug, string $hash): BinaryFileResponse|Response|JsonResponse
+    public function preview(string $slug, string $hash): StreamedResponse|JsonResponse
     {
         try {
             // 게시판 존재 여부 확인
@@ -103,19 +101,13 @@ class AttachmentController extends PublicBaseController
                 return $this->badRequest(__('sirsoft-board::messages.attachment.not_image'));
             }
 
-            // 파일 정보 조회
-            $fileInfo = $this->attachmentService->getFileInfo($slug, $attachment->id);
+            $response = $this->attachmentService->preview($slug, $attachment->id);
 
-            if (! $fileInfo) {
+            if (! $response) {
                 return $this->notFound(__('sirsoft-board::messages.attachment.not_found'));
             }
 
-            // 캐싱 헤더와 함께 응답 (환경설정 레이아웃 캐시 TTL 사용, 기본 24시간)
-            return $this->fileResponse(
-                $fileInfo['path'],
-                $fileInfo['mime_type'],
-                (int) g7_core_settings('cache.layout_ttl', 86400)
-            );
+            return $response;
         } catch (BoardNotFoundException $e) {
             return $this->notFound(__('sirsoft-board::messages.boards.not_found'));
         } catch (\Exception $e) {
@@ -164,7 +156,15 @@ class AttachmentController extends PublicBaseController
                         'stored_filename' => $attachment->stored_filename,
                         'mime_type' => $attachment->mime_type,
                         'size' => $attachment->size,
-                        'url' => $this->attachmentService->getUrl($slug, $attachment->id),
+                        'size_formatted' => $attachment->size_formatted,
+                        'url' => $attachment->is_image
+                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
+                            : "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
+                        'download_url' => "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
+                        'preview_url' => $attachment->is_image
+                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
+                            : null,
+                        'is_image' => $attachment->is_image,
                         'order' => $attachment->order,
                         'created_at' => $attachment->created_at,
                     ],

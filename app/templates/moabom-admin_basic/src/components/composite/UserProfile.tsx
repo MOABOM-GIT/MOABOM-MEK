@@ -102,26 +102,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
   }, []);
 
   /**
-   * 쿠키에서 XSRF 토큰 읽기
-   */
-  const getXsrfToken = (): string | null => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; XSRF-TOKEN=`);
-    if (parts.length === 2) {
-      return decodeURIComponent(parts.pop()?.split(';').shift() || '');
-    }
-    return null;
-  };
-
-  /**
-   * 로컬 스토리지에서 Bearer 토큰 읽기
-   */
-  const getBearerToken = (): string | null => {
-    return localStorage.getItem('auth_token');
-  };
-
-  /**
-   * 로그아웃 처리
+   * 로그아웃 처리 — G7 AuthManager SSOT (토큰·API·리다이렉트 일괄 처리)
    */
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -130,43 +111,21 @@ export const UserProfile: React.FC<UserProfileProps> = ({
       setIsLoggingOut(true);
       setShowProfileMenu(false);
 
-      // 커스텀 로그아웃 핸들러 실행
       if (onLogoutClick) {
         onLogoutClick();
         return;
       }
 
-      // 토큰 가져오기
-      const xsrfToken = getXsrfToken();
-      const bearerToken = getBearerToken();
-
-      // API 호출
-      const response = await fetch(logoutEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          ...(xsrfToken && { 'X-XSRF-TOKEN': xsrfToken }),
-          ...(bearerToken && { Authorization: `Bearer ${bearerToken}` }),
-        },
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        // 로그아웃 성공 - 로컬 스토리지에서 토큰 제거
-        localStorage.removeItem('auth_token');
-        // 로그인 페이지로 리다이렉션
-        window.location.href = redirectPath;
-      } else {
-        logger.error('로그아웃 실패:', response.statusText);
-        // 실패해도 토큰 제거 및 로그인 페이지로 이동 (토큰 만료 등의 경우)
-        localStorage.removeItem('auth_token');
-        window.location.href = redirectPath;
+      const authManager = (window as any).G7Core?.AuthManager?.getInstance?.();
+      if (authManager?.logout) {
+        await authManager.logout();
+        return;
       }
+
+      logger.warn('G7 AuthManager unavailable, redirecting to login:', redirectPath);
+      window.location.href = redirectPath;
     } catch (error) {
       logger.error('로그아웃 오류:', error);
-      // 에러 발생 시에도 토큰 제거 및 로그인 페이지로 이동
-      localStorage.removeItem('auth_token');
       window.location.href = redirectPath;
     } finally {
       setIsLoggingOut(false);

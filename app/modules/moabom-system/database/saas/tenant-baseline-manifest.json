@@ -91,6 +91,7 @@
     "job_batches",
     "jobs",
     "mail_send_logs",
+    "moabom_ai_generation_sessions",
     "moabom_credit_attendances",
     "moabom_credit_balances",
     "moabom_credit_transactions",

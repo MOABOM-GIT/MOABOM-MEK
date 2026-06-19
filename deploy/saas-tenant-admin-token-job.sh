@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
 
 SLUG="${SLUG:?SLUG required}"
-EMAIL="${ADMIN_EMAIL:-admin@moabom.com}"
+EMAIL="${ADMIN_EMAIL:-admin@mek360.com}"
 JOB="mobaom-saas-tenant-admin-token"
 
 exec_name="$(moabom_run_artisan_job "${JOB}" "120s" \

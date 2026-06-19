@@ -35,6 +35,15 @@
  */
 @theme {
   /*
+   * 창 본문 `@sm:`/`@md:`/`@lg:`/`@xl:` — `01-tokens.css` `--moa-cq-*` 와 동일 (브라우저 breakpoint 아님).
+   */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  /*
    * 폰트 스택: 자체 호스팅 Pretendard Variable 우선 (위 @import 로 @font-face 정의).
    * 한국어 본문 가독성/굵기 일관성을 위해 모든 시스템 폰트 폴백보다 앞에 둔다.
    * 폰트 로드 전(swap)에는 OS 한글 폰트(Apple SD Gothic Neo / 맑은 고딕)로 표시 후 교체된다.

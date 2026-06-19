@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${ROOT}/app"
 PATCH="${ROOT}/deploy/core-patches/moabom-core.patch"
 APPLY="${ROOT}/deploy/core-patches/apply-core-patches.sh"
+MANIFEST="${ROOT}/deploy/core-overlay/manifest.json"
 # shellcheck source=lib/g7-worktree.sh
 source "${ROOT}/deploy/lib/g7-worktree.sh"
 FAIL=0
@@ -14,13 +15,89 @@ FAIL=0
 fail() { echo "FAIL: $*"; FAIL=1; }
 ok()   { echo "OK:   $*"; }
 
+patch_files_from_patch() {
+  grep '^diff --git' "${PATCH}" \
+    | sed -E 's#^diff --git a/([^ ]+) b/.*#\1#' \
+    | sort -u
+}
+
+patch_files_from_manifest() {
+  python3 - "${MANIFEST}" <<'PY'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding='utf-8'))
+paths = []
+for items in manifest["categories"].values():
+    paths.extend(item["path"] for item in items)
+for path in sorted(set(paths)):
+    print(path)
+PY
+}
+
+check_overlay_manifest() {
+  [[ -f "${MANIFEST}" ]] || { fail "core overlay manifest 없음: ${MANIFEST}"; return; }
+
+  local patch_list manifest_list
+  patch_list="$(patch_files_from_patch)"
+  manifest_list="$(patch_files_from_manifest)"
+
+  if [[ "${patch_list}" == "${manifest_list}" ]]; then
+    ok "overlay manifest: 패치 파일 목록과 일치"
+  else
+    fail "overlay manifest 불일치 — deploy/core-overlay/manifest.json 갱신 필요"
+    diff -u <(printf '%s\n' "${manifest_list}") <(printf '%s\n' "${patch_list}") || true
+  fi
+
+  if grep -qE '^diff --git a/tests/' "${PATCH}"; then
+    fail "moabom-core.patch 에 코어 tests/ 델타 금지 — deploy/module gate 로 이동"
+  else
+    ok "moabom-core.patch: 코어 tests/ 델타 없음"
+  fi
+
+  if grep -qE 'loadDeferredExtensionAssets|isFileLike' "${PATCH}"; then
+    fail "moabom-core.patch 에 ActionDispatcher 커스텀 핸들러/파일 유틸 잔여물 금지"
+  else
+    ok "moabom-core.patch: ActionDispatcher 커스텀 핸들러/파일 유틸 잔여물 없음"
+  fi
+}
+
+check_fresh_upstream_apply() {
+  if [[ "${MOABOM_SKIP_FRESH_G7_DRY_RUN:-0}" == "1" ]]; then
+    ok "fresh G7 patch dry-run: skipped (MOABOM_SKIP_FRESH_G7_DRY_RUN=1)"
+    return
+  fi
+
+  local upstream_dir="${MOABOM_G7_FRESH_CLONE_DIR:-/tmp/gnuboard-g7}"
+  if [[ ! -d "${upstream_dir}/.git" ]]; then
+    rm -rf "${upstream_dir}"
+    if git clone --depth 1 https://github.com/gnuboard/g7.git "${upstream_dir}" >/dev/null 2>&1; then
+      ok "fresh G7 clone 준비: ${upstream_dir}"
+    else
+      fail "fresh G7 clone 실패 — 네트워크/권한 확인 필요: ${upstream_dir}"
+      return
+    fi
+  else
+    git -C "${upstream_dir}" fetch --depth 1 origin main >/dev/null 2>&1 || true
+    git -C "${upstream_dir}" reset --hard FETCH_HEAD >/dev/null 2>&1 || true
+    git -C "${upstream_dir}" clean -fd >/dev/null 2>&1 || true
+    ok "fresh G7 clone 재사용: ${upstream_dir}"
+  fi
+
+  if git -C "${upstream_dir}" apply --check "${PATCH}" >/dev/null 2>&1; then
+    ok "fresh G7 patch dry-run: 적용 가능"
+  else
+    fail "fresh G7 patch dry-run 실패 — upstream 충돌 또는 패치 context drift"
+  fi
+}
+
 check_patch_capsule_symbols() {
   grep -q 'config/moabom-saas.php' "${PATCH}" \
     || fail "moabom-core.patch 에 config/moabom-saas.php 누락"
-  grep -q 'loadDeferredExtensionAssets' "${PATCH}" \
-    || fail "moabom-core.patch 에 loadDeferredExtensionAssets 누락"
-  grep -q 'loadDeferredExtensionAssets' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts" \
-    || fail "ActionDispatcher.ts 에 loadDeferredExtensionAssets 미적용"
+  grep -q 'reloadModuleHandlers' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts" \
+    || fail "ActionDispatcher.ts 에 G7 순정 reloadModuleHandlers 누락"
+  grep -q 'reloadPluginHandlers' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts" \
+    || fail "ActionDispatcher.ts 에 G7 순정 reloadPluginHandlers 누락"
   grep -q 'GoogleCloudStorageServiceProvider' "${PATCH}" \
     || fail "moabom-core.patch 에 GCS Provider 누락"
   grep -q 'applyStorageDriverConfig' "${PATCH}" \
@@ -55,12 +132,15 @@ else
 fi
 
 PATCH_FILES="$(grep -c '^diff --git' "${PATCH}" || true)"
-[[ "${PATCH_FILES}" -ge 15 && "${PATCH_FILES}" -le 30 ]] \
-  || fail "패치 파일 수 비정상: ${PATCH_FILES} (기대 15~30)"
+MANIFEST_FILES="$(patch_files_from_manifest | wc -l | tr -d ' ')"
+[[ "${PATCH_FILES}" == "${MANIFEST_FILES}" ]] \
+  || fail "패치 파일 수 비정상: ${PATCH_FILES} (manifest ${MANIFEST_FILES})"
+check_overlay_manifest
 
 if [[ -n "${BUILD_ID:-}" || -n "${PROJECT_ID:-}" ]]; then
-  ok "Cloud Build source tarball 모드 — git reverse-check 대신 capsule 심볼 검증"
+  ok "Cloud Build source tarball 모드 — capsule 심볼 + fresh upstream dry-run 검증"
   check_patch_capsule_symbols
+  check_fresh_upstream_apply
 
   echo ""
   if [[ "${FAIL}" -ne 0 ]]; then
@@ -73,11 +153,11 @@ if [[ -n "${BUILD_ID:-}" || -n "${PROJECT_ID:-}" ]]; then
 fi
 
 if ! g7_git_setup "${APP}" >/dev/null 2>&1; then
-  ok "G7 upstream metadata 없음 — Cloud Build 소스 tarball 모드"
+  ok "G7 upstream metadata 없음 — fresh upstream dry-run fallback"
   # Cloud Build 는 .gcloudignore 로 app/.git.g7-upstream-backup 을 업로드하지 않는다.
-  # 이 경로에서는 git apply reverse-check 대신, 패치 capsule 과 현재 코어에 필수 심볼이
-  # 동시에 존재하는지만 확인한다. 로컬에서는 아래 reverse-check 가 SSOT drift 를 잡는다.
+  # 이 경로에서는 현재 코어의 필수 심볼과 fresh G7 clone 기준 patch dry-run 을 함께 검증한다.
   check_patch_capsule_symbols
+  check_fresh_upstream_apply
 
   echo ""
   if [[ "${FAIL}" -ne 0 ]]; then
@@ -104,11 +184,7 @@ if g7_git apply --check --reverse "${PATCH}" >/dev/null 2>&1; then
       printf '%s\n' "${CORE_UNTRACKED[@]}"
     } | sed '/^$/d' | sort -u
   )"
-  PATCH_CORE_FILES="$(
-    grep '^diff --git' "${PATCH}" \
-      | sed -E 's#^diff --git a/([^ ]+) b/.*#\1#' \
-      | sort -u
-  )"
+  PATCH_CORE_FILES="$(patch_files_from_patch)"
 
   if [[ "${CURRENT_CORE_FILES}" == "${PATCH_CORE_FILES}" ]]; then
     ok "패치 SSOT: 현재 코어 delta 파일 목록과 일치"

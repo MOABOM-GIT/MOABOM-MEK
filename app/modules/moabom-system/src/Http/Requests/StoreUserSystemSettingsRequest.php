@@ -140,6 +140,10 @@ class StoreUserSystemSettingsRequest extends FormRequest
             'preferences.systemOptions.haptic' => ['sometimes', 'boolean'],
             'preferences.systemOptions.toast' => ['sometimes', 'boolean'],
             'preferences.systemOptions.weather' => ['sometimes', 'boolean'],
+            'shell' => ['sometimes', 'array'],
+            'shell.home' => ['sometimes', 'array'],
+            'shell.home.mainAppOrder' => ['sometimes', 'array', 'max:64'],
+            'shell.home.mainAppOrder.*' => ['string', 'max:128', 'regex:/^[a-z0-9][a-z0-9-]*$/'],
         ];
     }
 }

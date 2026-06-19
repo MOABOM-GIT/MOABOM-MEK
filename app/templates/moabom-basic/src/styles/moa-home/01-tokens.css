@@ -9,10 +9,23 @@
  * 추가 variant 가 필요하면 여기서 변수를 덮어쓰기만 하면 된다.
  */
 :root {
-  /** Tailwind 기본 `sm`/`md`/`lg`와 동일 rem — 순수 CSS `@media`·`@container`에서 참조 */
-  --moa-bp-sm: 40rem;
-  --moa-bp-md: 48rem;
-  --moa-bp-lg: 64rem;
+  /**
+   * 창 본문 `.moa-app-window-viewport` @container SSOT — Tailwind `@sm:`/`@md:`/`@lg:`/`@xl:` 와 1:1.
+   * 브라우저 `@media`·셸 좌우 패널용 수치와 혼용하지 않는다 (`16-responsive-breakpoints.css` 상단 `@media` 참고).
+   */
+  --moa-cq-xs: 480px;
+  --moa-cq-sm: 640px;
+  --moa-cq-md: 768px;
+  --moa-cq-lg: 1024px;
+  --moa-cq-xl: 1280px;
+
+  /** @deprecated — `var(--moa-cq-*)` 사용 */
+  --moa-bp-sm: var(--moa-cq-sm);
+  --moa-bp-md: var(--moa-cq-md);
+  --moa-bp-lg: var(--moa-cq-lg);
+
+  /** 의미론적 별칭 — 창 본문 레이아웃 */
+  --moa-cq-viewport-pad-inline-collapse: var(--moa-cq-md);
 
   --moa-point-color: var(--color-indigo-500);
   --moa-point-rgb: 99 102 241;
@@ -38,7 +51,7 @@
   --moa-glass-outer-shadow: rgba(255, 255, 255, 0.15);
 
   /** glass-sm: 더 옅음 */
-  --moa-glass-sm-surface: rgba(255, 255, 255, 0.5);
+  --moa-glass-sm-surface: #ffffff4d;
   --moa-glass-sm-border: rgba(255, 255, 255, 0.3);
   --moa-glass-sm-inset-top: rgba(255, 255, 255, 0.3);
   --moa-glass-sm-inset-bottom: rgba(255, 255, 255, 0.2);
@@ -58,6 +71,38 @@
   --moa-glass-panel-inset-bottom: rgba(255, 255, 255, 0.2);
   --moa-glass-panel-inset-glow: rgba(255, 255, 255, 0.5);
   --moa-glass-panel-outer-shadow: rgba(31, 38, 135, 0.10);
+
+  /** 앱 윈도우 크롬 (구 GlassCard light) */
+  --moa-window-content-padding: 10px;
+  /** 창 본문 `.moa-app-window-viewport` 안쪽 여백 SSOT — 모든 셸 앱·마이페이지·인증 공통 */
+  --moa-app-window-body-padding: 0.75rem;
+  /** 앱 창·마이페이지 본문 블록(섹션) 사이 세로·그리드 간격 SSOT — Tailwind `gap-3` 와 동일 */
+  --moa-app-stack-gap: 0.75rem;
+  --moa-window-blur: 15px;
+  --moa-window-saturation: 120%;
+  --moa-window-brightness: 100%;
+  --moa-window-surface: rgb(255 255 255 / 70%);
+  --moa-window-border: rgb(255 255 255 / 40%);
+  --moa-window-inner-glow: rgb(255 255 255 / 30%);
+  --moa-window-inner-glow-blur: 20px;
+  --moa-window-inner-glow-spread: 1px;
+  --moa-window-outer-glow: rgb(0 0 0 / 10%);
+  --moa-window-outer-glow-blur: 20px;
+  --moa-window-outer-glow-spread: 1px;
+
+  /** `.liquid-glass` 옵트인 유틸 (구 GlassCard + SVG 굴절) */
+  --moa-liquid-blur: 2px;
+  --moa-liquid-saturation: 120%;
+  --moa-liquid-brightness: 100%;
+  --moa-liquid-surface: rgb(255 255 255 / 70%);
+  --moa-liquid-border: rgb(255 255 255 / 40%);
+  --moa-liquid-inner-glow: rgb(255 255 255 / 30%);
+  --moa-liquid-inner-glow-blur: 20px;
+  --moa-liquid-inner-glow-spread: 1px;
+  --moa-liquid-outer-glow: rgb(0 0 0 / 10%);
+  --moa-liquid-outer-glow-blur: 20px;
+  --moa-liquid-outer-glow-spread: 1px;
+  --moa-liquid-distort-filter: url(#moa-liquid-glass-distort);
 }
 
 /** 다크 모드 글래스 토큰 (#1b1a1d 베이스) */
@@ -88,6 +133,21 @@
   --moa-glass-panel-inset-bottom: #1b1a1d80;
   --moa-glass-panel-inset-glow: #1b1a1d59;
   --moa-glass-panel-outer-shadow: #1b1a1d66;
+
+  /** 앱 윈도우 크롬 (구 GlassCard dark) */
+  --moa-window-saturation: 100%;
+  --moa-window-surface: rgb(27 26 29 / 70%);
+  --moa-window-border: rgb(0 0 0 / 30%);
+  --moa-window-inner-glow: rgb(0 0 0 / 30%);
+  --moa-window-inner-glow-blur: 30px;
+  --moa-window-outer-glow: rgb(0 0 0 / 35%);
+
+  --moa-liquid-saturation: 100%;
+  --moa-liquid-surface: rgb(27 26 29 / 70%);
+  --moa-liquid-border: rgb(0 0 0 / 30%);
+  --moa-liquid-inner-glow: rgb(0 0 0 / 30%);
+  --moa-liquid-inner-glow-blur: 30px;
+  --moa-liquid-outer-glow: rgb(0 0 0 / 35%);
 }
 
 :root[data-moa-theme="dark"] {
@@ -120,6 +180,20 @@
   --moa-glass-panel-inset-top: transparent;
   --moa-glass-panel-inset-bottom: transparent;
   --moa-glass-panel-inset-glow: transparent;
+
+  /** 앱 윈도우 — flat (구 blur/distortion/light 0, backgroundOpacity 0.97) */
+  --moa-window-blur: 0px;
+  --moa-window-surface: rgb(255 255 255 / 97%);
+  --moa-window-border: transparent;
+  --moa-window-inner-glow: transparent;
+  --moa-window-outer-glow: transparent;
+
+  --moa-liquid-blur: 0px;
+  --moa-liquid-surface: rgb(255 255 255 / 97%);
+  --moa-liquid-border: transparent;
+  --moa-liquid-inner-glow: transparent;
+  --moa-liquid-outer-glow: transparent;
+  --moa-liquid-distort-filter: none;
 }
 
 :root[data-moa-theme="flat-dark"] {
@@ -143,4 +217,17 @@
   --moa-glass-panel-inset-top: transparent;
   --moa-glass-panel-inset-bottom: transparent;
   --moa-glass-panel-inset-glow: transparent;
+
+  --moa-window-blur: 0px;
+  --moa-window-surface: rgb(27 26 29 / 97%);
+  --moa-window-border: transparent;
+  --moa-window-inner-glow: transparent;
+  --moa-window-outer-glow: transparent;
+
+  --moa-liquid-blur: 0px;
+  --moa-liquid-surface: rgb(27 26 29 / 97%);
+  --moa-liquid-border: transparent;
+  --moa-liquid-inner-glow: transparent;
+  --moa-liquid-outer-glow: transparent;
+  --moa-liquid-distort-filter: none;
 }

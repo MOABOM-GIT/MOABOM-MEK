@@ -8,6 +8,7 @@ import { Input } from '../../basic/Input';
 import { Span } from '../../basic/Span';
 import { Textarea } from '../../basic/Textarea';
 import { POINT_COLOR } from './myPageConstants';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { ACTION_BUTTON_VARIANT, GROUP_PANEL, INPUT_SURFACE, MY_PAGE_BLOCK_TITLE_CLASS, TEXTAREA_SURFACE } from './myPageStyles';
 
 export interface Moa_MyPageProfilePanelProps {
@@ -49,7 +50,7 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
   onAvatarFile,
   onSaveProfile,
 }) => (
-  <Div className="moa-mypage-profile grid grid-cols-[180px_1fr] gap-3">
+  <Div className={`moa-mypage-profile ${APP_STACK_GRID_CLASS} grid grid-cols-[180px_1fr]`}>
     <Div className={`${GROUP_PANEL} p-4 flex flex-col items-center text-center`}>
       {avatarUrl ? (
         <Img
@@ -88,7 +89,7 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
         <Span className="mt-2 block text-xs text-red-500">{profileErr('avatar')}</Span>
       ) : null}
     </Div>
-    <Div className={`${GROUP_PANEL} p-5 flex flex-col gap-4`}>
+    <Div className={`${GROUP_PANEL} p-5 ${APP_STACK_CLASS}`}>
       {profileBanner && (
         <Div className="rounded-xl px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200">
           {profileBanner.text}

@@ -101,7 +101,8 @@ flowchart LR
 | `check-upstream-prep.sh` | 패치·가드·bundled-detach·dry-run 통합 |
 | `check-core-sync-regression.sh` | core:update sync 회귀 |
 | `dry-run-upstream-patches.sh` | 패치 dry-run |
-| `core-patches/*` | G7 코어 패치 캡슐 — [`README.md`](core-patches/README.md) |
+| `core-patches/*` | G7 overlay patch 적용 스크립트와 패치 — [`README.md`](core-patches/README.md) |
+| `core-overlay/manifest.json` | overlay 파일 분류 SSOT. `check-core-patches.sh`가 패치 파일 목록과 비교 |
 
 ## 유틸
 

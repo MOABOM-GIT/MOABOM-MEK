@@ -52,10 +52,19 @@ export interface HomeBackgroundManagerProps {
 
 const DEFAULT_UPLOAD = '/api/modules/moabom-system/admin/home-backgrounds';
 
-function authHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const t = localStorage.getItem('auth_token');
-  return t ? { Authorization: `Bearer ${t}` } : {};
+type G7ApiClient = {
+  post: <T>(url: string, data?: unknown, config?: Record<string, unknown>) => Promise<T>;
+  delete: <T>(url: string, config?: Record<string, unknown>) => Promise<T>;
+};
+
+function getG7Api(): G7ApiClient | null {
+  if (typeof window === 'undefined') return null;
+  return (window as { G7Core?: { api?: G7ApiClient } }).G7Core?.api ?? null;
+}
+
+function extractApiMessage(error: unknown, fallback: string): string {
+  const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return typeof message === 'string' && message.length > 0 ? message : fallback;
 }
 
 function normalizeHex(value: unknown): string | null {
@@ -297,25 +306,17 @@ export const HomeBackgroundManager: React.FC<HomeBackgroundManagerProps> = ({
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
       if (isUuid) {
+        const api = getG7Api();
+        if (!api) {
+          setError('인증 클라이언트를 사용할 수 없습니다.');
+          return;
+        }
+
         try {
           setBusy(true);
-          const res = await fetch(`${uploadUrl.replace(/\/$/, '')}/${id}`, {
-            method: 'DELETE',
-            headers: {
-              Accept: 'application/json',
-              ...authHeaders(),
-            },
-            credentials: 'include',
-          });
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            setError(typeof body?.message === 'string' ? body.message : '삭제에 실패했습니다.');
-            setBusy(false);
-            return;
-          }
-        } catch {
-          setError('삭제 요청에 실패했습니다.');
-          setBusy(false);
+          await api.delete(`${uploadUrl.replace(/\/$/, '')}/${id}`);
+        } catch (error) {
+          setError(extractApiMessage(error, '삭제 요청에 실패했습니다.'));
           return;
         } finally {
           setBusy(false);
@@ -369,32 +370,21 @@ export const HomeBackgroundManager: React.FC<HomeBackgroundManagerProps> = ({
       return;
     }
 
+    const api = getG7Api();
+    if (!api) {
+      setError('인증 클라이언트를 사용할 수 없습니다.');
+      return;
+    }
+
     setError(null);
     setBusy(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          ...authHeaders(),
-        },
-        body: fd,
-        credentials: 'include',
+      const body = await api.post<Record<string, unknown>>(uploadUrl, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const body = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(
-          typeof body?.errors === 'object' && body.errors?.file?.[0]
-            ? String(body.errors.file[0])
-            : (body?.message ?? '업로드에 실패했습니다.'),
-        );
-        return;
-      }
-
-      const data = body?.data ?? body;
+      const data = (body as { data?: Record<string, unknown> })?.data ?? body;
       const row: HomeBackgroundItem = {
         id: String(data?.id ?? ''),
         // 업로드 직후 기본값: 라이트 모드, 포인트 컬러 바인딩 없음
@@ -408,8 +398,14 @@ export const HomeBackgroundManager: React.FC<HomeBackgroundManagerProps> = ({
         return;
       }
       onItemsChange([...items, row]);
-    } catch {
-      setError('업로드 중 오류가 발생했습니다.');
+    } catch (error) {
+      const responseErrors = (error as { response?: { data?: { errors?: { file?: string[] }; message?: string } } })
+        ?.response?.data?.errors;
+      if (responseErrors?.file?.[0]) {
+        setError(String(responseErrors.file[0]));
+        return;
+      }
+      setError(extractApiMessage(error, '업로드 중 오류가 발생했습니다.'));
     } finally {
       setBusy(false);
     }

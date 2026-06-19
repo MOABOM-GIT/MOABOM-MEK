@@ -5,6 +5,8 @@ import { Button } from '../basic/Button';
 export interface SubTabBarTab {
   id: string;
   label: string;
+  /** 탭 라벨 우측 배지 (미읽음 수 등) */
+  badge?: number;
 }
 
 export interface SubTabBarProps {
@@ -55,7 +57,14 @@ export const SubTabBar: React.FC<SubTabBarProps> = ({
                 : 'text-secondary font-bold hover:text-primary'
             }`}
           >
-            {tab.label}
+            <span className="inline-flex items-center justify-center gap-1">
+              <span>{tab.label}</span>
+              {tab.badge != null && tab.badge > 0 && (
+                <span className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none flex items-center justify-center">
+                  {tab.badge > 99 ? '99+' : tab.badge}
+                </span>
+              )}
+            </span>
           </Button>
         ))}
       </Div>

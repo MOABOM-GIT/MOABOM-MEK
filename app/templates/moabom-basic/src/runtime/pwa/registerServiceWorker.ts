@@ -1,4 +1,5 @@
 import { Workbox } from 'workbox-window';
+import { emitMoabomPwaUpdateAvailable } from './moabomPwaUpdateBridge';
 
 /**
  * PWA Service Worker 등록 옵션.
@@ -27,13 +28,20 @@ export function resetMoabomPwaServiceWorkerRegistrationForTest(): void {
  * Silent 갱신 금지 요구사항 때문에 여기서는 `messageSkipWaiting()` 을 호출하지 않는다.
  */
 export function handleWaiting(wb: Workbox): void {
-  if (typeof window === 'undefined') return;
+  emitMoabomPwaUpdateAvailable(wb);
+}
 
-  window.dispatchEvent(
-    new CustomEvent('moabom-pwa-update-available', {
-      detail: { wb },
-    }),
-  );
+async function dispatchWaitingIfNeeded(wb: Workbox, scope: string): Promise<void> {
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(scope);
+    if (registration?.waiting) {
+      handleWaiting(wb);
+    }
+  } catch {
+    // 등록 조회 실패 시 waiting 이벤트에만 의존한다.
+  }
 }
 
 /**
@@ -45,14 +53,16 @@ export async function registerMoabomPwaServiceWorker(options: RegisterOptions = 
 
   registered = true;
 
+  const scope = options.scope ?? '/';
   const wb = new Workbox(options.swUrl ?? '/pwa/sw.js', {
-    scope: options.scope ?? '/',
+    scope,
   });
 
   wb.addEventListener('waiting', () => handleWaiting(wb));
 
   try {
     await wb.register();
+    await dispatchWaitingIfNeeded(wb, scope);
   } catch (error) {
     console.warn('[moabom-pwa] Service Worker registration failed.', error);
   }

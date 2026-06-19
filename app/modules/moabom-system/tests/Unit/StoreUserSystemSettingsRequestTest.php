@@ -81,4 +81,34 @@ class StoreUserSystemSettingsRequestTest extends ModuleTestCase
             Validator::make(['appearance' => ['fontSize' => 6]], $rules)->passes()
         );
     }
+
+    public function test_shell_home_main_app_order_accepts_generated_and_static_ids(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $passes = Validator::make([
+            'shell' => [
+                'home' => [
+                    'mainAppOrder' => ['create-app', 'cpap-mask', 'generated-app-42'],
+                ],
+            ],
+        ], $rules)->passes();
+
+        $this->assertTrue($passes);
+    }
+
+    public function test_shell_home_main_app_order_rejects_invalid_id(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $passes = Validator::make([
+            'shell' => [
+                'home' => [
+                    'mainAppOrder' => ['../../evil'],
+                ],
+            ],
+        ], $rules)->passes();
+
+        $this->assertFalse($passes);
+    }
 }

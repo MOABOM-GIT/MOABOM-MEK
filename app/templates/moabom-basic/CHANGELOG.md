@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- 홈 셸 메인 앱 순서 SSOT: `moaHomeShellOrder` + `moabomShellOrderSaveQueue` — `localStorage`(`moabom_main_order`)와 로그인 시 `user/settings` `shell.home.mainAppOrder` 양방향 동기화.
+- AI 생성 앱(`generated-app-*`) DnD 후 새로고침·기기 간 복원 — order 정규화 시 미해석 id 제거 버그 수정, fetch 후 order 덮어쓰기 제거.
+
+### Fixed
+
+- 좌측 패널 → 메인 드롭 시 `left-panel` collision 때문에 저장이 무시되던 경우 — `over.id` 기준으로 판정.
+
+## [0.6.78] - 2026-06-11
+
+### Fixed
+
+- **앱 윈도우 글래스 회귀** (`26-moa-window-glass.css`) — `react-glass-ui` 제거 마이그레이션에서 생긴 두 가지 회귀 수정:
+  - 표면 `::before` 에 걸려 있던 `filter: url(#moa-window-glass-distort)` 가 feDisplacementMap(scale 35)으로 **표면 자체**(1px 테두리·inset glow·가장자리 픽셀)를 변위시켜 테두리 소실·좌우/하단 투명 띠가 생기던 문제 — 굴절을 전용 `::after`(z-index:-2) 레이어의 `backdrop-filter: var(--moa-window-distort-filter)` 로 분리해 **창 뒤 배경만** 굴절. 표면(배경·테두리·glow·blur/saturate/brightness)은 `::before`(z-index:-1) 에서 선명하게 유지. 미지원 브라우저는 굴절만 자연 탈락.
+  - `.moa-window-frame > * { position: relative }` 가 리사이즈 핸들의 `absolute bottom-1 right-1` 을 덮어써 핸들이 좌측 flow 위치로 빠지던 문제 — 자식 position 강제 규칙 삭제. 쌓임 순서는 두 pseudo 를 음수 z-index 로 내려 `isolation: isolate` 컨텍스트 안에서 자식이 자연히 위에 그려지도록 변경.
+
 ## [0.6.77] - 2026-05-15
 
 ### Fixed
@@ -157,7 +176,7 @@
 
 ### Changed
 
-- **브레이크포인트 통일**: 셸·창 CSS를 Tailwind 기본 수치(`sm` 640px, `md` 768px, `lg` 1024px)에 맞춤 — `@media (max-width: 1023|768|639px)`, `@container (max-width: 1023|768|639px)`로 정리(`16-responsive-breakpoints.css`).
+- **브레이크포인트 통일**: 셸·창 CSS를 Tailwind 기본 수치(`sm` 640px, `md` 768px, `lg` 1024px)에 맞춤 — CSS range 문법(`width < 640px`, `width >= 1024px`)으로 경계 회피값 없이 정리(`16-responsive-breakpoints.css`).
 - **창 내부 반응형 TSX**: `Grid`·`PageSkeleton`·`FileUploader/FileList` 등에서 뷰포트 `sm:`/`lg:` → 컨테이너 `@sm:`/`@lg:` 등으로 통일; `PageSkeleton`은 `moa-app-window-viewport` + `ResizeObserver`로 폭 측정, 비-display 반응형 토큰 접두사 유지, `sanitizeClassName`이 `@sm:grid-cols-*`를 깨지 않도록 수정.
 - **Tailwind v4 소스**: `main.css`에 `@source`로 `src/**/*.tsx`, `src/**/*.ts`, `layouts/**/*.json` 스캔 추가; `safelist.txt`에 컨테이너용 `@*:` 그리드·arbitrary 그리드 열 보강.
 - **소정리**: `12-mypage-presets-layout.css`의 `.moa-mypage-sidebar` 중복 블록 병합.

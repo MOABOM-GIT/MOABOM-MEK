@@ -26,7 +26,9 @@
             "auth_required": true,
             "loading_strategy": "progressive",
             "initGlobal": "currentUser",
-            "fallback": { "data": null },
+            "fallback": {
+                "data": null
+            },
             "errorHandling": {
                 "401": {
                     "handler": "suppress"
@@ -37,100 +39,7 @@
             "id": "apps_list",
             "type": "static",
             "data": {
-                "categories": [
-                    {
-                        "id": "featured",
-                        "name": "추천 앱",
-                        "apps": [
-                            {
-                                "id": "weather",
-                                "name": "날씨",
-                                "description": "실시간 날씨 정보",
-                                "icon": "cloud-sun",
-                                "bgColor": "bg-gradient-to-br from-blue-400 to-blue-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "color",
-                                "name": "색상",
-                                "description": "컬러 팔레트",
-                                "icon": "palette",
-                                "bgColor": "bg-gradient-to-br from-purple-400 to-purple-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "music",
-                                "name": "음악",
-                                "description": "음악 플레이어",
-                                "icon": "music",
-                                "bgColor": "bg-gradient-to-br from-indigo-400 to-indigo-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "task",
-                                "name": "작업",
-                                "description": "할 일 관리",
-                                "icon": "tasks",
-                                "bgColor": "bg-gradient-to-br from-green-400 to-green-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "team",
-                                "name": "팀",
-                                "description": "팀 협업 도구",
-                                "icon": "users",
-                                "bgColor": "bg-gradient-to-br from-teal-400 to-teal-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "tools",
-                                "name": "도구",
-                                "description": "유틸리티 도구",
-                                "icon": "wrench",
-                                "bgColor": "bg-gradient-to-br from-gray-400 to-gray-600",
-                                "installed": false
-                            }
-                        ]
-                    },
-                    {
-                        "id": "productivity",
-                        "name": "생산성",
-                        "apps": [
-                            {
-                                "id": "notes",
-                                "name": "메모장",
-                                "description": "빠른 메모",
-                                "icon": "sticky-note",
-                                "bgColor": "bg-gradient-to-br from-yellow-400 to-yellow-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "calendar",
-                                "name": "캘린더",
-                                "description": "일정 관리",
-                                "icon": "calendar-alt",
-                                "bgColor": "bg-gradient-to-br from-red-400 to-red-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "calculator",
-                                "name": "계산기",
-                                "description": "간편 계산",
-                                "icon": "calculator",
-                                "bgColor": "bg-gradient-to-br from-orange-400 to-orange-600",
-                                "installed": false
-                            },
-                            {
-                                "id": "timer",
-                                "name": "타이머",
-                                "description": "시간 측정",
-                                "icon": "stopwatch",
-                                "bgColor": "bg-gradient-to-br from-pink-400 to-pink-600",
-                                "installed": false
-                            }
-                        ]
-                    }
-                ]
+                "categories": []
             }
         }
     ],

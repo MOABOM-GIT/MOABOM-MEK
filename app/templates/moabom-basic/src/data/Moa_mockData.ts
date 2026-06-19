@@ -1,18 +1,17 @@
 /**
  * MOABOM 임시 데이터 (Mock Data)
  *
- * 실제 API 연동 전까지 사용하는 더미 데이터입니다.
- * 추후 API 연동 시 이 파일을 제거하고 data_sources로 대체합니다.
+ * 실제 API 연동 전까지 사용하는 홈 셸 보조 데이터입니다.
+ * 앱 참조는 실제 등록된 시스템 앱만 유지합니다.
  */
 
 /** 랭킹 데이터 */
 export const RANKING_DATA = {
   apps: [
-    { id: 'app-maker',  rank: 1, name: '장비 렌탈', icon: 'stethoscope', gradient: 'linear-gradient(135deg,#a78bfa,#7c3aed)', change: 'up' as const, category: 'basic' as const },
-    { id: 'brain-gen',  rank: 2, name: '수면 분석', icon: 'chart-line',  gradient: 'linear-gradient(135deg,#34d399,#059669)', change: 'same' as const, category: 'basic' as const },
-    { id: 'community',  rank: 3, name: '고객 센터', icon: 'headset',     gradient: 'linear-gradient(135deg,#4ade80,#16a34a)', change: 'down' as const, category: 'basic' as const },
-    { id: 'quick-game', rank: 4, name: '요금 조회', icon: 'won-sign',    gradient: 'linear-gradient(135deg,#fb923c,#ea580c)', change: 'up' as const, category: 'basic' as const },
-    { id: 'decision',   rank: 5, name: 'AS 신청',   icon: 'wrench',      gradient: 'linear-gradient(135deg,#fb7185,#e11d48)', change: 'same' as const, category: 'basic' as const },
+    { id: 'cpap-mask',     rank: 1, name: '마스크 피팅', icon: 'head-side-mask', gradient: 'linear-gradient(135deg,#06b6d4,#2563eb)', change: 'up' as const, category: 'basic' as const },
+    { id: 'consulting',    rank: 2, name: '360 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', change: 'same' as const, category: 'basic' as const },
+    { id: 'hospital-info', rank: 3, name: '병원명',     icon: 'hospital',       gradient: 'linear-gradient(135deg,#14b8a6,#0ea5e9)', change: 'down' as const, category: 'basic' as const },
+    { id: 'mypage',        rank: 4, name: '마이페이지', icon: 'user-cog',       gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', change: 'same' as const, category: 'basic' as const },
   ],
   users: [
     { rank: 1, name: '성현_Master', avatar: 'SH', color: 'linear-gradient(135deg,#667eea,#764ba2)', point: 12500, change: 'up' as const },
@@ -26,28 +25,89 @@ export const RANKING_DATA = {
 /** 마이앱 데이터 */
 export const MY_APPS_DATA = {
   favorites: [
-    { id: 'app-maker',  name: '장비 렌탈', icon: 'stethoscope', gradient: 'linear-gradient(135deg,#a78bfa,#7c3aed)', category: 'basic' as const },
-    { id: 'brain-gen',   name: '수면 분석', icon: 'chart-line',  gradient: 'linear-gradient(135deg,#34d399,#059669)', category: 'basic' as const },
-    { id: 'community',   name: '고객 센터', icon: 'headset',     gradient: 'linear-gradient(135deg,#4ade80,#16a34a)', category: 'basic' as const },
+    { id: 'cpap-mask',  name: '마스크 피팅', icon: 'head-side-mask', gradient: 'linear-gradient(135deg,#06b6d4,#2563eb)', category: 'basic' as const },
+    { id: 'consulting', name: '360 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', category: 'basic' as const },
   ],
-  myapps: [
-    { id: 'weather',     name: '내 장비',   icon: 'stethoscope', gradient: 'linear-gradient(135deg,#7dd3fc,#0284c7)', category: 'user' as const },
-    { id: 'color-user',  name: '수면 기록', icon: 'moon',        gradient: 'linear-gradient(135deg,#c4b5fd,#7c3aed)', category: 'user' as const },
-  ],
+  myapps: [],
 };
 
-/** 공지 데이터 */
+import { MOA_SHELL_NOTICE_BOARD_SLUG } from '../shell/moaShellNoticeBoard';
+
+export type ShellNoticeMockItem = {
+  id: string;
+  type: 'urgent' | 'event' | 'normal';
+  title: string;
+  desc: string;
+  date: string;
+  boardSlug: string;
+  /** sirsoft-board 실제 글 ID — 없으면 목록만 연다 */
+  postId?: string;
+};
+
+export type ShellUpdateMockItem = {
+  id: string;
+  version: string;
+  title: string;
+  desc: string;
+  date: string;
+  boardSlug: string;
+  postId?: string;
+};
+
+/** 공지 데이터 (좌측 패널 → 게시판 윈도우 `notice` slug 연동) */
 export const NOTICE_DATA = {
   notices: [
-    { id: 'n1', type: 'urgent' as const, title: '서비스 점검 안내',    desc: '12/25 02:00~06:00 점검',  date: '2024.12.20' },
-    { id: 'n2', type: 'event' as const,  title: '연말 이벤트 진행중',  desc: '렌탈 할인 최대 30%',      date: '2024.12.18' },
-    { id: 'n3', type: 'normal' as const, title: '이용약관 변경 안내',  desc: '개인정보처리방침 개정',   date: '2024.12.15' },
-  ],
+    {
+      id: 'n1',
+      type: 'urgent' as const,
+      title: '서비스 점검 안내',
+      desc: '12/25 02:00~06:00 점검',
+      date: '2024.12.20',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+    {
+      id: 'n2',
+      type: 'event' as const,
+      title: '연말 이벤트 진행중',
+      desc: '렌탈 할인 최대 30%',
+      date: '2024.12.18',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+    {
+      id: 'n3',
+      type: 'normal' as const,
+      title: '이용약관 변경 안내',
+      desc: '개인정보처리방침 개정',
+      date: '2024.12.15',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+  ] satisfies ShellNoticeMockItem[],
   updates: [
-    { id: 'u1', version: 'v2.1.0', title: '수면 분석 기능 개선', desc: '리포트 요약·알림 로직 개선', date: '2024.12.19' },
-    { id: 'u2', version: 'v2.0.5', title: '버그 수정 및 안정화', desc: '크래시·동기화 이슈 패치', date: '2024.12.10' },
-    { id: 'u3', version: 'v2.0.0', title: '대규모 UI 업데이트', desc: '홈·마이페이지 레이아웃 재구성', date: '2024.12.01' },
-  ],
+    {
+      id: 'u1',
+      version: 'v2.1.0',
+      title: '수면 분석 기능 개선',
+      desc: '리포트 요약·알림 로직 개선',
+      date: '2024.12.19',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+    {
+      id: 'u2',
+      version: 'v2.0.5',
+      title: '버그 수정 및 안정화',
+      desc: '크래시·동기화 이슈 패치',
+      date: '2024.12.10',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+    {
+      id: 'u3',
+      version: 'v2.0.0',
+      title: '대규모 UI 업데이트',
+      desc: '홈·마이페이지 레이아웃 재구성',
+      date: '2024.12.01',
+      boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
+    },
+  ] satisfies ShellUpdateMockItem[],
 };
 
 /** 접속자 데이터 */
@@ -62,11 +122,4 @@ export const FRIENDS_DATA = [
   { n: '프론트엔드장인', s: '"오늘은 코딩 불태우자"',  c: '#3b82f6', online: true },
   { n: '디자인팀장',     s: '회의중입니다 ㅠ',         c: '#10b981', online: true },
   { n: '카페24마스터',   s: '마지막 접속: 어제',       c: '#6b7280', online: false },
-];
-
-/** 알림 데이터 */
-export const NOTIFICATIONS_DATA = [
-  { icon: 'heart',   iconColor: 'text-pink-500 dark:text-pink-400',  iconBg: 'bg-pink-50 dark:bg-pink-950/35',  title: '좋아요 알림', desc: '디자인팀장님이 회원님의 게시글을 좋아합니다.', time: '방금',     unread: true },
-  { icon: 'comment', iconColor: 'text-blue-500 dark:text-blue-400',  iconBg: 'bg-blue-50 dark:bg-blue-950/35',  title: '새 댓글',     desc: '성현_Master: "이 부분 수정 부탁드립니다.."',   time: '5분 전',   unread: true },
-  { icon: 'bell',    iconColor: 'text-slate-400 dark:text-slate-500', iconBg: 'bg-gray-50 dark:bg-slate-800/60',  title: '시스템 알림', desc: '비밀번호 변경이 완료되었습니다.',               time: '1시간 전', unread: false },
 ];

@@ -4,6 +4,7 @@ import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import type { MoaShellLegalPageSlug } from '../../shell/moaShellLegalPageIds';
 import { Button } from '../basic/Button';
 import { Div } from '../basic/Div';
+import AppLoadingSpinner from './AppLoadingSpinner';
 import { HtmlContent } from './HtmlContent';
 
 export interface LegalPageWindowContentProps {
@@ -56,16 +57,14 @@ export const LegalPageWindowContent: React.FC<LegalPageWindowContentProps> = ({
   return (
     <Div
       data-testid="moa-legal-page-window"
-      className="moa-shell-app-window text-primary flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      className="moa-app-window-body text-primary flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
     >
       {loading ? (
-        <Div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-muted">
-          {t('moa_shell.center.legal_page_loading')}
-        </Div>
+        <AppLoadingSpinner label={t('moa_shell.center.legal_page_loading')} fill />
       ) : null}
 
       {!loading && error ? (
-        <Div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+        <Div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
           <Div className="text-sm text-secondary">{error}</Div>
           <Button type="button" variant="secondary" size="sm" onClick={() => void load()}>
             {t('moa_shell.center.legal_page_retry')}
@@ -74,7 +73,7 @@ export const LegalPageWindowContent: React.FC<LegalPageWindowContentProps> = ({
       ) : null}
 
       {!loading && !error && html !== null ? (
-        <Div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+        <Div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
           {html.trim().length > 0 ? (
             <HtmlContent content={html} isHtml={contentMode === 'html'} />
           ) : (

@@ -1,176 +1,70 @@
-import { getBearerToken } from '../../../api/moabomModuleApi';
+import {
+  getG7ApiClient,
+  moabomApiDelete,
+  moabomApiGet,
+  moabomApiPost,
+  moabomApiPut,
+  type MoabomApiResult,
+} from '../../../api/moabomAuthenticatedApi';
+import { getShellAccessToken } from '../../../api/moabomShellAccess';
 import { moabomT } from '../../../i18n/moabomT';
 import type {
-  ApiActivityResponse,
-  ApiAttendanceResponse,
+  ActivityOverview,
   ApiAvatarResponse,
-  ApiCreditResponse,
-  ApiProfileResponse,
-  ApiSimpleResponse,
+  ApiAttendanceResponse,
+  CreditOverview,
   ProfileApiPayload,
 } from './myPageTypes';
 
-export { getBearerToken };
-
 export async function fetchUserProfileApi(): Promise<ProfileApiPayload | null> {
-  const token = getBearerToken();
-  if (!token) return null;
-
-  const response = await fetch('/api/me', {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const payload = await response.json() as ApiProfileResponse;
-  if (!response.ok || !payload.success || !payload.data) {
+  const result = await moabomApiGet<ProfileApiPayload>('/api/me');
+  if (!result.ok || !result.data) {
     return null;
   }
-
-  return payload.data;
+  return result.data;
 }
 
-export async function updateUserProfileApi(body: Record<string, unknown>): Promise<ApiProfileResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/me', {
-    method: 'PUT',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const payload = await response.json() as ApiProfileResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
+export async function updateUserProfileApi(
+  body: Record<string, unknown>,
+): Promise<MoabomApiResult<ProfileApiPayload>> {
+  return moabomApiPut<ProfileApiPayload>('/api/me', body);
 }
 
-export async function fetchUserCreditsApi(): Promise<ApiCreditResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/modules/moabom-credit/user/credits', {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const payload = await response.json() as ApiCreditResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success && !!payload.data };
+export async function fetchUserCreditsApi(): Promise<MoabomApiResult<CreditOverview>> {
+  return moabomApiGet<CreditOverview>('/api/modules/moabom-credit/user/credits');
 }
 
-export async function checkAttendanceApi(): Promise<ApiAttendanceResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/modules/moabom-credit/user/attendance', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({}),
-  });
-
-  const payload = await response.json() as ApiAttendanceResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
+export async function checkAttendanceApi(): Promise<MoabomApiResult<ApiAttendanceResponse['data']>> {
+  return moabomApiPost<ApiAttendanceResponse['data']>('/api/modules/moabom-credit/user/attendance', {});
 }
 
-export async function fetchUserActivitiesApi(type: string): Promise<ApiActivityResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
+export async function fetchUserActivitiesApi(
+  type: string,
+): Promise<MoabomApiResult<ActivityOverview>> {
   const query = new URLSearchParams({ type, limit: '20' });
-  // 2026-06-02 모듈 분리: moabom-system → moabom-personalization.
-  const response = await fetch(`/api/modules/moabom-personalization/user/activities?${query.toString()}`, {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const payload = await response.json() as ApiActivityResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success && !!payload.data };
+  return moabomApiGet<ActivityOverview>(
+    `/api/modules/moabom-personalization/user/activities?${query.toString()}`,
+  );
 }
 
-export async function verifyPasswordApi(password: string): Promise<ApiSimpleResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/me/verify-password', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ password }),
-  });
-  const payload = await response.json() as ApiSimpleResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
+export async function verifyPasswordApi(password: string): Promise<MoabomApiResult<void>> {
+  return moabomApiPost<void>('/api/me/verify-password', { password });
 }
 
-export async function changePasswordApi(currentPassword: string, password: string, passwordConfirmation: string): Promise<ApiSimpleResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/me/password', {
-    method: 'PUT',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      current_password: currentPassword,
-      password,
-      password_confirmation: passwordConfirmation,
-    }),
+export async function changePasswordApi(
+  currentPassword: string,
+  password: string,
+  passwordConfirmation: string,
+): Promise<MoabomApiResult<void>> {
+  return moabomApiPut<void>('/api/me/password', {
+    current_password: currentPassword,
+    password,
+    password_confirmation: passwordConfirmation,
   });
-  const payload = await response.json() as ApiSimpleResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
 }
 
-export async function withdrawUserApi(): Promise<ApiSimpleResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
-  }
-
-  const response = await fetch('/api/me', {
-    method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const payload = await response.json() as ApiSimpleResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
+export async function withdrawUserApi(): Promise<MoabomApiResult<void>> {
+  return moabomApiDelete<void>('/api/me');
 }
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
@@ -219,23 +113,26 @@ export async function cropAvatarToSquare(file: File, size = 200): Promise<File> 
 }
 
 export async function uploadUserAvatarApi(file: File): Promise<ApiAvatarResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
+  if (!getShellAccessToken()) {
+    return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
+  }
+
+  const api = getG7ApiClient();
+  if (!api) {
     return { ok: false, success: false, message: moabomT('moa_mypage.api.auth_required') };
   }
 
   const formData = new FormData();
   formData.append('avatar', file);
 
-  const response = await fetch('/api/me/avatar', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-  const payload = await response.json() as ApiAvatarResponse;
-
-  return { ...payload, ok: response.ok && !!payload.success };
+  try {
+    const payload = await api.post<ApiAvatarResponse>('/api/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return { ...payload, ok: !!payload.success };
+  } catch (error) {
+    const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      ?? moabomT('moa_mypage.api.auth_required');
+    return { ok: false, success: false, message };
+  }
 }

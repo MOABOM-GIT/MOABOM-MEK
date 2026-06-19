@@ -55,7 +55,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
       </Div>
 
       {/* 타이틀 */}
-      <Div className="text-2xl font-bold mb-2.5 tracking-tight leading-tight text-heading">
+      <Div className="text-3xl font-bold mb-2.5 tracking-tight leading-tight text-heading">
         {t('moa_shell.login_prompt.title_line1')}
         <br />
         {t('moa_shell.login_prompt.title_line2')}
@@ -66,7 +66,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
       </Div>
 
       {/* 설명 */}
-      <Div className="text-sm text-secondary mb-6 leading-relaxed">
+      <Div className="text-base text-secondary mb-6 leading-tight">
         {t('moa_shell.login_prompt.desc_line1')}
         <br />
         {t('moa_shell.login_prompt.desc_line2')}

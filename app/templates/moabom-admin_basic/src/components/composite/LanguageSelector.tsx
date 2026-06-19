@@ -102,25 +102,6 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   }, [inline]);
 
   /**
-   * 쿠키에서 XSRF 토큰 읽기
-   */
-  const getXsrfToken = (): string | null => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; XSRF-TOKEN=`);
-    if (parts.length === 2) {
-      return decodeURIComponent(parts.pop()?.split(';').shift() || '');
-    }
-    return null;
-  };
-
-  /**
-   * 로컬 스토리지에서 Bearer 토큰 읽기
-   */
-  const getBearerToken = (): string | null => {
-    return localStorage.getItem('auth_token');
-  };
-
-  /**
    * 언어 변경 처리
    */
   const handleLanguageChange = async (locale: string) => {
@@ -129,28 +110,16 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
     try {
       setIsChanging(true);
 
-      const xsrfToken = getXsrfToken();
-      const bearerToken = getBearerToken();
-
-      // API 호출로 DB에 저장 (실패해도 UI는 변경)
-      try {
-        const response = await fetch(apiEndpoint, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            ...(xsrfToken && { 'X-XSRF-TOKEN': xsrfToken }),
-            ...(bearerToken && { Authorization: `Bearer ${bearerToken}` }),
-          },
-          credentials: 'include',
-          body: JSON.stringify({ language: locale }),
-        });
-
-        if (!response.ok) {
-          logger.warn('언어 설정 저장 실패 (UI는 변경됨):', response.statusText);
+      // G7 ApiClient — Bearer·401 refresh·XSRF 는 인터셉터가 처리한다.
+      const g7Api = (window as any).G7Core?.api;
+      if (g7Api?.patch) {
+        try {
+          await g7Api.patch(apiEndpoint, { language: locale });
+        } catch (apiError) {
+          logger.warn('언어 설정 저장 실패 (UI는 변경됨):', apiError);
         }
-      } catch (apiError) {
-        logger.warn('언어 설정 API 호출 실패 (UI는 변경됨):', apiError);
+      } else {
+        logger.warn('G7Core.api unavailable — language saved locally only');
       }
 
       // UI 상태 업데이트

@@ -60,7 +60,7 @@ class TenantSettingsDodApiTest extends ModuleTestCase
                     'site_name' => $siteName,
                     'site_description' => $siteDesc,
                     'site_url' => 'http://localhost:8080',
-                    'admin_email' => 'admin@moabom.com',
+                    'admin_email' => 'admin@mek360.com',
                     'timezone' => 'Asia/Seoul',
                     'language' => 'ko',
                 ],

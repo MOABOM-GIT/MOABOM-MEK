@@ -15,6 +15,7 @@ ENTRY="${ROOT}/deploy/cloudrun-entrypoint.sh"
 SYNC_CMD="${APP}/modules/moabom-system/src/Console/Commands/SaasSyncTemplateLayoutsCommand.php"
 PROVISION="${APP}/modules/moabom-system/src/Saas/TenantProvisionArtisanRunner.php"
 CRJ="${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
+BUILD_DEPLOY="${ROOT}/deploy/build-and-deploy.sh"
 TAB_INFO="${APP}/templates/moabom-admin_basic/layouts/partials/admin_settings/_tab_info.json"
 
 # RF-01: memory Span 바인딩
@@ -120,6 +121,33 @@ grep -q '\*\*/dist/' "${ROOT}/.gcloudignore" \
 grep -q '\*\*/dist' "${ROOT}/.dockerignore" \
   || fail "RF-20: .dockerignore 에 **/dist 제외 없음 (로컬 stale dist 이미지 입력 위험)"
 ok "RF-20: 로컬 dist 업로드/이미지 입력 제외"
+
+# RF-21: RUN_MIGRATIONS=false 운영에서도 새 모듈 컬럼 마이그레이션 누락 방지
+grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
+  && {
+    grep -q 'Post-deploy allowlist module migrations' "${BUILD_DEPLOY}" \
+      || fail "RF-21: build-and-deploy.sh 에 allowlist module migrations Job 단계 없음"
+    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps}"' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps 가 아님"
+    grep -q 'post_deploy_migration_modules()' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration allowlist parser 없음"
+    grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \
+      || fail "RF-21: build-and-deploy.sh 가 모듈별 migrate Job 을 실행하지 않음"
+    grep -q 'moabom:saas:tenants:migrate' "${BUILD_DEPLOY}" \
+      || fail "RF-21: build-and-deploy.sh 가 active tenant 모듈 마이그레이션을 실행하지 않음"
+    grep -q '\[\[ "${module_id}" != moabom-\* \]\]' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration 범위가 moabom-* 로 제한되지 않음"
+    grep -q 'wildcard/path 금지' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration allowlist wildcard/path 금지 없음"
+    python3 - "${BUILD_DEPLOY}" <<'PY' || fail "RF-21: module migrations 가 run_smoke 보다 뒤에 있음"
+import sys
+text = open(sys.argv[1], encoding="utf-8").read()
+module = text.find("Post-deploy allowlist module migrations")
+smoke_after_module = text.find("run_smoke", module)
+raise SystemExit(0 if module != -1 and smoke_after_module != -1 and module < smoke_after_module else 1)
+PY
+    ok "RF-21: RUN_MIGRATIONS=false active module migrations 배포 게이트"
+  }
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

@@ -160,7 +160,7 @@ const MobileNav: React.FC<MobileNavProps> = ({
               )}
               <Div>
                 <P className="font-bold text-primary">{user.name}</P>
-                <Button onClick={() => { onClose(); navigate('/mypage'); }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                <Button onClick={() => { onClose(); navigate('/me/profile'); }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                   {t('common.mypage')}
                 </Button>
               </Div>

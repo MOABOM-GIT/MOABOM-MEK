@@ -1,4 +1,4 @@
-import { getBearerToken } from './moabomModuleApi';
+import { moabomApiGet, moabomApiPost, moabomApiPut, type MoabomApiResult } from './moabomAuthenticatedApi';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSystem';
 import type { MoabomSettingsApiPayload } from '../utils/moabomSystemServerMerge';
 import { setMoabomLocaleCatalog, type MoabomLocaleCatalog } from '../utils/moabomLocaleCatalog';
@@ -24,30 +24,32 @@ type PublicFrontendDefaultsResult = {
 const FRONTEND_DEFAULTS_MEMORY_TTL_MS = 60_000;
 let publicFrontendDefaultsPromise: Promise<PublicFrontendDefaultsResult> | null = null;
 let publicFrontendDefaultsCache: { value: PublicFrontendDefaultsResult; expiresAt: number } | null = null;
+let userSystemSettingsPromise: Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> | null = null;
 
 export function __resetMoabomPublicFrontendDefaultsCacheForTest(): void {
   publicFrontendDefaultsPromise = null;
   publicFrontendDefaultsCache = null;
+  userSystemSettingsPromise = null;
 }
 
-export async function fetchMoabomSystemSettings(): Promise<ApiSystemSettingsResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: '로그인이 필요합니다.' };
+export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
+  if (userSystemSettingsPromise) {
+    return userSystemSettingsPromise;
   }
 
-  const response = await fetch('/api/modules/moabom-system/user/settings', {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const payload = await response.json() as ApiSystemSettingsResponse;
-  if (payload.data?.locale_catalog) {
-    setMoabomLocaleCatalog(payload.data.locale_catalog);
-  }
+  userSystemSettingsPromise = (async () => {
+    const result = await moabomApiGet<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings');
+    if (result.data?.locale_catalog) {
+      setMoabomLocaleCatalog(result.data.locale_catalog);
+    }
+    return result;
+  })();
 
-  return { ...payload, ok: response.ok && !!payload.success };
+  try {
+    return await userSystemSettingsPromise;
+  } finally {
+    userSystemSettingsPromise = null;
+  }
 }
 
 /** 비로그인 셸/게스트용 — 플랫폼 기본값 + `defaults_revision` */
@@ -130,43 +132,16 @@ export async function loadMoabomSettingsPayloadForMerge(isLoggedIn: boolean): Pr
 
 /** 코어 프로필 언어 — `coreSyncLanguageFromMoabomPref` 결과를 POST */
 export async function updateCoreUserLanguage(language: string): Promise<{ ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false };
-  }
-
-  const response = await fetch('/api/user/profile/update-language', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ language }),
-  });
-
-  return { ok: response.ok };
+  const result = await moabomApiPost('/api/user/profile/update-language', { language });
+  return { ok: result.ok };
 }
 
-export async function saveMoabomSystemSettings(settings: MoabomSystemState): Promise<ApiSystemSettingsResponse & { ok: boolean }> {
-  const token = getBearerToken();
-  if (!token) {
-    return { ok: false, success: false, message: '로그인이 필요합니다.' };
+export async function saveMoabomSystemSettings(
+  settings: MoabomSystemState,
+): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
+  const result = await moabomApiPut<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings', settings);
+  if (result.data?.locale_catalog) {
+    setMoabomLocaleCatalog(result.data.locale_catalog);
   }
-
-  const response = await fetch('/api/modules/moabom-system/user/settings', {
-    method: 'PUT',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(settings),
-  });
-  const payload = await response.json() as ApiSystemSettingsResponse;
-  if (payload.data?.locale_catalog) {
-    setMoabomLocaleCatalog(payload.data.locale_catalog);
-  }
-
-  return { ...payload, ok: response.ok && !!payload.success };
+  return result;
 }

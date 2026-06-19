@@ -34,12 +34,18 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
         vi.restoreAllMocks();
     });
 
-    it('ensureSirsoftEcommerceExtensionLoaded는 deferred가 있으면 loadDeferredExtensionAssets를 호출한다', async () => {
+    it('ensureSirsoftEcommerceExtensionLoaded는 deferred가 있으면 reloadModuleHandlers를 호출한다', async () => {
         const w = window as unknown as { G7Core: { dispatch: ReturnType<typeof vi.fn> } };
         await ensureSirsoftEcommerceExtensionLoaded();
         expect(w.G7Core.dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { moduleIdentifiers: ['sirsoft-ecommerce'] },
+            handler: 'reloadModuleHandlers',
+            params: {
+                action: 'add',
+                moduleInfo: {
+                    identifier: 'sirsoft-ecommerce',
+                    assets: { js: '/api/modules/assets/sirsoft-ecommerce/dist/js/module.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -57,7 +63,7 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
         expect(w.G7Core.dispatch).not.toHaveBeenCalled();
     });
 
-    it('Ghost 부트처럼 deferred가 비어도 extensionDeferredRegistry가 있으면 loadDeferredExtensionAssets를 호출한다', async () => {
+    it('Ghost 부트처럼 deferred가 비어도 extensionDeferredRegistry가 있으면 reloadModuleHandlers를 호출한다', async () => {
         (window as unknown as { G7Config: Record<string, unknown> }).G7Config = {
             moduleAssets: {},
             deferredModuleAssets: {},
@@ -77,8 +83,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
         const w = window as unknown as { G7Core: { dispatch: ReturnType<typeof vi.fn> } };
         await ensureSirsoftEcommerceExtensionLoaded();
         expect(w.G7Core.dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { moduleIdentifiers: ['sirsoft-ecommerce'] },
+            handler: 'reloadModuleHandlers',
+            params: {
+                action: 'add',
+                moduleInfo: {
+                    identifier: 'sirsoft-ecommerce',
+                    assets: { js: '/api/modules/assets/sirsoft-ecommerce/dist/js/module.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -105,8 +117,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         await ensureSirsoftDaumPostcodePluginLoaded();
         expect(dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-daum_postcode'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-daum_postcode',
+                    assets: { js: '/api/plugins/assets/sirsoft-daum_postcode/dist/js/plugin.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -135,8 +153,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         await ensureSirsoftDaumPostcodePluginLoaded();
         expect(dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-daum_postcode'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-daum_postcode',
+                    assets: { js: '/api/plugins/assets/sirsoft-daum_postcode/dist/js/plugin.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -167,12 +191,24 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         expect(dispatch).toHaveBeenCalledTimes(2);
         expect(dispatch.mock.calls[0]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { moduleIdentifiers: ['sirsoft-ecommerce'] },
+            handler: 'reloadModuleHandlers',
+            params: {
+                action: 'add',
+                moduleInfo: {
+                    identifier: 'sirsoft-ecommerce',
+                    assets: { js: '/api/modules/assets/sirsoft-ecommerce/dist/js/module.iife.js?v=1' },
+                },
+            },
         });
         expect(dispatch.mock.calls[1]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-daum_postcode'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-daum_postcode',
+                    assets: { js: '/api/plugins/assets/sirsoft-daum_postcode/dist/js/plugin.iife.js?v=1' },
+                },
+            },
         });
     });
 
@@ -201,8 +237,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
         expect(dispatch.mock.calls.some((c) => (c[0] as { params?: { moduleIdentifiers?: string[] } })?.params?.moduleIdentifiers?.includes('sirsoft-ecommerce'))).toBe(false);
         expect(dispatch).toHaveBeenCalledTimes(1);
         expect(dispatch.mock.calls[0]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-daum_postcode'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-daum_postcode',
+                    assets: { js: '/api/plugins/assets/sirsoft-daum_postcode/dist/js/plugin.iife.js?v=1' },
+                },
+            },
         });
     });
 
@@ -235,16 +277,34 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         expect(dispatch).toHaveBeenCalledTimes(3);
         expect(dispatch.mock.calls[0]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { moduleIdentifiers: ['sirsoft-ecommerce'] },
+            handler: 'reloadModuleHandlers',
+            params: {
+                action: 'add',
+                moduleInfo: {
+                    identifier: 'sirsoft-ecommerce',
+                    assets: { js: '/api/modules/assets/sirsoft-ecommerce/dist/js/module.iife.js?v=1' },
+                },
+            },
         });
         expect(dispatch.mock.calls[1]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-daum_postcode'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-daum_postcode',
+                    assets: { js: '/api/plugins/assets/sirsoft-daum_postcode/dist/js/plugin.iife.js?v=1' },
+                },
+            },
         });
         expect(dispatch.mock.calls[2]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-tosspayments'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-tosspayments',
+                    assets: { js: '/api/plugins/assets/sirsoft-tosspayments/dist/js/plugin.iife.js?v=1' },
+                },
+            },
         });
     });
 
@@ -290,8 +350,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         await ensureSirsoftCkeditor5PluginLoaded();
         expect(dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-ckeditor5'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-ckeditor5',
+                    assets: { js: '/api/plugins/assets/sirsoft-ckeditor5/dist/js/plugin.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -313,8 +379,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         await ensureSirsoftTosspaymentsPluginLoaded();
         expect(dispatch).toHaveBeenCalledWith({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-tosspayments'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-tosspayments',
+                    assets: { js: '/api/plugins/assets/sirsoft-tosspayments/dist/js/plugin.iife.js?v=1', priority: 100 },
+                },
+            },
         });
     });
 
@@ -342,8 +414,14 @@ describe('sirsoftEcommerceLayoutPrefetch', () => {
 
         expect(dispatch).toHaveBeenCalledTimes(1);
         expect(dispatch.mock.calls[0]?.[0]).toEqual({
-            handler: 'loadDeferredExtensionAssets',
-            params: { pluginIdentifiers: ['sirsoft-ckeditor5'] },
+            handler: 'reloadPluginHandlers',
+            params: {
+                action: 'add',
+                pluginInfo: {
+                    identifier: 'sirsoft-ckeditor5',
+                    assets: { js: '/api/plugins/assets/sirsoft-ckeditor5/dist/js/plugin.iife.js?v=1' },
+                },
+            },
         });
     });
 });

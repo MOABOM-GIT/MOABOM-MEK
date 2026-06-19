@@ -22,8 +22,10 @@ describe('moabomGhostRoutesFetch', () => {
         expect(pathNeedsEcommerceMergedRoutes('/cart')).toBe(true);
         expect(pathNeedsEcommerceMergedRoutes('/checkout')).toBe(true);
         expect(pathNeedsEcommerceMergedRoutes('/orders')).toBe(true);
+        expect(pathNeedsEcommerceMergedRoutes('/mypage/orders/ORD-1')).toBe(true);
         expect(pathNeedsEcommerceMergedRoutes('/')).toBe(false);
         expect(pathNeedsEcommerceMergedRoutes('/me')).toBe(false);
+        expect(pathNeedsEcommerceMergedRoutes('/mypage')).toBe(false);
     });
 
     it('선행 2글자 로케일 세그먼트를 제거한 뒤 이커머스 경로를 판별한다', () => {

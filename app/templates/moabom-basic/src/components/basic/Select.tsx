@@ -198,7 +198,7 @@ export const Select: React.FC<SelectProps> = ({
   };
   /** 레이아웃에 기본 트리거 문자열이 그대로 오거나, 이미 표면이 조합된 경우 `glass-sm` 이중 삽입 방지 */
   const baseButtonClass = hasCustomStyle
-    ? `${trimmedClass}${hasTextColor ? '' : ' text-secondary'}`
+    ? withSelectRowIfMissing(`${trimmedClass}${hasTextColor ? '' : ' text-secondary'}`)
     : !trimmedClass
       ? selectTriggerDefault
       : trimmedClass === selectTriggerDefault

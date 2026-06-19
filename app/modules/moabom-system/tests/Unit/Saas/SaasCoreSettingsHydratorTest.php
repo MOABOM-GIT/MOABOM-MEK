@@ -37,6 +37,18 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
             'generator_enabled' => true,
             'generator_content' => 'SmartCare',
         ]);
+        $repo->saveCategory('drivers', [
+            'websocket_enabled' => true,
+            'websocket_app_id' => 'moabom-laravel',
+            'websocket_app_key' => 'test-key',
+            'websocket_app_secret' => 'test-secret',
+            'websocket_host' => 'tenant.mek360.com',
+            'websocket_port' => 443,
+            'websocket_scheme' => 'https',
+            'websocket_server_host' => '127.0.0.1',
+            'websocket_server_port' => 6001,
+            'websocket_server_scheme' => 'http',
+        ]);
 
         app(SaasCoreSettingsHydrator::class)->hydrate();
 
@@ -46,6 +58,8 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
         $this->assertSame('SmartCare', config('g7_settings.core.seo.generator_content'));
         $this->assertSame('Asia/Seoul', config('app.default_user_timezone'));
         $this->assertSame('ko', config('app.locale'));
+        $this->assertSame('tenant.mek360.com', config('g7.websocket.client.host'));
+        $this->assertSame('test-key', config('broadcasting.connections.reverb.key'));
     }
 
     public function test_settings_revision_token_changes_when_seo_changes(): void

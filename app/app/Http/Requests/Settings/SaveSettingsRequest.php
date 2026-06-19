@@ -168,6 +168,7 @@ class SaveSettingsRequest extends FormRequest
             'general.site_name' => $this->getTabRules($tab, 'general', 'string|max:100'),
             'general.site_url' => $this->getTabRules($tab, 'general', 'url|max:255'),
             'general.site_description' => ['nullable', 'string', 'max:500'],
+            'general.site_address' => ['nullable', 'string', 'max:500'],
             'general.admin_email' => $this->getTabRules($tab, 'general', 'email|max:255'),
             'general.timezone' => $this->getTabRules($tab, 'general', ['timezone']),
             'general.language' => $this->getTabRules($tab, 'general', [Rule::in(config('app.supported_locales', ['ko', 'en']))]),

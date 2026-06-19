@@ -20,6 +20,17 @@ class AiAppRequestsTest extends ModuleTestCase
         $this->assertTrue($passes);
     }
 
+    public function test_generate_ai_app_request_rejects_gemini_flash(): void
+    {
+        $passes = Validator::make([
+            'prompt' => '수면 리포트 앱을 만들어줘',
+            'app_type' => 'dataviz',
+            'model_id' => 'gemini-flash',
+        ], (new GenerateAiAppRequest)->rules())->passes();
+
+        $this->assertFalse($passes);
+    }
+
     public function test_store_generated_app_request_requires_complete_html(): void
     {
         $passes = Validator::make([

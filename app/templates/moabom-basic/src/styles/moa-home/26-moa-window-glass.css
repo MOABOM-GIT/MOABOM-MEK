@@ -1,0 +1,40 @@
+/**
+ * 앱 윈도우 크롬 — 구 react-glass-ui GlassCard 의 blur/saturate/표면·glow 만 CSS 로 유지.
+ * (SVG liquid 굴절은 `.liquid-glass` 전용 — `27-liquid-glass.css`)
+ */
+
+.moa-window-frame {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  /** 구 GlassCard content 기본 padding(10px) */
+  padding: var(--moa-window-content-padding);
+  background: transparent;
+  border: none;
+  box-shadow:
+    0 0 var(--moa-window-outer-glow-blur) var(--moa-window-outer-glow-spread) var(--moa-window-outer-glow);
+}
+
+.moa-window-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+
+  background-color: var(--moa-window-surface);
+  border: 1px solid var(--moa-window-border);
+  box-shadow: inset 0 0 var(--moa-window-inner-glow-blur) var(--moa-window-inner-glow-spread) var(--moa-window-inner-glow);
+
+  -webkit-backdrop-filter: blur(var(--moa-window-blur)) saturate(var(--moa-window-saturation)) brightness(var(--moa-window-brightness));
+  backdrop-filter: blur(var(--moa-window-blur)) saturate(var(--moa-window-saturation)) brightness(var(--moa-window-brightness));
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .moa-window-frame::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

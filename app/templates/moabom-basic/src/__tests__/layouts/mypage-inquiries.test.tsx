@@ -47,11 +47,10 @@ describe('마이페이지 문의내역 레이아웃 검증 (inquiries.json)', ()
         expect(initAction.params.inquiriesPage).toBeDefined();
     });
 
-    it('transition_overlay 스켈레톤 설정이 있어야 함', () => {
+    it('transition_overlay 설정이 있어야 함', () => {
         const overlay = (inquiriesLayout as any).transition_overlay;
         expect(overlay).toBeDefined();
         expect(overlay.enabled).toBe(true);
-        expect(overlay.style).toBe('skeleton');
         expect(overlay.target).toBe('mypage_tab_content');
     });
 

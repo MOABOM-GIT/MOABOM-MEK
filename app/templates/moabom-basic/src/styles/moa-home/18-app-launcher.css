@@ -43,60 +43,72 @@
   to { --angle: 360deg; }
 }
 
-.create-app-btn {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-  cursor: pointer;
-}
-
-.create-app-btn:hover {
-  transform: scale(1.10);
-}
-
-.create-app-btn:active {
-  transform: scale(0.93);
-}
-
 .create-app-icon {
+  --create-app-ring-pad: 3px;
+  --create-app-inner-inset: 3px;
   position: relative;
   background: 0 0;
   border: solid 2px;
   border-color: rgba(255, 255, 255, 0.99);
 }
 
+/* 좌측 패널 등 소형 타일 — 링·내부 inset 축소로 둥근 사각형 비율 유지 */
+.create-app-icon--compact {
+  --create-app-ring-pad: 2px;
+  --create-app-inner-inset: 2px;
+  border-width: 1px;
+}
+
 .dark .create-app-icon {
   border-color: #525252c7;
 }
 
-/* 회전 보더 (가장 바깥) — 색은 부모에서 --create-app-spin-a/b 로 주입(AI 앱 생성기 악센트) */
+/* 회전 보더 — 색은 부모 --create-app-spin-a/b (AI 앱 생성기 악센트) */
 .create-app-icon::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 3px;
+  padding: var(--create-app-ring-pad);
+  animation: spin-border 5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   background: conic-gradient(
     from var(--angle),
     transparent 42%,
-    color-mix(in srgb, var(--create-app-spin-a, #8b5cf6) 75%, transparent),
-    color-mix(in srgb, var(--create-app-spin-b, #ec4899) 75%, transparent),
+    var(--create-app-spin-a, #8b5cf6),
+    var(--create-app-spin-b, #ec4899),
     transparent 58%
   );
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: spin-border 5s linear infinite;
+}
+
+@supports (color: color-mix(in srgb, red, red)) {
+  .create-app-icon::before {
+    background: conic-gradient(
+      from var(--angle),
+      transparent 42%,
+      color-mix(in srgb, var(--create-app-spin-a, #8b5cf6) 75%, transparent),
+      color-mix(in srgb, var(--create-app-spin-b, #ec4899) 75%, transparent),
+      transparent 58%
+    );
+  }
 }
 
 /* 보더 안쪽 면 — 그라데이션(변수), 미주입 시 밝은 면 */
 .create-app-icon::after {
   content: '';
   position: absolute;
-  inset: 3px;
-  border-radius: 20px;
+  inset: var(--create-app-inner-inset);
+  border-radius: inherit;
   background: var(--create-app-inner-bg, #ffffffe6);
   border: 2px solid;
   border-color: rgba(255, 255, 255, 0.35);
+}
+
+.create-app-icon--compact::after {
+  border-width: 1px;
 }
 
 .dark .create-app-icon::after {

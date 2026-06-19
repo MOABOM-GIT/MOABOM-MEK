@@ -1,5 +1,6 @@
 /** localStorage 키 — 메인 그리드 한 판 */
 export const STORAGE_KEY_ORDER = 'moabom_main_order';
+export const STORAGE_KEY_CREATE_APP_ORDER_MIGRATED = 'moabom_create_app_order_migrated';
 export const STORAGE_KEY_FAVORITES = 'moabom_favorites';
 export const STORAGE_KEY_TASKBAR_ICONS = 'moabom_taskbar_icons';
 export const STORAGE_KEY_RECENT_APPS = 'moabom_recent_apps';
@@ -15,12 +16,16 @@ export const AUTH_WINDOW_APP_IDS = ['login', 'register', 'forgot-password', 'res
 export const MAX_OPEN_WINDOWS = 5;
 export const MAX_TASKBAR_ITEMS = 10;
 export const MAX_RECENT_APPS = 9;
-export const DEFAULT_WINDOW_WIDTH = 1050;
-export const DEFAULT_WINDOW_HEIGHT = 768;
+export const DEFAULT_WINDOW_WIDTH = 1280;
+export const DEFAULT_WINDOW_HEIGHT = 800;
 
 /** sirsoft-page 약관·개인정보 창 기본 크기 */
 export const LEGAL_PAGE_WINDOW_WIDTH = 720;
 export const LEGAL_PAGE_WINDOW_HEIGHT = 680;
+
+/** sirsoft-board 게시판 윈도우 기본 크기 */
+export const BOARD_WINDOW_WIDTH = 1100;
+export const BOARD_WINDOW_HEIGHT = 760;
 export const AUTH_WINDOW_WIDTH = 482;
 export const AUTH_WINDOW_HEIGHT = 520;
 export const WINDOW_CASCADE_STEP = 10;

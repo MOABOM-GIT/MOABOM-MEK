@@ -309,29 +309,18 @@
                         },
                         {
                           "event": "onNotificationClick",
-                          "handler": "parallel",
+                          "handler": "apiCall",
+                          "auth_required": true,
+                          "target": "/api/admin/notifications/{{$args[0].id}}/read",
                           "params": {
-                            "actions": [
-                              {
-                                "handler": "navigate",
-                                "params": { "path": "{{$args[0].url ?? '/admin/notification-logs'}}" }
-                              },
-                              {
-                                "handler": "apiCall",
-                                "auth_required": true,
-                                "target": "/api/admin/notifications/{{$args[0].id}}/read",
-                                "params": {
-                                  "method": "PATCH"
-                                },
-                                "onSuccess": [
-                                  {
-                                    "handler": "refetchDataSource",
-                                    "params": { "dataSourceId": "notification_unread_count" }
-                                  }
-                                ]
-                              }
-                            ]
-                          }
+                            "method": "PATCH"
+                          },
+                          "onSuccess": [
+                            {
+                              "handler": "refetchDataSource",
+                              "params": { "dataSourceId": "notification_unread_count" }
+                            }
+                          ]
                         },
                         {
                           "event": "onMarkAllRead",
@@ -719,29 +708,18 @@
                         },
                         {
                           "event": "onNotificationClick",
-                          "handler": "parallel",
+                          "handler": "apiCall",
+                          "auth_required": true,
+                          "target": "/api/admin/notifications/{{$args[0].id}}/read",
                           "params": {
-                            "actions": [
-                              {
-                                "handler": "navigate",
-                                "params": { "path": "{{$args[0].url ?? '/admin/notification-logs'}}" }
-                              },
-                              {
-                                "handler": "apiCall",
-                                "auth_required": true,
-                                "target": "/api/admin/notifications/{{$args[0].id}}/read",
-                                "params": {
-                                  "method": "PATCH"
-                                },
-                                "onSuccess": [
-                                  {
-                                    "handler": "refetchDataSource",
-                                    "params": { "dataSourceId": "notification_unread_count" }
-                                  }
-                                ]
-                              }
-                            ]
-                          }
+                            "method": "PATCH"
+                          },
+                          "onSuccess": [
+                            {
+                              "handler": "refetchDataSource",
+                              "params": { "dataSourceId": "notification_unread_count" }
+                            }
+                          ]
                         },
                         {
                           "event": "onMarkAllRead",

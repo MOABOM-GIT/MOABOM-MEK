@@ -5,6 +5,7 @@ import { Span } from '../basic/Span';
 import { Icon } from '../basic/Icon';
 import { IconName } from '../basic/IconTypes';
 import { Input } from '../basic/Input';
+import { navigateMoabomNotificationUrl } from '../../../../../modules/moabom-system/js/shared/moabomNotificationNavigateUrl';
 
 /**
  * 알림 아이템 인터페이스
@@ -16,6 +17,8 @@ export interface NotificationItem {
   time: string;
   read?: boolean;
   iconName?: IconName;
+  /** 알림 클릭 이동 URL (API `url` 필드) */
+  url?: string;
   data?: Record<string, unknown>;
   onClick?: () => void;
 }
@@ -358,6 +361,18 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       data-unread={isUnread ? 'true' : 'false'}
                       onClick={() => {
                         notification.onClick?.();
+                        const notificationType =
+                          typeof notification.data?.type === 'string' ? notification.data.type : undefined;
+                        const targetUrl = notification.url?.trim();
+                        if (targetUrl) {
+                          navigateMoabomNotificationUrl(targetUrl, notificationType);
+                        } else {
+                          const G7Core = (window as { G7Core?: { dispatch?: (action: unknown) => void } }).G7Core;
+                          G7Core?.dispatch?.({
+                            handler: 'navigate',
+                            params: { path: '/admin/notification-logs' },
+                          });
+                        }
                         onNotificationClick?.(notification);
                         setShowNotifications(false);
                       }}

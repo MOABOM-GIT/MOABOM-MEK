@@ -76,16 +76,26 @@ grep -q 'use App\\Extension\\ExtensionManager' "${MRP}" \
   || fail "use ExtensionManager import 필요"
 ok "ModuleManager + ExtensionManager::directoryToNamespace"
 
-echo "==> [v7-4] Dockerfile 에서 활성 템플릿/모듈을 모두 빌드 (Cloud Build SSOT)"
+echo "==> [v7-4] Dockerfile 에서 활성 템플릿/모듈/플러그인을 모두 빌드 (Cloud Build SSOT)"
 # 사용자 정책: 호스트/WSL 빌드 금지, 모든 빌드는 Cloud Build 안에서.
-# moabom-admin_basic·moabom-system 과 동일 패턴으로 moabom-basic 도 컨테이너 안에서 빌드되어야 한다.
-grep -qE 'templates/moabom-admin_basic.*npm (ci|run build)' "${DOCKERFILE}" 2>/dev/null \
-  || fail "Dockerfile 에 moabom-admin_basic npm 빌드 단계 누락 — Cloud Build 가 dist 를 못 만들면 운영 미반영"
-grep -qE 'modules/moabom-system.*npm (ci|run build)' "${DOCKERFILE}" 2>/dev/null \
-  || fail "Dockerfile 에 modules/moabom-system npm 빌드 단계 누락"
-grep -qE 'templates/moabom-basic.*npm (ci|run build)' "${DOCKERFILE}" 2>/dev/null \
-  || fail "Dockerfile 에 templates/moabom-basic npm 빌드 단계 누락 — Cloud Build SSOT 정책 (host build 금지의 짝)"
-ok "Dockerfile 이 활성 템플릿/모듈 dist 를 모두 빌드 (admin_basic·moabom-basic·moabom-system)"
+# module.json/plugin.json 에 assets 가 선언된 활성 확장은 Dockerfile assets 단계에 npm ci+build+dist COPY 가 있어야 한다.
+CLOUD_BUILD_ASSET_PATHS=(
+  'templates/moabom-admin_basic'
+  'modules/moabom-system'
+  'templates/moabom-basic'
+  'modules/sirsoft-ecommerce'
+  'plugins/sirsoft-ckeditor5'
+  'plugins/sirsoft-daum_postcode'
+  'plugins/sirsoft-tosspayments'
+  'plugins/moabom-auth-hardening'
+)
+for asset_path in "${CLOUD_BUILD_ASSET_PATHS[@]}"; do
+  grep -qE "${asset_path}.*npm (ci|run build)" "${DOCKERFILE}" 2>/dev/null \
+    || fail "Dockerfile 에 ${asset_path} npm 빌드 단계 누락 — Cloud Build 가 dist 를 못 만들면 운영 미반영"
+  grep -qE "COPY --from=assets .*${asset_path}/dist ./${asset_path}/dist" "${DOCKERFILE}" 2>/dev/null \
+    || fail "Dockerfile 에 ${asset_path} dist COPY 누락 — moduleAssets/pluginAssets 가 런타임에서 404"
+done
+ok "Dockerfile 이 assets 선언 확장 dist 를 모두 빌드·복사 (템플릿 2·모듈 2·플러그인 4)"
 
 echo "==> [v7-4b] Dockerfile 에 _bundled COPY 금지 (활성 폴더 SSOT)"
 if grep -nE '^COPY[[:space:]].*_bundled' "${DOCKERFILE}" 2>/dev/null; then
@@ -143,6 +153,12 @@ MOABOM_TSC="${ROOT}/app/templates/moabom-basic/tsconfig.json"
 [[ -f "${TSCONFIG}" ]] || fail "app/tsconfig.json 없음"
 [[ -f "${MOABOM_TSC}" ]] || fail "templates/moabom-basic/tsconfig.json 없음 — Cloud Build SSOT"
 ok "tsconfig: g7 코어 + moabom-basic 전용 tsconfig"
+
+echo "==> [v7-6bb] Moabom 반응형 breakpoint SSOT"
+chmod +x "${ROOT}/scripts/check-responsive-breakpoints.sh" 2>/dev/null || true
+if ! "${ROOT}/scripts/check-responsive-breakpoints.sh"; then
+  fail "responsive breakpoint 불일치 — scripts/check-responsive-breakpoints.sh"
+fi
 
 echo "==> [v7-6c] Moabom 최소 코어 패치 (core:update 전 게이트)"
 chmod +x "${ROOT}/deploy/check-core-patches.sh" 2>/dev/null || true

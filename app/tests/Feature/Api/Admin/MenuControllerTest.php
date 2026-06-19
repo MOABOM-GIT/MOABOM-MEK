@@ -384,6 +384,18 @@ class MenuControllerTest extends TestCase
             ->assertJson(['success' => true]);
     }
 
+    public function test_active_menus_response_is_not_browser_cached(): void
+    {
+        $this->createTestMenu(['is_active' => true, 'slug' => 'fresh-menu']);
+
+        $response = $this->authRequest()->getJson('/api/admin/menus/active');
+
+        $response->assertStatus(200)
+            ->assertHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->assertHeader('Pragma', 'no-cache')
+            ->assertHeader('Expires', '0');
+    }
+
     // ========================================================================
     // 메뉴 생성 테스트 (store)
     // ========================================================================

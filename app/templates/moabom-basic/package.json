@@ -1,6 +1,6 @@
 {
   "name": "moabom-basic",
-  "version": "0.6.77",
+  "version": "0.6.78",
   "description": "Moabom Custom User Template Components",
   "type": "module",
   "main": "dist/components.js",
@@ -48,7 +48,6 @@
     "@mediapipe/tasks-vision": "^0.10.35",
     "browser-image-compression": "^2.0.2",
     "dompurify": "^3.3.1",
-    "react-glass-ui": "^1.2.2",
     "workbox-window": "^7.1.0",
     "yet-another-react-lightbox": "^3.27.0"
   }

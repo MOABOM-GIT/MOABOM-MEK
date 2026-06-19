@@ -37,31 +37,31 @@ final class TenantProvisionArtisanRunner
 
         try {
             foreach ($moduleSyncDeclarations as $moduleId) {
-                Artisan::call('moabom:module-sync-declarations', [
+                $this->callArtisanOrFail('moabom:module-sync-declarations', [
                     'identifier' => $moduleId,
                 ]);
             }
 
             foreach ($package->moduleRefreshLayout as $moduleId) {
-                Artisan::call('module:refresh-layout', [
+                $this->callArtisanOrFail('module:refresh-layout', [
                     'identifier' => $moduleId,
                 ]);
             }
 
             // platform clone 은 구 template_layouts 를 복사 — filesystem SSOT 로 admin 덮어쓰기
             if ($package->activeAdminTemplate !== '') {
-                Artisan::call('template:refresh-layout', [
+                $this->callArtisanOrFail('template:refresh-layout', [
                     'identifier' => $package->activeAdminTemplate,
                 ]);
             }
 
-            Artisan::call('template:cache-clear');
+            $this->callArtisanOrFail('template:cache-clear');
 
             // 신규 tenant 안전망 — ExtensionMenuSyncHelper::grantDefaultRoles 가
             // 신규 row 에서만 동작하므로, sync 후 admin role × menus 매핑이 비어있을 수
             // 있다 (freshent 케이스). idempotent 한 repair 명령으로 보장.
             // @see deploy/AGENT-FAILURE-ANALYSIS.md §12
-            Artisan::call('moabom:saas:tenant-repair', [
+            $this->callArtisanOrFail('moabom:saas:tenant-repair', [
                 'slug' => $tenant->slug,
                 '--apply' => true,
                 '--package' => $packageId,
@@ -71,27 +71,35 @@ final class TenantProvisionArtisanRunner
             ]);
 
             // Host-aware moabom-system 메뉴 선언 + platform 오염 slug 제거 (provision SSOT).
-            Artisan::call('moabom:saas:sync-tenant-admin-menus', [
+            $this->callArtisanOrFail('moabom:saas:sync-tenant-admin-menus', [
                 'slug' => $tenant->slug,
             ]);
 
-            Artisan::call('moabom:saas:sync-tenant-language-packs', [
+            // sync 가 신규 menu row 를 추가한 뒤 role_menus 가 비는 레이스 방지 (최초 로그인 4메뉴 증상).
+            $this->callArtisanOrFail('moabom:saas:tenant-repair', [
+                'slug' => $tenant->slug,
+                '--apply' => true,
+                '--skip-menu-rows' => true,
+                '--skip-purge-tenant-forbidden-menus' => true,
+                '--skip-modules' => true,
+                '--skip-templates' => true,
+                '--skip-plugins' => true,
+                '--skip-legal-pages' => true,
+                '--skip-language-packs' => true,
+            ]);
+
+            $this->callArtisanOrFail('cache:clear');
+
+            $this->callArtisanOrFail('moabom:saas:sync-tenant-language-packs', [
                 'slug' => $tenant->slug,
             ]);
 
             // B안 — 신규 tenant 수렴+검증 단일 패스. 위 개별 동기화 후 module_layouts 누락분까지
             // idempotent 하게 보강하고, 환경설정>언어팩 목록·admin_settings 정합성을 검증한다.
-            // (실패해도 provision 전체를 막지 않도록 예외는 로깅만 — 검증 결과는 reconcile 로그로 확인)
-            try {
-                Artisan::call('moabom:saas:tenant-reconcile', [
-                    'slug' => $tenant->slug,
-                ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('tenant-reconcile (provision) 실패', [
-                    'slug' => $tenant->slug,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // 메뉴/언어팩 검증 실패를 active tenant 로 넘기지 않도록 종료코드를 전파한다.
+            $this->callArtisanOrFail('moabom:saas:tenant-reconcile', [
+                'slug' => $tenant->slug,
+            ]);
 
             app(TenantLegalPagesSynchronizer::class)->syncForTenant($tenant, $sourceDb);
         } finally {
@@ -135,5 +143,24 @@ final class TenantProvisionArtisanRunner
         $connection = (string) config('database.default', 'mysql');
 
         return (string) config("database.connections.{$connection}.prefix", '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function callArtisanOrFail(string $command, array $parameters = []): void
+    {
+        $exitCode = Artisan::call($command, $parameters);
+        if ($exitCode === 0) {
+            return;
+        }
+
+        $output = trim(Artisan::output());
+        throw new \RuntimeException(sprintf(
+            '%s 실패(exit=%d)%s',
+            $command,
+            $exitCode,
+            $output !== '' ? ': '.$output : '',
+        ));
     }
 }

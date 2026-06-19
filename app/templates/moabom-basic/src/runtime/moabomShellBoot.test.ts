@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     ensureMoabomShellBootLoaded,
+    getMoabomShellBootData,
     installMoabomShellBootFetch,
     resetMoabomShellBootCacheForTest,
     resetMoabomShellBootFetchForTest,
@@ -49,6 +50,23 @@ describe('ensureMoabomShellBootLoaded', () => {
         expect(String(fetchMock.mock.calls[0]?.[0])).toContain('shell-boot');
         expect(first?.social_providers).toEqual(['google', 'kakao']);
         expect(second).toBe(first);
+    });
+
+    it('별도 셸 앱 청크도 window singleton 의 shell-boot 데이터를 재사용한다', async () => {
+        const sharedPayload = {
+            ...BOOT_PAYLOAD.data,
+            site: { site_name: '상쾌한이비인후과', is_platform: false },
+            social_providers: ['naver'],
+        };
+        const fetchMock = vi.fn();
+
+        window.__MoabomShellBoot = { data: sharedPayload as Awaited<ReturnType<typeof ensureMoabomShellBootLoaded>> };
+
+        expect(getMoabomShellBootData()?.site?.site_name).toBe('상쾌한이비인후과');
+        const loaded = await ensureMoabomShellBootLoaded(fetchMock);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(loaded?.site?.site_name).toBe('상쾌한이비인후과');
     });
 });
 

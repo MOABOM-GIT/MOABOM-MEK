@@ -1,15 +1,15 @@
 import React from 'react';
 import type { App } from '../../../data/Moa_apps';
 import type { MoabomSystemLanguage } from '../../../types/moabomSystem';
-import {
-  parseGeneratedLibraryServerId,
-} from '../../../apps/generatedAppLibrary';
 import { resolveAppStrings } from '../../../i18n/resolveAppStrings';
 import { Button } from '../../basic/Button';
 import { Div } from '../../basic/Div';
 import { Icon } from '../../basic/Icon';
 import { Span } from '../../basic/Span';
+import { isGeneratedLibraryAppId } from '../../../apps/generatedAppLibrary';
+import { Moa_GeneratedAppUserBadge } from '../Moa_GeneratedAppUserBadge';
 import { Moa_OverflowMarqueeText } from '../Moa_OverflowMarqueeText';
+import { APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 
 interface LibrarySectionProps {
@@ -19,8 +19,6 @@ interface LibrarySectionProps {
   emptyText: string;
   appInfoFallback: string;
   onOpenApp?: (app: App) => void;
-  onEditGeneratedApp?: (serverId: number) => void;
-  editAriaLabel?: string;
 }
 
 export const LibrarySection: React.FC<LibrarySectionProps> = ({
@@ -30,30 +28,27 @@ export const LibrarySection: React.FC<LibrarySectionProps> = ({
   emptyText,
   appInfoFallback,
   onOpenApp,
-  onEditGeneratedApp,
-  editAriaLabel,
 }) => (
   <Div className={`${GROUP_PANEL} p-5`}>
     <Div className={MY_PAGE_BLOCK_TITLE_CLASS}>{title}</Div>
     {apps.length > 0 ? (
       <Div
-        className="moa-mypage-library grid gap-4"
+        className="moa-mypage-library moa-app-stack-grid grid"
         style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', justifyItems: 'stretch' }}
       >
         {apps.map(app => {
           const { name, description } = resolveAppStrings(app, locale);
           const desc = description.trim();
-          const serverId = parseGeneratedLibraryServerId(app.id);
-          const canEdit = serverId != null && onEditGeneratedApp != null;
           return (
-            <Div key={app.id} className="group relative w-full max-w-[78px] min-w-0 mx-auto">
+            <Div key={app.id} className="relative mx-auto w-full max-w-[78px] min-w-0">
               <Button
                 type="button"
                 onClick={() => onOpenApp?.(app)}
                 className="flex w-full flex-col items-center gap-2 rounded-xl border-0 bg-transparent p-0 hover:opacity-90 transition-all cursor-pointer"
               >
-                <Div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ background: app.gradient }}>
+                <Div className="relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ background: app.gradient }}>
                   <Icon name={app.icon} className="text-white text-xl" />
+                  {isGeneratedLibraryAppId(app.id) ? <Moa_GeneratedAppUserBadge size="md" /> : null}
                 </Div>
                 <Div className="w-full min-w-0 text-center">
                   <Moa_OverflowMarqueeText
@@ -66,20 +61,6 @@ export const LibrarySection: React.FC<LibrarySectionProps> = ({
                   />
                 </Div>
               </Button>
-              {canEdit ? (
-                <Button
-                  type="button"
-                  aria-label={editAriaLabel}
-                  title={editAriaLabel}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEditGeneratedApp?.(serverId);
-                  }}
-                  className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full border border-white/70 bg-white/90 text-violet-600 shadow-md opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-slate-900/90 dark:text-violet-300"
-                >
-                  <Icon name="edit" className="text-xs" />
-                </Button>
-              ) : null}
             </Div>
           );
         })}

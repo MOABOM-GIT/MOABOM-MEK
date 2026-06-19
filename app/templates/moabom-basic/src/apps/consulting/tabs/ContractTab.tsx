@@ -15,8 +15,16 @@ import {
   toServerInput,
   type SimulationInput,
 } from '../simulationModel';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../appShellTypography';
+import {
+  CONSULTING_MINT_TEXT,
+  CONSULTING_ORANGE_TEXT,
+  CONSULTING_PANEL,
+  CONSULTING_PRIMARY_CTA,
+} from '../consultingTheme';
 
 interface ContractTabProps {
+  hospitalName: string;
   simInput: SimulationInput;
 }
 
@@ -40,8 +48,11 @@ const EMPTY_FORM: FormState = {
   memo: '',
 };
 
-export function ContractTab({ simInput }: ContractTabProps) {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
+  const [form, setForm] = useState<FormState>(() => ({
+    ...EMPTY_FORM,
+    hospitalName: hospitalName.trim(),
+  }));
   const [contracts, setContracts] = useState<ContractSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,6 +81,12 @@ export function ContractTab({ simInput }: ContractTabProps) {
     void loadContracts();
   }, [loadContracts]);
 
+  useEffect(() => {
+    if (hospitalName.trim() !== '') {
+      setForm(prev => (prev.hospitalName.trim() !== '' ? prev : { ...prev, hospitalName: hospitalName.trim() }));
+    }
+  }, [hospitalName]);
+
   const submit = async () => {
     setMessage(null);
     if (!form.hospitalName.trim()) {
@@ -95,7 +112,7 @@ export function ContractTab({ simInput }: ContractTabProps) {
         signature,
       });
       setMessage({ type: 'ok', text: '전자계약이 저장되었습니다.' });
-      setForm(EMPTY_FORM);
+      setForm({ ...EMPTY_FORM, hospitalName: hospitalName.trim() });
       padRef.current?.clear();
       void loadContracts();
     } catch (e) {
@@ -108,7 +125,7 @@ export function ContractTab({ simInput }: ContractTabProps) {
   const field = (key: keyof FormState, label: string, placeholder: string, required = false) => (
     <label className="flex flex-col gap-1">
       <Span className="text-xs font-bold text-muted">
-        {label}{required && <Span className="ml-0.5 text-rose-500">*</Span>}
+        {label}{required && <Span className="ml-0.5 text-[#fe8540]">*</Span>}
       </Span>
       <input
         type="text"
@@ -121,32 +138,30 @@ export function ContractTab({ simInput }: ContractTabProps) {
   );
 
   return (
-    <Div className="flex flex-col gap-4">
-      {/* 계약 헤더 + 시뮬레이션 요약 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
-        <Div className="flex items-center gap-2 text-base font-bold text-primary">
-          <Icon name="file-signature" className="text-sky-500" /> smart care 360 도입 계약서
+    <Div className={APP_STACK_CLASS}>
+      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
+        <Div className="flex items-center gap-2 text-lg font-bold text-primary">
+          <Icon name="file-signature" className="text-[#479ee2]" /> 스마트케어360 도입 계약
         </Div>
-        <Div className="mt-3 rounded-2xl bg-blue-500/5 p-3 text-xs">
-          <Div className="font-bold text-muted">첨부 시뮬레이션 요약 ({simInput.years}개년 누적 EBIT)</Div>
-          <Div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-            <Span>자체 운영: <Span className="font-bold text-rose-600 dark:text-rose-400">{formatKrwManwon(selfCum)}</Span></Span>
-            <Span>smart care 360: <Span className="font-bold text-blue-600 dark:text-blue-400">{formatKrwManwon(smartCum)}</Span></Span>
+        <Div className="rounded-2xl border border-[#27bfc1]/25 bg-[#27bfc1]/8 p-4 text-sm dark:border-[#27bfc1]/25 dark:bg-[#27bfc1]/8">
+          <Div className="font-bold text-primary">시뮬레이션 요약 ({simInput.years}년 누적)</Div>
+          <Div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[#0f2d3a] dark:text-slate-200">
+            <Span>직접 운영: <Span className={`font-bold ${CONSULTING_ORANGE_TEXT}`}>{formatKrwManwon(selfCum)}</Span></Span>
+            <Span>스마트케어360: <Span className={`font-bold ${CONSULTING_MINT_TEXT}`}>{formatKrwManwon(smartCum)}</Span></Span>
           </Div>
         </Div>
       </Div>
 
-      {/* 계약 정보 입력 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
-        <Div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
-          {field('hospitalName', '병원명', '예) 맑은샘 수면클리닉', true)}
+      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
+        <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1 @md:grid-cols-2`}>
+          {field('hospitalName', '병원명', hospitalName || '병원명', true)}
           {field('representativeName', '대표자/원장명', '예) 홍길동')}
           {field('contact', '연락처', '예) 02-1234-5678')}
           {field('businessNumber', '사업자등록번호', '예) 123-45-67890')}
           {field('plan', '요금제/플랜', '스마트케어360 통합 렌탈')}
           {field('signerName', '서명자명', '서명하는 분의 성함')}
         </Div>
-        <label className="mt-3 flex flex-col gap-1">
+        <label className="flex flex-col gap-1">
           <Span className="text-xs font-bold text-muted">특이사항 메모</Span>
           <textarea
             className="min-h-[64px] resize-none rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-primary outline-none focus:border-blue-400 dark:border-white/10 dark:bg-slate-800"
@@ -158,17 +173,17 @@ export function ContractTab({ simInput }: ContractTabProps) {
       </Div>
 
       {/* 전자서명 패드 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
+      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
         <Div className="flex items-center justify-between">
-          <Div className="flex items-center gap-2 text-base font-bold text-primary">
-            <Icon name="signature" className="text-sky-500" /> 전자서명패드
+          <Div className="flex items-center gap-2 text-lg font-bold text-primary">
+            <Icon name="signature" className="text-[#479ee2]" /> 전자서명
           </Div>
           <Button variant="secondary" size="sm" onClick={() => padRef.current?.clear()} className="!rounded-xl">
             <Icon name="eraser" size="sm" className="mr-1" /> 지우기
           </Button>
         </Div>
-        <Div className="mt-1 text-xs text-muted">태블릿 전용 펜 또는 손가락으로 아래 박스 내에 서명해 주십시오.</Div>
-        <Div className="mt-3">
+        <Div className="text-xs text-muted">태블릿 전용 펜 또는 손가락으로 아래 박스 내에 서명해 주십시오.</Div>
+        <Div>
           <SignaturePad ref={padRef} onSignatureChange={setHasSignature} />
         </Div>
       </Div>
@@ -177,8 +192,8 @@ export function ContractTab({ simInput }: ContractTabProps) {
         <Div
           className={`rounded-2xl px-4 py-3 text-sm font-bold ${
             message.type === 'ok'
-              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-              : 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
+              ? 'bg-[#87c426]/12 text-[#4f7f12] dark:text-[#a7dd58]'
+              : 'bg-[#fe8540]/10 text-[#8a3a13] dark:text-[#ffbf98]'
           }`}
         >
           <Icon name={message.type === 'ok' ? 'check-circle' : 'circle-exclamation'} size="sm" className="mr-1" />
@@ -186,27 +201,33 @@ export function ContractTab({ simInput }: ContractTabProps) {
         </Div>
       )}
 
-      <Button variant="primary" size="large" className="w-full !rounded-2xl" onClick={submit} disabled={saving}>
+      <Button
+        variant="primary"
+        size="large"
+        className={`w-full !rounded-2xl ${CONSULTING_PRIMARY_CTA}`}
+        onClick={submit}
+        disabled={saving}
+      >
         <Icon name={saving ? 'spinner' : 'circle-check'} spin={saving} className="mr-2" />
         {saving ? '저장 중…' : '계약 확정'}
       </Button>
 
       {/* 저장된 계약 목록 */}
-      <Div className="moa-group rounded-3xl border border-white/55 p-5 shadow-sm dark:border-white/12">
+      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
         <Div className="flex items-center justify-between">
-          <Div className="text-base font-bold text-primary">체결 계약 내역</Div>
+          <Div className="text-lg font-bold text-primary">체결 계약 내역</Div>
           <Button variant="secondary" size="sm" onClick={() => void loadContracts()} className="!rounded-xl">
             <Icon name="rotate" size="sm" spin={loading} />
           </Button>
         </Div>
         {contracts.length === 0 ? (
-          <Div className="mt-3 rounded-2xl bg-black/5 px-4 py-6 text-center text-sm text-muted dark:bg-white/5">
+          <Div className="rounded-2xl bg-black/5 px-4 py-6 text-center text-sm text-muted dark:bg-[#479ee2]/8">
             아직 체결된 계약이 없습니다.
           </Div>
         ) : (
-          <Div className="mt-3 flex flex-col gap-2">
+          <Div className="flex flex-col gap-2">
             {contracts.map(c => (
-              <Div key={c.id} className="flex items-center justify-between rounded-2xl bg-black/5 px-4 py-3 dark:bg-white/5">
+              <Div key={c.id} className="flex items-center justify-between rounded-2xl bg-black/5 px-4 py-3 dark:bg-[#479ee2]/8">
                 <Div>
                   <Div className="text-sm font-bold text-primary">{c.hospital_name}</Div>
                   <Div className="text-xs text-muted">
@@ -216,7 +237,7 @@ export function ContractTab({ simInput }: ContractTabProps) {
                 <Span
                   className={`rounded-full px-3 py-1 text-xs font-bold ${
                     c.status === 'signed'
-                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                      ? 'bg-[#87c426]/15 text-[#4f7f12] dark:text-[#a7dd58]'
                       : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                   }`}
                 >

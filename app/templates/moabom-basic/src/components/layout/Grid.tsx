@@ -15,7 +15,6 @@ export interface GridProps {
     md?: number;
     lg?: number;
     xl?: number;
-    '2xl'?: number;
   };
 
   /**
@@ -122,7 +121,6 @@ export const Grid: React.FC<GridProps> = ({
     if (responsive.md) classes.push(`@md:grid-cols-${responsive.md}`);
     if (responsive.lg) classes.push(`@lg:grid-cols-${responsive.lg}`);
     if (responsive.xl) classes.push(`@xl:grid-cols-${responsive.xl}`);
-    if (responsive['2xl']) classes.push(`@2xl:grid-cols-${responsive['2xl']}`);
   }
 
   // Gap

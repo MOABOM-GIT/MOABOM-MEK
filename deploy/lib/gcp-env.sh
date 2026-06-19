@@ -27,6 +27,10 @@ set -euo pipefail
 : "${SECRET_SOCIAL_NAVER:=moabom-social-master-naver-secret}"
 : "${SECRET_SOCIAL_KAKAO:=moabom-social-master-kakao-secret}"
 : "${SECRET_SOCIAL_GOOGLE:=moabom-social-master-google-secret}"
+: "${SECRET_MOABOM_OPENAI_API_KEY:=moabom-openai-api-key}"
+: "${SECRET_MOABOM_ANTHROPIC_API_KEY:=moabom-anthropic-api-key}"
+: "${SECRET_MOABOM_GOOGLE_AI_API_KEY:=moabom-google-ai-api-key}"
+: "${SECRET_REVERB_APP_SECRET:=moabom-reverb-app-secret}"
 
 moabom_gcp_project()             { echo "${GCP_PROJECT_ID}"; }
 moabom_gcp_region()              { echo "${GCP_REGION}"; }
@@ -47,6 +51,10 @@ moabom_gcp_secret_mappings() {
     "SOCIAL_AUTH_MASTER_NAVER_CLIENT_SECRET=${SECRET_SOCIAL_NAVER}:latest"
     "SOCIAL_AUTH_MASTER_KAKAO_CLIENT_SECRET=${SECRET_SOCIAL_KAKAO}:latest"
     "SOCIAL_AUTH_MASTER_GOOGLE_CLIENT_SECRET=${SECRET_SOCIAL_GOOGLE}:latest"
+    "MOABOM_OPENAI_API_KEY=${SECRET_MOABOM_OPENAI_API_KEY}:latest"
+    "MOABOM_ANTHROPIC_API_KEY=${SECRET_MOABOM_ANTHROPIC_API_KEY}:latest"
+    "MOABOM_GOOGLE_AI_API_KEY=${SECRET_MOABOM_GOOGLE_AI_API_KEY}:latest"
+    "REVERB_APP_SECRET=${SECRET_REVERB_APP_SECRET}:latest"
   )
   local IFS=,
   echo "${mappings[*]}"
@@ -62,6 +70,10 @@ APP_KEY
 SOCIAL_AUTH_MASTER_NAVER_CLIENT_SECRET
 SOCIAL_AUTH_MASTER_KAKAO_CLIENT_SECRET
 SOCIAL_AUTH_MASTER_GOOGLE_CLIENT_SECRET
+MOABOM_OPENAI_API_KEY
+MOABOM_ANTHROPIC_API_KEY
+MOABOM_GOOGLE_AI_API_KEY
+REVERB_APP_SECRET
 EOF
 }
 

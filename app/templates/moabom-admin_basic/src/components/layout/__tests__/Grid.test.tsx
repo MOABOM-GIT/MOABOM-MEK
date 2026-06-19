@@ -74,15 +74,9 @@ describe('Grid 컴포넌트', () => {
       expect(div.className).toContain('xl:grid-cols-5');
     });
 
-    it('2xl 브레이크포인트가 적용된다', () => {
-      const { container } = render(<Grid cols={1} responsive={{ '2xl': 6 }}>Content</Grid>);
-      const div = container.firstChild as HTMLElement;
-      expect(div.className).toContain('2xl:grid-cols-6');
-    });
-
     it('모든 브레이크포인트가 함께 적용된다', () => {
       const { container } = render(
-        <Grid cols={1} responsive={{ sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 }}>
+        <Grid cols={1} responsive={{ sm: 2, md: 3, lg: 4, xl: 5 }}>
           Content
         </Grid>
       );
@@ -92,7 +86,6 @@ describe('Grid 컴포넌트', () => {
       expect(div.className).toContain('md:grid-cols-3');
       expect(div.className).toContain('lg:grid-cols-4');
       expect(div.className).toContain('xl:grid-cols-5');
-      expect(div.className).toContain('2xl:grid-cols-6');
     });
   });
 

@@ -40,13 +40,33 @@ export function resolveMypageTabField(
   return tr;
 }
 
-export function flattenFieldErrors(errors?: Record<string, string[] | string>): Record<string, string> {
+export function flattenFieldErrors(errors?: Record<string, unknown>): Record<string, string> {
   if (!errors) return {};
   const out: Record<string, string> = {};
   for (const [key, val] of Object.entries(errors)) {
-    out[key] = Array.isArray(val) ? (val[0] ?? '') : String(val);
+    if (Array.isArray(val)) {
+      out[key] = String(val[0] ?? '');
+    } else if (val != null && typeof val === 'object') {
+      continue;
+    } else {
+      out[key] = String(val);
+    }
   }
   return out;
+}
+
+export function resolveApiMessage(
+  result: { message?: string; errors?: Record<string, unknown> },
+  fallback: string,
+): string {
+  const nested = result.errors?.message;
+  if (typeof nested === 'string' && nested.trim() !== '') {
+    return nested;
+  }
+  if (result.message?.trim()) {
+    return result.message;
+  }
+  return fallback;
 }
 
 /** 코어 TemplateApp 토스트 (G7Core.toast 또는 toast 핸들러 폴백) */

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "moabom 사용자 템플릿 라우트 정의",
   "routes": [
     {
@@ -48,6 +48,39 @@
       "auth_required": false,
       "meta": {
         "title": "MOABOM APPS"
+      }
+    },
+    {
+      "_comment": "게시판 — 셸(HomePage) + 윈도우 내 G7 board JSON (moabom-shell-board-window.md)",
+      "path": "/board/:slug",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "게시판"
+      }
+    },
+    {
+      "path": "/board/:slug/write",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "게시글 작성"
+      }
+    },
+    {
+      "path": "/board/:slug/:id",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "게시글"
+      }
+    },
+    {
+      "path": "/board/:slug/:id/edit",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "게시글 수정"
       }
     },
     {

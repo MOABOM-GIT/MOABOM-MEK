@@ -62,6 +62,8 @@ class BroadcastNotificationListener implements HookListenerInterface
                 "core.user.notifications.{$uuid}",
                 'notification.received',
                 [
+                    'id' => $context['notification_id'] ?? null,
+                    'url' => $context['url'] ?? null,
                     'subject' => $context['subject'] ?? null,
                     'body' => $context['body'] ?? null,
                     'type' => $context['notification_type'] ?? null,

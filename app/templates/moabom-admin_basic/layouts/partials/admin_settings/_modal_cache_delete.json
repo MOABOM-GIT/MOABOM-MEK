@@ -102,6 +102,12 @@
                       "handler": "closeModal"
                     },
                     {
+                      "handler": "refetchDataSource",
+                      "params": {
+                        "dataSourceId": "admin_menu"
+                      }
+                    },
+                    {
                       "handler": "toast",
                       "params": {
                         "type": "success",

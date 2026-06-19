@@ -9,7 +9,7 @@
         "ko": "얼굴 측정으로 양압기 마스크 추천",
         "en": "CPAP mask recommendation from face measurement"
     },
-    "icon": "stethoscope",
+    "icon": "head-side-mask",
     "gradient": "linear-gradient(135deg,#06b6d4,#2563eb)",
     "category": "basic",
     "source": "system",

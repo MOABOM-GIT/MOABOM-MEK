@@ -1,9 +1,11 @@
 import React from 'react';
 import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import { Button } from '../../basic/Button';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 import { Div } from '../../basic/Div';
 import { Input } from '../../basic/Input';
 import { Span } from '../../basic/Span';
+import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { ACTION_BUTTON_VARIANT, GROUP_PANEL, INPUT_SURFACE, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import { isSyntheticEmail } from './myPageUtils';
 
@@ -76,8 +78,8 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
   onChangePassword,
   onWithdraw,
 }) => (
-  <Div className="moa-mypage-account flex flex-col gap-3">
-    <Div className={`${GROUP_PANEL} p-5 flex flex-col gap-4`}>
+  <Div className={`moa-mypage-account ${APP_STACK_CLASS}`}>
+    <Div className={`${GROUP_PANEL} p-5 ${APP_STACK_CLASS}`}>
       <Div>
         <Div className={MY_PAGE_BLOCK_TITLE_CLASS}>{t('moa_mypage.account.section_basic_title')}</Div>
         <Div className="text-sm text-secondary mt-1">{t('moa_mypage.account.section_basic_desc')}</Div>
@@ -90,7 +92,7 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
       )}
 
       {profileLoading ? (
-        <Span className="text-sm text-muted">{t('moa_mypage.account.loading')}</Span>
+        <AppLoadingSpinner label={t('moa_mypage.account.loading')} />
       ) : (
         <>
           <Div>
@@ -157,11 +159,11 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
       )}
     </Div>
 
-    <Div className="grid grid-cols-1 gap-3">
-      <Div className={`${GROUP_PANEL} p-5`}>
+    <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1`}>
+      <Div className={`${GROUP_PANEL} p-5 ${APP_STACK_CLASS}`}>
         <Div className={MY_PAGE_BLOCK_TITLE_CLASS}>{t('moa_mypage.account.section_security_title')}</Div>
-        <Div className="text-sm text-secondary mt-1">{t('moa_mypage.account.section_security_desc')}</Div>
-        <Div className="flex gap-2 mt-5">
+        <Div className="text-sm text-secondary">{t('moa_mypage.account.section_security_desc')}</Div>
+        <Div className="flex gap-2">
           <Button
             variant="dark-outline"
             size="medium"
@@ -181,11 +183,11 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
         </Div>
 
         {securityPanel !== 'none' ? (
-          <Div className={`${GROUP_PANEL} mt-5 p-4`}>
+          <Div className={`${GROUP_PANEL} p-4 ${APP_STACK_CLASS}`}>
             <Div className={MY_PAGE_BLOCK_TITLE_CLASS}>
               {securityPanel === 'password' ? t('moa_mypage.account.panel_password_title') : t('moa_mypage.account.panel_withdraw_title')}
             </Div>
-            <Div className="mt-1 text-xs text-muted">
+            <Div className="text-xs text-muted">
               {securityPanel === 'password'
                 ? socialProviderLabel
                   ? t('moa_mypage.account.panel_password_desc_sns', { provider: socialProviderLabel })
@@ -195,9 +197,9 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
                   : t('moa_mypage.account.panel_withdraw_desc_local')}
             </Div>
 
-            <Div className="mt-4 grid grid-cols-1 gap-3">
+            <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1`}>
               {securityPanel === 'password' && socialProviderLabel ? (
-                <Div className="flex flex-col gap-3">
+                <Div className={APP_STACK_CLASS}>
                   <Div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 px-4 py-3 text-xs text-muted">
                     {t('moa_mypage.account.sns_no_password_note', { provider: socialProviderLabel })}
                   </Div>
@@ -306,7 +308,7 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
               ) : null}
 
               {securityPanel === 'withdraw' && securityVerified ? (
-                <Div className="flex flex-col gap-3">
+                <Div className={APP_STACK_CLASS}>
                   <Div className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-600">
                     {socialProviderLabel
                       ? t('moa_mypage.account.withdraw_warning_sns', { provider: socialProviderLabel })

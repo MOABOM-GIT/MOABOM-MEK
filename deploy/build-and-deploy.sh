@@ -4,6 +4,7 @@
 #   --async        gcloud builds submit 비동기 (터미널 블로킹 최소)
 #   --skip-check   검증 생략 (비권장, DEPLOY_SKIP_CHECK=1 필요)
 #   --strict-smoke 선택 SaaS 스모크 파일 누락도 실패 처리
+#   --migrate-modules=moabom-apps[,moabom-system] post-deploy migration 대상 allowlist
 #
 # 인프라 식별자 SSOT: deploy/lib/gcp-env.sh (project / region / service / sql / repo)
 # 시크릿 SSOT: Secret Manager (deploy/secret-manager-bootstrap.sh 한 번 실행 필요)
@@ -34,6 +35,7 @@ ENV_ONLY=0
 SKIP_CHECK=0
 SKIP_LAYOUT_SYNC=0
 STRICT_SMOKE=0
+POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -41,6 +43,7 @@ for arg in "$@"; do
     --env-only) ENV_ONLY=1 ;;
     --skip-layout-sync) SKIP_LAYOUT_SYNC=1 ;;
     --strict-smoke) STRICT_SMOKE=1 ;;
+    --migrate-modules=*) POST_DEPLOY_MIGRATION_MODULES="${arg#*=}" ;;
     --skip-check)
       if [[ "${DEPLOY_SKIP_CHECK:-}" != "1" ]]; then
         echo "ERROR: --skip-check 는 DEPLOY_SKIP_CHECK=1 일 때만 허용"
@@ -49,11 +52,12 @@ for arg in "$@"; do
       SKIP_CHECK=1
       ;;
     -h|--help)
-      echo "Usage: $0 [--env-only] [--async] [--skip-check] [--skip-layout-sync] [--strict-smoke]"
+      echo "Usage: $0 [--env-only] [--async] [--skip-check] [--skip-layout-sync] [--strict-smoke] [--migrate-modules=LIST|none]"
       echo "  태그: deploy/cloudbuild-v3.yaml 의 substitutions._IMAGE_TAG 만 수정"
       echo "  --skip-check: DEPLOY_SKIP_CHECK=1 $0 --skip-check"
       echo "  --skip-layout-sync: SaaS admin 레이아웃 DB sync 생략 (비권장)"
       echo "  --strict-smoke: 선택 SaaS 스모크 스크립트 누락도 실패 처리"
+      echo "  --migrate-modules: post-deploy migration allowlist (기본: ${POST_DEPLOY_MIGRATION_MODULES}, env: MOABOM_DEPLOY_MIGRATION_MODULES)"
       exit 0
       ;;
     *) echo "Unknown: $arg"; exit 1 ;;
@@ -98,6 +102,31 @@ wait_for_ready_revision() {
 run_smoke() {
   local url="$1"
   MOABOM_STRICT_SMOKE="${STRICT_SMOKE}" bash "${ROOT}/deploy/smoke-after-deploy.sh" "${url}"
+}
+
+post_deploy_migration_modules() {
+  local raw="${POST_DEPLOY_MIGRATION_MODULES//[[:space:]]/}"
+  [[ -n "${raw}" ]] || return 0
+  [[ "${raw}" != "none" && "${raw}" != "skip" ]] || return 0
+
+  local module_id
+  IFS=',' read -ra modules <<< "${raw}"
+  for module_id in "${modules[@]}"; do
+    [[ -n "${module_id}" ]] || continue
+    if [[ "${module_id}" != moabom-* ]]; then
+      echo "ERROR: --migrate-modules 는 moabom-* 모듈만 허용: ${module_id}"
+      exit 1
+    fi
+    if [[ "${module_id}" == *"*"* || "${module_id}" == *"/"* || "${module_id}" == *".."* ]]; then
+      echo "ERROR: --migrate-modules 에 wildcard/path 금지: ${module_id}"
+      exit 1
+    fi
+    if [[ ! -d "${ROOT}/app/modules/${module_id}/database/migrations" ]]; then
+      echo "ERROR: migration 대상 모듈 없음: ${module_id}"
+      exit 1
+    fi
+    printf '%s\n' "${module_id}"
+  done
 }
 
 preflight_gcloud() {
@@ -166,7 +195,7 @@ if [[ "${SKIP_CHECK}" -eq 0 ]]; then
 fi
 
 echo "==> Cloud Build (${TAG})"
-SUBMIT=(gcloud builds submit --config="${CB}" --project="${PROJECT}")
+SUBMIT=(gcloud builds submit "${ROOT}" --config="${CB}" --project="${PROJECT}")
 if [[ "${ASYNC}" -eq 1 ]]; then
   "${SUBMIT[@]}" --async
   echo "    비동기 제출됨. 완료 후:"
@@ -204,6 +233,27 @@ wait_for_ready_revision
 
 URL="$(gcloud run services describe "${SERVICE}" --region="${REGION}" --project="${PROJECT}" --format='value(status.url)')"
 echo "==> ${URL}"
+
+if grep -qE '^RUN_MIGRATIONS: "false"' "${ENV_FILE}" 2>/dev/null; then
+  echo "==> Post-deploy allowlist module migrations (RUN_MIGRATIONS=false safety)"
+  echo "    modules=${POST_DEPLOY_MIGRATION_MODULES}"
+  # shellcheck source=lib/cloud-run-artisan-job.sh
+  source "${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
+  while IFS= read -r module_id; do
+    moabom_run_artisan_job "moabom-${module_id}-migrate" 900s \
+      migrate \
+      --force \
+      --no-interaction \
+      --path="modules/${module_id}/database/migrations"
+    if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
+      moabom_run_artisan_job "moabom-${module_id}-tenant-migrate" 900s \
+        moabom:saas:tenants:migrate \
+        --force \
+        --path="modules/${module_id}/database/migrations"
+    fi
+  done < <(post_deploy_migration_modules)
+fi
+
 if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
   run_smoke "https://mek360.com"
 else

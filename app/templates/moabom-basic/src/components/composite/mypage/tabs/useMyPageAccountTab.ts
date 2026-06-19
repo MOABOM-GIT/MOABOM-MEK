@@ -101,8 +101,6 @@ export function useMyPageAccountTab({
       }
 
       showCoreToast('success', result.message ?? t('moa_mypage.msg.withdraw_success'), 3000);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_token');
       const G7Core = (window as any).G7Core;
       await G7Core?.AuthManager?.getInstance?.()?.logout?.();
       window.location.href = '/';

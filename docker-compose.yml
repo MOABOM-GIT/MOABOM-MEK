@@ -58,6 +58,25 @@ services:
     networks:
       - moabomnet
 
+  reverb:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: moabom_reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    ports:
+      - "${REVERB_PORT:-8081}:8080"
+    environment:
+      APP_ENV: local
+      BROADCAST_CONNECTION: reverb
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - moabomnet
+
 volumes:
   moabom_mysql_data:
   moabom_vendor:
