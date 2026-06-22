@@ -4,7 +4,9 @@ namespace Modules\Moabom\Social\Auth\Providers;
 
 use App\Extension\BaseModuleServiceProvider;
 use App\Extension\HookManager;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Modules\Moabom\Social\Auth\Services\SocialAuthService;
 use Modules\Moabom\Social\Auth\Console\Commands\DiagnoseSocialAuthSettingsCommand;
 use Modules\Moabom\Social\Auth\Console\Commands\EnsureSocialAuthDefaultsCommand;
 use Modules\Moabom\Social\Auth\Console\Commands\SeedPlatformSocialAuthMasterCommand;
@@ -70,6 +72,40 @@ class SocialAuthServiceProvider extends BaseModuleServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands($this->commands);
         }
+
+        // shell-boot social_providers[] — moabom-system 이 moabom-social-auth 를 직접 의존하지 않도록
+        HookManager::addFilter(
+            'moabom.shell_boot.social_providers',
+            function ($providers): array {
+                $providers = is_array($providers) ? $providers : [];
+
+                return app(SocialAuthService::class)->enabledProviders();
+            },
+        );
+
+        HookManager::addFilter(
+            'moabom.public_api.cache_fragment.social_providers',
+            function (string $default): string {
+                if (! Schema::hasTable('social_auth_settings')) {
+                    return $default;
+                }
+
+                try {
+                    $maxUpdatedAt = DB::table('social_auth_settings')->max('updated_at');
+                } catch (Throwable) {
+                    return $default;
+                }
+
+                if ($maxUpdatedAt === null) {
+                    return $default;
+                }
+
+                $revision = is_string($maxUpdatedAt) ? $maxUpdatedAt : (string) $maxUpdatedAt;
+                $scope = preg_replace('/:social:.*$/', '', $default) ?: $default;
+
+                return $scope.':social:'.$revision;
+            },
+        );
 
         HookManager::addFilter('core.user.filter_resource_data', function (array $data, $user): array {
             if (! $user?->id || ! Schema::hasTable('social_accounts')) {

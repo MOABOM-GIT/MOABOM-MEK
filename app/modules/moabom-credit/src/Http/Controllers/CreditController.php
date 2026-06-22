@@ -32,10 +32,13 @@ class CreditController extends AuthBaseController
 
             $this->logApiUsage('moabom-credit.user.credits.index');
 
+            $limit = max(1, min(50, (int) request()->query('limit', 8)));
+            $offset = max(0, (int) request()->query('offset', 0));
+
             return ResponseHelper::moduleSuccess(
                 'moabom-credit',
                 'messages.fetch_success',
-                $this->creditService->getUserCreditOverview($user)
+                $this->creditService->getUserCreditOverview($user, $limit, $offset)
             );
         } catch (\Exception $e) {
             return ResponseHelper::moduleError(

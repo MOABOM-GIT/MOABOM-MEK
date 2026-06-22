@@ -2,31 +2,13 @@
  * MOABOM 임시 데이터 (Mock Data)
  *
  * 실제 API 연동 전까지 사용하는 홈 셸 보조 데이터입니다.
- * 앱 참조는 실제 등록된 시스템 앱만 유지합니다.
  */
-
-/** 랭킹 데이터 */
-export const RANKING_DATA = {
-  apps: [
-    { id: 'cpap-mask',     rank: 1, name: '마스크 피팅', icon: 'head-side-mask', gradient: 'linear-gradient(135deg,#06b6d4,#2563eb)', change: 'up' as const, category: 'basic' as const },
-    { id: 'consulting',    rank: 2, name: '360 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', change: 'same' as const, category: 'basic' as const },
-    { id: 'hospital-info', rank: 3, name: '병원명',     icon: 'hospital',       gradient: 'linear-gradient(135deg,#14b8a6,#0ea5e9)', change: 'down' as const, category: 'basic' as const },
-    { id: 'mypage',        rank: 4, name: '마이페이지', icon: 'user-cog',       gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', change: 'same' as const, category: 'basic' as const },
-  ],
-  users: [
-    { rank: 1, name: '성현_Master', avatar: 'SH', color: 'linear-gradient(135deg,#667eea,#764ba2)', point: 12500, change: 'up' as const },
-    { rank: 2, name: '민지_Design', avatar: 'MJ', color: 'linear-gradient(135deg,#ff9a9e,#fecfef)', point: 11200, change: 'same' as const },
-    { rank: 3, name: 'Kyle_Dev',    avatar: 'K',  color: 'linear-gradient(135deg,#84fab0,#8fd3f4)', point: 9800,  change: 'up' as const },
-    { rank: 4, name: '지수_PM',     avatar: 'JS', color: 'linear-gradient(135deg,#a18cd1,#fbc2eb)', point: 8500,  change: 'down' as const },
-    { rank: 5, name: '현우_QA',     avatar: 'HW', color: 'linear-gradient(135deg,#ffecd2,#fcb69f)', point: 7200,  change: 'same' as const },
-  ],
-};
 
 /** 마이앱 데이터 */
 export const MY_APPS_DATA = {
   favorites: [
     { id: 'cpap-mask',  name: '마스크 피팅', icon: 'head-side-mask', gradient: 'linear-gradient(135deg,#06b6d4,#2563eb)', category: 'basic' as const },
-    { id: 'consulting', name: '360 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', category: 'basic' as const },
+    { id: 'consulting', name: '스마트 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', category: 'basic' as const },
   ],
   myapps: [],
 };

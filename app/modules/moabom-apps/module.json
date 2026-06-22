@@ -5,7 +5,7 @@
         "ko": "Moabom 앱",
         "en": "Moabom Apps"
     },
-    "version": "0.3.0",
+    "version": "0.3.4",
     "license": "MIT",
     "description": {
         "ko": "사용자 앱 인프라(현재: AI 앱 HTML 생성/저장). moabom_system_generated_apps 테이블에 사용자가 생성한 앱을 저장하며, AI 프로바이더(Anthropic/OpenAI/Google) 프록시를 제공한다.",
@@ -13,7 +13,9 @@
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {
-        "modules": {},
+        "modules": {
+            "moabom-system": ">=0.7.9"
+        },
         "plugins": {}
     }
 }

@@ -6,8 +6,10 @@
  * 어떠한 경우에도 값을 덮어쓰지 않습니다.
  */
 
+const hardenedInputs = new WeakSet<HTMLInputElement>();
+
 /**
- * 하드닝 완료 마커 속성명
+ * @deprecated DOM 마커 대신 WeakSet 을 사용합니다. 테스트 호환용으로만 유지합니다.
  */
 export const HARDENED_MARKER = 'data-moa-auth-hardened';
 
@@ -127,11 +129,11 @@ function setInputSecurityAttributes(input: HTMLInputElement): void {
 }
 
 /**
- * 단일 input 을 하드닝합니다. 이미 마커가 있거나 이미 autocomplete 가
- * 명시되어 있으면 아무것도 하지 않고 마커만 남깁니다.
+ * 단일 input 을 하드닝합니다. 이미 처리됐거나 autocomplete 가
+ * 명시되어 있으면 비파괴적으로 skip 합니다.
  */
 function hardenInput(input: HTMLInputElement): void {
-    if (input.getAttribute(HARDENED_MARKER) === '1') return;
+    if (hardenedInputs.has(input)) return;
 
     const type = (input.getAttribute('type') ?? input.type ?? '').toLowerCase();
 
@@ -140,7 +142,7 @@ function hardenInput(input: HTMLInputElement): void {
             input.setAttribute('autocomplete', inferPasswordAutocomplete(input));
         }
         setInputSecurityAttributes(input);
-        input.setAttribute(HARDENED_MARKER, '1');
+        hardenedInputs.add(input);
         return;
     }
 
@@ -149,7 +151,7 @@ function hardenInput(input: HTMLInputElement): void {
             input.setAttribute('autocomplete', inferUsernameAutocomplete(input));
         }
         setInputSecurityAttributes(input);
-        input.setAttribute(HARDENED_MARKER, '1');
+        hardenedInputs.add(input);
         return;
     }
 
@@ -158,7 +160,7 @@ function hardenInput(input: HTMLInputElement): void {
             input.setAttribute('autocomplete', inferUsernameAutocomplete(input));
         }
         setInputSecurityAttributes(input);
-        input.setAttribute(HARDENED_MARKER, '1');
+        hardenedInputs.add(input);
         return;
     }
 
@@ -169,7 +171,7 @@ function hardenInput(input: HTMLInputElement): void {
  * root 하위 전체를 스캔하여 하드닝을 적용합니다.
  *
  * idempotent (여러 번 호출해도 같은 결과):
- *   - 이미 하드닝된 input 은 마커로 skip
+ *   - 이미 하드닝된 input 은 WeakSet 으로 skip
  *   - 명시된 autocomplete 는 존중
  *
  * 성능 참고:
@@ -190,4 +192,9 @@ export function applyAutocompleteHardening(root: ParentNode): void {
     for (const input of Array.from(inputs)) {
         hardenInput(input);
     }
+}
+
+/** 테스트 전용: input 이 하드닝 처리됐는지 확인합니다. */
+export function __isInputHardenedForTest(input: HTMLInputElement): boolean {
+    return hardenedInputs.has(input);
 }

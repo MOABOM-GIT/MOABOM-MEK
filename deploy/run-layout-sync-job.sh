@@ -30,8 +30,8 @@ if [[ "${TEMPLATE}" != "moabom-basic" ]]; then
   sync_template_layouts moabom-basic
 fi
 
-# moabom-system 모듈 레이아웃(admin_saas_hospitals 등)은 template 이 아닌 module_layouts — 별도 refresh 필수
-echo "[run-layout-sync-job] moabom:saas:sync-module-layouts (platform + tenants — admin_mypage_settings SSOT)"
+# moabom-*·sirsoft-* module layouts — template 이 아닌 module_layouts, 기본 * = layout JSON 보유 모듈 전체
+echo "[run-layout-sync-job] moabom:saas:sync-module-layouts (platform + tenants — all modules with layouts)"
 moabom_run_artisan_job moabom-module-layout-sync "${TIMEOUT}" \
   moabom:saas:sync-module-layouts --no-interaction
 

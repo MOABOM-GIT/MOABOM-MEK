@@ -19,8 +19,11 @@ export interface Moa_MyPageActivityPanelProps {
   activityFilter: string;
   setActivityFilter: (id: string) => void;
   activityLoading: boolean;
+  activityLoadingMore?: boolean;
+  activityHasMore?: boolean;
   activityError: string;
   onOpenActivity: (item: ActivityItem) => void;
+  onLoadMoreActivities?: () => void;
 }
 
 export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = ({
@@ -30,8 +33,11 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
   activityFilter,
   setActivityFilter,
   activityLoading,
+  activityLoadingMore = false,
+  activityHasMore = false,
   activityError,
   onOpenActivity,
+  onLoadMoreActivities,
 }) => {
   const postsCount = activityOverview?.summary?.posts_count ?? 0;
   const commentsCount = activityOverview?.summary?.comments_count ?? 0;
@@ -78,12 +84,6 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
       ))}
     </Div>
 
-    {activityOverview != null && !activityOverview.summary.likes_supported ? (
-      <Div className="glass-sm px-3 py-3 rounded-xl text-xs text-muted leading-relaxed">
-        {t('moa_mypage.activity.likes_notice')}
-      </Div>
-    ) : null}
-
     <Div className={APP_STACK_CLASS}>
       {activityError ? (
         <Div className="glass-sm px-3 py-3 rounded-xl text-sm text-red-500">{activityError}</Div>
@@ -126,6 +126,18 @@ export const Moa_MyPageActivityPanel: React.FC<Moa_MyPageActivityPanelProps> = (
           </Div>
         </Button>
       )) : null}
+      {activityHasMore && onLoadMoreActivities ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="medium"
+          className="w-full justify-center"
+          disabled={activityLoadingMore || activityLoading}
+          onClick={() => void onLoadMoreActivities()}
+        >
+          {activityLoadingMore ? t('moa_mypage.activity.loading_more') : t('moa_mypage.activity.load_more')}
+        </Button>
+      ) : null}
     </Div>
   </Div>
   );

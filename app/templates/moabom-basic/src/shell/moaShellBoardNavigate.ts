@@ -70,6 +70,11 @@ export function tryHandleBoardShellNavigate(
     return true;
   }
 
+  if (route.kind === 'userProfile' && bridge.openUserProfile) {
+    bridge.openUserProfile(route.uuid);
+    return true;
+  }
+
   return false;
 }
 

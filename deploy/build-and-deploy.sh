@@ -35,7 +35,7 @@ ENV_ONLY=0
 SKIP_CHECK=0
 SKIP_LAYOUT_SYNC=0
 STRICT_SMOKE=0
-POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps}"
+POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -180,7 +180,7 @@ if [[ "${ENV_ONLY}" -eq 1 ]]; then
     --add-cloudsql-instances="${SQL}" \
     --set-secrets="${SECRETS}" \
     --min-instances=1 \
-    --no-cpu-throttling \
+    --cpu-throttling \
     --project="${PROJECT}"
   wait_for_ready_revision
   run_smoke ""
@@ -200,7 +200,7 @@ if [[ "${ASYNC}" -eq 1 ]]; then
   "${SUBMIT[@]}" --async
   echo "    비동기 제출됨. 완료 후:"
   echo "    gcloud builds list --ongoing --project=${PROJECT}"
-  echo "    gcloud run deploy ${SERVICE} --image=${IMAGE} --region=${REGION} --env-vars-file=${ENV_FILE} --add-cloudsql-instances=${SQL} --set-secrets=${SECRETS} --min-instances=1 --no-cpu-throttling --project=${PROJECT}"
+  echo "    gcloud run deploy ${SERVICE} --image=${IMAGE} --region=${REGION} --env-vars-file=${ENV_FILE} --add-cloudsql-instances=${SQL} --set-secrets=${SECRETS} --min-instances=1 --cpu-throttling --project=${PROJECT}"
   echo "    smoke: MOABOM_STRICT_SMOKE=${STRICT_SMOKE} bash deploy/smoke-after-deploy.sh https://mek360.com"
   if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
     && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
@@ -226,7 +226,7 @@ gcloud run deploy "${SERVICE}" \
   --add-cloudsql-instances="${SQL}" \
   --set-secrets="${SECRETS}" \
   --min-instances=1 \
-  --no-cpu-throttling \
+  --cpu-throttling \
   --project="${PROJECT}"
 
 wait_for_ready_revision
@@ -252,6 +252,13 @@ if grep -qE '^RUN_MIGRATIONS: "false"' "${ENV_FILE}" 2>/dev/null; then
         --path="modules/${module_id}/database/migrations"
     fi
   done < <(post_deploy_migration_modules)
+  if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
+    echo "==> Post-deploy generated-apps platform schema (before smoke; Phase E 와 중복 없음)"
+    moabom_run_artisan_job moabom-apps-platform-migrate 900s \
+      moabom:apps:platform-migrate --force --no-interaction
+    moabom_run_artisan_job moabom-presence-platform-migrate 900s \
+      moabom:presence:platform-migrate --force --no-interaction
+  fi
 fi
 
 if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then

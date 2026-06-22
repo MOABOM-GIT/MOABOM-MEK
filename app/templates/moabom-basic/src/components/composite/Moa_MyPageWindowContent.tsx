@@ -11,6 +11,7 @@ import { useMyPageActivityTab } from './mypage/tabs/useMyPageActivityTab';
 import { useMyPageCreditTab } from './mypage/tabs/useMyPageCreditTab';
 import { useMyPageLibraryTab } from './mypage/tabs/useMyPageLibraryTab';
 import { useMyPageProfileTab } from './mypage/tabs/useMyPageProfileTab';
+import { useMyPagePresenceSettings } from './mypage/tabs/useMyPagePresenceSettings';
 import { useMyPageShellState } from './mypage/useMyPageShellState';
 import { useMyPageTabRouting } from './mypage/useMyPageTabRouting';
 
@@ -25,6 +26,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   recentApps = [],
   onProfileUpdated,
   onActiveTabChange,
+  onOpenBoard,
 }) => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const isGuest = !currentUser;
@@ -54,6 +56,12 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     onProfileUpdated,
   });
 
+  const presenceSettings = useMyPagePresenceSettings({
+    activeTab,
+    isLoggedIn,
+    t,
+  });
+
   const credit = useMyPageCreditTab({
     activeTab,
     currentUser,
@@ -73,6 +81,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     currentUser,
     shellLanguage,
     t,
+    onOpenBoard,
   });
 
   const socialProviderLabel = getSocialProviderLabel(
@@ -129,6 +138,15 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
               avatarUploading: profile.avatarUploading,
               onAvatarFile: profile.handleAvatarFile,
               onSaveProfile: profile.handleSaveProfile,
+              presence: {
+                availability: presenceSettings.availability,
+                setAvailability: presenceSettings.setAvailability,
+                subtitleMode: presenceSettings.subtitleMode,
+                setSubtitleMode: presenceSettings.setSubtitleMode,
+                loading: presenceSettings.presenceLoading,
+                saving: presenceSettings.presenceSaving,
+                error: presenceSettings.presenceError,
+              },
               profileName: profile.profileName,
               setProfileName: profile.setProfileName,
               profileEmail: profile.profileEmail,
@@ -140,10 +158,13 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
               creditBalance: credit.creditBalance,
               creditOverview: credit.creditOverview,
               creditLoading: credit.creditLoading,
+              creditLoadingMore: credit.creditLoadingMore,
+              creditHasMore: credit.creditHasMore,
               creditError: credit.creditError,
               attendanceLoading: credit.attendanceLoading,
               attendanceMessage: credit.attendanceMessage,
               onAttendanceCheck: () => void credit.handleAttendanceCheck(),
+              onLoadMoreCredits: () => void credit.loadMoreCredits(),
             }}
             library={{
               createdLibraryApps: library.createdLibraryApps,
@@ -154,8 +175,11 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
               activityFilter: activity.activityFilter,
               setActivityFilter: activity.setActivityFilter,
               activityLoading: activity.activityLoading,
+              activityLoadingMore: activity.activityLoadingMore,
+              activityHasMore: activity.activityHasMore,
               activityError: activity.activityError,
               onOpenActivity: activity.handleOpenActivity,
+              onLoadMoreActivities: () => void activity.loadMoreActivities(),
             }}
             account={{
               socialProviderLabel,

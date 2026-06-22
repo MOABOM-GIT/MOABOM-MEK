@@ -411,15 +411,15 @@ async function fetchBoardDataSources(
 
   setGlobalShellFlag({ hasError: false });
 
-  for (const source of sources) {
+  const fetchOneSource = async (source: BoardDataSource): Promise<void> => {
     if (source.type === 'websocket' || source.auto_fetch === false) {
-      continue;
+      return;
     }
     if (source.if) {
       const ok = evalBindingValue(`{{${source.if.replace(/^\{\{|\}\}$/g, '')}}}`, baseCtx, engine);
-      if (!ok) continue;
+      if (!ok) return;
     }
-    if (!source.endpoint) continue;
+    if (!source.endpoint) return;
 
     const endpoint = resolveEndpoint(source.endpoint, { ...baseCtx, ...result }, engine);
     const method = (source.method ?? 'GET').toUpperCase();
@@ -439,13 +439,10 @@ async function fetchBoardDataSources(
         ? endpoint.substring(4) || '/'
         : endpoint;
 
-    let data: unknown;
     try {
-      if (method === 'GET') {
-        data = await boardApiGet(api, normalized, params);
-      } else {
-        data = await boardApiGet(api, normalized, params);
-      }
+      const data = method === 'GET'
+        ? await boardApiGet(api, normalized, params)
+        : await boardApiGet(api, normalized, params);
       result[source.id] = normalizeBoardApiResponse(data);
     } catch (error) {
       await runBoardSourceOnError(source);
@@ -454,20 +451,22 @@ async function fetchBoardDataSources(
         const handled = await runBoardSourceErrorHandling(source, status);
         if (handled === 'handled' && source.fallback !== undefined) {
           result[source.id] = source.fallback;
-          continue;
+          return;
         }
         if (handled === 'handled') {
           result[source.id] = null;
-          continue;
+          return;
         }
       }
       if (source.fallback !== undefined) {
         result[source.id] = source.fallback;
-        continue;
+        return;
       }
       throw error;
     }
-  }
+  };
+
+  await Promise.all(sources.map(source => fetchOneSource(source)));
 
   return result;
 }
@@ -610,6 +609,17 @@ export async function loadBoardWindowRenderPayload(
   postId: string | undefined,
   mode?: BoardWindowMode,
 ): Promise<BoardWindowRenderPayload> {
+  const layoutPath = resolveBoardLayoutPath(slug, postId, mode);
+  const route: Record<string, string> = { slug, ...(postId ? { id: postId } : {}) };
+
+  return loadG7LayoutWindowPayload(layoutPath, route);
+}
+
+export async function loadG7LayoutWindowPayload(
+  layoutPath: string,
+  route: Record<string, string>,
+  queryOverride?: Record<string, string | string[]>,
+): Promise<BoardWindowRenderPayload> {
   const G7Core = getG7Core();
   const templateApp = getTemplateApp();
   const layoutLoader = templateApp?.getLayoutLoader?.();
@@ -619,7 +629,6 @@ export async function loadBoardWindowRenderPayload(
     throw new Error('Layout engine unavailable');
   }
 
-  const layoutPath = resolveBoardLayoutPath(slug, postId, mode);
   const config = templateApp?.getConfig?.();
   const locale = config?.locale ?? 'ko';
 
@@ -628,23 +637,15 @@ export async function loadBoardWindowRenderPayload(
   const beforeLoad = (window as { __g7BeforeLayoutLoad?: (route: { path?: string; layout?: string }, lp: string, tid: string) => Promise<void> })
     .__g7BeforeLayoutLoad;
   if (beforeLoad) {
-    const boardPath = mode === 'write'
-      ? `/board/${slug}/write`
-      : mode === 'edit' && postId
-        ? `/board/${slug}/${postId}/edit`
-        : postId
-          ? `/board/${slug}/${postId}`
-          : `/board/${slug}`;
     await beforeLoad(
-      { path: boardPath, layout: 'home' },
+      { path: Object.values(route).join('/'), layout: 'home' },
       layoutPath,
       TEMPLATE_ID,
     );
   }
 
   const layoutData = normalizeBoardLayout(await layoutLoader.loadLayout(TEMPLATE_ID, layoutPath));
-  const route: Record<string, string> = { slug, ...(postId ? { id: postId } : {}) };
-  const query = parseQuery(typeof window !== 'undefined' ? window.location.search : '');
+  const query = queryOverride ?? parseQuery(typeof window !== 'undefined' ? window.location.search : '');
   const globalState = templateApp?.getGlobalState?.() ?? {};
 
   await loadBoardLayoutScripts(layoutData.scripts, {

@@ -214,6 +214,15 @@
                           }
                         },
                         {
+                          "if": "{{_global.deleteModal.type !== 'comment' && route?.slug === 'notice'}}",
+                          "handler": "moabom.notifyShellNoticeBoardChanged",
+                          "params": {
+                            "slug": "{{route?.slug}}",
+                            "postId": "{{route?.id}}",
+                            "action": "deleted"
+                          }
+                        },
+                        {
                           "comment": "댓글 삭제 시 데이터소스 갱신, 게시글 삭제 시 목록으로 이동",
                           "if": "{{_global.deleteModal.type === 'comment'}}",
                           "handler": "refetchDataSource",

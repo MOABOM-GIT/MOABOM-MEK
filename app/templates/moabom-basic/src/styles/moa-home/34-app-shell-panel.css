@@ -1,0 +1,26 @@
+/**
+ * 앱 창 섹션 패널 표면 SSOT — 마이페이지 `moa-group moa-app-panel` 과 동일.
+ * TS: `APP_SHELL_PANEL_CLASS` · `APP_SHELL_PANEL_BODY_CLASS` (`appShellTypography.ts`)
+ * 곡률: `33-app-panel-radius.css` (`--moa-app-panel-radius`)
+ */
+
+.moa-group {
+  background: rgb(0 0 0 / 4%);
+}
+
+.dark .moa-group {
+  background: rgb(255 255 255 / 4%);
+}
+
+/** 섹션 내 아이콘 타일 — 브랜드 그라데이션·그림자 없이 포인트 컬러만 */
+.moa-app-panel-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--moa-app-panel-radius-inner);
+  background: var(--moa-point-color);
+  color: #fff;
+}

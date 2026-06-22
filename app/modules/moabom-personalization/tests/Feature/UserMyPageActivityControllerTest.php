@@ -114,6 +114,9 @@ class UserMyPageActivityControllerTest extends ModuleTestCase
             ->assertJsonPath('data.items.0.board_slug', 'free')
             ->assertJsonPath('data.summary.posts_count', 1);
 
+        $postId = (int) $response->json('data.items.0.post_id');
+        $response->assertJsonPath('data.items.0.target_url', '/board/free/'.$postId);
+
         $meta = $response->json('data.items.0.meta');
         $this->assertStringContainsString('조회', $meta);
         $this->assertStringContainsString('댓글', $meta);
@@ -140,7 +143,7 @@ class UserMyPageActivityControllerTest extends ModuleTestCase
         $postId = $this->createPost($boardId, $other->id, 'Other Post');
         $this->createComment($boardId, $postId, $user->id, 'My Comment');
 
-        $this->withHeaders($this->authHeaders($user, 'en'))
+        $response = $this->withHeaders($this->authHeaders($user, 'en'))
             ->getJson(self::ENDPOINT.'?type=comments')
             ->assertStatus(200)
             ->assertJsonCount(1, 'data.items')
@@ -148,6 +151,9 @@ class UserMyPageActivityControllerTest extends ModuleTestCase
             ->assertJsonPath('data.items.0.type_label', 'Comments')
             ->assertJsonPath('data.items.0.title', 'Other Post')
             ->assertJsonPath('data.items.0.meta', 'You left a comment.');
+
+        $commentId = (int) $response->json('data.items.0.comment_id');
+        $response->assertJsonPath('data.items.0.target_url', '/board/free/'.$postId.'#comment-'.$commentId);
     }
 
     public function test_returns_received_interactions_with_correct_labels(): void
@@ -224,6 +230,31 @@ class UserMyPageActivityControllerTest extends ModuleTestCase
         $this->withHeaders($this->authHeaders($user))
             ->getJson(self::ENDPOINT.'?limit=0')
             ->assertJsonPath('data.query.limit', 1);
+    }
+
+    public function test_posts_pagination_returns_first_page_and_has_more(): void
+    {
+        $user = $this->createUserWithUserRole();
+        $boardId = $this->createBoard();
+
+        for ($i = 1; $i <= 12; $i++) {
+            $this->createPost($boardId, $user->id, "post {$i}");
+        }
+
+        $this->withHeaders($this->authHeaders($user))
+            ->getJson(self::ENDPOINT.'?type=posts&limit=10&offset=0')
+            ->assertStatus(200)
+            ->assertJsonCount(10, 'data.items')
+            ->assertJsonPath('data.pagination.has_more', true)
+            ->assertJsonPath('data.pagination.total', 12)
+            ->assertJsonPath('data.query.offset', 0);
+
+        $this->withHeaders($this->authHeaders($user))
+            ->getJson(self::ENDPOINT.'?type=posts&limit=10&offset=10')
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.pagination.has_more', false)
+            ->assertJsonPath('data.query.offset', 10);
     }
 
     public function test_authenticated_user_without_roles_can_fetch_own_empty_feed(): void

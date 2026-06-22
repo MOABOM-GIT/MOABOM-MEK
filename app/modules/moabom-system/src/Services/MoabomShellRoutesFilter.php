@@ -47,6 +47,6 @@ final class MoabomShellRoutesFilter
             $out[] = $route;
         }
 
-        return $out;
+        return MoabomShellEssentialRoutes::mergeInto($out, $templateIdentifier);
     }
 }

@@ -1,0 +1,943 @@
+/** 스마트 컨설팅 — 4단계 위저드 UI */
+.moa-consulting-app {
+  --mc-mint: #27bfc1;
+  --mc-blue: #479ee2;
+  --mc-green: #10b981;
+  --mc-orange: #f97316;
+  --mc-ink: #0f2d3a;
+  --mc-surface: rgb(255 255 255 / 72%);
+  --mc-surface-strong: rgb(255 255 255 / 88%);
+  --mc-border: rgb(15 45 58 / 8%);
+  --mc-muted: rgb(100 116 139);
+  --mc-gradient: linear-gradient(135deg, var(--mc-mint) 0%, var(--mc-blue) 100%);
+  --mc-shadow: 0 1px 2px rgb(15 45 58 / 6%), 0 8px 24px rgb(39 191 193 / 8%);
+
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 1.25rem;
+  color: var(--moa-text-primary, var(--mc-ink));
+}
+
+.dark .moa-consulting-app {
+  --mc-surface: rgb(15 23 42 / 55%);
+  --mc-surface-strong: rgb(15 23 42 / 72%);
+  --mc-border: rgb(255 255 255 / 10%);
+  --mc-muted: rgb(148 163 184);
+  --mc-shadow: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+/* ── 스텝 네비 ── */
+.moa-consult-steps {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.35rem;
+  scrollbar-width: none;
+}
+
+.moa-consult-steps::-webkit-scrollbar {
+  display: none;
+}
+
+.moa-consult-step {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+}
+
+.moa-consult-step__track {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.moa-consult-step:not(:first-child) .moa-consult-step__track::before {
+  position: absolute;
+  top: 50%;
+  right: calc(50% + 1rem);
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--mc-border);
+  content: '';
+  transform: translateY(-50%);
+  transition: background 0.2s;
+}
+
+.moa-consult-step.is-done + .moa-consult-step .moa-consult-step__track::before {
+  background: linear-gradient(90deg, var(--mc-mint), var(--mc-blue));
+}
+
+.moa-consult-step__dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--mc-border);
+  border-radius: 50%;
+  background: var(--mc-surface);
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.moa-consult-step__line {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: calc(50% + 1rem);
+  height: 2px;
+  border-radius: 999px;
+  background: var(--mc-border);
+  transform: translateY(-50%);
+  transition: background 0.2s;
+}
+
+.moa-consult-step:last-child .moa-consult-step__line {
+  display: none;
+}
+
+.moa-consult-step__label {
+  display: inline-flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.moa-consult-step.is-active .moa-consult-step__dot {
+  border-color: transparent;
+  background: var(--mc-gradient);
+  box-shadow: 0 4px 12px rgb(39 191 193 / 28%);
+  color: #fff;
+  transform: scale(1.06);
+}
+
+.moa-consult-step.is-active .moa-consult-step__label {
+  color: var(--mc-ink);
+  font-weight: 800;
+}
+
+.dark .moa-consult-step.is-active .moa-consult-step__label {
+  color: #e2e8f0;
+}
+
+.moa-consult-step.is-done .moa-consult-step__dot {
+  border-color: rgb(39 191 193 / 35%);
+  background: rgb(39 191 193 / 12%);
+  color: var(--mc-mint);
+}
+
+.moa-consult-step.is-done .moa-consult-step__line {
+  background: linear-gradient(90deg, var(--mc-mint), var(--mc-blue));
+}
+
+/* ── 본문 ── */
+.moa-consult-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.moa-consult-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.moa-consult-card {
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--mc-border);
+  border-radius: var(--moa-app-panel-radius-sm, 0.875rem);
+  background: var(--mc-surface);
+  box-shadow: var(--mc-shadow);
+}
+
+.moa-consult-card--accent {
+  border-color: rgb(39 191 193 / 22%);
+  background: linear-gradient(145deg, rgb(39 191 193 / 10%), rgb(71 158 226 / 6%));
+}
+
+.moa-consult-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.moa-consult-card__head-icon {
+  display: flex;
+  width: 2.1rem;
+  height: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.6rem;
+  background: rgb(39 191 193 / 14%);
+  color: var(--mc-blue);
+  font-size: 0.9rem;
+}
+
+.moa-consult-kicker {
+  color: var(--mc-mint);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.moa-consult-title {
+  font-size: clamp(1.125rem, 2.2cqw, 1.375rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.moa-consult-lead {
+  margin-top: 0.35rem;
+  color: var(--mc-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+/* ── 통계 그리드 ── */
+.moa-consult-stat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+@container moa-app-window (width >= 640px) {
+  .moa-consult-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.moa-consult-stat {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+}
+
+.moa-consult-stat__label {
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.moa-consult-stat__value {
+  margin-top: 0.3rem;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+/* ── 태그 / 칩 ── */
+.moa-consult-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.moa-consult-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(39 191 193 / 10%);
+  color: var(--mc-ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.dark .moa-consult-chip {
+  color: #cbd5e1;
+}
+
+/* ── 역량 카드 ── */
+.moa-consult-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.moa-consult-feature {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.875rem;
+  background: var(--mc-surface-strong);
+}
+
+.moa-consult-feature__icon {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--mc-gradient);
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.moa-consult-feature__title {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.moa-consult-feature__desc {
+  margin-top: 0.4rem;
+  color: var(--mc-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
+/* ── 환자 여정 ── */
+.moa-consult-journey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.moa-consult-journey__step {
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(39 191 193 / 12%);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* ── 서비스 그리드 ── */
+.moa-consult-service-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-block: 1rem;
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-service-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container moa-app-window (width >= 1024px) {
+  .moa-consult-service-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.moa-consult-service-btn {
+  display: flex;
+  min-height: 5.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 0.6rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+  color: var(--mc-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.35;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.moa-consult-service-btn:hover {
+  border-color: rgb(39 191 193 / 35%);
+  background: rgb(39 191 193 / 8%);
+  color: var(--mc-ink);
+}
+
+.moa-consult-service-btn.is-active {
+  border-color: transparent;
+  background: var(--mc-gradient);
+  box-shadow: 0 6px 16px rgb(39 191 193 / 22%);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.moa-consult-service-detail {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px dashed rgb(39 191 193 / 30%);
+  border-radius: 0.875rem;
+  background: rgb(39 191 193 / 5%);
+}
+
+.moa-consult-service-detail__headline {
+  margin-top: 0.3rem;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+/* ── 비교표 ── */
+.moa-consult-compare-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.moa-consult-compare-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-compare-row {
+    grid-template-columns: 5.5rem minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
+.moa-consult-compare-row__cat {
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.moa-consult-compare-row__cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.moa-consult-compare-row__cell--before {
+  color: rgb(180 81 30);
+}
+
+.dark .moa-consult-compare-row__cell--before {
+  color: #fdba74;
+}
+
+.moa-consult-compare-row__cell--after {
+  color: rgb(15 111 120);
+}
+
+.dark .moa-consult-compare-row__cell--after {
+  color: #9de7e8;
+}
+
+/* ── 시뮬레이션 ── */
+.moa-consult-field-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-field-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.moa-consult-field label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.moa-consult-field__label {
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.moa-consult-field__control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.65rem;
+  background: var(--mc-surface-strong);
+}
+
+.moa-consult-field__control input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  outline: none;
+  text-align: right;
+}
+
+.moa-consult-field__suffix {
+  flex-shrink: 0;
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.moa-consult-scenario-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-scenario-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.moa-consult-scenario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.25rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.875rem;
+  background: var(--mc-surface);
+}
+
+.moa-consult-scenario--smart {
+  border-color: rgb(39 191 193 / 28%);
+  background: linear-gradient(160deg, rgb(39 191 193 / 10%), rgb(71 158 226 / 5%));
+}
+
+.moa-consult-scenario__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.moa-consult-scenario__subtitle {
+  color: var(--mc-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.moa-consult-metrics {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.moa-consult-metric {
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.65rem;
+  background: rgb(15 45 58 / 4%);
+  text-align: center;
+}
+
+.dark .moa-consult-metric {
+  background: rgb(255 255 255 / 6%);
+}
+
+.moa-consult-metric__label {
+  color: var(--mc-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.moa-consult-metric__value {
+  margin-top: 0.3rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.moa-consult-metric__value.is-positive {
+  color: var(--mc-green);
+}
+
+.moa-consult-metric__value.is-negative {
+  color: var(--mc-orange);
+}
+
+.moa-consult-breakeven {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.65rem;
+  background: rgb(15 45 58 / 5%);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.dark .moa-consult-breakeven {
+  background: rgb(255 255 255 / 6%);
+}
+
+/* ── EBIT 차트 2패널 ── */
+.moa-consult-chart-split {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-chart-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.moa-consult-chart-panel {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+}
+
+.moa-consult-chart-panel__title {
+  margin-bottom: 0.65rem;
+  color: var(--mc-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.moa-consult-chart-canvas-wrap {
+  position: relative;
+  height: 10rem;
+  flex: 1 1 auto;
+}
+
+.moa-consult-chart-canvas-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.moa-consult-chart-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mc-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.moa-consult-chart-status--error {
+  position: static;
+  min-height: 6rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: rgb(254 226 226 / 45%);
+  color: rgb(185 28 28);
+  text-align: center;
+}
+
+.dark .moa-consult-chart-status--error {
+  background: rgb(127 29 29 / 25%);
+  color: rgb(252 165 165);
+}
+
+.moa-consult-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.moa-consult-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.moa-consult-legend__swatch {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 0.25rem;
+}
+
+.moa-consult-legend__swatch--self {
+  background: var(--mc-orange);
+}
+
+.moa-consult-legend__swatch--smart {
+  background: var(--mc-mint);
+}
+
+.moa-consult-advantage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.moa-consult-advantage__value {
+  font-size: clamp(1.125rem, 2cqw, 1.375rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* ── 계약 폼 ── */
+.moa-consult-form-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container moa-app-window (width >= 768px) {
+  .moa-consult-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.moa-consult-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.65rem;
+  background: var(--mc-surface-strong);
+  color: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.moa-consult-input:focus {
+  border-color: rgb(71 158 226 / 55%);
+}
+
+.moa-consult-textarea {
+  min-height: 4.5rem;
+  resize: none;
+}
+
+.moa-consult-summary {
+  padding: 1rem 1.15rem;
+  border: 1px solid rgb(39 191 193 / 22%);
+  border-radius: 0.75rem;
+  background: rgb(39 191 193 / 8%);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.moa-consult-contract-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.moa-consult-contract-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+}
+
+.moa-consult-contract-item__name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.moa-consult-contract-item__meta {
+  margin-top: 0.2rem;
+  color: var(--mc-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.moa-consult-badge {
+  flex-shrink: 0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.moa-consult-badge--ok {
+  background: rgb(16 185 129 / 14%);
+  color: rgb(5 150 105);
+}
+
+.dark .moa-consult-badge--ok {
+  color: #6ee7b7;
+}
+
+.moa-consult-badge--pending {
+  background: rgb(245 158 11 / 14%);
+  color: rgb(180 83 9);
+}
+
+.dark .moa-consult-badge--pending {
+  color: #fcd34d;
+}
+
+.moa-consult-alert {
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.moa-consult-alert--ok {
+  background: rgb(16 185 129 / 12%);
+  color: rgb(5 120 90);
+}
+
+.dark .moa-consult-alert--ok {
+  color: #6ee7b7;
+}
+
+.moa-consult-alert--err {
+  background: rgb(249 115 22 / 12%);
+  color: rgb(154 52 18);
+}
+
+.dark .moa-consult-alert--err {
+  color: #fdba74;
+}
+
+.moa-consult-empty {
+  padding: 2rem 1rem;
+  border-radius: 0.75rem;
+  background: rgb(15 45 58 / 4%);
+  color: var(--mc-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.dark .moa-consult-empty {
+  background: rgb(255 255 255 / 5%);
+}
+
+/* ── 하단 네비 ── */
+.moa-consult-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.moa-consult-btn {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  background: var(--mc-surface-strong);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+
+.moa-consult-btn:hover:not(:disabled) {
+  border-color: rgb(39 191 193 / 35%);
+  background: rgb(39 191 193 / 8%);
+}
+
+.moa-consult-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.moa-consult-btn--primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--mc-orange), #ea580c);
+  box-shadow: 0 6px 16px rgb(249 115 22 / 22%);
+  color: #fff;
+}
+
+.moa-consult-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+  color: #fff;
+}
+
+.moa-consult-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.moa-consult-btn--wide {
+  width: 100%;
+  padding-block: 0.85rem;
+}
+
+@container moa-app-window (width < 480px) {
+  .moa-consult-step__label {
+    font-size: 0.6875rem;
+  }
+
+  .moa-consult-footer {
+    flex-direction: column-reverse;
+  }
+
+  .moa-consult-footer .moa-consult-btn {
+    width: 100%;
+  }
+}

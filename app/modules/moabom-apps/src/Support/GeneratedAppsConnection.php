@@ -1,0 +1,70 @@
+<?php
+
+namespace Modules\Moabom\Apps\Support;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Config;
+use Modules\Moabom\Apps\Models\GeneratedApp;
+use Modules\Moabom\Apps\Models\GeneratedAppRow;
+use Modules\Moabom\System\Saas\PlatformConnectionFactory;
+
+/**
+ * SaaS 생성앱 데이터 plane — platform DB (moabom_platform) + tenant_slug 격리.
+ */
+final class GeneratedAppsConnection
+{
+    public const NAME = 'moabom_platform';
+
+    public static function register(): void
+    {
+        if (! config('moabom-system.saas.enabled', false)) {
+            return;
+        }
+
+        app(PlatformConnectionFactory::class)->registerConnection();
+    }
+
+    public static function usesPlatformStore(): bool
+    {
+        if (GeneratedAppPreviewRouting::usesTenantPath()) {
+            return false;
+        }
+
+        if (! config('moabom-system.saas.enabled', false)) {
+            return false;
+        }
+
+        self::register();
+
+        return Config::has('database.connections.'.self::NAME);
+    }
+
+    /**
+     * @return Builder<GeneratedApp>
+     */
+    public static function apps(): Builder
+    {
+        $connection = self::usesPlatformStore() ? self::NAME : null;
+
+        return $connection !== null
+            ? GeneratedApp::on($connection)->newQuery()
+            : GeneratedApp::query();
+    }
+
+    /**
+     * @return Builder<GeneratedAppRow>
+     */
+    public static function rows(): Builder
+    {
+        $connection = self::usesPlatformStore() ? self::NAME : null;
+
+        return $connection !== null
+            ? GeneratedAppRow::on($connection)->newQuery()
+            : GeneratedAppRow::query();
+    }
+
+    public static function tenantSlugForWrite(): string
+    {
+        return GeneratedAppPreviewRouting::tenantScopeKey();
+    }
+}

@@ -5,6 +5,7 @@ namespace Modules\Moabom\Apps\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy;
 
 /**
  * 사용자가 생성한 AI 앱 레코드.
@@ -17,6 +18,15 @@ class GeneratedApp extends Model
 {
     protected $table = 'moabom_system_generated_apps';
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $app): void {
+            if ($app->isDirty('visibility')) {
+                GeneratedAppPublishPolicy::syncLegacySharedFlag($app);
+            }
+        });
+    }
+
     /**
      * 대량 할당 가능한 속성입니다.
      *
@@ -24,12 +34,19 @@ class GeneratedApp extends Model
      */
     protected $fillable = [
         'user_id',
+        'tenant_slug',
         'title',
         'app_type',
+        'tier',
+        'hosted_subdomain',
+        'storage_prefix',
+        'provision_status',
+        'provisioned_at',
         'model_id',
         'prompt',
         'html',
         'is_shared',
+        'visibility',
         'parent_app_id',
         'version',
         'metadata',
@@ -44,6 +61,7 @@ class GeneratedApp extends Model
             'is_shared' => 'boolean',
             'metadata' => 'array',
             'version' => 'integer',
+            'provisioned_at' => 'datetime',
         ];
     }
 

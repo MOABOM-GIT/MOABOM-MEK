@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Moabom\Cpap\Http\Controllers\Admin\CpapMeasurementAdminController;
 use Modules\Moabom\Cpap\Http\Controllers\CpapMeasurementController;
 
 /*
@@ -12,8 +13,6 @@ use Modules\Moabom\Cpap\Http\Controllers\CpapMeasurementController;
 | - URL prefix: 'api/modules/moabom-cpap'
 | - Name prefix: 'api.modules.moabom-cpap.'
 |
-| 모든 엔드포인트는 사용자 본인 자원만 다루므로 `auth:sanctum` 만 사용한다.
-|
 */
 
 Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
@@ -21,4 +20,10 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
         ->name('apps.cpap-mask.measurements.latest');
     Route::post('cpap-mask/measurements', [CpapMeasurementController::class, 'store'])
         ->name('apps.cpap-mask.measurements.store');
+});
+
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('measurements', [CpapMeasurementAdminController::class, 'index'])
+        ->middleware('permission:admin,moabom-cpap.measurements.read')
+        ->name('admin.measurements.index');
 });

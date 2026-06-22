@@ -26,7 +26,7 @@ class SecurityHeadersMiddleware
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
 
-        if (! $response->headers->has('X-Frame-Options')) {
+        if (! $this->hasFrameAncestorsCsp($response) && ! $response->headers->has('X-Frame-Options')) {
             $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         }
 
@@ -41,6 +41,18 @@ class SecurityHeadersMiddleware
         }
 
         return $response;
+    }
+
+    private function hasFrameAncestorsCsp(Response $response): bool
+    {
+        foreach (['Content-Security-Policy', 'Content-Security-Policy-Report-Only'] as $header) {
+            $value = $response->headers->get($header);
+            if (is_string($value) && str_contains($value, 'frame-ancestors')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isEnabled(): bool
@@ -72,6 +84,7 @@ class SecurityHeadersMiddleware
             "base-uri 'self'",
             "object-src 'none'",
             "frame-ancestors 'self'",
+            $this->buildFrameSrcDirective(),
             "img-src 'self' data: blob: https:",
             "font-src 'self' data: https:",
             "style-src 'self' 'unsafe-inline' https:",
@@ -86,5 +99,43 @@ class SecurityHeadersMiddleware
         }
 
         return implode('; ', $directives);
+    }
+
+    /**
+     * Moabom AI 생성앱 iframe (apps.mek360.com / {id}.apps.mek360.com) 허용.
+     *
+     * frame-src 미지정 시 default-src 'self' 가 iframe 삽입을 막아 Report-Only 위반이 발생한다.
+     * MOABOM_APPS_PREVIEW_* 는 moabom-apps 모듈과 동일 env 키를 공유한다.
+     */
+    private function buildFrameSrcDirective(): string
+    {
+        $sources = ["'self'"];
+
+        foreach ($this->generatedAppFrameHosts() as $host) {
+            $sources[] = 'https://'.$host;
+            $sources[] = 'https://*.'.$host;
+        }
+
+        return 'frame-src '.implode(' ', array_values(array_unique($sources)));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function generatedAppFrameHosts(): array
+    {
+        $hosts = [];
+
+        foreach ([
+            (string) env('MOABOM_APPS_PREVIEW_STANDARD_HOST', 'apps.mek360.com'),
+            (string) env('MOABOM_APPS_PREVIEW_HOSTED_APPS_DOMAIN', 'apps.mek360.com'),
+        ] as $candidate) {
+            $host = strtolower(trim($candidate));
+            if ($host !== '') {
+                $hosts[] = $host;
+            }
+        }
+
+        return array_values(array_unique($hosts));
     }
 }

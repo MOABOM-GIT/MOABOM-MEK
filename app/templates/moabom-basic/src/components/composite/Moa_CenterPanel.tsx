@@ -12,6 +12,7 @@ import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { resolveWindowTitle } from '../../i18n/resolveAppStrings';
 import type { App } from '../../data/Moa_apps';
 import type { BoardShellMode } from '../../utils/moabomShellRoutes';
+import type { ShellErrorCode } from '../../utils/moabomShellRoutes';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 
 const FOOTER_HIDE_SCROLL_DISTANCE = 24;
@@ -40,10 +41,14 @@ export interface WindowState {
   editGeneratedAppId?: number;
   /** moa-shell-board:{slug} 윈도우 — 게시판 슬러그 */
   boardSlug?: string;
+  /** moa-shell-user:{uuid} 윈도우 — 공개 프로필 사용자 UUID */
+  userProfileUuid?: string;
   /** 게시판 상세 글 id (목록이면 생략) */
   boardPostId?: string;
   /** 게시판 작성/수정 전용 모드 */
   boardMode?: BoardShellMode;
+  /** moa-shell-error 윈도우 — 표시할 HTTP 에러 코드 */
+  errorCode?: ShellErrorCode;
 }
 
 export interface CenterPanelProps {
@@ -304,7 +309,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 
   return (
     <GlassPanel
-      className="moa-center-panel absolute top-5 bottom-5"
+      className="moa-center-panel absolute moa-home-shell-inset-y"
       style={{ left: `${centerLeft}px`, right: `${centerRight}px`, zIndex: 10, borderRadius: '24px' }}
     >
       {/* 헤더 */}

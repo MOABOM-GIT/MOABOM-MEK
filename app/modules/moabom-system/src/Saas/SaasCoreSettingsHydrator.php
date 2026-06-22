@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Saas;
 
 use App\Contracts\Repositories\ConfigRepositoryInterface;
+use App\Extension\HookManager;
 use Illuminate\Support\Facades\Config;
-use Modules\Moabom\System\Broadcasting\WebsocketDriverConfigApplier;
 
 /**
  * SaaS 런타임 G7 코어 설정 hydration (단일 진입점).
@@ -221,7 +221,7 @@ final class SaasCoreSettingsHydrator
             return;
         }
 
-        WebsocketDriverConfigApplier::apply($drivers);
+        HookManager::doAction('moabom.saas.drivers.apply_runtime', $drivers);
     }
 
     private function resolveScalarSetting(mixed $value): string

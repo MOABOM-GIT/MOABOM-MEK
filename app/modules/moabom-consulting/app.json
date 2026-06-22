@@ -2,8 +2,8 @@
     "id": "consulting",
     "module": "moabom-consulting",
     "name": {
-        "ko": "360 컨설팅",
-        "en": "360 Consulting"
+        "ko": "스마트 컨설팅",
+        "en": "Smart Consulting"
     },
     "description": {
         "ko": "병원 수익성 시뮬레이션 · 전자계약",

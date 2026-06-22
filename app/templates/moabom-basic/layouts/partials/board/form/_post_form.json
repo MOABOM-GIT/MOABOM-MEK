@@ -799,6 +799,15 @@
                       }
                     },
                     {
+                      "if": "{{route?.slug === 'notice'}}",
+                      "handler": "moabom.notifyShellNoticeBoardChanged",
+                      "params": {
+                        "slug": "{{route?.slug}}",
+                        "postId": "{{result?.data?.id}}",
+                        "action": "{{route?.id ? 'updated' : 'created'}}"
+                      }
+                    },
+                    {
                       "handler": "navigate",
                       "params": {
                         "path": "/board/{{route?.slug}}/{{result?.data?.id}}"

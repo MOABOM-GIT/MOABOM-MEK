@@ -6,6 +6,7 @@
 
 import type { MoabomSystemDefaults } from '../types/moabomSystem';
 import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../i18n/moabomShellEvents';
+import { mergeMoabomShellEssentialRoutes } from '../shell/moaShellEssentialRoutes';
 import { setMoabomLocaleCatalog, type MoabomLocaleCatalog } from '../utils/moabomLocaleCatalog';
 import { setShellBootApps, type ShellAppManifest } from '../apps/shellBootApps';
 
@@ -43,6 +44,10 @@ export type MoabomShellBootData = {
     shell_routes: MoabomShellRoutesPayload;
     social_providers: string[];
     apps: ShellAppManifest[];
+    shell_rankings?: {
+        usage_ingest_token: string;
+        usage_bucket_hour: string;
+    };
 };
 
 type ShellBootApiResponse = {
@@ -133,7 +138,12 @@ function normalizeShellBootPayload(raw: Partial<MoabomShellBootData> | undefined
         defaults_revision: typeof raw.defaults_revision === 'number' ? raw.defaults_revision : 0,
         site: raw.site,
         locale_catalog: raw.locale_catalog,
-        shell_routes: raw.shell_routes,
+        shell_routes: {
+            ...raw.shell_routes,
+            routes: Array.isArray(raw.shell_routes.routes)
+                ? mergeMoabomShellEssentialRoutes(raw.shell_routes.routes)
+                : raw.shell_routes.routes,
+        },
         social_providers: raw.social_providers,
         apps: Array.isArray(raw.apps) ? raw.apps : [],
     };

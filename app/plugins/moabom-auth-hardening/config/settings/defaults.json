@@ -5,8 +5,8 @@
     },
     "defaults": {
         "enabled": true,
-        "console_masking_enabled": true,
-        "dom_guard_enabled": true,
+        "console_masking_enabled": false,
+        "dom_guard_enabled": false,
         "security_headers_enabled": true,
         "csp_report_only_enabled": true,
         "trusted_types_enabled": true,

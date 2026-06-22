@@ -13,14 +13,19 @@ import {
   moaShellBoardSlugFromAppId,
   isMoaShellBoardAppId,
 } from '../../shell/moaShellBoardIds';
+import {
+  isMoaShellUserProfileAppId,
+  moaShellUserProfileUuidFromAppId,
+} from '../../shell/moaShellUserProfileIds';
 import { moaShellLegalPageSlugFromAppId } from '../../shell/moaShellLegalPageIds';
+import { isMoaShellErrorAppId } from '../../shell/moaShellErrorIds';
 import { APP_STACK_CLASS, APP_WINDOW_BODY_CLASS } from '../../apps/appShellTypography';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
-import { AUTH_WINDOW_APP_IDS } from './moaHomeConstants';
+import { AUTH_WINDOW_APP_IDS } from '../../shell/moaShellLayoutConstants';
 import { MoabomShellAppFromChunk } from './MoabomShellAppFromChunk';
-import type { AuthUserLike, MoaCurrentUser } from './moaHomeTypes';
+import type { AuthUserLike, MoaCurrentUser, ShellUrlSync } from '../../shell/moaShellTypes';
 
 const AuthWindowContentLazy = React.lazy(async () => {
   const m = await import('../../components/composite/Moa_AuthWindowContent');
@@ -42,6 +47,16 @@ const BoardWindowHostLazy = React.lazy(async () => {
   return { default: m.BoardWindowHost };
 });
 
+const ErrorWindowHostLazy = React.lazy(async () => {
+  const m = await import('../../components/composite/Moa_ErrorWindowHost');
+  return { default: m.ErrorWindowHost };
+});
+
+const UserProfileWindowHostLazy = React.lazy(async () => {
+  const m = await import('../../components/composite/Moa_UserProfileWindowHost');
+  return { default: m.UserProfileWindowHost };
+});
+
 export interface Moa_ShellWindowRendererProps {
   win: WindowState;
   t: MoabomTranslateFn;
@@ -59,8 +74,11 @@ export interface Moa_ShellWindowRendererProps {
   onAuthenticated: (user?: AuthUserLike | null) => void;
   onProfileUpdated: (user?: AuthUserLike | null) => void;
   onMyPageTabChange: (winId: string, tab: MyPageTab) => void;
+  onOpenBoard: (slug: string, postId?: string, sync?: ShellUrlSync) => void;
   onLegalPageTitleResolved: (windowId: string, title: string) => void;
   onBoardWindowTitleResolved: (windowId: string, title: string) => void;
+  onUserProfileWindowTitleResolved: (windowId: string, title: string) => void;
+  onErrorWindowTitleResolved: (windowId: string, title: string) => void;
 }
 
 export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = ({
@@ -80,8 +98,11 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   onAuthenticated,
   onProfileUpdated,
   onMyPageTabChange,
+  onOpenBoard,
   onLegalPageTitleResolved,
   onBoardWindowTitleResolved,
+  onUserProfileWindowTitleResolved,
+  onErrorWindowTitleResolved,
 }) => {
   if ((AUTH_WINDOW_APP_IDS as readonly string[]).includes(win.appId)) {
     return (
@@ -119,6 +140,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           recentApps={recentApps}
           onProfileUpdated={onProfileUpdated}
           onActiveTabChange={tab => onMyPageTabChange(win.id, tab)}
+          onOpenBoard={onOpenBoard}
         />
       </Suspense>
     );
@@ -158,6 +180,38 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           boardMode={win.boardMode}
           authStateKey={currentUser?.memberKey ?? ''}
           onResolvedTitle={title => onBoardWindowTitleResolved(win.id, title)}
+        />
+      </Suspense>
+    );
+  }
+
+  if (isMoaShellUserProfileAppId(win.appId)) {
+    return (
+      <Suspense
+        fallback={(
+          <AppLoadingSpinner label={t('moa_shell.center.user_profile_loading')} fill />
+        )}
+      >
+        <UserProfileWindowHostLazy
+          appId={win.appId}
+          userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
+          authStateKey={currentUser?.memberKey ?? ''}
+          onResolvedTitle={title => onUserProfileWindowTitleResolved(win.id, title)}
+        />
+      </Suspense>
+    );
+  }
+
+  if (isMoaShellErrorAppId(win.appId) && win.errorCode != null) {
+    return (
+      <Suspense
+        fallback={(
+          <AppLoadingSpinner label={t('moa_shell.center.error_page_loading')} fill />
+        )}
+      >
+        <ErrorWindowHostLazy
+          errorCode={win.errorCode}
+          onResolvedTitle={title => onErrorWindowTitleResolved(win.id, title)}
         />
       </Suspense>
     );

@@ -1,4 +1,6 @@
-/** 360 컨설팅 앱 — Moabom 브랜드 팔레트 */
+/** 스마트 컨설팅 앱 — Moabom 브랜드 팔레트 (패널 표면은 `APP_SHELL_PANEL_BODY_CLASS` SSOT) */
+import { APP_SHELL_PANEL_BODY_CLASS } from '../appShellTypography';
+
 export const CONSULTING_COLORS = {
   green: '#87c426',
   orange: '#fe8540',
@@ -11,14 +13,8 @@ export const CONSULTING_GRADIENT = `linear-gradient(135deg,${CONSULTING_COLORS.m
 
 export const CONSULTING_ACCENT = 'text-[#87c426] dark:text-[#a7dd58]';
 
-export const CONSULTING_PANEL =
-  'moa-group rounded-[1.75rem] border border-[#27bfc1]/16 bg-white p-6 shadow-sm backdrop-blur-sm dark:border-[#27bfc1]/25 dark:bg-slate-900/70';
-
-export const CONSULTING_HERO_GRADIENT =
-  'border border-[#27bfc1]/25 bg-gradient-to-br from-[#27bfc1] to-[#479ee2] text-white';
-
-export const CONSULTING_ICON_TILE =
-  'flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#27bfc1] to-[#479ee2] text-white shadow-md shadow-[#27bfc1]/20';
+/** @deprecated `APP_SHELL_PANEL_BODY_CLASS` 직접 사용 권장 */
+export const CONSULTING_PANEL = APP_SHELL_PANEL_BODY_CLASS;
 
 export const CONSULTING_PRIMARY_CTA =
   '!border-transparent !bg-[#fe8540] !text-white shadow-md shadow-[#fe8540]/20 hover:!bg-[#e8732f]';

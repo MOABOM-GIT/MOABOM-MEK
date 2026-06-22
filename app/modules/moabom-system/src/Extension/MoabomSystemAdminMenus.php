@@ -37,29 +37,7 @@ final class MoabomSystemAdminMenus
      */
     public static function forTenantHost(): array
     {
-        return self::platformSettingsMenus();
-    }
-
-    /**
-     * Platform host 전용 top-level 메뉴 (tenant DB 에는 금지).
-     *
-     * 병원 관리(SaaS) — 대시보드(core order 1) 바로 밑(order 2)에 top-level 로 노출한다.
-     * 과거 'platform-saas' 그룹 wrapper 는 제거하고 병원 관리만 단독 top-level 로 둔다.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public static function platformOnlyTopLevelMenus(): array
-    {
-        return [
-            [
-                'name' => ['ko' => '병원 관리', 'en' => 'Hospitals'],
-                'slug' => 'moabom-saas-hospitals',
-                'url' => '/admin/saas/hospitals',
-                'icon' => 'fas fa-hospital',
-                'order' => 2,
-                'permission' => 'moabom-system.saas.read',
-            ],
-        ];
+        return self::platformMenuTree(includeHospital: false);
     }
 
     /**
@@ -67,10 +45,7 @@ final class MoabomSystemAdminMenus
      */
     private static function platformMenus(): array
     {
-        return array_merge(
-            self::platformSettingsMenus(),
-            self::platformOnlyTopLevelMenus(),
-        );
+        return self::platformMenuTree(includeHospital: true);
     }
 
     /**
@@ -78,34 +53,51 @@ final class MoabomSystemAdminMenus
      */
     private static function legacyMenus(): array
     {
-        return self::platformSettingsMenus();
+        return self::platformMenuTree(includeHospital: false);
     }
 
     /**
-     * 플랫폼 환경설정 그룹 — 마스터·테넌트 공통 order 3 (G7 환경설정[core order 2] 바로 밑,
-     * 알림 발송 이력[core order 4] 위).
+     * 플랫폼 메뉴 그룹 — 마스터·테넌트 공통.
+     *
+     * 부모는 대시보드(core order 1) 위(order 0)에 둔다.
+     * 병원 관리는 마스터 Host 전용 자식(order 10)이며 tenant DB 에는 금지(TenantAdminMenuPolicy).
      *
      * @return list<array<string, mixed>>
      */
-    private static function platformSettingsMenus(): array
+    private static function platformMenuTree(bool $includeHospital): array
     {
-        return [
+        $menus = [
             [
-                'name' => ['ko' => '플랫폼 환경설정', 'en' => 'Platform Settings'],
+                'name' => ['ko' => '플랫폼 메뉴', 'en' => 'Platform Menu'],
                 'slug' => 'platform-settings',
                 'url' => null,
                 'icon' => 'fas fa-sliders-h',
-                'order' => 3,
-            ],
-            [
-                'name' => ['ko' => '마이페이지 설정', 'en' => 'My Page Settings'],
-                'slug' => 'moabom-system-settings',
-                'parent_slug' => 'platform-settings',
-                'url' => '/admin/platform/settings/mypage',
-                'icon' => 'fas fa-id-card',
-                'order' => 10,
-                'permission' => 'moabom-system.settings.read',
+                'order' => 0,
             ],
         ];
+
+        if ($includeHospital) {
+            $menus[] = [
+                'name' => ['ko' => '병원 관리', 'en' => 'Hospitals'],
+                'slug' => 'moabom-saas-hospitals',
+                'parent_slug' => 'platform-settings',
+                'url' => '/admin/saas/hospitals',
+                'icon' => 'fas fa-hospital',
+                'order' => 10,
+                'permission' => 'moabom-system.saas.read',
+            ];
+        }
+
+        $menus[] = [
+            'name' => ['ko' => '마이페이지 설정', 'en' => 'My Page Settings'],
+            'slug' => 'moabom-system-settings',
+            'parent_slug' => 'platform-settings',
+            'url' => '/admin/platform/settings/mypage',
+            'icon' => 'fas fa-id-card',
+            'order' => 20,
+            'permission' => 'moabom-system.settings.read',
+        ];
+
+        return $menus;
     }
 }

@@ -62,12 +62,21 @@ class CreditRepository implements CreditRepositoryInterface
      *
      * @return Collection<int, CreditTransaction>
      */
-    public function getRecentTransactions(User $user, int $limit = 10): Collection
+    public function getRecentTransactions(User $user, int $limit = 10, int $offset = 0): Collection
     {
         return CreditTransaction::where('user_id', $user->id)
             ->latest()
-            ->limit($limit)
+            ->offset(max(0, $offset))
+            ->limit(max(1, $limit))
             ->get();
+    }
+
+    /**
+     * 거래 원장 총 건수를 조회합니다.
+     */
+    public function getTransactionCount(User $user): int
+    {
+        return (int) CreditTransaction::where('user_id', $user->id)->count();
     }
 
     /**

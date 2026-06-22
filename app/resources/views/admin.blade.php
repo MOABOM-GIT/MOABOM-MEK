@@ -8,8 +8,10 @@
 
         <title>{{ config('app.name', '그누보드7') }} - Admin</title>
 
-        <!-- Font Awesome CDN -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Font Awesome CDN (non-blocking: first paint 후 적용, 아이콘·클래스명 유지) -->
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+        <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
 
         <!-- Fallback UI 스타일 -->
         @if(empty($activeAdminTemplate))
@@ -18,7 +20,7 @@
 
         <!-- 템플릿 컴포넌트 스타일 -->
         @if(!empty($activeAdminTemplate))
-        <link rel="stylesheet" href="/api/templates/assets/{{ $activeAdminTemplate }}/css/components.css?v={{ time() }}">
+        <link rel="stylesheet" href="/api/templates/assets/{{ $activeAdminTemplate }}/css/components.css?v={{ \App\Extension\ModuleManager::getExtensionCacheVersion() }}">
         @endif
     </head>
     <body>
@@ -55,7 +57,7 @@
         <script src="/build/core/template-engine.min.js?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
 
         <!-- 템플릿 컴포넌트 번들 (IIFE) -->
-        <script src="/api/templates/assets/{{ $activeAdminTemplate }}/js/components.iife.js?v={{ time() }}"></script>
+        <script src="/api/templates/assets/{{ $activeAdminTemplate }}/js/components.iife.js?v={{ \App\Extension\ModuleManager::getExtensionCacheVersion() }}"></script>
 
         <!-- 템플릿 엔진 초기화 (TemplateApp 사용) -->
         <script>

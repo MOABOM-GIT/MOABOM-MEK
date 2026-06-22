@@ -35,8 +35,8 @@
 }
 
 .moa-board-window-host .py-8 {
-  padding-top: 0.5rem;
-  padding-bottom: 0.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .moa-g7-window-host a,
@@ -136,6 +136,36 @@
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/** 댓글 빈 상태·권한 안내 — 헤더 아래 여백·아이콘 정렬 통일 */
+.moa-board-comment-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.moa-board-comment-empty-icon {
+  color: rgb(209 213 219);
+}
+
+.dark .moa-board-comment-empty-icon {
+  color: rgb(75 85 99);
+}
+
+.moa-board-comment-empty-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgb(107 114 128);
+}
+
+.dark .moa-board-comment-empty-text {
+  color: rgb(156 163 175);
 }
 
 @container moa-g7-window (max-width: 480px) {

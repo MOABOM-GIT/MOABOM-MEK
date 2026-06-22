@@ -1,0 +1,200 @@
+{
+  "version": "1.0.0",
+  "layout_name": "admin_cpap_measurements",
+  "permissions": ["moabom-cpap.measurements.read"],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-cpap.admin.measurements.title",
+    "description": "$t:moabom-cpap.admin.measurements.description"
+  },
+  "transition_overlay": {
+    "wait_for": ["measurements"]
+  },
+  "data_sources": [
+    {
+      "id": "measurements",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-cpap/admin/measurements",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true,
+      "loading_strategy": "blocking",
+      "params": {
+        "page": "{{query.page || 1}}",
+        "per_page": "{{query.per_page || 20}}",
+        "q": "{{query.q || ''}}"
+      },
+      "errorHandling": {
+        "401": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-cpap.admin.measurements.auth_required"
+          }
+        },
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-cpap.admin.measurements.permission_denied"
+          }
+        }
+      },
+      "fallback": {
+        "data": {
+          "data": [],
+          "meta": {
+            "current_page": 1,
+            "last_page": 1,
+            "per_page": 20,
+            "total": 0
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "type": "basic",
+        "name": "Div",
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-cpap.admin.measurements.title",
+              "description": "$t:moabom-cpap.admin.measurements.description"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "title": "$t:common.refresh",
+                  "className": "p-2 mr-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "refetchDataSource",
+                    "params": { "dataSourceId": "measurements" }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": { "name": "refresh", "className": "w-5 h-5" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "cpap_measurements_grid",
+            "type": "composite",
+            "name": "DataGrid",
+            "blur_until_loaded": true,
+            "props": {
+              "columns": [
+                {
+                  "field": "id",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.id",
+                  "sortable": false,
+                  "width": "80px"
+                },
+                {
+                  "field": "user_name",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.user",
+                  "sortable": false,
+                  "cellChildren": [
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": { "className": "flex flex-col gap-0.5" },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Span",
+                          "props": {
+                            "className": "font-medium text-gray-900 dark:text-white"
+                          },
+                          "text": "{{row.user_name ?? ''}}"
+                        },
+                        {
+                          "type": "basic",
+                          "name": "Span",
+                          "props": {
+                            "className": "text-xs text-gray-500 dark:text-gray-400"
+                          },
+                          "text": "{{row.user_email ?? ''}}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "field": "mask_type",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.mask_type",
+                  "sortable": false
+                },
+                {
+                  "field": "recommendation_name",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.recommendation",
+                  "sortable": false
+                },
+                {
+                  "field": "confidence",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.confidence",
+                  "sortable": false,
+                  "cellChildren": [
+                    {
+                      "type": "basic",
+                      "name": "Span",
+                      "text": "{{row.confidence != null ? row.confidence + '%' : '-'}}"
+                    }
+                  ]
+                },
+                {
+                  "field": "created_at",
+                  "header": "$t:moabom-cpap.admin.measurements.columns.created_at",
+                  "sortable": false
+                }
+              ],
+              "data": "{{measurements?.data?.data}}",
+              "idField": "id",
+              "pagination": true,
+              "alwaysShowPagination": true,
+              "pageSize": 20,
+              "serverSidePagination": true,
+              "serverCurrentPage": "{{measurements?.data?.meta?.current_page ?? 1}}",
+              "serverTotalPages": "{{measurements?.data?.meta?.last_page ?? 1}}",
+              "emptyMessage": "$t:moabom-cpap.admin.measurements.empty",
+              "responsiveBreakpoint": 768
+            },
+            "actions": [
+              {
+                "event": "onPageChange",
+                "type": "change",
+                "handler": "navigate",
+                "params": {
+                  "path": "/admin/platform/cpap/measurements",
+                  "mergeQuery": true,
+                  "query": {
+                    "page": "{{$args[0]}}"
+                  },
+                  "transition_overlay_target": "cpap_measurements_grid__body"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

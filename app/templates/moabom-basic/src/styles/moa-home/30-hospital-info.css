@@ -6,52 +6,6 @@
   color: var(--moa-text-primary);
 }
 
-.hospital-info-hero {
-  overflow: hidden;
-  padding: 2rem 1.5rem;
-  border-radius: 1.75rem;
-  color: #fff;
-  box-shadow: 0 1rem 2rem rgb(15 23 42 / 14%);
-}
-
-.hospital-info-hero-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.hospital-info-hero-icon {
-  display: flex;
-  width: 3.5rem;
-  height: 3.5rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 1rem;
-  background: rgb(255 255 255 / 30%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 40%);
-}
-
-.hospital-info-hero-title {
-  overflow: hidden;
-  min-width: 0;
-}
-
-.hospital-info-hero-name {
-  font-size: 1.5rem;
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
-}
-
-.hospital-info-hero-subtitle {
-  margin-top: 0.4rem;
-  color: rgb(255 255 255 / 85%);
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.6;
-}
-
 .hospital-info-grid {
   display: grid;
   gap: var(--moa-app-stack-gap);
@@ -61,29 +15,6 @@
   .hospital-info-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   }
-}
-
-.hospital-info-card {
-  padding: 1.25rem;
-  border: 1px solid rgb(226 232 240 / 70%);
-  border-radius: 1.5rem;
-  background: rgb(255 255 255 / 85%);
-  box-shadow: 0 0.125rem 0.5rem rgb(15 23 42 / 5%);
-}
-
-.dark .hospital-info-card {
-  border-color: rgb(255 255 255 / 10%);
-  background: rgb(15 23 42 / 75%);
-}
-
-.hospital-info-card-title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.75rem;
-  color: var(--moa-text-secondary, var(--moa-text-primary));
-  font-size: 0.875rem;
-  font-weight: 800;
 }
 
 .hospital-info-name {
@@ -120,7 +51,7 @@
   margin-top: 1rem;
   overflow: hidden;
   border: 1px solid rgb(226 232 240 / 80%);
-  border-radius: 1.25rem;
+  border-radius: var(--moa-app-panel-radius-sm);
   background: rgb(241 245 249 / 70%);
 }
 
@@ -144,24 +75,6 @@
 }
 
 @media (width <= 480px) {
-  .hospital-info-hero {
-    padding: 1.5rem 1.25rem;
-  }
-
-  .hospital-info-hero-icon {
-    width: 3rem;
-    height: 3rem;
-  }
-
-  .hospital-info-hero-name {
-    font-size: 1.25rem;
-  }
-
-  .hospital-info-card {
-    padding: 1rem;
-    border-radius: 1.25rem;
-  }
-
   .hospital-info-map-frame,
   .hospital-info-map-frame iframe {
     min-height: 13rem;

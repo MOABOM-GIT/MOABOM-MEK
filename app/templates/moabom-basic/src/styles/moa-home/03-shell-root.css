@@ -29,13 +29,8 @@ body.moa-home-active {
   overflow: auto;
   overscroll-behavior: contain;
   overflow-x: hidden;
-  padding: var(--moa-app-window-body-padding);
+  padding: var(--moa-app-window-body-padding) 0;
   color: var(--moa-text-primary);
-}
-
-/** CPAP 카메라 스테이지 — 본문 패딩 없이 전체 면 사용 */
-.moa-app-window-viewport:has(.moa-cpap-fit-app) {
-  padding: 0;
 }
 
 /**

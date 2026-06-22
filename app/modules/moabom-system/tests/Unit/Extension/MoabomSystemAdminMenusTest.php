@@ -29,6 +29,8 @@ final class MoabomSystemAdminMenusTest extends ModuleTestCase
         $slugs = array_column($menus, 'slug');
 
         $this->assertContains('moabom-saas-hospitals', $slugs);
+        $hospital = collect($menus)->firstWhere('slug', 'moabom-saas-hospitals');
+        $this->assertSame('platform-settings', $hospital['parent_slug'] ?? null);
         $this->assertNotContains('moabom-tenant-settings', $slugs);
     }
 

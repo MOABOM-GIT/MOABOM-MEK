@@ -12,6 +12,7 @@ import {
 } from '../../../utils/moBackgroundAssets';
 import { DEFAULT_MOABOM_SYSTEM } from '../../../utils/moabomSystemStore';
 import { derivePointPresetChoices } from './myPageConstants';
+import type { PresenceAvailability, PresenceSubtitleMode } from '../../../api/moabomPresenceApi';
 import type {
   ActivityItem,
   ActivityOverview,
@@ -62,15 +63,27 @@ export interface Moa_MyPageTabPanelsProps {
     setProfileEmail: (value: string) => void;
     profileMobile: string;
     setProfileMobile: (value: string) => void;
+    presence: {
+      availability: PresenceAvailability;
+      setAvailability: (value: PresenceAvailability) => void;
+      subtitleMode: PresenceSubtitleMode;
+      setSubtitleMode: (value: PresenceSubtitleMode) => void;
+      loading: boolean;
+      saving: boolean;
+      error: string | null;
+    };
   };
   credit: {
     creditBalance: number;
     creditOverview: CreditOverview | null;
     creditLoading: boolean;
+    creditLoadingMore?: boolean;
+    creditHasMore?: boolean;
     creditError: string;
     attendanceLoading: boolean;
     attendanceMessage: string;
     onAttendanceCheck: () => void;
+    onLoadMoreCredits?: () => void;
   };
   library: {
     createdLibraryApps: App[];
@@ -81,8 +94,11 @@ export interface Moa_MyPageTabPanelsProps {
     activityFilter: string;
     setActivityFilter: (value: string) => void;
     activityLoading: boolean;
+    activityLoadingMore?: boolean;
+    activityHasMore?: boolean;
     activityError: string;
     onOpenActivity: (item: ActivityItem) => void;
+    onLoadMoreActivities?: () => void;
   };
   account: {
     socialProviderLabel: string | null;
@@ -145,6 +161,7 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
         avatarUploading={profile.avatarUploading}
         onAvatarFile={profile.onAvatarFile}
         onSaveProfile={() => void profile.onSaveProfile()}
+        presence={profile.presence}
       />
     );
   }
@@ -214,10 +231,13 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
         creditBalance={credit.creditBalance}
         creditOverview={credit.creditOverview}
         creditLoading={credit.creditLoading}
+        creditLoadingMore={credit.creditLoadingMore}
+        creditHasMore={credit.creditHasMore}
         creditError={credit.creditError}
         attendanceLoading={credit.attendanceLoading}
         attendanceMessage={credit.attendanceMessage}
         onAttendanceCheck={credit.onAttendanceCheck}
+        onLoadMoreCredits={credit.onLoadMoreCredits}
       />
     );
   }
@@ -246,8 +266,11 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
         activityFilter={activity.activityFilter}
         setActivityFilter={activity.setActivityFilter}
         activityLoading={activity.activityLoading}
+        activityLoadingMore={activity.activityLoadingMore}
+        activityHasMore={activity.activityHasMore}
         activityError={activity.activityError}
         onOpenActivity={activity.onOpenActivity}
+        onLoadMoreActivities={activity.onLoadMoreActivities}
       />
     );
   }

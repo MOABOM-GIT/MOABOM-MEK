@@ -7,6 +7,7 @@ export { MOA_APP_WINDOW_CQ } from '../appWindowBreakpoints';
 export { formatKrwManwon } from './format';
 export { SignaturePad, type SignaturePadHandle } from './SignaturePad';
 export { AppTabsShell, type AppTab } from './AppTabsShell';
+export { AppWindowHeader, type AppWindowHeaderProps } from './AppWindowHeader';
 export { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../appShellTypography';
 export { createShellAppMetadata } from './createShellAppMetadata';
 export { PlaceholderAppShell, createPlaceholderApp } from './PlaceholderAppShell';

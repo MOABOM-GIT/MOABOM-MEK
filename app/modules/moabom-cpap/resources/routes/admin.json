@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "routes": [
+    {
+      "path": "*/admin/platform/cpap/measurements",
+      "layout": "admin_cpap_measurements",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-cpap.admin.measurements.title",
+        "permission": "moabom-cpap.measurements.read"
+      }
+    }
+  ]
+}

@@ -105,7 +105,7 @@ class Module extends AbstractModule
                 'parent_slug' => 'platform-settings',
                 'url' => '/admin/platform/settings/credit',
                 'icon' => 'fas fa-coins',
-                'order' => 20,
+                'order' => 40,
                 'permission' => 'moabom-credit.settings.read',
             ],
         ];

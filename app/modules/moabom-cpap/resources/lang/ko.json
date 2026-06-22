@@ -1,0 +1,19 @@
+{
+  "admin": {
+    "measurements": {
+      "title": "마스크피팅 관리",
+      "description": "마스크 피팅 앱에서 저장된 측정 결과를 조회합니다.",
+      "auth_required": "로그인이 필요합니다.",
+      "permission_denied": "마스크피팅 관리 권한이 없습니다.",
+      "empty": "저장된 측정 결과가 없습니다.",
+      "columns": {
+        "id": "ID",
+        "user": "사용자",
+        "mask_type": "마스크 유형",
+        "recommendation": "추천 결과",
+        "confidence": "신뢰도",
+        "created_at": "저장일"
+      }
+    }
+  }
+}

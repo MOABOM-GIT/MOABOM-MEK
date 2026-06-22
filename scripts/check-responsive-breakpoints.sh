@@ -22,9 +22,8 @@ ALLOWED_PX='480|640|768|1000|1024|1280|1400'
 TARGETS=(
   "app/templates/moabom-basic/src/styles"
   "app/templates/moabom-basic/src/apps/appWindowBreakpoints.ts"
-  "app/templates/moabom-basic/src/pages/home/moaHomeConstants.ts"
+  "app/templates/moabom-basic/src/shell/moaShellLayoutConstants.ts"
   "app/templates/moabom-admin_basic/src/styles"
-  "app/modules/moabom-system/js/admin"
 )
 
 existing_targets=()

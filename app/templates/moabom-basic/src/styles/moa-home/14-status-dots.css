@@ -43,10 +43,30 @@ body.lock-scroll {
   background: #f59e0b;
 }
 
+.moa-status-away {
+  background: #9ca3af;
+}
+
+.moa-status-busy {
+  background: #f97316;
+}
+
 .moa-status-mobile {
   background: #8b5cf6;
 }
 
 .moa-status-offline {
   background: #9ca3af;
+}
+
+.moa-status-dot-static {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  width: 10px;
+  height: 10px;
+  border-width: 0;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  overflow: visible;
 }

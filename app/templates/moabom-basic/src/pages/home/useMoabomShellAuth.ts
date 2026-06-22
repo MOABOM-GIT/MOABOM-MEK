@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { bootstrapMoabomShellAuthConfig } from '../../runtime/moabomShellAuth';
 import { clearShellAccessToken, getShellAccessToken } from '../../api/moabomShellAccess';
-import { buildMoaCurrentUser } from './moaHomeUser';
-import type { AuthUserLike, MoaCurrentUser } from './moaHomeTypes';
+import { buildMoaCurrentUser, type AuthUserLike, type MoaCurrentUser } from '../../shell/moaShellTypes';
 
 interface UseMoabomShellAuthOptions {
   nameFallback: string;

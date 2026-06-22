@@ -32,6 +32,10 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ]; then
     echo "[entrypoint] Running SaaS platform registry migrations..."
     php artisan moabom:saas:platform-migrate --force --no-interaction || true
+    echo "[entrypoint] Running generated-apps platform schema migrations..."
+    php artisan moabom:apps:platform-migrate --force --no-interaction || true
+    echo "[entrypoint] Running presence platform schema migrations..."
+    php artisan moabom:presence:platform-migrate --force --no-interaction || true
   fi
 fi
 
@@ -108,7 +112,7 @@ fi
 # moabom-system module layouts (admin_mypage_settings 등) — platform + active tenants (RF-14b)
 if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ] \
   && [ "${MOABOM_SYNC_MODULE_LAYOUTS:-true}" = "true" ]; then
-  echo "[entrypoint] Syncing module layouts (moabom-system → platform + tenants)..."
+  echo "[entrypoint] Syncing module layouts (all modules with layout JSON → platform + tenants)..."
   _module_layout_sync_ok=0
   _module_layout_sync_attempt=1
   while [ "${_module_layout_sync_attempt}" -le 3 ]; do

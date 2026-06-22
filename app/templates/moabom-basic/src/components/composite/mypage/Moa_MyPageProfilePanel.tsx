@@ -9,6 +9,8 @@ import { Span } from '../../basic/Span';
 import { Textarea } from '../../basic/Textarea';
 import { POINT_COLOR } from './myPageConstants';
 import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
+import { Moa_MyPagePresenceSettingsSection } from './Moa_MyPagePresenceSettingsSection';
+import type { PresenceAvailability, PresenceSubtitleMode } from '../../../api/moabomPresenceApi';
 import { ACTION_BUTTON_VARIANT, GROUP_PANEL, INPUT_SURFACE, MY_PAGE_BLOCK_TITLE_CLASS, TEXTAREA_SURFACE } from './myPageStyles';
 
 export interface Moa_MyPageProfilePanelProps {
@@ -29,6 +31,15 @@ export interface Moa_MyPageProfilePanelProps {
   avatarUploading: boolean;
   onAvatarFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSaveProfile: () => void;
+  presence: {
+    availability: PresenceAvailability;
+    setAvailability: (value: PresenceAvailability) => void;
+    subtitleMode: PresenceSubtitleMode;
+    setSubtitleMode: (value: PresenceSubtitleMode) => void;
+    loading: boolean;
+    saving: boolean;
+    error: string | null;
+  };
 }
 
 export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
@@ -49,6 +60,7 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
   avatarUploading,
   onAvatarFile,
   onSaveProfile,
+  presence,
 }) => (
   <Div className={`moa-mypage-profile ${APP_STACK_GRID_CLASS} grid grid-cols-[180px_1fr]`}>
     <Div className={`${GROUP_PANEL} p-4 flex flex-col items-center text-center`}>
@@ -126,6 +138,18 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
               <Span className="mt-1 block text-xs text-red-500">{profileErr('bio')}</Span>
             ) : null}
           </Div>
+
+          <Moa_MyPagePresenceSettingsSection
+            t={t}
+            availability={presence.availability}
+            setAvailability={presence.setAvailability}
+            subtitleMode={presence.subtitleMode}
+            setSubtitleMode={presence.setSubtitleMode}
+            loading={presence.loading}
+            saving={presence.saving}
+            error={presence.error}
+            disabled={profileBusy}
+          />
 
           <Div className="flex justify-end pt-2">
             <Button

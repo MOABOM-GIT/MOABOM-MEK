@@ -36,7 +36,12 @@ interface CreditRepositoryInterface
      *
      * @return Collection<int, CreditTransaction>
      */
-    public function getRecentTransactions(User $user, int $limit = 10): Collection;
+    public function getRecentTransactions(User $user, int $limit = 10, int $offset = 0): Collection;
+
+    /**
+     * 거래 원장 총 건수를 조회합니다.
+     */
+    public function getTransactionCount(User $user): int;
 
     /**
      * 사용자 크레딧 요약 정보를 조회합니다.

@@ -10,6 +10,27 @@ return [
     // 'ai' 섹션 → moabom-apps 모듈로 분리(2026-06-02). config('moabom-apps.ai.*') / env 이름 보존.
     // 'weather' 섹션 → moabom-weather 플러그인으로 분리(2026-06-02). config('moabom-weather.*') / env 이름 보존.
 
+    'shell_rankings' => [
+        'period_hours' => 24,
+        'limit' => 30,
+        'cache_ttl' => 300,
+        'open_hit_weight' => 10,
+        'snapshot_retention_hours' => 168,
+        'max_events_per_request' => 20,
+        'max_open_hits_per_event' => 5,
+        'max_active_seconds_per_event' => 1800,
+        'user_activity' => [
+            'post_weight' => 50,
+            'comment_weight' => 20,
+        ],
+        'change_cache_ttl' => 86400,
+        'ingest' => [
+            'signed_token_required' => false,
+            'max_requests_per_ip_per_minute' => 60,
+            'max_requests_per_ip_per_minute_without_token' => 12,
+        ],
+    ],
+
     'decomposition_compat' => [
         'enabled' => filter_var(
             env('MOABOM_DECOMPOSITION_COMPAT', true),

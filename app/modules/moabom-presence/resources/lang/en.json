@@ -1,0 +1,25 @@
+{
+    "messages": {
+        "summary_success": "Presence summary loaded.",
+        "online_success": "Online users loaded.",
+        "heartbeat_success": "Presence heartbeat recorded.",
+        "heartbeat_rejected": "Presence heartbeat rejected.",
+        "friends_success": "Friends list loaded.",
+        "friend_request_sent": "Friend request sent.",
+        "friend_request_accepted": "Friend request accepted.",
+        "friend_removed": "Friend removed.",
+        "guest_display_name": "Guest",
+        "cannot_friend_self": "You cannot send a friend request to yourself.",
+        "friendship_already_exists": "A friendship or pending request already exists.",
+        "friendship_request_not_found": "Friend request not found."
+    },
+    "user": {
+        "profile_posts_count": "{{count}} posts",
+        "profile_posts_title": "Posts",
+        "profile_posts_empty": "No posts yet.",
+        "availability_online": "Online",
+        "availability_away": "Away",
+        "availability_busy": "Busy",
+        "availability_offline": "Offline"
+    }
+}

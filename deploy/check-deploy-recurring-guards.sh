@@ -74,6 +74,10 @@ grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ENTRY}" \
   || fail "RF-14b: entrypoint MOABOM_SYNC_MODULE_LAYOUTS 가드 없음"
 ok "RF-14b: entrypoint module layout sync"
 
+grep -q 'ModuleLayoutSyncCatalog::resolveModuleOption' "${ROOT}/app/modules/moabom-system/src/Console/Commands/SaasSyncModuleLayoutsCommand.php" \
+  || fail "RF-14c: sync-module-layouts 가 ModuleLayoutSyncCatalog 미사용 (moabom-apps 등 누락)"
+ok "RF-14c: module layout sync all modules with layouts"
+
 SETTINGS_CTRL="${APP}/modules/moabom-system/src/Http/Controllers/Admin/SystemSettingsController.php"
 grep -q 'TenantSettingsWriter' "${SETTINGS_CTRL}" \
   || fail "RF-17: SystemSettingsController 가 TenantSettingsWriter 미사용 (SaaS appearance 저장)"
@@ -113,7 +117,6 @@ check_host_build_guard() {
 
 check_host_build_guard "moabom-basic" "${APP}/templates/moabom-basic/package.json" "node scripts/guard-no-host-build.cjs"
 check_host_build_guard "moabom-admin_basic" "${APP}/templates/moabom-admin_basic/package.json" "node ../../scripts/guard-no-host-build.cjs"
-check_host_build_guard "moabom-system" "${APP}/modules/moabom-system/package.json" "node ../../scripts/guard-no-host-build.cjs"
 ok "RF-20: 활성 프론트 호스트 로컬 npm 가드 (preinstall/prebuild/predev)"
 
 grep -q '\*\*/dist/' "${ROOT}/.gcloudignore" \
@@ -127,8 +130,8 @@ grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
   && {
     grep -q 'Post-deploy allowlist module migrations' "${BUILD_DEPLOY}" \
       || fail "RF-21: build-and-deploy.sh 에 allowlist module migrations Job 단계 없음"
-    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps}"' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps 가 아님"
+    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence}"' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps,moabom-system,moabom-presence 가 아님"
     grep -q 'post_deploy_migration_modules()' "${BUILD_DEPLOY}" \
       || fail "RF-21: post-deploy migration allowlist parser 없음"
     grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \

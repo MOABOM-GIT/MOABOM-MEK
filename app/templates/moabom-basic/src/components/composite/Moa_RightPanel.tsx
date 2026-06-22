@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
+import { useMoaPanelScrollDrag } from '../../hooks/Moa_usePanelScrollDrag';
 import { useDroppable } from '@dnd-kit/core';
 import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
@@ -10,7 +12,7 @@ import { GlassPanel } from './Moa_GlassPanel';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LoginPrompt } from './Moa_LoginPrompt';
-import { ONLINE_USERS, FRIENDS_DATA } from '../../data/Moa_mockData';
+import { useMoabomPresence } from '../../hooks/useMoabomPresence';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 import type { AuthWindowMode } from './Moa_AuthWindowContent';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
@@ -22,6 +24,12 @@ import {
   resolveRelativeTimeLabel,
 } from '../../utils/moabomNotificationPresentation';
 import { isShellNotificationUnread } from '../../utils/moabomShellNotificationUtils';
+import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
+import type { MoabomTranslateFn } from '../../i18n/moabomT';
+import type { PresenceAvailability, ClientFormFactor } from '../../api/moabomPresenceApi';
+import { presenceStatusDotClass, resolvePresenceSubtitle } from '../../utils/presenceAvailability';
+import { pushShellPath } from '../../utils/moabomShellRoutes';
+import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 
 export interface RightPanelProps {
   /** 패널 너비 */
@@ -36,6 +44,8 @@ export interface RightPanelProps {
   onOpenMyPage?: (initialTab?: MyPageTab) => void;
   /** 인증 윈도우 열기 */
   onOpenAuth?: (mode: AuthWindowMode) => void;
+  /** 공개 프로필 윈도우 열기 */
+  onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
   /** 좁은 화면 오버레이 모드 여부 */
   isOverlay?: boolean;
   /**
@@ -62,6 +72,193 @@ const RIGHT_TAB_KEYS = [
   { id: 'alarm', labelKey: 'moa_shell.right.tab_alarm' as const },
 ];
 
+const PRESENCE_MENU_WIDTH_PX = 152;
+
+interface PresenceUserActionsMenuProps {
+  userUuid: string;
+  displayName: string;
+  friendship?: 'none' | 'outgoing_pending' | 'incoming_pending' | 'accepted';
+  isLoggedIn: boolean;
+  onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
+  onAddFriend: (userUuid: string) => void | Promise<void>;
+  onAcceptFriend: (userUuid: string) => void | Promise<void>;
+}
+
+/** 접속자 행 — 세로 … 메뉴 (Portal fixed — 패널 overflow 클리핑 회피) */
+const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
+  userUuid,
+  displayName,
+  friendship,
+  isLoggedIn,
+  onOpenUserProfile,
+  onAddFriend,
+  onAcceptFriend,
+}) => {
+  const { t } = useMoabomShellT();
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPosition({
+      top: rect.bottom + 4,
+      left: Math.max(8, rect.right - PRESENCE_MENU_WIDTH_PX),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    };
+    const handleReposition = () => updateMenuPosition();
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [open, updateMenuPosition]);
+
+  const handleAddFriend = async () => {
+    setOpen(false);
+    try {
+      await onAddFriend(userUuid);
+      pushInfoToast(t('moa_shell.right.presence_friend_request_sent'));
+    } catch {
+      pushWarningToast(t('moa_shell.right.presence_friend_request_failed'));
+    }
+  };
+
+  const handleAcceptFriend = async () => {
+    setOpen(false);
+    try {
+      await onAcceptFriend(userUuid);
+      pushInfoToast(t('moa_shell.right.presence_friend_accepted'));
+    } catch {
+      pushWarningToast(t('moa_shell.right.presence_friend_request_failed'));
+    }
+  };
+
+  return (
+    <Div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+      <Button
+        ref={buttonRef}
+        type="button"
+        className="w-7 h-7 rounded-lg glass-sm flex items-center justify-center border-0 shrink-0 cursor-pointer hover:opacity-90"
+        aria-label={t('moa_shell.right.presence_menu')}
+        aria-expanded={open}
+        onClick={() => {
+          if (!open) updateMenuPosition();
+          setOpen(prev => !prev);
+        }}
+      >
+        <Icon name="ellipsis-v" className="icon-muted text-sm" />
+      </Button>
+      {open && createPortal(
+        <Div
+          ref={menuRef}
+          className="fixed z-[9999] min-w-[9.5rem] rounded-xl glass-sm p-1 shadow-lg"
+          style={{ top: menuPosition.top, left: menuPosition.left, width: PRESENCE_MENU_WIDTH_PX }}
+        >
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full justify-start border-0"
+            onClick={() => {
+              setOpen(false);
+              onOpenUserProfile?.(userUuid, displayName);
+            }}
+          >
+            {t('moa_shell.right.presence_view_profile')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full justify-start border-0"
+            onClick={() => {
+              setOpen(false);
+              pushShellPath(`/users/${encodeURIComponent(userUuid)}/posts`);
+              onOpenUserProfile?.(userUuid, displayName);
+            }}
+          >
+            {t('userinfo.view_posts')}
+          </Button>
+          {isLoggedIn && friendship === 'none' && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start border-0"
+              onClick={() => void handleAddFriend()}
+            >
+              {t('moa_shell.right.presence_add_friend')}
+            </Button>
+          )}
+          {isLoggedIn && friendship === 'incoming_pending' && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start border-0"
+              onClick={() => void handleAcceptFriend()}
+            >
+              {t('moa_shell.right.presence_accept_friend')}
+            </Button>
+          )}
+        </Div>,
+        document.body,
+      )}
+    </Div>
+  );
+};
+
+function presenceClientFormFactorIcon(formFactor?: ClientFormFactor | null): string | null {
+  if (formFactor === 'mobile') return 'mobile-alt';
+  if (formFactor === 'desktop') return 'desktop';
+  return null;
+}
+
+function resolvePresenceStatusLine(
+  t: MoabomTranslateFn,
+  user: {
+    presence_subtitle?: string | null;
+    status_text?: string | null;
+    availability?: PresenceAvailability;
+    is_online: boolean;
+  },
+): string {
+  const subtitle = resolvePresenceSubtitle(user);
+  if (subtitle) {
+    return subtitle;
+  }
+  if (!user.is_online) {
+    return t('moa_shell.right.presence_offline');
+  }
+  switch (user.availability) {
+    case 'busy':
+      return t('moa_shell.right.presence_busy');
+    case 'away':
+      return t('moa_shell.right.presence_away');
+    case 'offline':
+      return t('moa_shell.right.presence_offline');
+    default:
+      return t('moa_shell.right.presence_active');
+  }
+}
+
 /**
  * RightPanel 컴포넌트
  *
@@ -74,6 +271,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   currentUser,
   onOpenMyPage,
   onOpenAuth,
+  onOpenUserProfile,
   isOverlay = false,
   overlayFlushEdges = false,
   onClose,
@@ -106,6 +304,35 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     newNotificationOpenText: t('moa_shell.right.notification_open'),
   });
 
+  const {
+    summary: presenceSummary,
+    onlineUsers,
+    friends,
+    ownPresence,
+    loadingOnline,
+    loadingFriends,
+    addFriend,
+    acceptFriend,
+  } = useMoabomPresence({
+    isLoggedIn,
+    connectTabActive: rightTab === 'connect',
+    friendTabActive: rightTab === 'friend',
+  });
+
+  const onlineSummaryLabel = t('moa_shell.right.online_summary_live', {
+    platform: presenceSummary?.platform_total ?? 0,
+    tenant: presenceSummary?.tenant_active ?? 0,
+  });
+
+  const friendsSummaryLabel = t('moa_shell.right.friends_summary_live', {
+    count: friends.length,
+  });
+
+  const ownStatusDotClass = presenceStatusDotClass(
+    ownPresence?.availability ?? 'online',
+    ownPresence?.is_reachable ?? isLoggedIn,
+  );
+
   const rightTabsWithBadges = useMemo(
     () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
     [rightTabs, unreadCount],
@@ -113,8 +340,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   const isOpen = rightOffset >= 0;
   /** 데스크톱 20px / 오버레이 기본 10px / 최소 구간 flush 시 0 */
-  const panelEdge = !isOverlay ? 20 : overlayFlushEdges ? 0 : 10;
+  const panelEdge = !isOverlay ? MOA_HOME_EDGE : overlayFlushEdges ? 0 : MOA_HOME_OVERLAY_EDGE;
   const canAccessAdmin = Boolean(currentUser?.is_admin);
+  const panelScrollRef = useRef<HTMLDivElement>(null);
+  const panelScrollHandlers = useMoaPanelScrollDrag(panelScrollRef);
 
   /** 로그아웃 처리 */
   const handleLogout = () => {
@@ -157,7 +386,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     <>
     <GlassPanel
       ref={setRightPanelDropRef}
-      className={`${isOverlay ? 'moa-mobile-overlay-panel fixed top-2.5 bottom-2.5' : 'absolute top-5 bottom-5'}`}
+      className={`${isOverlay ? 'moa-mobile-overlay-panel fixed moa-home-shell-overlay-inset-y' : 'absolute moa-home-shell-inset-y'}`}
       contentClassName="flex flex-col h-full w-full p-2 overflow-hidden"
       style={{
         width: `${width}px`,
@@ -190,7 +419,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     {(currentUser?.name || 'U').charAt(0).toUpperCase()}
                   </Div>
                 )}
-                <Div className="moa-profile-status moa-status-online" />
+                <Div className={`moa-profile-status ${ownStatusDotClass}`} />
               </Div>
               <Div className="flex-1 min-w-0">
                 <Div className="flex items-center gap-1.5">
@@ -239,32 +468,86 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           {/* 탭 콘텐츠: 상단 탭은 고정, 목록만 스크롤 */}
           <Div className="relative min-h-0 flex-1">
             <Div
-              className="absolute inset-0 overflow-y-auto px-3"
+              ref={panelScrollRef}
+              className="moa-panel-scroll absolute inset-0 overflow-y-auto px-3 scrollbar-hide"
               style={{ paddingTop: `${MOABOM_SHELL_SUB_TAB_SLOT_PX}px` }}
+              {...panelScrollHandlers}
             >
               {/* 접속자 탭 */}
               {rightTab === 'connect' && (
                 <Div className="py-3">
                   <>
-                    <Span className="text-xs text-muted px-1 block">{t('moa_shell.right.online_summary')}</Span>
+                    <Span className="text-xs text-muted px-1 block">{onlineSummaryLabel}</Span>
+                    {loadingOnline && onlineUsers.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.presence_loading')}
+                      </Span>
+                    )}
+                    {!loadingOnline && onlineUsers.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.presence_empty')}
+                      </Span>
+                    )}
                     <Div className="mt-2 flex flex-col gap-1">
-                      {ONLINE_USERS.map(u => (
-                        <Div key={u.n} className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
+                      {onlineUsers.map(u => {
+                        const deviceIcon = presenceClientFormFactorIcon(u.client_form_factor);
+                        return (
+                        <Div
+                          key={u.session_key}
+                          className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
+                          onClick={() => {
+                            if (u.user_uuid) {
+                              onOpenUserProfile?.(u.user_uuid, u.display_name);
+                            }
+                          }}
+                        >
                           <Div className="relative shrink-0">
-                            <Div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: u.c }}>
-                              {u.i}
-                            </Div>
-                            <Div className={`moa-status-dot ${u.online ? 'moa-status-online' : 'moa-status-idle'}`} />
+                            {u.avatar ? (
+                              <Img
+                                src={u.avatar}
+                                alt={u.display_name}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <Div
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                style={{ background: 'var(--moa-point-color)' }}
+                              >
+                                {(u.display_name || '?').charAt(0).toUpperCase()}
+                              </Div>
+                            )}
+                            <Div className={`moa-status-dot ${presenceStatusDotClass(u.availability, u.is_online)}`} />
                           </Div>
                           <Div className="flex-1 min-w-0">
-                            <Moa_OverflowMarqueeText text={u.n} className="text-sm font-bold text-primary" />
-                            <Moa_OverflowMarqueeText text={u.s} className="text-xs text-muted mt-0.5" />
+                            <Moa_OverflowMarqueeText text={u.display_name} className="text-sm font-bold text-primary" />
+                            <Moa_OverflowMarqueeText
+                              text={resolvePresenceStatusLine(t, u)}
+                              className="text-xs text-muted mt-0.5"
+                            />
                           </Div>
-                          <Button className="w-7 h-7 rounded-lg glass-sm flex items-center justify-center border-0 shrink-0 cursor-pointer hover:opacity-90">
-                            <Icon name="ellipsis-v" className="icon-muted text-sm" />
-                          </Button>
+                          {deviceIcon ? (
+                            <Icon
+                              name={deviceIcon}
+                              className="icon-muted shrink-0 text-xs"
+                              ariaLabel={t(u.client_form_factor === 'mobile'
+                                ? 'moa_shell.right.presence_device_mobile'
+                                : 'moa_shell.right.presence_device_desktop')}
+                            />
+                          ) : null}
+                          {u.user_uuid && (
+                            <PresenceUserActionsMenu
+                              userUuid={u.user_uuid}
+                              displayName={u.display_name}
+                              friendship={u.friendship}
+                              isLoggedIn={isLoggedIn}
+                              onOpenUserProfile={onOpenUserProfile}
+                              onAddFriend={addFriend}
+                              onAcceptFriend={acceptFriend}
+                            />
+                          )}
                         </Div>
-                      ))}
+                        );
+                      })}
                     </Div>
                   </>
                 </Div>
@@ -274,26 +557,49 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {rightTab === 'friend' && (
                 <Div className="py-3">
                   <>
-                    <Span className="text-xs text-muted px-1 block">{t('moa_shell.right.friends_summary')}</Span>
+                    <Span className="text-xs text-muted px-1 block">{friendsSummaryLabel}</Span>
+                    {!isLoggedIn && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.friends_login_required')}
+                      </Span>
+                    )}
+                    {isLoggedIn && loadingFriends && friends.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.presence_loading')}
+                      </Span>
+                    )}
+                    {isLoggedIn && !loadingFriends && friends.length === 0 && (
+                      <Span className="text-xs text-muted px-3 py-4 text-center block">
+                        {t('moa_shell.right.friends_empty')}
+                      </Span>
+                    )}
                     <Div className="mt-2 flex flex-col gap-1">
-                      {FRIENDS_DATA.map(u => (
+                      {friends.map(u => (
                         <Div
-                          key={u.n}
-                          className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!u.online ? 'opacity-50' : ''}`}
+                          key={u.user_uuid}
+                          className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!u.is_online ? 'opacity-70' : ''}`}
+                          onClick={() => onOpenUserProfile?.(u.user_uuid, u.display_name)}
                         >
                           <Div className="relative shrink-0">
-                            <Div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold overflow-hidden" style={{ background: u.c }}>
-                              <Icon name="user" className="text-base" />
-                            </Div>
-                            <Div className={`moa-status-dot ${u.online ? 'moa-status-online' : 'moa-status-offline'}`} />
+                            {u.avatar ? (
+                              <Img src={u.avatar} alt={u.display_name} className="w-10 h-10 rounded-full object-cover" />
+                            ) : (
+                              <Div
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                style={{ background: 'var(--moa-point-color)' }}
+                              >
+                                {(u.display_name || '?').charAt(0).toUpperCase()}
+                              </Div>
+                            )}
+                            <Div className={`moa-status-dot ${presenceStatusDotClass(u.availability, u.is_online)}`} />
                           </Div>
                           <Div className="flex-1 min-w-0">
-                            <Moa_OverflowMarqueeText text={u.n} className="text-sm font-bold text-primary" />
-                            <Moa_OverflowMarqueeText text={u.s} className="text-xs text-muted mt-0.5" />
+                            <Moa_OverflowMarqueeText text={u.display_name} className="text-sm font-bold text-primary" />
+                            <Moa_OverflowMarqueeText
+                              text={resolvePresenceStatusLine(t, u)}
+                              className="text-xs text-muted mt-0.5"
+                            />
                           </Div>
-                          <Button className="w-8 h-8 rounded-lg glass-sm flex items-center justify-center border-0 shrink-0 hover:opacity-90 cursor-pointer">
-                            <Icon name={u.online ? 'comment-dots' : 'paper-plane'} className="icon-muted text-sm" />
-                          </Button>
                         </Div>
                       ))}
                     </Div>

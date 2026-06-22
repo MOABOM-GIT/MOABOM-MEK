@@ -25,16 +25,26 @@ export const APP_SHELL_BODY_CLASS = 'text-base font-bold text-primary';
 /** 보조 설명·타임스탬프·빈 상태 안내 등 */
 export const APP_SHELL_DESC_CLASS = 'text-base font-bold text-muted';
 
+/** 앱 창 내부 패널 곡률 — `33-app-panel-radius.css` `--moa-app-panel-radius` SSOT */
+export const MOA_APP_PANEL_CLASS = 'moa-app-panel';
+export const MOA_APP_PANEL_SM_CLASS = 'moa-app-panel-sm';
+export const MOA_APP_PANEL_INNER_CLASS = 'moa-app-panel-inner';
+export const MOA_APP_PANEL_ICON_CLASS = 'moa-app-panel-icon';
+
 /** 섹션 제목 (하단 여백 포함) */
 export const APP_SHELL_SECTION_TITLE_CLASS = 'text-base font-bold text-primary mb-3';
 
-/**
- * 앱 창(moa-shell-app-window) 안 **주 패널** — 폼·그리드 루트.
- * 자식에 `glass-sm` 인풋·셀렉트가 많을 때 부모는 `moa-group`만 올려 대비를 확보한다.
- * (이유: `.cursor/rules/moabom-architecture.mdc` — 앱 셸 주 패널)
- */
-export const APP_SHELL_PANEL_CLASS =
-  'moa-group rounded-3xl border border-white/55 dark:border-white/12 p-4 shadow-sm';
+/** 앱 창 내부 섹션 패널 — 마이페이지와 동일한 심플 표면 SSOT */
+export const APP_SHELL_PANEL_CLASS = 'moa-group moa-app-panel';
+
+/** 기본 패딩(p-5) 포함 — 대부분의 앱·마이페이지 섹션 루트 */
+export const APP_SHELL_PANEL_BODY_CLASS = `${APP_SHELL_PANEL_CLASS} p-5`;
+
+/** 패딩 + 세로 스택 — 폼·설문 섹션 */
+export const APP_SHELL_PANEL_STACK_CLASS = `${APP_SHELL_PANEL_BODY_CLASS} ${APP_STACK_CLASS}`;
+
+/** @deprecated `APP_SHELL_PANEL_CLASS` — 호환 별칭 */
+export const MOA_APP_PANEL_SURFACE_CLASS = APP_SHELL_PANEL_CLASS;
 
 /** 단일 라인 텍스트 인풋 — `MOA_REUSE_FIELD_LINE` + `moa-field--medium` (버튼 `moa-btn`+`moa-btn-medium` 과 동일 패턴). */
 export const APP_SHELL_INPUT_CLASS = moaFieldControlClass('medium');

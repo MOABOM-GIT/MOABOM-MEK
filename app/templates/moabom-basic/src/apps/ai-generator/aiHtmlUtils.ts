@@ -1,3 +1,5 @@
+import { generatedAppScrollbarCssRules } from './generatedAppScrollbarStyle';
+
 // AI 생성 HTML 미리보기/저장 보안 정책 (C2 — deploy/PROJECT-ARCHITECTURE-HARDENING.md).
 //
 // iframe sandbox 에서 allow-same-origin 을 제거하면 미리보기는 opaque origin 이 되어
@@ -26,15 +28,13 @@ const SAFETY_STYLE = `
       margin: 0;
       padding: 0;
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       height: auto !important;
       min-height: 100% !important;
       max-height: none !important;
       overflow: auto !important;
       overflow-y: auto !important;
-    }
-    * {
-      box-sizing: border-box;
-      max-width: 100%;
     }
     canvas {
       max-width: 100% !important;
@@ -44,31 +44,40 @@ const SAFETY_STYLE = `
       max-height: 500px !important;
       position: relative !important;
     }
+    ${generatedAppScrollbarCssRules()}
   </style>
 `;
 
-// CSP 는 head 시작부에, style 은 head 끝에 배치 — CSP 가 이후 모든 리소스를 통제하도록.
-const SAFETY_HEAD_OPEN = `${SAFETY_CSP_META}`;
-const SAFETY_BLOCK = SAFETY_STYLE;
+/** iframe srcdoc 에서 해시·탭 탈출을 유발하는 마크업 제거 (정적 sanitize). */
+export function stripPreviewIncompatibleMarkup(html: string): string {
+  return html
+    .replace(/<script\b[^>]*\bid=["']moabom-ai-preview-runtime["'][^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<base\b[^>]*>/gi, '')
+    .replace(/<link\b[^>]*\brel=["']manifest["'][^>]*>/gi, '');
+}
 
 export function injectAiPreviewSafety(html: string): string {
   if (!html) return '';
-  if (html.includes('id="moabom-ai-preview-safety"')) return html;
 
-  const headOpen = html.match(/<head[^>]*>/i);
-  if (headOpen && html.includes('</head>')) {
-    return html
-      .replace(headOpen[0], `${headOpen[0]}${SAFETY_HEAD_OPEN}`)
-      .replace('</head>', `${SAFETY_BLOCK}</head>`);
-  }
-  if (html.includes('</head>')) {
-    return html.replace('</head>', `${SAFETY_HEAD_OPEN}${SAFETY_BLOCK}</head>`);
-  }
-  if (html.includes('<body')) {
-    return html.replace('<body', `<head>${SAFETY_HEAD_OPEN}${SAFETY_BLOCK}</head><body`);
+  const stripped = stripPreviewIncompatibleMarkup(html);
+  if (stripped.includes('id="moabom-ai-preview-safety"')) {
+    return stripped;
   }
 
-  return html;
+  const headOpen = stripped.match(/<head[^>]*>/i);
+  if (headOpen && stripped.includes('</head>')) {
+    return stripped
+      .replace(headOpen[0], `${headOpen[0]}${SAFETY_CSP_META}`)
+      .replace('</head>', `${SAFETY_STYLE}</head>`);
+  }
+  if (stripped.includes('</head>')) {
+    return stripped.replace('</head>', `${SAFETY_CSP_META}${SAFETY_STYLE}</head>`);
+  }
+  if (stripped.includes('<body')) {
+    return stripped.replace('<body', `<head>${SAFETY_CSP_META}${SAFETY_STYLE}</head><body`);
+  }
+
+  return stripped;
 }
 
 export function extractCompleteHtml(input: string): string {

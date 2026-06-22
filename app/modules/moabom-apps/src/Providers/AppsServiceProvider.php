@@ -4,26 +4,43 @@ namespace Modules\Moabom\Apps\Providers;
 
 use App\Extension\BaseModuleServiceProvider;
 use App\Extension\HookManager;
+use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Apps\Apps\AppRegistry;
 use Modules\Moabom\Apps\Apps\AppRegistryInterface;
+use Modules\Moabom\Apps\Console\Commands\AppsMigrateGeneratedAppsToPlatformCommand;
+use Modules\Moabom\Apps\Console\Commands\AppsPlatformMigrateCommand;
+use Modules\Moabom\Apps\Console\Commands\AppsPurgeTenantLegacyGeneratedAppsCommand;
+use Modules\Moabom\Apps\Console\Commands\AppsRepairLegacyGlobalVisibilityCommand;
 use Modules\Moabom\Apps\Console\Commands\MakeAppCommand;
 use Modules\Moabom\Apps\Contracts\AiGenerationSessionRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
+use Modules\Moabom\Apps\Http\Controllers\GeneratedAppPreviewController;
+use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\AiGenerationSessionRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
+use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Services\GeneratedAppHostingService;
+use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
+use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
+use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
 {
     protected string $moduleIdentifier = 'moabom-apps';
 
     /**
-     * Repository 인터페이스와 구현체 매핑
-     *
      * @var array<class-string, class-string>
      */
     protected array $repositories = [
         GeneratedAppRepositoryInterface::class => GeneratedAppRepository::class,
         AiGenerationSessionRepositoryInterface::class => AiGenerationSessionRepository::class,
+    ];
+
+    /**
+     * @var array<int, class-string>
+     */
+    protected array $storageServices = [
+        GeneratedAppHostingService::class,
     ];
 
     public function register(): void
@@ -35,11 +52,17 @@ class AppsServiceProvider extends BaseModuleServiceProvider
             'moabom-apps',
         );
 
-        // 앱 SDK 레지스트리 (Phase 4) — 활성 모듈 app.json 집계.
+        GeneratedAppsConnection::register();
+
         $this->app->singleton(AppRegistryInterface::class, AppRegistry::class);
+        $this->app->singleton(AiStreamConcurrencyService::class);
 
         $this->commands([
             MakeAppCommand::class,
+            AppsPlatformMigrateCommand::class,
+            AppsMigrateGeneratedAppsToPlatformCommand::class,
+            AppsPurgeTenantLegacyGeneratedAppsCommand::class,
+            AppsRepairLegacyGlobalVisibilityCommand::class,
         ]);
     }
 
@@ -47,8 +70,8 @@ class AppsServiceProvider extends BaseModuleServiceProvider
     {
         parent::boot();
 
-        // shell-boot apps[] 기여 — moabom-system 이 moabom-apps 를 직접 의존하지 않도록
-        // HookManager 필터로 결합도를 끊는다(C4 친화). moabom-apps 활성 시에만 등록됨.
+        $this->registerGeneratedAppHostHooks();
+
         HookManager::addFilter(
             'moabom.shell_boot.apps',
             function ($apps, $template = 'moabom-basic') {
@@ -60,5 +83,122 @@ class AppsServiceProvider extends BaseModuleServiceProvider
                 );
             },
         );
+
+        Route::bind('hostedApp', static function (string $value): GeneratedApp {
+            $app = GeneratedAppsConnection::apps()->whereKey((int) $value)->first()
+                ?? GeneratedApp::query()->whereKey((int) $value)->first();
+            if ($app === null) {
+                abort(404);
+            }
+
+            return $app;
+        });
+
+        $this->registerPreviewDomainRoutes();
+    }
+
+    private function registerGeneratedAppHostHooks(): void
+    {
+        HookManager::addFilter(
+            'moabom.saas.override_host_parse',
+            function ($parsed, string $host) {
+                if (GeneratedAppPreviewRouting::usesTenantPath() || ! is_array($parsed)) {
+                    return $parsed;
+                }
+
+                $previewHost = app(GeneratedAppHostParser::class)->parse($host);
+                if ($previewHost['type'] === 'standard') {
+                    return [
+                        'type' => 'platform',
+                        'slug' => null,
+                        'host' => $previewHost['host'],
+                    ];
+                }
+
+                if (($parsed['type'] ?? '') === 'tenant' && $previewHost['type'] === 'standard') {
+                    return [
+                        'type' => 'platform',
+                        'slug' => null,
+                        'host' => $previewHost['host'],
+                    ];
+                }
+
+                return $parsed;
+            },
+            10,
+            2,
+        );
+
+        HookManager::addFilter(
+            'moabom.saas.resolve_unknown_host',
+            function ($resolved, string $host) {
+                if (GeneratedAppPreviewRouting::usesTenantPath()) {
+                    return $resolved;
+                }
+
+                $parsed = app(GeneratedAppHostParser::class)->parse($host);
+                if ($parsed['type'] === 'standard') {
+                    return [
+                        'type' => 'platform',
+                        'host' => $parsed['host'],
+                        'attributes' => [],
+                    ];
+                }
+
+                if ($parsed['type'] !== 'hosted' || $parsed['app_id'] === null) {
+                    return $resolved;
+                }
+
+                return [
+                    'type' => 'platform',
+                    'host' => $parsed['host'],
+                    'attributes' => [
+                        'moabom_generated_app_id' => $parsed['app_id'],
+                    ],
+                ];
+            },
+            10,
+            3,
+        );
+    }
+
+    private function registerPreviewDomainRoutes(): void
+    {
+        if (GeneratedAppPreviewRouting::usesTenantPath()) {
+            return;
+        }
+
+        $standardHost = GeneratedAppPreviewRouting::standardHost();
+        if ($standardHost !== '') {
+            Route::domain($standardHost)
+                ->middleware('web')
+                ->group(function (): void {
+                    Route::get('g/{id}', [GeneratedAppPreviewController::class, 'standard'])
+                        ->whereNumber('id')
+                        ->name('moabom-apps.preview.standard.domain');
+                });
+        }
+
+        $hostedAppsDomain = GeneratedAppPreviewRouting::hostedAppsDomain();
+        if ($hostedAppsDomain !== '') {
+            Route::domain('{appId}.'.$hostedAppsDomain)
+                ->middleware('web')
+                ->whereNumber('appId')
+                ->group(function (): void {
+                    Route::get('/', [GeneratedAppPreviewController::class, 'hostedRoot'])
+                        ->name('moabom-apps.preview.hosted.domain');
+
+                    Route::get('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'listHostedDataByHost'])
+                        ->where('tableKey', '[A-Za-z0-9_-]+');
+                    Route::post('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'storeHostedDataByHost'])
+                        ->where('tableKey', '[A-Za-z0-9_-]+');
+                    Route::put('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'updateHostedDataByHost'])
+                        ->whereNumber('rowId')
+                        ->where('tableKey', '[A-Za-z0-9_-]+');
+                    Route::delete('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'destroyHostedDataByHost'])
+                        ->whereNumber('rowId')
+                        ->where('tableKey', '[A-Za-z0-9_-]+');
+                });
+        }
     }
 }

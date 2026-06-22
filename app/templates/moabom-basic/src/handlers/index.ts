@@ -47,6 +47,7 @@ import {
 
 // 테마 관련 핸들러
 import { setThemeHandler, initThemeHandler } from './setThemeHandler';
+import { notifyShellNoticeBoardChangedHandler } from './notifyShellNoticeBoardChangedHandler';
 
 // 언어 관련 핸들러는 엔진 레벨(ActionDispatcher)에서 처리
 // setLocale 핸들러는 ActionDispatcher에 빌트인으로 등록되어 있음
@@ -85,6 +86,9 @@ export const handlers = {
   // 테마
   setTheme: setThemeHandler,
   initTheme: initThemeHandler,
+
+  // 셸 공지 보드 → 좌측 패널 동기화
+  'moabom.notifyShellNoticeBoardChanged': notifyShellNoticeBoardChangedHandler,
 
   // 언어: setLocale은 엔진 레벨(ActionDispatcher)에서 빌트인으로 처리
 
@@ -132,6 +136,7 @@ export {
   savePreferredCurrencyHandler,
   setThemeHandler,
   initThemeHandler,
+  notifyShellNoticeBoardChangedHandler,
   // setLocaleHandler는 엔진 레벨에서 처리하므로 제거됨
   // 장바구니
   toggleCartItemSelectionHandler,

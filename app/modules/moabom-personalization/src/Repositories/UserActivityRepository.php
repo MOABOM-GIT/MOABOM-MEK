@@ -28,12 +28,13 @@ class UserActivityRepository implements UserActivityRepositoryInterface
     /**
      * @return Collection<int, Post>
      */
-    public function authoredPosts(int $userId, int $limit): Collection
+    public function authoredPosts(int $userId, int $limit, int $offset = 0): Collection
     {
         return Post::query()
             ->with('board')
             ->where('user_id', $userId)
             ->latest()
+            ->skip($offset)
             ->limit($limit)
             ->get();
     }
@@ -41,12 +42,13 @@ class UserActivityRepository implements UserActivityRepositoryInterface
     /**
      * @return Collection<int, Comment>
      */
-    public function authoredComments(int $userId, int $limit): Collection
+    public function authoredComments(int $userId, int $limit, int $offset = 0): Collection
     {
         return Comment::query()
             ->with(['board', 'post'])
             ->where('user_id', $userId)
             ->latest()
+            ->skip($offset)
             ->limit($limit)
             ->get();
     }
@@ -54,13 +56,14 @@ class UserActivityRepository implements UserActivityRepositoryInterface
     /**
      * @return Collection<int, Comment>
      */
-    public function receivedPostComments(int $userId, int $limit): Collection
+    public function receivedPostComments(int $userId, int $limit, int $offset = 0): Collection
     {
         return Comment::query()
             ->with(['board', 'post', 'user'])
             ->where('user_id', '!=', $userId)
             ->whereHas('post', fn ($query) => $query->where('user_id', $userId))
             ->latest()
+            ->skip($offset)
             ->limit($limit)
             ->get();
     }
@@ -68,13 +71,14 @@ class UserActivityRepository implements UserActivityRepositoryInterface
     /**
      * @return Collection<int, Comment>
      */
-    public function receivedReplyComments(int $userId, int $limit): Collection
+    public function receivedReplyComments(int $userId, int $limit, int $offset = 0): Collection
     {
         return Comment::query()
             ->with(['board', 'post', 'user'])
             ->where('user_id', '!=', $userId)
             ->whereHas('parent', fn ($query) => $query->where('user_id', $userId))
             ->latest()
+            ->skip($offset)
             ->limit($limit)
             ->get();
     }

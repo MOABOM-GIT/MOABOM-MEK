@@ -2,105 +2,190 @@
 
 namespace Modules\Moabom\Apps\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 use Modules\Moabom\Apps\Models\GeneratedApp;
+use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
+use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
+use Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy;
 
 class GeneratedAppRepository implements GeneratedAppRepositoryInterface
 {
     /**
-     * 생성 앱을 저장합니다.
-     *
      * @param  array<string, mixed>  $data
      */
     public function create(array $data): GeneratedApp
     {
-        return GeneratedApp::query()->create($data)->load('user');
+        if (GeneratedAppsConnection::usesPlatformStore() && ! array_key_exists('tenant_slug', $data)) {
+            $data['tenant_slug'] = GeneratedAppsConnection::tenantSlugForWrite();
+        }
+
+        return GeneratedAppsConnection::apps()->create($data);
     }
 
     /**
-     * 사용자의 최근 생성 앱 목록을 조회합니다.
-     *
      * @return Collection<int, GeneratedApp>
      */
     public function getForUser(int $userId, int $limit = 20): Collection
     {
-        return GeneratedApp::query()
-            ->with('user')
+        $query = GeneratedAppsConnection::apps()
             ->where('user_id', $userId)
             ->latest()
-            ->limit($limit)
-            ->get();
+            ->limit($limit);
+
+        $this->scopeTenant($query);
+        $this->eagerUser($query);
+
+        return $query->get();
     }
 
     /**
-     * 공유 공개된 생성 앱 목록을 조회합니다.
-     *
      * @return Collection<int, GeneratedApp>
      */
-    public function getShared(int $limit = 50): Collection
+    public function getPublished(int $limit = 50): Collection
     {
-        return GeneratedApp::query()
-            ->with('user')
-            ->where('is_shared', true)
-            ->latest()
-            ->limit($limit)
-            ->get();
+        $query = GeneratedAppsConnection::apps()->latest()->limit($limit);
+
+        GeneratedAppPublishPolicy::applyPublishedCatalogScope($query);
+        $this->eagerUser($query);
+
+        return $query->get();
     }
 
-    /**
-     * 사용자 소유의 생성 앱 1건을 조회합니다.
-     */
     public function findForUser(int $userId, int $id): ?GeneratedApp
     {
-        return GeneratedApp::query()
-            ->with('user')
+        $query = GeneratedAppsConnection::apps()
             ->where('user_id', $userId)
-            ->whereKey($id)
-            ->first();
+            ->whereKey($id);
+
+        $this->scopeTenant($query);
+        $this->eagerUser($query);
+
+        return $query->first() ?? $this->findLegacyTenantRow($id, static fn ($q) => $q->where('user_id', $userId));
     }
 
     /**
-     * 본인 앱이거나 공유 공개된 생성 앱 1건을 조회합니다.
+     * 로그인 사용자가 열 수 있는 앱(본인 소유·등록된 앱)을 조회합니다.
      */
     public function findVisibleForUser(int $userId, int $id): ?GeneratedApp
     {
-        return GeneratedApp::query()
-            ->with('user')
+        $query = GeneratedAppsConnection::apps()
             ->whereKey($id)
-            ->where(function ($query) use ($userId): void {
-                $query->where('user_id', $userId)
-                    ->orWhere('is_shared', true);
-            })
-            ->first();
+            ->where(function ($inner) use ($userId): void {
+                $inner->where(function ($owned) use ($userId): void {
+                    $owned->where('user_id', $userId);
+                    $this->scopeTenant($owned);
+                })->orWhere(function ($published): void {
+                    GeneratedAppPublishPolicy::applyPublishedCatalogScope($published);
+                });
+            });
+
+        $this->eagerUser($query);
+
+        $app = $query->first();
+        if ($app !== null) {
+            return $app;
+        }
+
+        return $this->findLegacyTenantRow($id, static fn ($q) => $q->where(function ($inner) use ($userId): void {
+            $inner->where('user_id', $userId)->orWhere('is_shared', true);
+        }));
     }
 
-    /**
-     * 공유 공개된 생성 앱 1건을 조회합니다.
-     */
-    public function findShared(int $id): ?GeneratedApp
+    public function findPublished(int $id): ?GeneratedApp
     {
-        return GeneratedApp::query()
-            ->with('user')
-            ->whereKey($id)
-            ->where('is_shared', true)
-            ->first();
+        $query = GeneratedAppsConnection::apps()->whereKey($id);
+
+        GeneratedAppPublishPolicy::applyPublishedCatalogScope($query);
+        $this->eagerUser($query);
+
+        $app = $query->first();
+
+        return $app ?? $this->findLegacyTenantRow($id, static fn ($q) => $q->where('is_shared', true));
+    }
+
+    public function findById(int $id): ?GeneratedApp
+    {
+        $query = GeneratedAppsConnection::apps()->whereKey($id);
+        $this->eagerUser($query);
+
+        $app = $query->first();
+
+        return $app ?? $this->findLegacyTenantRow($id);
     }
 
     /**
-     * 생성 앱을 갱신하고 최신 인스턴스를 반환합니다.
-     *
      * @param  array<string, mixed>  $data
      */
     public function update(GeneratedApp $app, array $data): GeneratedApp
     {
         $app->update($data);
 
-        return $app->fresh(['user']) ?? $app;
+        return $app->fresh() ?? $app;
     }
 
     public function delete(GeneratedApp $app): void
     {
         $app->delete();
+    }
+
+    /** @deprecated use getPublished() */
+    public function getShared(int $limit = 50): Collection
+    {
+        return $this->getPublished($limit);
+    }
+
+    /** @deprecated use findPublished() */
+    public function findShared(int $id): ?GeneratedApp
+    {
+        return $this->findPublished($id);
+    }
+
+    /**
+     * @param  Builder<GeneratedApp>  $query
+     */
+    private function scopeTenant($query): void
+    {
+        if (! GeneratedAppsConnection::usesPlatformStore()) {
+            return;
+        }
+
+        $slug = GeneratedAppPreviewRouting::tenantScopeKey();
+        if ($slug === 'unknown') {
+            // TenantContext 미해석 시 cross-tenant user_id 충돌 방지 — fail-closed
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where('tenant_slug', $slug);
+    }
+
+    /**
+     * @param  Builder<GeneratedApp>  $query
+     */
+    private function eagerUser($query): void
+    {
+        if (! GeneratedAppsConnection::usesPlatformStore()) {
+            $query->with('user');
+        }
+    }
+
+    /**
+     * @param  callable(Builder<GeneratedApp>): void|null  $constraint
+     */
+    private function findLegacyTenantRow(int $id, ?callable $constraint = null): ?GeneratedApp
+    {
+        if (! GeneratedAppsConnection::usesPlatformStore()) {
+            return null;
+        }
+
+        $query = GeneratedApp::query()->with('user')->whereKey($id);
+        if ($constraint !== null) {
+            $constraint($query);
+        }
+
+        return $query->first();
     }
 }

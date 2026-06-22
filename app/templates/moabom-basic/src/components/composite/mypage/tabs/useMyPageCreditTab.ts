@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
 import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
 import { checkAttendanceApi, fetchUserCreditsApi } from '../myPageApi';
+import type { CreditOverview, MyPageTab, MyPageUser } from '../myPageTypes';
 import { resolveApiMessage, showCoreToast } from '../myPageUtils';
+
+const CREDIT_TRANSACTION_PAGE_SIZE = 8;
 
 interface UseMyPageCreditTabOptions {
   activeTab: MyPageTab;
@@ -19,6 +22,7 @@ export function useMyPageCreditTab({
 }: UseMyPageCreditTabOptions) {
   const [creditOverview, setCreditOverview] = useState<CreditOverview | null>(null);
   const [creditLoading, setCreditLoading] = useState(false);
+  const [creditLoadingMore, setCreditLoadingMore] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceMessage, setAttendanceMessage] = useState('');
@@ -32,7 +36,10 @@ export function useMyPageCreditTab({
 
     void (async () => {
       try {
-        const result = await fetchUserCreditsApi();
+        const result = await fetchUserCreditsApi({
+          limit: CREDIT_TRANSACTION_PAGE_SIZE,
+          offset: 0,
+        });
         if (cancelled) return;
 
         if (!result.ok || !result.data) {
@@ -56,6 +63,42 @@ export function useMyPageCreditTab({
       cancelled = true;
     };
   }, [activeTab, currentUser, shellLanguage, t]);
+
+  const loadMoreCredits = useCallback(async () => {
+    if (!creditOverview?.pagination?.has_more || creditLoadingMore || creditLoading) {
+      return;
+    }
+
+    setCreditLoadingMore(true);
+    setCreditError('');
+
+    try {
+      const result = await fetchUserCreditsApi({
+        limit: CREDIT_TRANSACTION_PAGE_SIZE,
+        offset: creditOverview.transactions.length,
+      });
+
+      if (!result.ok || !result.data) {
+        setCreditError(result.message ?? t('moa_mypage.msg.credit_load_failed'));
+        return;
+      }
+
+      setCreditOverview(prev => {
+        if (!prev) {
+          return result.data ?? null;
+        }
+
+        return {
+          ...result.data!,
+          transactions: [...prev.transactions, ...(result.data?.transactions ?? [])],
+        };
+      });
+    } catch {
+      setCreditError(t('moa_mypage.msg.credit_load_failed'));
+    } finally {
+      setCreditLoadingMore(false);
+    }
+  }, [creditLoading, creditLoadingMore, creditOverview, t]);
 
   const handleAttendanceCheck = async () => {
     setAttendanceLoading(true);
@@ -85,14 +128,18 @@ export function useMyPageCreditTab({
 
   const userPoint = currentUser?.point ?? 0;
   const creditBalance = creditOverview?.balance ?? userPoint;
+  const creditHasMore = Boolean(creditOverview?.pagination?.has_more);
 
   return {
     creditOverview,
     creditLoading,
+    creditLoadingMore,
+    creditHasMore,
     creditError,
     attendanceLoading,
     attendanceMessage,
     creditBalance,
     handleAttendanceCheck,
+    loadMoreCredits,
   };
 }

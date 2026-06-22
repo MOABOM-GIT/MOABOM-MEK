@@ -26,7 +26,7 @@ class PublicGeneratedAppController extends PublicBaseController
             'moabom-apps',
             'messages.apps.generated.fetch_success',
             [
-                'items' => $this->aiAppService->listShared(viewerUserId: $viewerUserId),
+                'items' => $this->aiAppService->listPublished(viewerUserId: $viewerUserId),
             ]
         );
     }
@@ -36,7 +36,7 @@ class PublicGeneratedAppController extends PublicBaseController
      */
     public function show(int $id): JsonResponse
     {
-        $app = $this->aiAppService->findShared($id);
+        $app = $this->aiAppService->findPublished($id);
         if (! $app) {
             return ResponseHelper::moduleError(
                 'moabom-apps',

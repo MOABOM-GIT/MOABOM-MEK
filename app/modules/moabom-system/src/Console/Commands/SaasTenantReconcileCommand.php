@@ -44,7 +44,7 @@ final class SaasTenantReconcileCommand extends Command
     protected $signature = 'moabom:saas:tenant-reconcile
         {slug? : 생략·all·* = platform + 모든 active tenant, 또는 slug 1건}
         {--template=moabom-admin_basic : admin 템플릿 identifier}
-        {--module=moabom-system : module layout identifier}
+        {--module= : module layout identifier; 생략·* = layout JSON 보유 활성 모듈 전체}
         {--skip-template-layouts : template_layouts 동기화 생략}
         {--skip-module-layouts : module_layouts 동기화 생략}
         {--skip-menus : admin 메뉴 동기화 생략}
@@ -71,7 +71,11 @@ final class SaasTenantReconcileCommand extends Command
             $slugArg = '*';
         }
         $templateId = (string) $this->option('template');
-        $moduleId = (string) $this->option('module');
+        $moduleOption = $this->option('module');
+        if (is_array($moduleOption)) {
+            $moduleOption = '';
+        }
+        $moduleOption = (string) ($moduleOption ?? '');
 
         $platformConnections->registerConnection();
         $platformRuntimeConfigurator->applyPlatform();
@@ -91,15 +95,18 @@ final class SaasTenantReconcileCommand extends Command
         }
 
         if (! $this->option('skip-module-layouts')) {
-            $this->runStep($stepFailures, 'sync-module-layouts', 'moabom:saas:sync-module-layouts', array_merge($slugArgs, [
-                '--module' => $moduleId,
+            $moduleLayoutArgs = array_merge($slugArgs, [
                 '--no-interaction' => true,
-            ]));
+            ]);
+            if ($moduleOption !== '' && $moduleOption !== '*') {
+                $moduleLayoutArgs['--module'] = $moduleOption;
+            }
+            $this->runStep($stepFailures, 'sync-module-layouts', 'moabom:saas:sync-module-layouts', $moduleLayoutArgs);
         }
 
         if (! $this->option('skip-menus')) {
             $this->runStep($stepFailures, 'module-sync-declarations', 'moabom:module-sync-declarations', [
-                'identifier' => $moduleId,
+                'identifier' => 'moabom-system',
                 '--no-interaction' => true,
             ]);
             $this->runStep($stepFailures, 'sync-tenant-admin-menus', 'moabom:saas:sync-tenant-admin-menus', array_merge($slugArgs, [

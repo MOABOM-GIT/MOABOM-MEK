@@ -1,5 +1,5 @@
 import { moabomApiPut } from '../api/moabomAuthenticatedApi';
-import { sanitizeMainAppOrderIds, saveLocalMainAppOrder } from '../pages/home/moaHomeShellOrder';
+import { sanitizeMainAppOrderIds, saveLocalMainAppOrder } from '../shell/moaShellAppOrder';
 
 let inflight: Promise<void> | null = null;
 let pendingOrder: string[] | null = null;
@@ -29,6 +29,7 @@ async function drainQueue(): Promise<void> {
         shell: {
           home: {
             mainAppOrder: next,
+            mainAppOrderCustomized: true,
           },
         },
       });

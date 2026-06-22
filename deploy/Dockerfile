@@ -57,7 +57,6 @@ COPY app/ ./
 RUN npm run build:core 2>/dev/null || npm run build 2>/dev/null || true
 # 활성 템플릿/모듈 dist — 모든 빌드는 Cloud Build 안에서 (호스트 빌드 금지 SSOT)
 RUN cd templates/moabom-admin_basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
-RUN cd modules/moabom-system && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd templates/moabom-basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd modules/sirsoft-ecommerce && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd plugins/sirsoft-ckeditor5 && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
@@ -99,7 +98,6 @@ COPY --from=vendor --chown=www-data:www-data /app/ ./
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 COPY --from=assets --chown=www-data:www-data /app/templates/moabom-admin_basic/dist ./templates/moabom-admin_basic/dist
 COPY --from=assets --chown=www-data:www-data /app/templates/moabom-basic/dist ./templates/moabom-basic/dist
-COPY --from=assets --chown=www-data:www-data /app/modules/moabom-system/dist ./modules/moabom-system/dist
 COPY --from=assets --chown=www-data:www-data /app/modules/sirsoft-ecommerce/dist ./modules/sirsoft-ecommerce/dist
 COPY --from=assets --chown=www-data:www-data /app/plugins/sirsoft-ckeditor5/dist ./plugins/sirsoft-ckeditor5/dist
 COPY --from=assets --chown=www-data:www-data /app/plugins/sirsoft-daum_postcode/dist ./plugins/sirsoft-daum_postcode/dist

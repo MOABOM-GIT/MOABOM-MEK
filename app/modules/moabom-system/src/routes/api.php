@@ -8,6 +8,7 @@ use Modules\Moabom\System\Http\Controllers\Platform\SaasHospitalController;
 use Modules\Moabom\System\Http\Controllers\PublicExtensionBootMetaController;
 use Modules\Moabom\System\Http\Controllers\PublicFrontendDefaultsController;
 use Modules\Moabom\System\Http\Controllers\PublicLegalPageController;
+use Modules\Moabom\System\Http\Controllers\PublicShellAppUsageController;
 use Modules\Moabom\System\Http\Controllers\PublicShellBootController;
 use Modules\Moabom\System\Http\Controllers\PublicTemplateRoutesShellController;
 use Modules\Moabom\System\Http\Controllers\UserSystemSettingsController;
@@ -30,6 +31,18 @@ Route::get('home-backgrounds/{id}/{variant}', [HomeBackgroundFileController::cla
 Route::get('public/shell-boot', [PublicShellBootController::class, '__invoke'])
     ->middleware('throttle:120,1')
     ->name('public.shell-boot');
+
+Route::post('public/shell/app-usage', [PublicShellAppUsageController::class, 'store'])
+    ->middleware(['optional.sanctum', 'throttle:120,1'])
+    ->name('public.shell.app-usage.store');
+
+Route::get('public/shell/rankings/apps', [PublicShellAppUsageController::class, 'appRankings'])
+    ->middleware('throttle:120,1')
+    ->name('public.shell.rankings.apps');
+
+Route::get('public/shell/rankings/users', [PublicShellAppUsageController::class, 'userRankings'])
+    ->middleware('throttle:120,1')
+    ->name('public.shell.rankings.users');
 
 Route::get('public/frontend-defaults', [PublicFrontendDefaultsController::class, '__invoke'])
     ->name('public.frontend-defaults');

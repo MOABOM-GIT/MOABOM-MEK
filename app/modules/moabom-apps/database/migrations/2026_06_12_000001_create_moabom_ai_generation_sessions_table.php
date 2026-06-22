@@ -23,11 +23,9 @@ return new class extends Migration
             $table->string('model_id', 60)->comment('AI 모델 식별자');
             $table->json('messages')->nullable()->comment('대화 히스토리(리믹스·이어하기)');
             $table->longText('partial_raw')->nullable()->comment('스트리밍 중간 버퍼');
-            $table->foreignId('generated_app_id')
+            $table->unsignedBigInteger('generated_app_id')
                 ->nullable()
-                ->comment('저장된 생성 앱 ID')
-                ->constrained('moabom_system_generated_apps')
-                ->nullOnDelete();
+                ->comment('moabom-platform 생성 앱 ID (논리 참조, FK 없음)');
             $table->string('finish_reason', 40)->nullable()->comment('length 등 upstream 종료 사유');
             $table->boolean('truncated')->default(false)->comment('토큰 제한 등으로 잘림 여부');
             $table->timestamps();

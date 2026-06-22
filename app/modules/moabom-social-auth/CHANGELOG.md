@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.15] - 2026-06-21
+
+### Changed
+
+- 관리자 **SNS 연결 설정** 메뉴 명칭·순서(order 30)를 플랫폼 메뉴 하위 형제 규칙에 맞게 조정.
+
+## [0.2.14] - 2026-06-19
+
+### Changed
+
+- `shell-boot` 의 `social_providers[]` 및 공개 API 캐시 revision 을 `moabom.shell_boot.social_providers`·`moabom.public_api.cache_fragment.social_providers` 훅으로 기여 — `moabom-system` compile-time 의존 제거.
+
 ## [Unreleased]
 
 ### Added

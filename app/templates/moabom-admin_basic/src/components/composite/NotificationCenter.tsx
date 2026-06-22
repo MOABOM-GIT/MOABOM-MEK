@@ -5,7 +5,7 @@ import { Span } from '../basic/Span';
 import { Icon } from '../basic/Icon';
 import { IconName } from '../basic/IconTypes';
 import { Input } from '../basic/Input';
-import { navigateMoabomNotificationUrl } from '../../../../../modules/moabom-system/js/shared/moabomNotificationNavigateUrl';
+import { navigateMoabomNotificationUrl } from '../../../../moabom-basic/src/utils/moabomNotificationNavigateUrl';
 
 /**
  * 알림 아이템 인터페이스

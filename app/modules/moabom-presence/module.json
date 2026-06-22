@@ -1,0 +1,22 @@
+{
+    "identifier": "moabom-presence",
+    "vendor": "moabom",
+    "name": {
+        "ko": "접속·친구",
+        "en": "Presence & Friends"
+    },
+    "version": "0.1.1",
+    "license": "MIT",
+    "description": {
+        "ko": "테넌트·플랫폼 실시간 접속자 집계, Presence 채널, 친구 관계, 공개 프로필 셸 윈도우 레이아웃을 제공합니다.",
+        "en": "Tenant and platform online presence, Reverb presence channels, friendships, and public profile shell window layouts."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {
+            "moabom-system": ">=0.7.9",
+            "sirsoft-board": ">=1.0.0-beta.5"
+        },
+        "plugins": {}
+    }
+}

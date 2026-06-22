@@ -13,8 +13,8 @@ interface G7Window extends Window {
 
 const DEFAULT_CONFIG: SecurityGuardConfig = {
     enabled: true,
-    consoleMaskingEnabled: true,
-    domGuardEnabled: true,
+    consoleMaskingEnabled: false,
+    domGuardEnabled: false,
     trustedTypesEnabled: true,
 };
 

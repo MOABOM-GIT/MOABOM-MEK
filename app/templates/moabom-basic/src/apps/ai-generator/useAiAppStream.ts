@@ -1,37 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   cancelAiGenerationSession,
+  cancelAiGenerationQueue,
   cancelStreamingAiGenerationSession,
   fetchActiveAiGenerationSession,
   streamAiApp,
   type AiAppType,
-  type StreamAiAppDonePayload,
+  type AiGenerationQueueState,
+  type AppTier,
 } from '../../api/moabomAppsApi';
+import {
+  buildGenerationDraftView,
+  inferPhaseFromFinalize,
+  type GenerationDraftFinalize,
+  type GenerationPhase,
+} from './aiGenerationDraft';
 
 interface UseAiAppStreamOptions {
   appType: AiAppType;
+  appTier?: AppTier;
   modelId: string;
   generatedAppId?: number | null;
-  onDone?: (result: StreamAiAppDonePayload) => void;
+  onDraftFinalize?: (draft: GenerationDraftFinalize) => void;
 }
 
 export function useAiAppStream({
   appType,
+  appTier = 'standard',
   modelId,
   generatedAppId,
-  onDone,
+  onDraftFinalize,
 }: UseAiAppStreamOptions) {
   const [streamedRaw, setStreamedRaw] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
-  const [truncated, setTruncated] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState<GenerationPhase>('idle');
   const [resumeSession, setResumeSession] = useState<Awaited<ReturnType<typeof fetchActiveAiGenerationSession>>>(null);
   const [resumeChecked, setResumeChecked] = useState(false);
+  const [queueState, setQueueState] = useState<AiGenerationQueueState | null>(null);
+  const queueTicketRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<number | null>(null);
   const preStreamRawRef = useRef('');
-  const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
+  const onDraftFinalizeRef = useRef(onDraftFinalize);
+  onDraftFinalizeRef.current = onDraftFinalize;
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -64,6 +76,12 @@ export function useAiAppStream({
   const streamedRawRef = useRef('');
   streamedRawRef.current = streamedRaw;
 
+  const finalizeDraft = useCallback((draft: GenerationDraftFinalize) => {
+    const phase = inferPhaseFromFinalize(draft, false, false);
+    setGenerationPhase(phase);
+    onDraftFinalizeRef.current?.(draft);
+  }, []);
+
   const runStream = useCallback(async (options: {
     prompt: string;
     currentHtml?: string | null;
@@ -79,7 +97,9 @@ export function useAiAppStream({
     preStreamRawRef.current = options.continueGeneration ? streamedRawRef.current : '';
 
     setIsStreaming(true);
-    setTruncated(false);
+    setGenerationPhase(queueState ? 'queued' : 'streaming');
+    setQueueState(null);
+    queueTicketRef.current = null;
     if (!options.continueGeneration) {
       setStreamedRaw('');
     }
@@ -89,6 +109,7 @@ export function useAiAppStream({
         {
           prompt: options.prompt,
           app_type: appType,
+          tier: appTier,
           model_id: modelId,
           current_html: options.currentHtml ?? null,
           continue: options.continueGeneration ?? false,
@@ -100,20 +121,38 @@ export function useAiAppStream({
           onSession: (id) => {
             sessionIdRef.current = id;
             setSessionId(id);
+            setQueueState(null);
+            queueTicketRef.current = null;
+            setGenerationPhase('streaming');
           },
           onDelta: (_text, accumulated) => {
+            setQueueState(null);
             setStreamedRaw(accumulated);
+            setGenerationPhase('streaming');
+          },
+          onQueueUpdate: (queue) => {
+            queueTicketRef.current = queue.ticketId || queueTicketRef.current;
+            setQueueState(queue);
+            setGenerationPhase('queued');
           },
           onDone: (payload) => {
             if (payload.session_id) {
               sessionIdRef.current = payload.session_id;
               setSessionId(payload.session_id);
             }
-            if (payload.html) {
-              setStreamedRaw(payload.html);
+
+            const finalSource = (payload.html || streamedRawRef.current || '').trim();
+            if (finalSource) {
+              setStreamedRaw(finalSource);
             }
-            setTruncated(Boolean(payload.truncated));
-            onDoneRef.current?.(payload);
+
+            finalizeDraft({
+              source: finalSource,
+              truncated: Boolean(payload.truncated),
+              finishReason: payload.finish_reason ?? null,
+              notice: payload.notice ?? null,
+              fallback: payload.fallback ?? false,
+            });
           },
         },
         controller.signal,
@@ -125,6 +164,17 @@ export function useAiAppStream({
       if (err instanceof DOMException && err.name === 'AbortError') {
         return null;
       }
+
+      const partial = streamedRawRef.current.trim();
+      if (partial) {
+        finalizeDraft({
+          source: partial,
+          truncated: buildGenerationDraftView(partial).completeness === 'partial',
+          finishReason: 'error',
+        });
+      } else {
+        setGenerationPhase('failed');
+      }
       throw err;
     } finally {
       setIsStreaming(false);
@@ -132,13 +182,17 @@ export function useAiAppStream({
         abortRef.current = null;
       }
     }
-  }, [appType, generatedAppId, modelId, sessionId]);
+  }, [appTier, appType, finalizeDraft, generatedAppId, modelId, queueState, sessionId]);
 
   const stopGeneration = useCallback(async () => {
     const id = sessionIdRef.current;
+    const queueTicket = queueTicketRef.current;
+    const partial = streamedRawRef.current.trim();
 
     try {
-      if (id) {
+      if (queueTicket) {
+        await cancelAiGenerationQueue(queueTicket);
+      } else if (id) {
         await cancelAiGenerationSession(id);
       } else {
         await cancelStreamingAiGenerationSession();
@@ -151,12 +205,25 @@ export function useAiAppStream({
     abortRef.current = null;
 
     setIsStreaming(false);
+    setQueueState(null);
+    queueTicketRef.current = null;
+
+    if (partial) {
+      setStreamedRaw(partial);
+      finalizeDraft({
+        source: partial,
+        truncated: buildGenerationDraftView(partial).completeness === 'partial',
+        finishReason: 'cancelled',
+      });
+      return;
+    }
+
     setSessionId(null);
     sessionIdRef.current = null;
-    setTruncated(false);
+    setGenerationPhase('idle');
     setStreamedRaw(preStreamRawRef.current);
     setResumeSession(null);
-  }, []);
+  }, [finalizeDraft]);
 
   const adoptResumeSession = useCallback(() => {
     if (!resumeSession?.partial_raw) {
@@ -165,26 +232,42 @@ export function useAiAppStream({
     setSessionId(resumeSession.id);
     sessionIdRef.current = resumeSession.id;
     setStreamedRaw(resumeSession.partial_raw);
-    setTruncated(Boolean(resumeSession.truncated));
+    finalizeDraft({
+      source: resumeSession.partial_raw,
+      truncated: Boolean(resumeSession.truncated),
+      finishReason: resumeSession.truncated ? 'max_tokens' : 'cancelled',
+    });
     setResumeSession(null);
-  }, [resumeSession]);
+  }, [finalizeDraft, resumeSession]);
 
   const dismissResumeSession = useCallback(() => {
     setResumeSession(null);
   }, []);
 
+  const cancelQueue = useCallback(async () => {
+    await stopGeneration();
+  }, [stopGeneration]);
+
+  const clearStreamedBuffer = useCallback(() => {
+    setStreamedRaw('');
+  }, []);
+
   return {
     streamedRaw,
     isStreaming,
+    isQueued: queueState !== null,
+    queueState,
+    generationPhase,
     sessionId,
-    truncated,
     resumeSession,
     resumeChecked,
     runStream,
     stopGeneration,
+    cancelQueue,
     adoptResumeSession,
     dismissResumeSession,
     setStreamedRaw,
+    clearStreamedBuffer,
     setSessionId,
   };
 }

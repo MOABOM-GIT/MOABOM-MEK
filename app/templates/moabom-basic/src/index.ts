@@ -17,6 +17,7 @@ import './styles/main.css';
 import './components/composite/imageGalleryLightboxStyles';
 import { installMoabomTemplateLangFetchDedupe } from './i18n/moabomTemplateLangJsonFetch';
 import { installMoabomGhostRoutesFetch } from './runtime/moabomGhostRoutesFetch';
+import { ensureMoaShellErrorPageHandlerPatched } from './shell/installMoaShellErrorNavigateBridge';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
@@ -124,7 +125,7 @@ export * from './components/composite';
 export * from './components/layout';
 
 // Pages (HomePage — 코어 `app.blade.php`는 `components.iife.js`만 로드하므로 전역 등록은 메인 번들에 포함해야 함)
-export * from './pages';
+export { HomePage, type HomePageProps } from './pages/HomePage';
 
 // Template Metadata
 import templateMetadata from '../template.json';
@@ -223,6 +224,7 @@ if (typeof window !== 'undefined') {
     installMoabomShellBootFetch();
     prefetchMoabomShellBoot();
     installMoabomGhostRoutesFetch();
+    ensureMoaShellErrorPageHandlerPatched();
 }
 
 initTemplate();

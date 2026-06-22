@@ -160,6 +160,44 @@ function stepButtonVariant(tone: StepBadgeTone): NonNullable<ButtonProps['varian
   return 'warning-outline';
 }
 
+export function CpapProcessStepNav({
+  steps,
+  activeIndex,
+  onStepClick,
+}: {
+  steps: { id: string; label: string }[];
+  activeIndex: number;
+  onStepClick: (index: number) => void;
+}) {
+  const stepTone = (index: number): StepBadgeTone => {
+    if (index < activeIndex) return 'done';
+    if (index === activeIndex) return 'active';
+    return 'upcoming';
+  };
+
+  return (
+    <Div className="moa-cpap-process-steps">
+      {steps.map((step, index) => {
+        const tone = stepTone(index);
+        return (
+          <Button
+            key={step.id}
+            type="button"
+            size="xs"
+            variant={stepButtonVariant(tone)}
+            aria-current={tone === 'active' ? 'step' : undefined}
+            onClick={() => onStepClick(index)}
+          >
+            {`STEP${index + 1}.`}
+            <span className="moa-cpap-process-step-detail">{step.label}</span>
+          </Button>
+        );
+      })}
+    </Div>
+  );
+}
+
+/** @deprecated `CpapProcessStepNav` + `AppWindowHeader` 사용 */
 export function CpapProcessBadges({
   steps,
   activeIndex,
@@ -175,12 +213,6 @@ export function CpapProcessBadges({
   cameraLoadingLabel: string;
   onStepClick: (index: number) => void;
 }) {
-  const stepTone = (index: number): StepBadgeTone => {
-    if (index < activeIndex) return 'done';
-    if (index === activeIndex) return 'active';
-    return 'upcoming';
-  };
-
   return (
     <Fragment>
       <Button
@@ -192,24 +224,7 @@ export function CpapProcessBadges({
         <Icon name={aiReady ? 'fa-circle-check' : 'fa-face-viewfinder'} size="sm" />
         {aiReady ? cameraReadyLabel : cameraLoadingLabel}
       </Button>
-      <Div className="moa-cpap-process-steps">
-        {steps.map((step, index) => {
-          const tone = stepTone(index);
-          return (
-            <Button
-              key={step.id}
-              type="button"
-              size="xs"
-              variant={stepButtonVariant(tone)}
-              aria-current={tone === 'active' ? 'step' : undefined}
-              onClick={() => onStepClick(index)}
-            >
-              {`STEP${index + 1}.`}
-              <span className="moa-cpap-process-step-detail">{step.label}</span>
-            </Button>
-          );
-        })}
-      </Div>
+      <CpapProcessStepNav steps={steps} activeIndex={activeIndex} onStepClick={onStepClick} />
     </Fragment>
   );
 }
@@ -258,7 +273,7 @@ export function CpapStatusBanner({
   const icon = variant === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info';
 
   return (
-    <Div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${styles}`}>
+    <Div className={`flex items-center gap-3 moa-app-panel px-4 py-3 ${styles}`}>
       <Icon name={icon} size="lg" className="shrink-0" />
       <Div className="min-w-0">
         <Div>{title}</Div>
@@ -280,7 +295,7 @@ export function CpapCameraOverlayDock({
   const showProgress = scanProgress !== undefined;
 
   return (
-    <Div className="moa-cpap-fit-dock glass-sm-blur rounded-3xl p-4">
+    <Div className="moa-cpap-fit-dock glass-sm-blur moa-app-panel p-4">
       <Div className="flex items-center gap-3">
         <Icon name="fa-face-smile" size="lg" className="shrink-0 text-[color:var(--moa-point-color)]" />
         <Div className="min-w-0 flex-1">
@@ -313,8 +328,8 @@ export function CpapResultHero({
   confidenceLabel: string;
 }) {
   return (
-    <Div className="flex items-start gap-4 rounded-2xl glass-sm px-4 py-4">
-      <Div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--moa-point-color)] text-white">
+    <Div className="flex items-start gap-4 moa-app-panel glass-sm px-4 py-4">
+      <Div className="flex h-14 w-14 shrink-0 items-center justify-center moa-app-panel-inner bg-[color:var(--moa-point-color)] text-white">
         <Icon name="fa-stethoscope" size="xl" />
       </Div>
       <Div className="min-w-0">

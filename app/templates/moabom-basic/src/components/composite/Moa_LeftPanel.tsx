@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMoabomDarkMode } from '../../hooks/useMoabomDarkMode';
+import { useMoaPanelScrollDrag } from '../../hooks/Moa_usePanelScrollDrag';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { useDroppable } from '@dnd-kit/core';
 import { Div } from '../basic/Div';
@@ -12,79 +13,31 @@ import { SubTabBar } from './Moa_SubTabBar';
 import { LeftPanelAppIcon } from './Moa_LeftPanelAppIcon';
 import { APPS, type App } from '../../data/Moa_apps';
 import { NAV_ITEMS } from '../../data/Moa_navigation';
-import { RANKING_DATA } from '../../data/Moa_mockData';
 import {
-  MOA_SHELL_NOTICE_BOARD_SLUG,
+  fetchShellAppRankings,
+  fetchShellUserRankings,
+  shellRankingAvatarGradient,
+  shellRankingAvatarLabel,
+} from '../../api/moabomShellRankingsApi';
+import type { ShellAppRankingItem, ShellUserRankingItem } from '../../shell/moaShellRankingTypes';
+import {
   openShellNoticeBoard,
 } from '../../shell/moaShellNoticeBoard';
+import { fetchShellNoticeBoardPreview } from '../../shell/moaShellNoticeBoardPreview';
+import {
+  subscribeShellNoticeBoardChanged,
+  type ShellNoticeBoardChangedDetail,
+} from '../../shell/moaShellNoticeBoardEvents';
+import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShellNoticeBoardPreview';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
+import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import { useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 
 /** 메인 좌측 패널 하단 고정 네비 슬롯 높이 */
 const NAV_H = 78;
 
-type BoardNoticePreview = {
-  id?: number | string;
-  title?: string | null;
-  content_preview?: string | null;
-  created_at_formatted?: string | null;
-  created_at?: string | null;
-  category?: string | null;
-  is_notice?: boolean;
-  is_new?: boolean;
-  view_count?: number;
-  row_type?: string | null;
-};
-
-type NoticeBadgeKind = 'new' | 'popular' | 'notice' | 'update';
-
-type LeftPanelNoticeItem = {
-  id: string;
-  title: string;
-  desc: string;
-  date: string;
-  category: '공지사항' | '업데이트';
-  boardSlug: string;
-  postId: string;
-  badges: NoticeBadgeKind[];
-};
-
-const NOTICE_BOARD_CATEGORIES = {
-  notices: '공지사항',
-  updates: '업데이트',
-} as const;
-
-const POPULAR_NOTICE_VIEW_THRESHOLD = 100;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function extractBoardNoticePreviews(payload: unknown): BoardNoticePreview[] {
-  const body = isRecord(payload) && 'data' in payload ? payload.data : payload;
-  const data = isRecord(body) && Array.isArray(body.data) ? body.data : Array.isArray(body) ? body : [];
-
-  return data.filter(isRecord).map(item => item as BoardNoticePreview);
-}
-
-function createNoticeBadges(post: BoardNoticePreview, category: LeftPanelNoticeItem['category']): NoticeBadgeKind[] {
-  const badges: NoticeBadgeKind[] = [];
-  if (post.is_new) {
-    badges.push('new');
-  }
-  if (Number(post.view_count ?? 0) >= POPULAR_NOTICE_VIEW_THRESHOLD) {
-    badges.push('popular');
-  }
-  if (post.is_notice || post.row_type === 'notice') {
-    badges.push('notice');
-  }
-  if (category === NOTICE_BOARD_CATEGORIES.updates) {
-    badges.push('update');
-  }
-
-  return badges;
-}
+type LeftPanelNoticeItem = ShellNoticePreviewItem;
 
 function getNoticeBadgeClassName(kind: NoticeBadgeKind): string {
   switch (kind) {
@@ -99,31 +52,6 @@ function getNoticeBadgeClassName(kind: NoticeBadgeKind): string {
     default:
       return 'bg-slate-500 text-white';
   }
-}
-
-function toLiveNoticeItem(
-  post: BoardNoticePreview,
-  category: LeftPanelNoticeItem['category'],
-): LeftPanelNoticeItem | null {
-  if (post.id == null || !post.title) {
-    return null;
-  }
-  if (post.category !== category) {
-    return null;
-  }
-
-  const badges = createNoticeBadges(post, category);
-
-  return {
-    id: `live-${category}-${post.id}`,
-    title: post.title,
-    desc: post.content_preview?.trim() || `${category} 게시글`,
-    date: post.created_at_formatted ?? post.created_at ?? '',
-    category,
-    boardSlug: MOA_SHELL_NOTICE_BOARD_SLUG,
-    postId: String(post.id),
-    badges,
-  };
 }
 
 export interface LeftPanelProps {
@@ -190,15 +118,20 @@ const LEFT_PANEL_APP_GRID_STYLE: React.CSSProperties = {
  * 즐겨찾기/마이앱/랭킹 아이템을 LeftPanelAppIcon에 전달할 수 있도록
  * App 형태로 변환하는 헬퍼
  */
-function toApp(item: { id: string; name: string; icon: string; gradient: string; category?: string }): App {
+function resolveRankingApp(appId: string, libraryApps: App[]): App {
+  const found = libraryApps.find(app => app.id === appId) ?? APPS.find(app => app.id === appId);
+  if (found) {
+    return found;
+  }
+
   return {
-    id: item.id,
-    name: item.name,
+    id: appId,
+    name: appId,
     description: '',
-    icon: item.icon,
-    gradient: item.gradient,
-    category: (item.category as 'basic' | 'user') ?? 'basic',
-    source: 'system',
+    icon: 'cube',
+    gradient: 'linear-gradient(135deg,#64748b,#334155)',
+    category: 'user',
+    source: 'user-created',
   };
 }
 
@@ -265,6 +198,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const { setNodeRef: setLeftPanelDropRef } = useDroppable({ id: 'left-panel' });
   const [activeNav, setActiveNav] = useState('launcher');
   const [rankingSubTab, setRankingSubTab] = useState<'apps' | 'users'>('apps');
+  const [appRankings, setAppRankings] = useState<ShellAppRankingItem[]>([]);
+  const [userRankings, setUserRankings] = useState<ShellUserRankingItem[]>([]);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [rankingLoadFailed, setRankingLoadFailed] = useState(false);
   const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('favorites');
   const [noticeSubTab, setNoticeSubTab] = useState<'notices' | 'updates'>('notices');
   const [noticeBoardItems, setNoticeBoardItems] = useState<{
@@ -274,8 +211,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [noticeBoardLoading, setNoticeBoardLoading] = useState(true);
   const isOpen = leftOffset >= 0;
   /** 데스크톱 20px / 오버레이 기본 10px / ±480px 이하 flush 시 0 */
-  const panelEdge = !isOverlay ? 20 : overlayFlushEdges ? 0 : 10;
+  const panelEdge = !isOverlay ? MOA_HOME_EDGE : overlayFlushEdges ? 0 : MOA_HOME_OVERLAY_EDGE;
   const tapToAdd = isOverlay && editMode;
+  const panelScrollRef = useRef<HTMLDivElement>(null);
+  const panelScrollHandlers = useMoaPanelScrollDrag(panelScrollRef, { disabled: editMode });
 
   const filteredApps = activeTab === 'user'
     ? [
@@ -284,58 +223,89 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       ]
     : APPS.filter(a => a.category === 'basic');
 
+  const rankingLibraryApps = useMemo(
+    () => [...APPS, ...createdApps, ...sharedApps],
+    [createdApps, sharedApps],
+  );
+
   useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadByCategory(category: LeftPanelNoticeItem['category']): Promise<LeftPanelNoticeItem[]> {
-      const params = new URLSearchParams({
-        page: '1',
-        per_page: '5',
-        category,
-      });
-      const response = await fetch(
-        `/api/modules/sirsoft-board/boards/${encodeURIComponent(MOA_SHELL_NOTICE_BOARD_SLUG)}/posts?${params.toString()}`,
-        {
-          credentials: 'same-origin',
-          headers: { Accept: 'application/json' },
-          signal: controller.signal,
-        },
-      );
-      if (!response.ok) {
-        return [];
-      }
-
-      const payload: unknown = await response.json();
-      return extractBoardNoticePreviews(payload)
-        .map(post => toLiveNoticeItem(post, category))
-        .filter((item): item is LeftPanelNoticeItem => item !== null);
+    if (activeNav !== 'economy') {
+      return;
     }
 
-    async function loadNoticeBoardItems(): Promise<void> {
+    const controller = new AbortController();
+
+    async function loadRankings(): Promise<void> {
       try {
-        setNoticeBoardLoading(true);
-        const [notices, updates] = await Promise.all([
-          loadByCategory(NOTICE_BOARD_CATEGORIES.notices),
-          loadByCategory(NOTICE_BOARD_CATEGORIES.updates),
+        setRankingLoading(true);
+        setRankingLoadFailed(false);
+        const [appsPayload, usersPayload] = await Promise.all([
+          fetchShellAppRankings(30),
+          fetchShellUserRankings(30),
         ]);
 
-        if (!controller.signal.aborted) {
-          setNoticeBoardItems({ notices, updates });
+        if (controller.signal.aborted) {
+          return;
         }
+
+        setAppRankings(appsPayload.items);
+        setUserRankings(usersPayload.items);
       } catch {
         if (!controller.signal.aborted) {
-          setNoticeBoardItems({ notices: [], updates: [] });
+          setAppRankings([]);
+          setUserRankings([]);
+          setRankingLoadFailed(true);
         }
       } finally {
         if (!controller.signal.aborted) {
+          setRankingLoading(false);
+        }
+      }
+    }
+
+    void loadRankings();
+
+    return () => controller.abort();
+  }, [activeNav]);
+
+  useEffect(() => {
+    let controller = new AbortController();
+    let requestId = 0;
+
+    async function loadNoticeBoardItems(signal: AbortSignal): Promise<void> {
+      const currentRequest = ++requestId;
+      try {
+        setNoticeBoardLoading(true);
+        const items = await fetchShellNoticeBoardPreview(signal);
+
+        if (!signal.aborted && currentRequest === requestId) {
+          setNoticeBoardItems(items);
+        }
+      } catch {
+        if (!signal.aborted && currentRequest === requestId) {
+          setNoticeBoardItems({ notices: [], updates: [] });
+        }
+      } finally {
+        if (!signal.aborted && currentRequest === requestId) {
           setNoticeBoardLoading(false);
         }
       }
     }
 
-    void loadNoticeBoardItems();
+    const reload = (_detail?: ShellNoticeBoardChangedDetail) => {
+      controller.abort();
+      controller = new AbortController();
+      void loadNoticeBoardItems(controller.signal);
+    };
 
-    return () => controller.abort();
+    reload();
+
+    const unsubscribe = subscribeShellNoticeBoardChanged(reload);
+
+    return () => {
+      controller.abort();
+      unsubscribe();
+    };
   }, []);
 
   const noticeItems = noticeSubTab === 'updates' ? noticeBoardItems.updates : noticeBoardItems.notices;
@@ -378,7 +348,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     <>
     <GlassPanel
       ref={setLeftPanelDropRef}
-      className={`${isOverlay ? 'moa-mobile-overlay-panel fixed top-2.5 bottom-2.5' : 'absolute top-5 bottom-5'}`}
+      className={`${isOverlay ? 'moa-mobile-overlay-panel fixed moa-home-shell-overlay-inset-y' : 'absolute moa-home-shell-inset-y'}`}
       style={{
         width: `${width}px`,
         left: `${panelEdge}px`,
@@ -407,8 +377,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       {/* 메인 패널: 상/하단 슬롯은 고정, 본문만 스크롤 */}
       <Div className="relative min-h-0 flex-1">
         <Div
-          className="absolute inset-0 overflow-y-auto px-3"
+          ref={panelScrollRef}
+          className="moa-panel-scroll absolute inset-0 overflow-y-auto px-3 scrollbar-hide"
           style={{ paddingTop: `${MOABOM_SHELL_SUB_TAB_SLOT_PX}px`, paddingBottom: `${NAV_H}px` }}
+          {...panelScrollHandlers}
         >
           {/* 라이브러리 탭 - 앱 그리드 */}
           {activeNav === 'launcher' && (
@@ -440,73 +412,111 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {activeNav === 'economy' && (
             <Div className="py-1">
               {rankingSubTab === 'apps' && (
-                <Div className="flex flex-col gap-1">
-                  {RANKING_DATA.apps.map(item => {
-                    const rankApp = APPS.find(a => a.id === item.id) ?? toApp(item);
-                    return (
-                    <Div
-                      key={`rank-app-${item.id}`}
-                      className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
-                    >
-                      <Span className={`w-6 text-center font-bold ${
-                        item.rank <= 3
-                          ? item.rank === 1 ? 'text-yellow-500 text-lg' : item.rank === 2 ? 'text-gray-400 text-lg' : 'text-amber-600 text-lg'
-                          : 'text-muted text-sm'
-                      }`}>
-                        {item.rank <= 3 ? <Icon name="trophy" /> : item.rank}
-                      </Span>
-                      {/* 아이콘만 드래그 가능 + 롱프레스 */}
-                      <LeftPanelAppIcon
-                        app={rankApp}
-                        editMode={editMode}
-                        onEnterEditMode={onEnterEditMode}
-                        onOpenApp={onOpenApp}
-                        onAddApp={onAddApp}
-                        tapToAdd={tapToAdd}
-                        iconSize="w-10 h-10 rounded-xl"
-                        iconTextSize="text-sm"
-                        showName={false}
-                        fullWidth={false}
-                      />
-                      <Div className="flex-1 min-w-0">
-                        <RankingAppTexts app={rankApp} emptyDescriptionFallback={t('moa_shell.common.app_description_fallback')} />
+                rankingLoading ? (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_loading')}</Div>
+                  </Div>
+                ) : rankingLoadFailed ? (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_load_failed')}</Div>
+                  </Div>
+                ) : appRankings.length > 0 ? (
+                  <Div className="flex flex-col gap-1">
+                    {appRankings.map(item => {
+                      const rankApp = resolveRankingApp(item.app_id, rankingLibraryApps);
+                      return (
+                      <Div
+                        key={`rank-app-${item.app_id}`}
+                        className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
+                      >
+                        <Span className={`w-6 text-center font-bold ${
+                          item.rank <= 3
+                            ? item.rank === 1 ? 'text-yellow-500 text-lg' : item.rank === 2 ? 'text-gray-400 text-lg' : 'text-amber-600 text-lg'
+                            : 'text-muted text-sm'
+                        }`}>
+                          {item.rank <= 3 ? <Icon name="trophy" /> : item.rank}
+                        </Span>
+                        <LeftPanelAppIcon
+                          app={rankApp}
+                          editMode={editMode}
+                          onEnterEditMode={onEnterEditMode}
+                          onOpenApp={onOpenApp}
+                          onAddApp={onAddApp}
+                          tapToAdd={tapToAdd}
+                          iconSize="w-10 h-10 rounded-xl"
+                          iconTextSize="text-sm"
+                          showName={false}
+                          fullWidth={false}
+                        />
+                        <Div className="flex-1 min-w-0">
+                          <RankingAppTexts app={rankApp} emptyDescriptionFallback={t('moa_shell.common.app_description_fallback')} />
+                        </Div>
+                        <Span className={`text-xs font-bold ${
+                          item.change === 'up' ? 'text-green-500' : item.change === 'down' ? 'text-red-500' : 'text-muted'
+                        }`}>
+                          {item.change === 'up' ? <Icon name="caret-up" /> : item.change === 'down' ? <Icon name="caret-down" /> : '-'}
+                        </Span>
                       </Div>
-                      <Span className={`text-xs font-bold ${
-                        item.change === 'up' ? 'text-green-500' : item.change === 'down' ? 'text-red-500' : 'text-muted'
-                      }`}>
-                        {item.change === 'up' ? <Icon name="caret-up" /> : item.change === 'down' ? <Icon name="caret-down" /> : '-'}
-                      </Span>
-                    </Div>
-                    );
-                  })}
-                </Div>
+                      );
+                    })}
+                  </Div>
+                ) : (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="trophy" className="text-3xl mb-2 opacity-30" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_apps_empty')}</Div>
+                  </Div>
+                )
               )}
               {rankingSubTab === 'users' && (
-                <Div className="flex flex-col gap-1">
-                  {RANKING_DATA.users.map(user => (
-                    <Div key={`rank-user-${user.rank}-${user.name}`} className="flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
-                      <Span className={`w-6 text-center font-bold ${
-                        user.rank <= 3
-                          ? user.rank === 1 ? 'text-yellow-500 text-lg' : user.rank === 2 ? 'text-gray-400 text-lg' : 'text-amber-600 text-lg'
-                          : 'text-muted text-sm'
-                      }`}>
-                        {user.rank <= 3 ? <Icon name="crown" /> : user.rank}
-                      </Span>
-                      <Div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md" style={{ background: user.color }}>
-                        {user.avatar}
+                rankingLoading ? (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_loading')}</Div>
+                  </Div>
+                ) : rankingLoadFailed ? (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_load_failed')}</Div>
+                  </Div>
+                ) : userRankings.length > 0 ? (
+                  <Div className="flex flex-col gap-1">
+                    {userRankings.map(user => (
+                      <Div key={`rank-user-${user.user_id}`} className="flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
+                        <Span className={`w-6 text-center font-bold ${
+                          user.rank <= 3
+                            ? user.rank === 1 ? 'text-yellow-500 text-lg' : user.rank === 2 ? 'text-gray-400 text-lg' : 'text-amber-600 text-lg'
+                            : 'text-muted text-sm'
+                        }`}>
+                          {user.rank <= 3 ? <Icon name="crown" /> : user.rank}
+                        </Span>
+                        <Div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
+                          style={{ background: shellRankingAvatarGradient(user.name) }}
+                        >
+                          {shellRankingAvatarLabel(user.name)}
+                        </Div>
+                        <Div className="flex-1 min-w-0">
+                          <Span className="font-bold text-primary text-sm block truncate">{user.name}</Span>
+                          <Span className="text-xs text-muted block">
+                            {t('moa_shell.left.rankings_activity_score', { score: user.score.toLocaleString() })}
+                          </Span>
+                        </Div>
+                        <Span className={`text-xs font-bold ${
+                          user.change === 'up' ? 'text-green-500' : user.change === 'down' ? 'text-red-500' : 'text-muted'
+                        }`}>
+                          {user.change === 'up' ? <Icon name="caret-up" /> : user.change === 'down' ? <Icon name="caret-down" /> : '-'}
+                        </Span>
                       </Div>
-                      <Div className="flex-1 min-w-0">
-                        <Span className="font-bold text-primary text-sm block truncate">{user.name}</Span>
-                        <Span className="text-xs text-muted block">{user.point.toLocaleString()} P</Span>
-                      </Div>
-                      <Span className={`text-xs font-bold ${
-                        user.change === 'up' ? 'text-green-500' : user.change === 'down' ? 'text-red-500' : 'text-muted'
-                      }`}>
-                        {user.change === 'up' ? <Icon name="caret-up" /> : user.change === 'down' ? <Icon name="caret-down" /> : '-'}
-                      </Span>
-                    </Div>
-                  ))}
-                </Div>
+                    ))}
+                  </Div>
+                ) : (
+                  <Div className="text-center py-8 text-muted">
+                    <Icon name="users" className="text-3xl mb-2 opacity-30" />
+                    <Div className="text-sm">{t('moa_shell.left.rankings_users_empty')}</Div>
+                  </Div>
+                )
               )}
             </Div>
           )}

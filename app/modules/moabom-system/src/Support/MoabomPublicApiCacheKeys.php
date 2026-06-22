@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Moabom\System\Support;
 
+use App\Extension\HookManager;
 use Modules\Moabom\System\Saas\SaasCoreSettingsHydrator;
 use Modules\Moabom\System\Saas\TenantContext;
 use App\Extension\ModuleManager;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * 공개 부트 API 캐시 키 구성 (설정·활성 모듈 변경 시 키가 달라져 TTL 전에도 무효화).
@@ -26,23 +26,10 @@ final class MoabomPublicApiCacheKeys
 
     public static function socialProvidersSettingsToken(): string
     {
-        if (! Schema::hasTable('social_auth_settings')) {
-            return self::tenantScopeToken().':social:0';
-        }
-
-        try {
-            $maxUpdatedAt = DB::table('social_auth_settings')->max('updated_at');
-        } catch (\Throwable) {
-            return self::tenantScopeToken().':social:0';
-        }
-
-        if ($maxUpdatedAt === null) {
-            return self::tenantScopeToken().':social:0';
-        }
-
-        $token = is_string($maxUpdatedAt) ? $maxUpdatedAt : (string) $maxUpdatedAt;
-
-        return self::tenantScopeToken().':social:'.$token;
+        return (string) HookManager::applyFilters(
+            'moabom.public_api.cache_fragment.social_providers',
+            self::tenantScopeToken().':social:0',
+        );
     }
 
     public static function frontendDefaults(int $revision): string
@@ -98,6 +85,49 @@ final class MoabomPublicApiCacheKeys
     public static function socialProviders(): string
     {
         return 'moabom.public.social_providers:'.self::socialProvidersSettingsToken();
+    }
+
+    public static function shellAppRankings(int $periodHours, int $limit): string
+    {
+        return sprintf(
+            'moabom.public.shell_rankings.apps:%s:%d:%d',
+            self::tenantScopeToken(),
+            $periodHours,
+            $limit,
+        );
+    }
+
+    public static function shellUserRankings(int $periodHours, int $limit): string
+    {
+        return sprintf(
+            'moabom.public.shell_rankings.users:%s:%d:%d',
+            self::tenantScopeToken(),
+            $periodHours,
+            $limit,
+        );
+    }
+
+    public static function forgetShellRankings(): void
+    {
+        $periodHours = max(1, (int) config('moabom-system.shell_rankings.period_hours', 24));
+        $limits = array_unique([
+            min(30, max(1, (int) config('moabom-system.shell_rankings.limit', 30))),
+            30,
+        ]);
+
+        foreach ($limits as $limit) {
+            Cache::forget(self::shellAppRankings($periodHours, $limit));
+            Cache::forget(self::shellUserRankings($periodHours, $limit));
+        }
+    }
+
+    public static function shellRankingsPreviousRanks(string $scope): string
+    {
+        return sprintf(
+            'moabom.public.shell_rankings.prev.%s:%s',
+            $scope,
+            self::tenantScopeToken(),
+        );
     }
 
     /** app.blade.php 홈 셸 HTML (View Composer 결과) */

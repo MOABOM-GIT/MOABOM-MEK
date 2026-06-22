@@ -1,0 +1,19 @@
+{
+  "admin": {
+    "measurements": {
+      "title": "Mask Fitting",
+      "description": "View measurements saved from the mask fitting app.",
+      "auth_required": "Authentication is required.",
+      "permission_denied": "You do not have permission to manage mask fitting data.",
+      "empty": "No stored measurements yet.",
+      "columns": {
+        "id": "ID",
+        "user": "User",
+        "mask_type": "Mask type",
+        "recommendation": "Recommendation",
+        "confidence": "Confidence",
+        "created_at": "Saved at"
+      }
+    }
+  }
+}

@@ -22,28 +22,28 @@ interface UserActivityRepositoryInterface
      *
      * @return Collection<int, \Modules\Sirsoft\Board\Models\Post>
      */
-    public function authoredPosts(int $userId, int $limit): Collection;
+    public function authoredPosts(int $userId, int $limit, int $offset = 0): Collection;
 
     /**
      * 사용자가 작성한 댓글을 최신순으로 조회합니다.
      *
      * @return Collection<int, \Modules\Sirsoft\Board\Models\Comment>
      */
-    public function authoredComments(int $userId, int $limit): Collection;
+    public function authoredComments(int $userId, int $limit, int $offset = 0): Collection;
 
     /**
      * 사용자의 게시글에 달린 타인의 댓글을 최신순으로 조회합니다.
      *
      * @return Collection<int, \Modules\Sirsoft\Board\Models\Comment>
      */
-    public function receivedPostComments(int $userId, int $limit): Collection;
+    public function receivedPostComments(int $userId, int $limit, int $offset = 0): Collection;
 
     /**
      * 사용자의 댓글에 달린 타인의 답글을 최신순으로 조회합니다.
      *
      * @return Collection<int, \Modules\Sirsoft\Board\Models\Comment>
      */
-    public function receivedReplyComments(int $userId, int $limit): Collection;
+    public function receivedReplyComments(int $userId, int $limit, int $offset = 0): Collection;
 
     /**
      * 사용자가 작성한 게시글 수.

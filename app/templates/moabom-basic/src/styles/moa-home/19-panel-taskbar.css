@@ -1,5 +1,17 @@
 /* ─── 패널 레이아웃 ─── */
 
+/** 데스크톱 셸 패널·센터 상하 인셋 — `top-5`(20px) 대체 */
+.moa-home-shell-inset-y {
+  top: var(--moa-home-shell-edge);
+  bottom: var(--moa-home-shell-edge);
+}
+
+/** 모바일 오버레이 패널 상하 인셋 — `top-2.5`(10px) 대체 */
+.moa-home-shell-overlay-inset-y {
+  top: var(--moa-home-shell-overlay-edge);
+  bottom: var(--moa-home-shell-overlay-edge);
+}
+
 /* 패널 슬라이드 트랜지션 */
 .panel-slide {
   transition:
@@ -18,6 +30,18 @@
 
 .moa-taskbar::-webkit-scrollbar {
   display: none;
+}
+
+/* 좌·우 패널 스크롤 — 터치 네이티브 스크롤, 드래그 중 텍스트 선택 방지 */
+.moa-panel-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.moa-panel-scroll.is-panel-scroll-dragging {
+  cursor: grabbing;
 }
 
 /*

@@ -38,7 +38,7 @@ moabom_run_artisan_job() {
   local task_timeout="$2"
   shift 2
   local -a artisan_tail=("$@")
-  local image args_csv arg service_account
+  local image shell_cmd arg service_account boot_sleep
   local -a service_account_args=()
 
   for arg in "${artisan_tail[@]}"; do
@@ -55,13 +55,23 @@ moabom_run_artisan_job() {
   if [[ -n "${service_account}" ]]; then
     service_account_args=(--service-account="${service_account}")
   fi
-  args_csv="artisan"
+  boot_sleep="${MOABOM_CRJ_BOOT_SLEEP:-25}"
+  shell_cmd="sleep ${boot_sleep} && php artisan"
   for arg in "${artisan_tail[@]}"; do
-    args_csv+=",${arg}"
+    shell_cmd+=" $(printf '%q' "$arg")"
   done
 
+  # INSTALLER_COMPLETED=true 이면 ModuleRouteServiceProvider 가 부팅 즉시 DB 조회 →
+  # Cloud SQL 소켓 마운트 전 artisan migrate 가 실패할 수 있음 (v270+ post-deploy).
+  local job_env_file
+  job_env_file="$(mktemp)"
+  sed 's/^INSTALLER_COMPLETED: "true"/INSTALLER_COMPLETED: "false"/' \
+    "${MOABOM_CRJ_ENV_FILE}" > "${job_env_file}"
+  # RETURN 시 local 변수가 이미 해제되므로 경로를 trap 문자열에 고정한다.
+  trap "rm -f '${job_env_file}'" RETURN
+
   echo "== cloud-run-artisan-job ${job_name} image=${image} ==" >&2
-  echo "   args: php ${args_csv//,/ }" >&2
+  echo "   cmd: bash -lc ${shell_cmd}" >&2
 
   if ! gcloud run jobs describe "${job_name}" \
     --region="${MOABOM_CRJ_REGION}" --project="${MOABOM_CRJ_PROJECT}" &>/dev/null; then
@@ -71,10 +81,10 @@ moabom_run_artisan_job() {
       --image="${image}" \
       "${service_account_args[@]}" \
       --set-cloudsql-instances="${MOABOM_CRJ_SQL}" \
-      --env-vars-file="${MOABOM_CRJ_ENV_FILE}" \
+      --env-vars-file="${job_env_file}" \
       --set-secrets="${MOABOM_CRJ_SECRETS}" \
-      --command=php \
-      --args="${args_csv}" \
+      --command=bash \
+      --args=-lc,"${shell_cmd}" \
       --tasks=1 \
       --max-retries=0 \
       --task-timeout="${task_timeout}"
@@ -85,10 +95,10 @@ moabom_run_artisan_job() {
       --image="${image}" \
       "${service_account_args[@]}" \
       --set-cloudsql-instances="${MOABOM_CRJ_SQL}" \
-      --env-vars-file="${MOABOM_CRJ_ENV_FILE}" \
+      --env-vars-file="${job_env_file}" \
       --set-secrets="${MOABOM_CRJ_SECRETS}" \
-      --command=php \
-      --args="${args_csv}" \
+      --command=bash \
+      --args=-lc,"${shell_cmd}" \
       --task-timeout="${task_timeout}"
   fi
 

@@ -1,0 +1,19 @@
+{
+    "identifier": "moabom-reverb",
+    "vendor": "moabom",
+    "name": {
+        "ko": "Moabom Reverb",
+        "en": "Moabom Reverb"
+    },
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": {
+        "ko": "Laravel Reverb WebSocket — 신규 테넌트 drivers 시드·런타임 hydration. moabom-system SaaS hydrator/seeder 와 Hook 으로만 연결한다.",
+        "en": "Laravel Reverb WebSocket defaults for tenant drivers seeding and runtime hydration. Connects to moabom-system SaaS hydrator/seeder via hooks only."
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    }
+}

@@ -111,4 +111,20 @@ class StoreUserSystemSettingsRequestTest extends ModuleTestCase
 
         $this->assertFalse($passes);
     }
+
+    public function test_shell_home_main_app_order_customized_accepts_boolean(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $passes = Validator::make([
+            'shell' => [
+                'home' => [
+                    'mainAppOrder' => [],
+                    'mainAppOrderCustomized' => true,
+                ],
+            ],
+        ], $rules)->passes();
+
+        $this->assertTrue($passes);
+    }
 }

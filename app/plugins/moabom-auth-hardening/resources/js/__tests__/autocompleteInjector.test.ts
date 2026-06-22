@@ -13,7 +13,7 @@ import {
     applyAutocompleteHardening,
     inferPasswordAutocomplete,
     inferUsernameAutocomplete,
-    HARDENED_MARKER,
+    __isInputHardenedForTest,
 } from '../autocompleteInjector';
 
 function setBody(html: string): void {
@@ -41,8 +41,8 @@ describe('autocompleteInjector', () => {
 
         expect(email.getAttribute('autocomplete')).toBe('username');
         expect(password.getAttribute('autocomplete')).toBe('current-password');
-        expect(email.getAttribute(HARDENED_MARKER)).toBe('1');
-        expect(password.getAttribute(HARDENED_MARKER)).toBe('1');
+        expect(__isInputHardenedForTest(email)).toBe(true);
+        expect(__isInputHardenedForTest(password)).toBe(true);
     });
 
     it('회원가입 폼: password 2 + email 1 → new-password / new-password / username', () => {
@@ -63,7 +63,7 @@ describe('autocompleteInjector', () => {
         expect(passwords).toHaveLength(2);
         passwords.forEach(pw => {
             expect(pw.getAttribute('autocomplete')).toBe('new-password');
-            expect(pw.getAttribute(HARDENED_MARKER)).toBe('1');
+            expect(__isInputHardenedForTest(pw)).toBe(true);
         });
     });
 
@@ -83,9 +83,8 @@ describe('autocompleteInjector', () => {
         // 명시된 값 그대로 유지
         expect(email.getAttribute('autocomplete')).toBe('email');
         expect(password.getAttribute('autocomplete')).toBe('off');
-        // 하지만 하드닝 처리 자체는 수행되었으므로 마커는 남음 (재스캔 skip)
-        expect(email.getAttribute(HARDENED_MARKER)).toBe('1');
-        expect(password.getAttribute(HARDENED_MARKER)).toBe('1');
+        expect(__isInputHardenedForTest(email)).toBe(true);
+        expect(__isInputHardenedForTest(password)).toBe(true);
     });
 
     it('여러 번 호출해도 idempotent 하다', () => {
@@ -118,7 +117,7 @@ describe('autocompleteInjector', () => {
 
         const userid = document.querySelector<HTMLInputElement>('input[name="userid"]')!;
         expect(userid.getAttribute('autocomplete')).toBe('username');
-        expect(userid.getAttribute(HARDENED_MARKER)).toBe('1');
+        expect(__isInputHardenedForTest(userid)).toBe(true);
     });
 
     it('form 이 없는 단독 password input 은 current-password 로 보수적 주입하고 name 은 건드리지 않는다', () => {

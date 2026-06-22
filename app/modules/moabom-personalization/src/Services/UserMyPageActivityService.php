@@ -29,41 +29,55 @@ class UserMyPageActivityService
      *
      * @return array<string, mixed>
      */
-    public function buildPayload(int $userId, string $type, int $limit): array
+    public function buildPayload(int $userId, string $type, int $limit, int $offset = 0): array
     {
         // sirsoft-board 가 미설치/비활성인 tenant 는 빈 피드를 반환한다.
         if (! $this->repository->boardTablesAvailable()) {
-            return $this->emptyPayload($type, $limit);
+            return $this->emptyPayload($type, $limit, $offset);
         }
 
-        $posts = in_array($type, ['all', 'posts'], true)
-            ? $this->authoredPosts($userId, $limit)
-            : collect();
-        $comments = in_array($type, ['all', 'comments'], true)
-            ? $this->authoredComments($userId, $limit)
-            : collect();
-        $interactions = in_array($type, ['all', 'interactions'], true)
-            ? $this->receivedInteractions($userId, $limit)
-            : collect();
+        $summary = [
+            'posts_count' => $this->repository->postsCount($userId),
+            'comments_count' => $this->repository->commentsCount($userId),
+            'interactions_count' => $this->repository->receivedInteractionsCount($userId),
+            'likes_supported' => false,
+        ];
+        $total = $this->totalForType($type, $summary);
 
-        $items = $posts
-            ->concat($comments)
-            ->concat($interactions)
-            ->sortByDesc('occurred_at')
-            ->take($limit)
-            ->values();
+        if ($type === 'all') {
+            $sourceLimit = $offset + $limit;
+            $posts = $this->authoredPosts($userId, $sourceLimit);
+            $comments = $this->authoredComments($userId, $sourceLimit);
+            $interactions = $this->receivedInteractions($userId, $sourceLimit);
+            $items = $posts
+                ->concat($comments)
+                ->concat($interactions)
+                ->sortByDesc('occurred_at')
+                ->slice($offset, $limit)
+                ->values();
+        } elseif ($type === 'posts') {
+            $items = $this->authoredPosts($userId, $limit, $offset);
+        } elseif ($type === 'comments') {
+            $items = $this->authoredComments($userId, $limit, $offset);
+        } else {
+            $items = $this->receivedInteractions($userId, $limit, $offset);
+        }
+
+        $itemsArray = $items->values()->all();
 
         return [
-            'summary' => [
-                'posts_count' => $this->repository->postsCount($userId),
-                'comments_count' => $this->repository->commentsCount($userId),
-                'interactions_count' => $this->repository->receivedInteractionsCount($userId),
-                'likes_supported' => false,
+            'summary' => $summary,
+            'items' => $itemsArray,
+            'pagination' => [
+                'limit' => $limit,
+                'offset' => $offset,
+                'total' => $total,
+                'has_more' => ($offset + count($itemsArray)) < $total,
             ],
-            'items' => $items,
             'query' => [
                 'type' => $type,
                 'limit' => $limit,
+                'offset' => $offset,
             ],
         ];
     }
@@ -73,7 +87,7 @@ class UserMyPageActivityService
      *
      * @return array<string, mixed>
      */
-    private function emptyPayload(string $type, int $limit): array
+    private function emptyPayload(string $type, int $limit, int $offset): array
     {
         return [
             'summary' => [
@@ -83,11 +97,31 @@ class UserMyPageActivityService
                 'likes_supported' => false,
             ],
             'items' => [],
+            'pagination' => [
+                'limit' => $limit,
+                'offset' => $offset,
+                'total' => 0,
+                'has_more' => false,
+            ],
             'query' => [
                 'type' => $type,
                 'limit' => $limit,
+                'offset' => $offset,
             ],
         ];
+    }
+
+    /**
+     * @param  array{posts_count: int, comments_count: int, interactions_count: int}  $summary
+     */
+    private function totalForType(string $type, array $summary): int
+    {
+        return match ($type) {
+            'posts' => $summary['posts_count'],
+            'comments' => $summary['comments_count'],
+            'interactions' => $summary['interactions_count'],
+            default => $summary['posts_count'] + $summary['comments_count'] + $summary['interactions_count'],
+        };
     }
 
     /**
@@ -95,9 +129,9 @@ class UserMyPageActivityService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function authoredPosts(int $userId, int $limit): Collection
+    private function authoredPosts(int $userId, int $limit, int $offset = 0): Collection
     {
-        return $this->repository->authoredPosts($userId, $limit)
+        return $this->repository->authoredPosts($userId, $limit, $offset)
             ->map(fn (Post $post) => [
                 'id' => 'post-'.$post->id,
                 'type' => 'post',
@@ -123,11 +157,11 @@ class UserMyPageActivityService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function authoredComments(int $userId, int $limit): Collection
+    private function authoredComments(int $userId, int $limit, int $offset = 0): Collection
     {
         $fallbackTitle = $this->trans('mypage_activity.fallback.post_title');
 
-        return $this->repository->authoredComments($userId, $limit)
+        return $this->repository->authoredComments($userId, $limit, $offset)
             ->map(fn (Comment $comment) => [
                 'id' => 'comment-'.$comment->id,
                 'type' => 'comment',
@@ -151,22 +185,23 @@ class UserMyPageActivityService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function receivedInteractions(int $userId, int $limit): Collection
+    private function receivedInteractions(int $userId, int $limit, int $offset = 0): Collection
     {
         $postCommentLabel = $this->trans('mypage_activity.interactions.post_comment');
         $replyLabel = $this->trans('mypage_activity.interactions.reply');
+        $sourceLimit = $offset + $limit;
 
-        $postComments = $this->repository->receivedPostComments($userId, $limit)
+        $postComments = $this->repository->receivedPostComments($userId, $sourceLimit)
             ->map(fn (Comment $comment) => $this->receivedCommentItem($comment, $postCommentLabel));
 
-        $replyComments = $this->repository->receivedReplyComments($userId, $limit)
+        $replyComments = $this->repository->receivedReplyComments($userId, $sourceLimit)
             ->map(fn (Comment $comment) => $this->receivedCommentItem($comment, $replyLabel));
 
         return $postComments
             ->concat($replyComments)
             ->unique('id')
             ->sortByDesc('occurred_at')
-            ->take($limit)
+            ->slice($offset, $limit)
             ->values();
     }
 
@@ -212,7 +247,7 @@ class UserMyPageActivityService
             return null;
         }
 
-        $url = "/board/{$boardSlug}/post/{$postId}";
+        $url = "/board/{$boardSlug}/{$postId}";
 
         return $commentId ? "{$url}#comment-{$commentId}" : $url;
     }

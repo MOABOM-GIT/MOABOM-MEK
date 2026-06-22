@@ -81,7 +81,6 @@ echo "==> [v7-4] Dockerfile 에서 활성 템플릿/모듈/플러그인을 모�
 # module.json/plugin.json 에 assets 가 선언된 활성 확장은 Dockerfile assets 단계에 npm ci+build+dist COPY 가 있어야 한다.
 CLOUD_BUILD_ASSET_PATHS=(
   'templates/moabom-admin_basic'
-  'modules/moabom-system'
   'templates/moabom-basic'
   'modules/sirsoft-ecommerce'
   'plugins/sirsoft-ckeditor5'
@@ -95,7 +94,7 @@ for asset_path in "${CLOUD_BUILD_ASSET_PATHS[@]}"; do
   grep -qE "COPY --from=assets .*${asset_path}/dist ./${asset_path}/dist" "${DOCKERFILE}" 2>/dev/null \
     || fail "Dockerfile 에 ${asset_path} dist COPY 누락 — moduleAssets/pluginAssets 가 런타임에서 404"
 done
-ok "Dockerfile 이 assets 선언 확장 dist 를 모두 빌드·복사 (템플릿 2·모듈 2·플러그인 4)"
+ok "Dockerfile 이 assets 선언 확장 dist 를 모두 빌드·복사 (템플릿 2·모듈 1·플러그인 4)"
 
 echo "==> [v7-4b] Dockerfile 에 _bundled COPY 금지 (활성 폴더 SSOT)"
 if grep -nE '^COPY[[:space:]].*_bundled' "${DOCKERFILE}" 2>/dev/null; then
@@ -232,6 +231,12 @@ fi
 echo "==> [v8a] SaaS hospitals admin gate (i18n + layout sync pipeline)"
 chmod +x "${ROOT}/deploy/saas-hospitals-admin-gate.sh" 2>/dev/null || true
 if ! "${ROOT}/deploy/saas-hospitals-admin-gate.sh"; then
+  FAIL=1
+fi
+
+echo "==> [v8b2] module layout sync SSOT (admin 404 방지)"
+chmod +x "${ROOT}/scripts/check-module-layout-sync-ssot.sh" 2>/dev/null || true
+if ! "${ROOT}/scripts/check-module-layout-sync-ssot.sh"; then
   FAIL=1
 fi
 

@@ -2,6 +2,7 @@
 
 namespace Modules\Moabom\System\Http\Middleware;
 
+use App\Extension\HookManager;
 use Closure;
 use Illuminate\Http\Request;
 use Modules\Moabom\System\Saas\SaasCachedConfigBridge;
@@ -38,8 +39,25 @@ class ResolveMoabomTenant
             (array) config('moabom-system.saas.platform_hosts', []),
         );
         $parsed = $parser->parse($host);
+        $parsed = HookManager::applyFilters('moabom.saas.override_host_parse', $parsed, $host, $request);
+        if (! is_array($parsed) || ! isset($parsed['type'], $parsed['host'])) {
+            $parsed = $parser->parse($host);
+        }
 
         if ($parsed['type'] === 'unknown') {
+            $resolved = HookManager::applyFilters('moabom.saas.resolve_unknown_host', null, $host, $request);
+            if (is_array($resolved) && ($resolved['type'] ?? '') === 'platform') {
+                $this->runtimeBootstrap->bootstrapPlatform($request, [
+                    'type' => 'platform',
+                    'host' => (string) ($resolved['host'] ?? $host),
+                ]);
+                foreach ((array) ($resolved['attributes'] ?? []) as $key => $value) {
+                    $request->attributes->set((string) $key, $value);
+                }
+
+                return $next($request);
+            }
+
             return $this->runtimeBootstrap->tenantNotFoundResponse($host);
         }
 

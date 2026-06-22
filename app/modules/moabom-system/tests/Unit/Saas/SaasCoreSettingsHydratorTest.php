@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Modules\Moabom\System\Providers\SystemServiceProvider;
 use Modules\Moabom\System\Saas\SaasCoreSettingsHydrator;
 use Modules\Moabom\System\Tests\ModuleTestCase;
+use Plugins\Moabom\Reverb\Providers\ReverbServiceProvider;
 
 class SaasCoreSettingsHydratorTest extends ModuleTestCase
 {
@@ -17,6 +18,7 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
     {
         parent::setUp();
         $this->app->register(SystemServiceProvider::class);
+        $this->app->register(ReverbServiceProvider::class);
         Storage::fake('settings');
     }
 

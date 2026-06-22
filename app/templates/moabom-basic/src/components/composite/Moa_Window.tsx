@@ -398,7 +398,7 @@ export const Window: React.FC<WindowProps> = ({
     >
       <Div
         className={`moa-window-frame absolute inset-0 flex flex-col h-full w-full min-h-0 ${
-          isEdgeToEdge ? 'rounded-none' : 'rounded-2xl'
+          isEdgeToEdge ? 'moa-window-frame--maximized rounded-none' : 'rounded-2xl'
         } ${titleBarVariant === 'create-app' ? 'overflow-visible' : 'overflow-hidden'}`}
       >
         {/* 타이틀 바 */}
@@ -425,23 +425,23 @@ export const Window: React.FC<WindowProps> = ({
                 <Button
                   type="button"
                   onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (onMinimize) onMinimize(); }}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                  className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
                 >
-                  <Icon name="minus" className="text-xs text-white" />
+                  <Icon name="minus" className="moa-window-chrome-icon-slot text-white" />
                 </Button>
                 <Button
                   type="button"
                   onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsMaximized(!isMaximized); if (onMaximize) onMaximize(); }}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                  className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
                 >
-                  <Icon name={isMaximized ? 'compress' : 'expand'} className="text-xs text-white" />
+                  <Icon name={isMaximized ? 'compress' : 'expand'} className="moa-window-chrome-icon-slot text-white" />
                 </Button>
                 <Button
                   type="button"
                   onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (onClose) onClose(); }}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-red-400/80 transition-all hover:bg-red-500"
+                  className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-red-400/80 transition-all hover:bg-red-500"
                 >
-                  <Icon name="times" className="text-xs text-white" />
+                  <Icon name="times" className="moa-window-chrome-icon-slot text-white" />
                 </Button>
               </Div>
             </Div>
@@ -482,23 +482,23 @@ export const Window: React.FC<WindowProps> = ({
               <Button
                 type="button"
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (onMinimize) onMinimize(); }}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
               >
-                <Icon name="minus" className="text-xs text-white" />
+                <Icon name="minus" className="moa-window-chrome-icon-slot text-white" />
               </Button>
               <Button
                 type="button"
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsMaximized(!isMaximized); if (onMaximize) onMaximize(); }}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
               >
-                <Icon name={isMaximized ? 'compress' : 'expand'} className="text-xs text-white" />
+                <Icon name={isMaximized ? 'compress' : 'expand'} className="moa-window-chrome-icon-slot text-white" />
               </Button>
               <Button
                 type="button"
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (onClose) onClose(); }}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-red-400/80 transition-all hover:bg-red-500"
+                className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-red-400/80 transition-all hover:bg-red-500"
               >
-                <Icon name="times" className="text-xs text-white" />
+                <Icon name="times" className="moa-window-chrome-icon-slot text-white" />
               </Button>
             </Div>
           </Div>

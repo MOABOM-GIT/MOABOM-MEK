@@ -1,0 +1,101 @@
+/**
+ * 앱 창 내부 패널 곡률 SSOT — 마이페이지 `rounded-2xl`(1rem) 기준.
+ * 한 곳(`--moa-app-panel-radius`)만 바꾸면 마이페이지·병원소개·컨설팅·더미·AI 생성앱 등 앱 셸 패널에 일괄 반영된다.
+ */
+:root {
+  --moa-app-panel-radius: 1rem;
+  --moa-app-panel-radius-sm: 0.75rem;
+  --moa-app-panel-radius-inner: calc(var(--moa-app-panel-radius) * 0.75);
+}
+
+.moa-app-panel {
+  border-radius: var(--moa-app-panel-radius);
+}
+
+.moa-app-panel-sm {
+  border-radius: var(--moa-app-panel-radius-sm);
+}
+
+.moa-app-panel-inner {
+  border-radius: var(--moa-app-panel-radius-inner);
+}
+
+/* 앱 창 상단 타이틀 */
+.moa-app-window-header {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.25rem;
+  background: var(--moa-glass-panel-surface);
+  border: 1px solid var(--moa-glass-panel-border);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.moa-app-window-header__body {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.moa-app-window-header__icon-wrap {
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--moa-app-panel-radius-inner);
+  background: var(--moa-app-header-accent, var(--moa-point-color));
+  color: #fff;
+}
+
+.moa-app-window-header__icon {
+  display: block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.moa-app-window-header__text {
+  min-width: 0;
+}
+
+.moa-app-window-header__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--moa-text-primary);
+}
+
+.moa-app-window-header__subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--moa-text-muted, #64748b);
+}
+
+/* 윈도우 크롬 — 최소화·최대화·닫기 아이콘 정중앙 (FA ::before 글리프 박스 보정) */
+button.moa-window-chrome-btn {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 0;
+  font-size: 0.75rem;
+}
+
+.moa-window-chrome-icon-slot {
+  display: grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  font-size: inherit;
+}
+
+.moa-window-chrome-icon-slot::before {
+  display: block;
+  line-height: 1;
+}

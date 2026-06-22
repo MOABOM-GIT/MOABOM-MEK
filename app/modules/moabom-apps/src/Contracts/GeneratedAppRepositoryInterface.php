@@ -22,11 +22,11 @@ interface GeneratedAppRepositoryInterface
     public function getForUser(int $userId, int $limit = 20): Collection;
 
     /**
-     * 공유 공개된 생성 앱 목록을 조회합니다.
+     * 등록·공개된 생성 앱 목록을 조회합니다.
      *
      * @return Collection<int, GeneratedApp>
      */
-    public function getShared(int $limit = 50): Collection;
+    public function getPublished(int $limit = 50): Collection;
 
     /**
      * 사용자 소유의 생성 앱 1건을 조회합니다.
@@ -34,14 +34,30 @@ interface GeneratedAppRepositoryInterface
     public function findForUser(int $userId, int $id): ?GeneratedApp;
 
     /**
-     * 본인 앱이거나 공유 공개된 생성 앱 1건을 조회합니다.
+     * 본인 앱이거나 등록·공개된 생성 앱 1건을 조회합니다.
      */
     public function findVisibleForUser(int $userId, int $id): ?GeneratedApp;
 
     /**
-     * 공유 공개된 생성 앱 1건을 조회합니다.
+     * 등록·공개된 생성 앱 1건을 조회합니다.
+     */
+    public function findPublished(int $id): ?GeneratedApp;
+
+    /**
+     * @deprecated use getPublished()
+     * @return Collection<int, GeneratedApp>
+     */
+    public function getShared(int $limit = 50): Collection;
+
+    /**
+     * @deprecated use findPublished()
      */
     public function findShared(int $id): ?GeneratedApp;
+
+    /**
+     * 생성 앱 ID로 1건을 조회합니다.
+     */
+    public function findById(int $id): ?GeneratedApp;
 
     /**
      * 생성 앱을 갱신하고 최신 인스턴스를 반환합니다.

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '../../../components/basic/Button';
 import { Div } from '../../../components/basic/Div';
 import { Icon } from '../../../components/basic/Icon';
-import { Span } from '../../../components/basic/Span';
 import { SignaturePad, type SignaturePadHandle } from '../../_shared';
 import {
   fetchContracts,
@@ -15,13 +13,6 @@ import {
   toServerInput,
   type SimulationInput,
 } from '../simulationModel';
-import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../appShellTypography';
-import {
-  CONSULTING_MINT_TEXT,
-  CONSULTING_ORANGE_TEXT,
-  CONSULTING_PANEL,
-  CONSULTING_PRIMARY_CTA,
-} from '../consultingTheme';
 
 interface ContractTabProps {
   hospitalName: string;
@@ -71,7 +62,7 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
       const items = await fetchContracts();
       setContracts(items);
     } catch {
-      // 미인증/네트워크 오류 시 목록은 비워둔다(데모 환경 허용).
+      // 미인증/네트워크 오류 시 목록은 비워둔다.
     } finally {
       setLoading(false);
     }
@@ -123,13 +114,14 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
   };
 
   const field = (key: keyof FormState, label: string, placeholder: string, required = false) => (
-    <label className="flex flex-col gap-1">
-      <Span className="text-xs font-bold text-muted">
-        {label}{required && <Span className="ml-0.5 text-[#fe8540]">*</Span>}
-      </Span>
+    <label className="moa-consult-field">
+      <span className="moa-consult-field__label">
+        {label}
+        {required && ' *'}
+      </span>
       <input
         type="text"
-        className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-primary outline-none focus:border-blue-400 dark:border-white/10 dark:bg-slate-800"
+        className="moa-consult-input"
         value={form[key]}
         placeholder={placeholder}
         onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
@@ -138,22 +130,35 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
   );
 
   return (
-    <Div className={APP_STACK_CLASS}>
-      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
-        <Div className="flex items-center gap-2 text-lg font-bold text-primary">
-          <Icon name="file-signature" className="text-[#479ee2]" /> 스마트케어360 도입 계약
+    <Div className="moa-consult-section">
+      <section className="moa-consult-card">
+        <Div className="moa-consult-card__head">
+          <span className="moa-consult-card__head-icon">
+            <Icon name="file-signature" />
+          </span>
+          스마트케어360 도입 계약
         </Div>
-        <Div className="rounded-2xl border border-[#27bfc1]/25 bg-[#27bfc1]/8 p-4 text-sm dark:border-[#27bfc1]/25 dark:bg-[#27bfc1]/8">
-          <Div className="font-bold text-primary">시뮬레이션 요약 ({simInput.years}년 누적)</Div>
-          <Div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[#0f2d3a] dark:text-slate-200">
-            <Span>직접 운영: <Span className={`font-bold ${CONSULTING_ORANGE_TEXT}`}>{formatKrwManwon(selfCum)}</Span></Span>
-            <Span>스마트케어360: <Span className={`font-bold ${CONSULTING_MINT_TEXT}`}>{formatKrwManwon(smartCum)}</Span></Span>
+        <Div className="moa-consult-summary">
+          <strong>시뮬레이션 요약 ({simInput.years}년 누적)</strong>
+          <Div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+            <span>
+              직접 운영: <strong className="text-orange-600 dark:text-orange-300">{formatKrwManwon(selfCum)}</strong>
+            </span>
+            <span>
+              스마트케어360: <strong className="text-teal-700 dark:text-teal-300">{formatKrwManwon(smartCum)}</strong>
+            </span>
           </Div>
         </Div>
-      </Div>
+      </section>
 
-      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
-        <Div className={`${APP_STACK_GRID_CLASS} grid grid-cols-1 @md:grid-cols-2`}>
+      <section className="moa-consult-card">
+        <Div className="moa-consult-card__head">
+          <span className="moa-consult-card__head-icon">
+            <Icon name="pen-to-square" />
+          </span>
+          계약 정보
+        </Div>
+        <Div className="moa-consult-form-grid">
           {field('hospitalName', '병원명', hospitalName || '병원명', true)}
           {field('representativeName', '대표자/원장명', '예) 홍길동')}
           {field('contact', '연락처', '예) 02-1234-5678')}
@@ -161,93 +166,82 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
           {field('plan', '요금제/플랜', '스마트케어360 통합 렌탈')}
           {field('signerName', '서명자명', '서명하는 분의 성함')}
         </Div>
-        <label className="flex flex-col gap-1">
-          <Span className="text-xs font-bold text-muted">특이사항 메모</Span>
+        <label className="moa-consult-field">
+          <span className="moa-consult-field__label">특이사항 메모</span>
           <textarea
-            className="min-h-[64px] resize-none rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-primary outline-none focus:border-blue-400 dark:border-white/10 dark:bg-slate-800"
+            className="moa-consult-input moa-consult-textarea"
             value={form.memo}
             placeholder="협의 내용, 특약 등"
             onChange={e => setForm(prev => ({ ...prev, memo: e.target.value }))}
           />
         </label>
-      </Div>
+      </section>
 
-      {/* 전자서명 패드 */}
-      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
-        <Div className="flex items-center justify-between">
-          <Div className="flex items-center gap-2 text-lg font-bold text-primary">
-            <Icon name="signature" className="text-[#479ee2]" /> 전자서명
+      <section className="moa-consult-card">
+        <Div className="flex items-center justify-between gap-2">
+          <Div className="moa-consult-card__head" style={{ marginBottom: 0 }}>
+            <span className="moa-consult-card__head-icon">
+              <Icon name="signature" />
+            </span>
+            전자서명
           </Div>
-          <Button variant="secondary" size="sm" onClick={() => padRef.current?.clear()} className="!rounded-xl">
-            <Icon name="eraser" size="sm" className="mr-1" /> 지우기
-          </Button>
+          <button type="button" className="moa-consult-btn" onClick={() => padRef.current?.clear()}>
+            <Icon name="eraser" size="sm" /> 지우기
+          </button>
         </Div>
-        <Div className="text-xs text-muted">태블릿 전용 펜 또는 손가락으로 아래 박스 내에 서명해 주십시오.</Div>
-        <Div>
-          <SignaturePad ref={padRef} onSignatureChange={setHasSignature} />
-        </Div>
-      </Div>
+        <p className="moa-consult-lead">태블릿 펜 또는 손가락으로 아래 영역에 서명해 주세요.</p>
+        <SignaturePad ref={padRef} onSignatureChange={setHasSignature} />
+      </section>
 
       {message && (
-        <Div
-          className={`rounded-2xl px-4 py-3 text-sm font-bold ${
-            message.type === 'ok'
-              ? 'bg-[#87c426]/12 text-[#4f7f12] dark:text-[#a7dd58]'
-              : 'bg-[#fe8540]/10 text-[#8a3a13] dark:text-[#ffbf98]'
-          }`}
-        >
+        <Div className={`moa-consult-alert moa-consult-alert--${message.type === 'ok' ? 'ok' : 'err'}`}>
           <Icon name={message.type === 'ok' ? 'check-circle' : 'circle-exclamation'} size="sm" className="mr-1" />
           {message.text}
         </Div>
       )}
 
-      <Button
-        variant="primary"
-        size="large"
-        className={`w-full !rounded-2xl ${CONSULTING_PRIMARY_CTA}`}
+      <button
+        type="button"
+        className="moa-consult-btn moa-consult-btn--primary moa-consult-btn--wide"
         onClick={submit}
         disabled={saving}
       >
-        <Icon name={saving ? 'spinner' : 'circle-check'} spin={saving} className="mr-2" />
+        <Icon name={saving ? 'spinner' : 'circle-check'} spin={saving} />
         {saving ? '저장 중…' : '계약 확정'}
-      </Button>
+      </button>
 
-      {/* 저장된 계약 목록 */}
-      <Div className={`${CONSULTING_PANEL} ${APP_STACK_CLASS}`}>
-        <Div className="flex items-center justify-between">
-          <Div className="text-lg font-bold text-primary">체결 계약 내역</Div>
-          <Button variant="secondary" size="sm" onClick={() => void loadContracts()} className="!rounded-xl">
+      <section className="moa-consult-card">
+        <Div className="flex items-center justify-between gap-2">
+          <Div className="moa-consult-card__head" style={{ marginBottom: 0 }}>
+            <span className="moa-consult-card__head-icon">
+              <Icon name="folder-open" />
+            </span>
+            체결 계약 내역
+          </Div>
+          <button type="button" className="moa-consult-btn" onClick={() => void loadContracts()} disabled={loading}>
             <Icon name="rotate" size="sm" spin={loading} />
-          </Button>
+          </button>
         </Div>
         {contracts.length === 0 ? (
-          <Div className="rounded-2xl bg-black/5 px-4 py-6 text-center text-sm text-muted dark:bg-[#479ee2]/8">
-            아직 체결된 계약이 없습니다.
-          </Div>
+          <Div className="moa-consult-empty">아직 체결된 계약이 없습니다.</Div>
         ) : (
-          <Div className="flex flex-col gap-2">
+          <Div className="moa-consult-contract-list">
             {contracts.map(c => (
-              <Div key={c.id} className="flex items-center justify-between rounded-2xl bg-black/5 px-4 py-3 dark:bg-[#479ee2]/8">
+              <article key={c.id} className="moa-consult-contract-item">
                 <Div>
-                  <Div className="text-sm font-bold text-primary">{c.hospital_name}</Div>
-                  <Div className="text-xs text-muted">
+                  <Div className="moa-consult-contract-item__name">{c.hospital_name}</Div>
+                  <Div className="moa-consult-contract-item__meta">
                     {c.plan ?? '-'} · {c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR') : ''}
                   </Div>
                 </Div>
-                <Span
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    c.status === 'signed'
-                      ? 'bg-[#87c426]/15 text-[#4f7f12] dark:text-[#a7dd58]'
-                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                  }`}
-                >
+                <span className={`moa-consult-badge ${c.status === 'signed' ? 'moa-consult-badge--ok' : 'moa-consult-badge--pending'}`}>
                   {c.status === 'signed' ? '서명 완료' : '작성 중'}
-                </Span>
-              </Div>
+                </span>
+              </article>
             ))}
           </Div>
         )}
-      </Div>
+      </section>
     </Div>
   );
 }

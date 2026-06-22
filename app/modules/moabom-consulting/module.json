@@ -2,8 +2,8 @@
     "identifier": "moabom-consulting",
     "vendor": "moabom",
     "name": {
-        "ko": "스마트케어360 컨설팅",
-        "en": "SmartCare360 Consulting"
+        "ko": "스마트 컨설팅",
+        "en": "Smart Consulting"
     },
     "version": "0.2.0",
     "license": "MIT",

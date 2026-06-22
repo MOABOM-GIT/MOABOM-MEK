@@ -9,6 +9,7 @@
  * - `/app/{appId}` — 등록된 앱 id (mypage 는 `/me/...` 로 정규화)
  * - `/app/create-app?edit={id}` — 저장 AI 앱 편집
  * - `/board/{slug}` · `/board/{slug}/{postId}` — 게시판 윈도우 (G7 board JSON)
+ * - `/users/{uuid}` · `/users/{uuid}/posts` — 공개 프로필 윈도우 (G7 user/public_profile JSON)
  */
 import type { AuthWindowMode } from '../components/composite/Moa_AuthWindowContent';
 import type { MyPageTab } from '../components/composite/mypage/myPageTypes';
@@ -20,6 +21,15 @@ import {
   isMoaShellBoardAppId,
   moaShellBoardSlugFromAppId,
 } from '../shell/moaShellBoardIds';
+import {
+  isMoaShellUserProfileAppId,
+  moaShellUserProfileUuidFromAppId,
+} from '../shell/moaShellUserProfileIds';
+import {
+  isMoaShellErrorAppId,
+  parseShellErrorCodeFromPath,
+  type ShellErrorCode,
+} from '../shell/moaShellErrorIds';
 
 const AUTH_MODES: readonly AuthWindowMode[] = ['login', 'register', 'forgot-password', 'reset-password'];
 export type BoardShellMode = 'write' | 'edit';
@@ -37,12 +47,16 @@ const MY_PAGE_TABS: readonly MyPageTab[] = [
 /** 셸 URL `/app/{id}` 로 열 수 있는 앱 id (`create-app` 포함, 저장 AI 앱 id 포함) */
 const APP_IDS = new Set([...APPS.map(a => a.id), createAppShellMetadata.id]);
 
+export type { ShellErrorCode } from '../shell/moaShellErrorIds';
+
 export type ParsedShellRoute =
   | { kind: 'home' }
   | { kind: 'auth'; mode: AuthWindowMode }
   | { kind: 'me'; tab: MyPageTab }
   | { kind: 'app'; appId: string; editGeneratedAppId?: number }
   | { kind: 'board'; slug: string; postId?: string; boardMode?: BoardShellMode }
+  | { kind: 'userProfile'; uuid: string }
+  | { kind: 'error'; code: ShellErrorCode }
   | { kind: 'router'; path: string; search?: string };
 
 function isAuthMode(s: string): s is AuthWindowMode {
@@ -109,6 +123,25 @@ export function parseShellRoute(pathname: string, search = ''): ParsedShellRoute
       return { kind: 'router', path: p, search: search || undefined };
     }
     return { kind: 'me', tab: 'profile' };
+  }
+
+  if (parts.length === 1) {
+    const errorCode = parseShellErrorCodeFromPath(parts[0]);
+    if (errorCode) {
+      return { kind: 'error', code: errorCode };
+    }
+  }
+
+  if (parts[0] === 'users' && parts[1]) {
+    const uuid = decodeURIComponent(parts[1]);
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+      if (parts[2] === 'posts') {
+        return { kind: 'userProfile', uuid };
+      }
+      if (parts.length === 2) {
+        return { kind: 'userProfile', uuid };
+      }
+    }
   }
 
   if (parts[0] === 'board' && parts[1]) {
@@ -181,6 +214,10 @@ export function formatShellPath(route: ParsedShellRoute): string {
       }
       return base;
     }
+    case 'userProfile':
+      return `/users/${encodeURIComponent(route.uuid)}`;
+    case 'error':
+      return route.code === 'maintenance' ? '/maintenance' : `/${route.code}`;
     default:
       return '/';
   }
@@ -200,6 +237,7 @@ export function pushShellPath(path: string): void {
   const current = `${window.location.pathname}${window.location.search}`;
   if (current === next) return;
   window.history.pushState({ moabomShell: true }, '', next);
+  window.dispatchEvent(new CustomEvent('moabom-shell-path-changed'));
 }
 
 export function replaceShellPath(path: string): void {
@@ -208,6 +246,7 @@ export function replaceShellPath(path: string): void {
   const current = `${window.location.pathname}${window.location.search}`;
   if (current === next) return;
   window.history.replaceState({ moabomShell: true }, '', next);
+  window.dispatchEvent(new CustomEvent('moabom-shell-path-changed'));
 }
 
 /** 닫기·동기화용 — taskbar 복원 시 URL 과 맞추기 */
@@ -218,6 +257,8 @@ export interface ShellWindowPathInput {
   boardSlug?: string;
   boardPostId?: string;
   boardMode?: BoardShellMode;
+  userProfileUuid?: string;
+  errorCode?: ShellErrorCode;
 }
 
 const SHELL_AUTH_IDS = new Set<string>(AUTH_MODES as unknown as string[]);
@@ -246,6 +287,15 @@ export function formatShellPathForWindow(win: ShellWindowPathInput): string {
         boardMode: win.boardMode,
       });
     }
+  }
+  if (isMoaShellUserProfileAppId(win.appId)) {
+    const uuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
+    if (uuid) {
+      return formatShellPath({ kind: 'userProfile', uuid });
+    }
+  }
+  if (isMoaShellErrorAppId(win.appId) && win.errorCode != null) {
+    return formatShellPath({ kind: 'error', code: win.errorCode });
   }
   return formatShellPath({ kind: 'app', appId: win.appId });
 }

@@ -1,0 +1,256 @@
+{
+  "version": "1.0.0",
+  "layout_name": "user/public_profile",
+  "data_sources": [
+    {
+      "id": "user_profile",
+      "type": "api",
+      "endpoint": "/api/users/{{route.uuid}}/profile",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false
+    },
+    {
+      "id": "user_presence",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-presence/public/users/{{route.uuid}}/presence",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false
+    },
+    {
+      "id": "user_posts",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.uuid}}/posts",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "params": {
+        "per_page": 15,
+        "page": 1
+      }
+    },
+    {
+      "id": "user_posts_stats",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.uuid}}/posts/stats",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false
+    }
+  ],
+  "components": [
+    {
+      "id": "user_profile_root",
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "flex flex-col gap-4 p-4 min-h-0"
+      },
+      "children": [
+        {
+          "id": "user_profile_header",
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "flex items-center gap-3"
+          },
+          "children": [
+            {
+              "id": "user_profile_avatar_wrap",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "relative shrink-0"
+              },
+              "children": [
+            {
+              "id": "user_profile_avatar",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center text-lg font-bold"
+              },
+              "if": "{{!user_profile?.data?.avatar}}",
+              "text": "{{(user_profile?.data?.name ?? '?').charAt(0)}}"
+            },
+            {
+              "id": "user_profile_avatar_img",
+              "type": "basic",
+              "name": "Img",
+              "props": {
+                "src": "{{user_profile?.data?.avatar}}",
+                "alt": "{{user_profile?.data?.name ?? ''}}",
+                "className": "w-14 h-14 rounded-full object-cover shrink-0"
+              },
+              "if": "{{user_profile?.data?.avatar}}"
+            },
+            {
+              "id": "user_profile_presence_dot",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-profile-status moa-status-online"
+              },
+              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}"
+            },
+            {
+              "id": "user_profile_presence_dot_away",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-profile-status moa-status-away"
+              },
+              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}"
+            },
+            {
+              "id": "user_profile_presence_dot_busy",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-profile-status moa-status-busy"
+              },
+              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}"
+            }
+              ]
+            },
+            {
+              "id": "user_profile_meta",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "min-w-0 flex-1"
+              },
+              "children": [
+                {
+                  "id": "user_profile_name",
+                  "type": "basic",
+                  "name": "H2",
+                  "props": {
+                    "className": "text-lg font-bold truncate"
+                  },
+                  "text": "{{user_profile?.data?.name ?? ''}}"
+                },
+                {
+                  "id": "user_profile_presence_label",
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-xs text-muted mt-0.5 block"
+                  },
+                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}",
+                  "text": "$t:moabom-presence.user.availability_online"
+                },
+                {
+                  "id": "user_profile_presence_label_away",
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-xs text-muted mt-0.5 block"
+                  },
+                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}",
+                  "text": "$t:moabom-presence.user.availability_away"
+                },
+                {
+                  "id": "user_profile_presence_label_busy",
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-xs text-muted mt-0.5 block"
+                  },
+                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}",
+                  "text": "$t:moabom-presence.user.availability_busy"
+                },
+                {
+                  "id": "user_profile_presence_subtitle",
+                  "type": "basic",
+                  "name": "P",
+                  "props": {
+                    "className": "text-sm text-muted mt-1"
+                  },
+                  "if": "{{user_presence?.data?.presence_subtitle}}",
+                  "text": "{{user_presence?.data?.presence_subtitle}}"
+                },
+                {
+                  "id": "user_profile_bio",
+                  "type": "basic",
+                  "name": "P",
+                  "props": {
+                    "className": "text-sm text-muted mt-1"
+                  },
+                  "if": "{{user_profile?.data?.bio && !user_presence?.data?.presence_subtitle}}",
+                  "text": "{{user_profile?.data?.bio}}"
+                },
+                {
+                  "id": "user_profile_stats",
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-xs text-muted mt-1 block"
+                  },
+                  "text": "$t:moabom-presence.user.profile_posts_count|count={{user_posts_stats?.data?.posts_count ?? 0}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "user_profile_posts_title",
+          "type": "basic",
+          "name": "H3",
+          "props": {
+            "className": "text-sm font-semibold"
+          },
+          "text": "$t:moabom-presence.user.profile_posts_title"
+        },
+        {
+          "id": "user_profile_posts_empty",
+          "type": "basic",
+          "name": "P",
+          "props": {
+            "className": "text-sm text-muted"
+          },
+          "if": "{{!(user_posts?.data?.data?.length)}}",
+          "text": "$t:moabom-presence.user.profile_posts_empty"
+        },
+        {
+          "id": "user_profile_posts_list",
+          "type": "iteration",
+          "item_var": "post",
+          "index_var": "postIndex",
+          "items": "{{user_posts?.data?.data ?? []}}",
+          "children": [
+            {
+              "id": "user_profile_post_row",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "rounded-xl border border-gray-200 dark:border-gray-700 p-3"
+              },
+              "children": [
+                {
+                  "id": "user_profile_post_title",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "text-sm font-semibold"
+                  },
+                  "text": "{{post.title}}"
+                },
+                {
+                  "id": "user_profile_post_date",
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-xs text-muted"
+                  },
+                  "text": "{{post.created_at}}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

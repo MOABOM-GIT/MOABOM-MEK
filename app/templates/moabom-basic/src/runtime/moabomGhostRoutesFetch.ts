@@ -5,6 +5,10 @@
  * @see docs/moabom-routes-ghost-api.md
  */
 
+import {
+    isMoabomBasicTemplateRoutesUrl,
+    mergeEssentialRoutesInRoutesApiBody,
+} from '../shell/moaShellEssentialRoutes';
 import { pathNeedsLegacyG7RouterPath } from '../utils/moabomLegacyMypagePaths';
 
 const SHELL_ROUTES_API = '/api/modules/moabom-system/public/template-routes-shell';
@@ -68,12 +72,25 @@ declare global {
 }
 
 function isMoabomBasicRoutesUrl(url: string): boolean {
-    try {
-        const u = new URL(url, typeof location !== 'undefined' ? location.href : 'http://localhost');
+    return isMoabomBasicTemplateRoutesUrl(url);
+}
 
-        return /\/api\/templates\/moabom-basic\/routes\.json$/.test(u.pathname);
+async function withEssentialShellRoutes(response: Response): Promise<Response> {
+    if (!response.ok) {
+        return response;
+    }
+
+    try {
+        const body = (await response.json()) as Parameters<typeof mergeEssentialRoutesInRoutesApiBody>[0];
+        const merged = mergeEssentialRoutesInRoutesApiBody(body);
+
+        return new Response(JSON.stringify(merged), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+        });
     } catch {
-        return false;
+        return response;
     }
 }
 
@@ -186,7 +203,7 @@ export function installMoabomGhostRoutesFetch(): void {
     const orig = window.fetch.bind(window);
     window.__moabomGhostFetchOriginal = orig;
 
-    window.fetch = ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const url =
             typeof input === 'string'
                 ? input
@@ -206,10 +223,14 @@ export function installMoabomGhostRoutesFetch(): void {
             ghost.searchParams.set('scope', 'shell');
             window.__moabomShellRoutesFetchMeta = { usedGhost: true, cacheVersionQuery: v };
 
-            return orig(ghost.toString(), {
+            return withEssentialShellRoutes(await orig(ghost.toString(), {
                 ...init,
                 credentials: init?.credentials ?? 'same-origin',
-            });
+            }));
+        }
+
+        if (isMoabomBasicRoutesUrl(url)) {
+            return withEssentialShellRoutes(await orig(input, init));
         }
 
         return orig(input, init);

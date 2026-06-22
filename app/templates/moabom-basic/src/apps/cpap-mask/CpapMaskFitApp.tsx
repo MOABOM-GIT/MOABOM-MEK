@@ -1,5 +1,5 @@
 import type { FaceLandmarker } from '@mediapipe/tasks-vision';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { printCpapResultPdf } from './cpapResultPdf';
 import {
   fetchLatestCpapMeasurement,
@@ -13,6 +13,8 @@ import { Canvas } from '../../components/basic/Canvas';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { APP_WINDOW_BODY_CLASS } from '../appShellTypography';
+import { AppWindowHeader } from '../_shared/AppWindowHeader';
+import { cpapMaskFitAppMetadata } from './metadata';
 import { CPAP_ICON_TEXT_ROW_CLASS, CPAP_PANEL_CLASS } from './cpapSurveyStyles';
 import {
   CpapCameraOverlayDock,
@@ -20,7 +22,7 @@ import {
   CpapEmptyLatest,
   CpapMaskTypeMultiSelect,
   CpapPrimaryCta,
-  CpapProcessBadges,
+  CpapProcessStepNav,
   CpapResultHero,
   CpapStatusBanner,
 } from './CpapSurveyUi';
@@ -503,11 +505,54 @@ export function CpapMaskFitApp() {
     description: t(`moa_apps_cpap.mask_type.${value}.desc`),
   }));
 
+  const headerSubtitle = useMemo(() => {
+    const statusLine = [status, subStatus].filter(Boolean).join(' · ');
+    if (statusLine) {
+      return statusLine;
+    }
+    if (isCameraStarting || isModelLoading) {
+      return t('moa_apps_cpap.camera_loading_badge');
+    }
+    if (cameraActive) {
+      return faceLandmarker
+        ? t('moa_apps_cpap.camera_ready_badge')
+        : t('moa_apps_cpap.camera_loading_badge');
+    }
+    if (step === 'result') {
+      return t('moa_apps_cpap.steps.result');
+    }
+    return t('moa_apps_cpap.description');
+  }, [
+    cameraActive,
+    faceLandmarker,
+    isCameraStarting,
+    isModelLoading,
+    status,
+    step,
+    subStatus,
+    t,
+  ]);
+
   return (
-    <Div className={`${APP_WINDOW_BODY_CLASS} moa-cpap-fit-app`}>
-      <Div className="moa-cpap-fit-stage">
+    <Div className={`${APP_WINDOW_BODY_CLASS} moa-cpap-fit-app min-h-full`}>
+      <AppWindowHeader
+        title={t('moa_apps_cpap.title')}
+        subtitle={headerSubtitle}
+        icon={cpapMaskFitAppMetadata.icon}
+        gradient={cpapMaskFitAppMetadata.gradient}
+      />
+
+      <Div className="moa-app-panel-sm p-3 glass-sm-blur">
+        <CpapProcessStepNav
+          steps={processSteps}
+          activeIndex={currentStepIndex}
+          onStepClick={goToProcessStep}
+        />
+      </Div>
+
+      <Div className="moa-cpap-fit-main">
         {step === 'survey' && (
-          <Div className="moa-cpap-fit-scroll">
+          <Div className="moa-cpap-fit-content">
             {error ? <CpapStatusBanner variant="error" title={error} /> : null}
             {infoMessage ? <CpapStatusBanner variant="info" title={infoMessage} /> : null}
             <Div className="moa-cpap-fit-survey-grid moa-app-stack-grid grid @lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -588,7 +633,7 @@ export function CpapMaskFitApp() {
         )}
 
         {cameraActive && (
-          <>
+          <Div className="moa-cpap-fit-camera-stage">
             <video ref={videoRef} className="moa-cpap-fit-video" autoPlay muted playsInline />
             <Canvas ref={canvasRef} className="moa-cpap-fit-canvas" />
             {step === 'countdown' && (
@@ -603,11 +648,11 @@ export function CpapMaskFitApp() {
                 <Div className="text-center text-lg font-bold text-white drop-shadow">{t('moa_apps_cpap.guide_turn_side_detail')}</Div>
               </Div>
             )}
-          </>
+          </Div>
         )}
 
         {step === 'result' && (
-          <Div className="moa-cpap-fit-scroll">
+          <Div className="moa-cpap-fit-content">
             {error ? <CpapStatusBanner variant="error" title={error} /> : null}
             {!result ? (
               <Div className={CPAP_PANEL_CLASS}>
@@ -642,7 +687,7 @@ export function CpapMaskFitApp() {
               </Div>
               <Div className="grid gap-2 @sm:grid-cols-2">
                 {visibleMeasurementKeys.map((key) => (
-                  <Div key={key} className="flex items-center gap-3 rounded-2xl px-4 py-3 glass-sm">
+                  <Div key={key} className="flex items-center gap-3 moa-app-panel px-4 py-3 glass-sm">
                     <Icon name="fa-ruler" className="text-muted" />
                     <Div>
                       <Div className="text-muted">{t(`moa_apps_cpap.measurements.${key}`)}</Div>
@@ -661,7 +706,7 @@ export function CpapMaskFitApp() {
                 </Div>
                 <Div className="flex flex-col gap-2">
                   {result.recommendation.reasons.map(reason => (
-                    <Div key={reason} className={`${CPAP_ICON_TEXT_ROW_CLASS} rounded-2xl px-3 py-2 glass-sm text-muted`}>
+                    <Div key={reason} className={`${CPAP_ICON_TEXT_ROW_CLASS} moa-app-panel px-3 py-2 glass-sm text-muted`}>
                       <Icon name="fa-check" size="sm" className="shrink-0 text-[color:var(--moa-point-color)]" />
                       <span>{reason}</span>
                     </Div>
@@ -696,7 +741,7 @@ export function CpapMaskFitApp() {
               {t('moa_apps_cpap.result_tips')}
             </Div>
             {result.recommendation.tips?.map(tip => (
-              <Div key={tip} className={`${CPAP_ICON_TEXT_ROW_CLASS} rounded-2xl px-3 py-2 glass-sm text-muted`}>
+              <Div key={tip} className={`${CPAP_ICON_TEXT_ROW_CLASS} moa-app-panel px-3 py-2 glass-sm text-muted`}>
                 <Icon name="fa-star" size="sm" className="shrink-0 text-amber-500" />
                 <span>{tip}</span>
               </Div>
@@ -708,19 +753,8 @@ export function CpapMaskFitApp() {
         )}
       </Div>
 
-      <Div className={`moa-cpap-fit-overlay-top rounded-3xl p-4 ${cameraActive ? 'glass-sm' : 'glass-sm-blur'}`}>
-        <CpapProcessBadges
-          steps={processSteps}
-          activeIndex={currentStepIndex}
-          aiReady={!!faceLandmarker}
-          cameraReadyLabel={t('moa_apps_cpap.camera_ready_badge')}
-          cameraLoadingLabel={t('moa_apps_cpap.camera_loading_badge')}
-          onStepClick={goToProcessStep}
-        />
-      </Div>
-
       {cameraActive && (
-        <Div className="moa-cpap-fit-overlay-bottom">
+        <Div className="moa-cpap-fit-dock-bar">
           {error ? <CpapStatusBanner variant="error" title={error} /> : null}
           <CpapCameraOverlayDock
             status={status || t('moa_apps_cpap.camera_ready')}

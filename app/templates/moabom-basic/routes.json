@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "moabom 사용자 템플릿 라우트 정의",
   "routes": [
     {
@@ -84,6 +84,24 @@
       }
     },
     {
+      "_comment": "공개 프로필 — 셸 윈도우 내 G7 user/public_profile JSON (작성글 목록 포함)",
+      "path": "/users/:uuid",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "사용자 프로필"
+      }
+    },
+    {
+      "_comment": "작성글 보기 — 동일 프로필 윈도우 (public_profile JSON 내 작성글 섹션)",
+      "path": "/users/:uuid/posts",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "사용자 작성글"
+      }
+    },
+    {
       "path": "/login",
       "layout": "auth/login",
       "auth_required": false,
@@ -120,8 +138,9 @@
       }
     },
     {
+      "_comment": "에러 — 셸(HomePage) + 윈도우 내 G7 errors JSON",
       "path": "/404",
-      "layout": "errors/404",
+      "layout": "home",
       "auth_required": false,
       "meta": {
         "title": "페이지를 찾을 수 없습니다"
@@ -129,7 +148,7 @@
     },
     {
       "path": "/403",
-      "layout": "errors/403",
+      "layout": "home",
       "auth_required": false,
       "meta": {
         "title": "접근 권한이 없습니다"
@@ -137,10 +156,26 @@
     },
     {
       "path": "/500",
-      "layout": "errors/500",
+      "layout": "home",
       "auth_required": false,
       "meta": {
         "title": "서버 오류"
+      }
+    },
+    {
+      "path": "/503",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "서비스 점검"
+      }
+    },
+    {
+      "path": "/maintenance",
+      "layout": "home",
+      "auth_required": false,
+      "meta": {
+        "title": "점검 중"
       }
     }
   ]

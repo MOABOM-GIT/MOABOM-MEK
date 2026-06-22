@@ -44,6 +44,11 @@ return [
         'invalid_json' => 'routes.json is not valid JSON.',
         'unknown_error' => 'Could not load route data.',
     ],
+    'shell_rankings' => [
+        'usage_accepted' => 'App usage has been recorded.',
+        'apps_fetch_success' => 'App rankings have been loaded.',
+        'users_fetch_success' => 'User rankings have been loaded.',
+    ],
     'saas' => [
         'hospitals' => [
             'list_success' => 'Hospital list loaded.',

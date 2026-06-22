@@ -7,33 +7,40 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
+use Modules\Moabom\Apps\Enums\AppTier;
+use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 use Modules\Moabom\Apps\Models\GeneratedApp;
+use Modules\Moabom\Apps\Support\GeneratedAppOwnerResolver;
+use Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy;
 
 class AiAppService
 {
     public function __construct(
         private readonly GeneratedAppRepositoryInterface $appRepository,
+        private readonly GeneratedAppHtmlService $htmlService,
+        private readonly GeneratedAppPreviewService $previewService,
+        private readonly GeneratedAppHostingService $hostingService,
+        private readonly GeneratedAppOwnerResolver $ownerResolver,
+        private readonly GeneratedAppPurgeService $purgeService,
     ) {
     }
 
-    /**
-     * 저장/서빙되는 AI 생성 HTML 에 주입하는 CSP (C2 — deploy/PROJECT-ARCHITECTURE-HARDENING.md).
-     *
-     * 프론트(aiHtmlUtils.ts AI_PREVIEW_CSP)와 동일 정책. iframe 은 allow-same-origin 을
-     * 제거해 opaque origin 으로 격리되며, 이 CSP 는 심층 방어(프론트 미경유 직접 API 저장도 보호).
-     *
-     * frame-ancestors 는 <meta> 전달 시 브라우저가 무시(콘솔 경고)하고, 미리보기는 셸이
-     * sandbox iframe(opaque origin) 안에 의도적으로 프레이밍하므로 메타 CSP 에서는 제외한다.
-     */
-    private const PREVIEW_CSP =
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; "
-        ."script-src 'unsafe-inline' 'unsafe-eval' https: blob:; "
-        ."style-src 'unsafe-inline' https:; "
-        ."img-src 'self' data: blob: https:; "
-        ."font-src 'self' data: https:; "
-        ."media-src 'self' data: blob: https:; "
-        ."connect-src https:; "
-        ."base-uri 'none'; form-action 'self' https:;";
+    private const HOSTED_STATIC_PROMPT = <<<'PROMPT'
+
+HOSTED APP RULES (dedicated app origin — app server storage):
+- Personal data only: each signed-in member has isolated storage. Never mix users.
+- Read window.__MOABOM_APP_RUNTIME__ for appId, userId, tenantSlug, storagePrefix.
+- Data API: fetch('/api/data/{table_key}') on the same origin as this page.
+- ALL data requests (GET/POST/PUT/DELETE) require header X-Moabom-Preview-Token with preview_token from the page URL query.
+- Use stable snake_case table_key names. Never call the Moabom shell API from inside the app.
+PROMPT;
+
+    private const STANDARD_STORAGE_PROMPT = <<<'PROMPT'
+
+STANDARD APP STORAGE (device localStorage):
+- When window.__MOABOM_APP_RUNTIME__ exists, prefix EVERY localStorage key with storagePrefix from runtime.
+- Without runtime context, do not persist personal data in localStorage.
+PROMPT;
 
     /**
      * 앱 타입별 시스템 프롬프트입니다.
@@ -69,6 +76,18 @@ ICON RULES:
 - Use Remix Icon and include:
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.min.css" rel="stylesheet">
 
+INTERNAL NAVIGATION RULES (multi-section / tab menus):
+- Use in-page hash links only: href="#section-id" (never full URLs like https://... or /app/...).
+- Never use <base href="...">.
+- Give each section a matching id attribute (e.g. <section id="stages">).
+- Toggle visibility with CSS/JS on hashchange or click; do not navigate the parent window.
+- Prefer a single-page layout; avoid separate HTML files or path-based routes.
+
+PWA / SERVICE WORKER RULES (MOABOM runs inside a sandboxed iframe):
+- Never use navigator.serviceWorker, service worker registration, or web app manifests.
+- Do not include <link rel="manifest">.
+- Do not depend on localStorage/sessionStorage for critical navigation state.
+
 SELF-REVIEW BEFORE OUTPUT:
 - Check valid DOM order, no overlapping tags, no unclosed style/script tags.
 - Check responsive design and mobile layout.
@@ -85,9 +104,16 @@ PROMPT;
         return $this->resolveModel($modelId);
     }
 
-    public function systemPromptForType(string $appType): string
+    public function systemPromptForType(string $appType, ?string $tier = null): string
     {
-        return $this->systemPrompt($appType);
+        $prompt = $this->systemPrompt($appType);
+        if (AppTier::tryFrom((string) ($tier ?? AppTier::Standard->value)) === AppTier::Hosted) {
+            $prompt .= self::HOSTED_STATIC_PROMPT;
+        } else {
+            $prompt .= self::STANDARD_STORAGE_PROMPT;
+        }
+
+        return $prompt;
     }
 
     /**
@@ -284,19 +310,27 @@ PROMPT;
     public function store(int $userId, array $data): GeneratedApp
     {
         $parentAppId = $this->visibleParentAppId($userId, $data['parent_app_id'] ?? null);
+        $tier = AppTier::tryFrom((string) ($data['tier'] ?? AppTier::Standard->value)) ?? AppTier::Standard;
 
-        return $this->appRepository->create([
+        $app = $this->appRepository->create([
             'user_id' => $userId,
             'title' => $data['title'],
             'app_type' => $data['app_type'],
+            'tier' => $tier->value,
             'model_id' => $data['model_id'] ?? null,
             'prompt' => $data['prompt'] ?? null,
-            'html' => $this->hardenHtml((string) $data['html']),
-            'is_shared' => (bool) ($data['is_shared'] ?? false),
+            'html' => $this->htmlService->harden((string) $data['html']),
+            'visibility' => $this->resolveVisibility($data['visibility'] ?? $data['is_shared'] ?? false),
             'parent_app_id' => $parentAppId,
             'version' => max(1, (int) ($data['version'] ?? 1)),
             'metadata' => $data['metadata'] ?? null,
         ]);
+
+        if ($tier === AppTier::Hosted) {
+            $app = $this->hostingService->provisionHosted($app);
+        }
+
+        return $app;
     }
 
     private function visibleParentAppId(int $userId, mixed $parentAppId): ?int
@@ -307,34 +341,6 @@ PROMPT;
         }
 
         return $this->findVisibleForUser($userId, $id) !== null ? $id : null;
-    }
-
-    /**
-     * 저장/갱신 시 AI 생성 HTML 에 CSP 메타를 주입한다(C2 심층 방어, 멱등).
-     *
-     * 프론트 injectAiPreviewSafety 가 이미 주입한 경우 그대로 둔다. 프론트를 거치지 않은
-     * 직접 API 호출도 서버에서 CSP 가 보장되도록 한다. 앱 본문(스크립트 포함)은 자기완결
-     * 동작을 위해 변형하지 않는다 — 격리는 iframe opaque origin + CSP 로 달성한다.
-     */
-    private function hardenHtml(string $html): string
-    {
-        if ($html === '') {
-            return $html;
-        }
-        if (str_contains($html, 'http-equiv="Content-Security-Policy"')) {
-            return $html;
-        }
-
-        $meta = '<meta http-equiv="Content-Security-Policy" content="'.self::PREVIEW_CSP.'">';
-
-        if (preg_match('/<head[^>]*>/i', $html, $matches) === 1) {
-            return (string) preg_replace('/<head[^>]*>/i', $matches[0].$meta, $html, 1);
-        }
-        if (stripos($html, '<body') !== false) {
-            return (string) preg_replace('/<body/i', '<head>'.$meta.'</head><body', $html, 1);
-        }
-
-        return $meta.$html;
     }
 
     /**
@@ -352,11 +358,17 @@ PROMPT;
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function listShared(int $limit = 50, ?int $viewerUserId = null): array
+    public function listPublished(int $limit = 50, ?int $viewerUserId = null): array
     {
-        return $this->appRepository->getShared($limit)
+        return $this->appRepository->getPublished($limit)
             ->map(fn (GeneratedApp $app): array => $this->serialize($app, includeHtml: false, viewerUserId: $viewerUserId))
             ->all();
+    }
+
+    /** @deprecated use listPublished() */
+    public function listShared(int $limit = 50, ?int $viewerUserId = null): array
+    {
+        return $this->listPublished($limit, $viewerUserId);
     }
 
     public function findForUser(int $userId, int $id): ?GeneratedApp
@@ -369,9 +381,15 @@ PROMPT;
         return $this->appRepository->findVisibleForUser($userId, $id);
     }
 
+    public function findPublished(int $id): ?GeneratedApp
+    {
+        return $this->appRepository->findPublished($id);
+    }
+
+    /** @deprecated use findPublished() */
     public function findShared(int $id): ?GeneratedApp
     {
-        return $this->appRepository->findShared($id);
+        return $this->findPublished($id);
     }
 
     /**
@@ -387,20 +405,36 @@ PROMPT;
             ? $this->visibleParentAppId($userId, $data['parent_app_id'])
             : $app->parent_app_id;
 
-        return $this->appRepository->update($app, [
+        $updated = $this->appRepository->update($app, [
             'title' => $data['title'],
             'app_type' => $data['app_type'],
+            'tier' => array_key_exists('tier', $data)
+                ? (AppTier::tryFrom((string) $data['tier']) ?? AppTier::Standard)->value
+                : $app->tier,
             'model_id' => $data['model_id'] ?? null,
             'prompt' => $data['prompt'] ?? null,
-            'html' => $this->hardenHtml((string) $data['html']),
-            'is_shared' => array_key_exists('is_shared', $data) ? (bool) $data['is_shared'] : $app->is_shared,
+            'html' => $this->htmlService->harden((string) $data['html']),
+            'visibility' => array_key_exists('visibility', $data)
+                ? $this->resolveVisibility($data['visibility'])
+                : (array_key_exists('is_shared', $data)
+                    ? $this->resolveVisibility($data['is_shared'])
+                    : GeneratedAppPublishPolicy::visibilityOf($app)->value),
             'parent_app_id' => $parentAppId,
             'version' => max(1, (int) ($data['version'] ?? $app->version ?? 1)),
             'metadata' => $data['metadata'] ?? $app->metadata,
         ]);
+
+        if (
+            AppTier::tryFrom((string) ($updated->tier ?? AppTier::Standard->value)) === AppTier::Hosted
+            && $updated->hosted_subdomain === null
+        ) {
+            return $this->hostingService->provisionHosted($updated);
+        }
+
+        return $updated;
     }
 
-    public function setSharedForUser(int $userId, int $id, bool $isShared): ?GeneratedApp
+    public function setVisibilityForUser(int $userId, int $id, GeneratedAppVisibility $visibility): ?GeneratedApp
     {
         $app = $this->findForUser($userId, $id);
         if ($app === null) {
@@ -408,8 +442,18 @@ PROMPT;
         }
 
         return $this->appRepository->update($app, [
-            'is_shared' => $isShared,
+            'visibility' => $visibility->value,
         ]);
+    }
+
+    /** @deprecated use setVisibilityForUser() */
+    public function setSharedForUser(int $userId, int $id, bool $isShared): ?GeneratedApp
+    {
+        return $this->setVisibilityForUser(
+            $userId,
+            $id,
+            $isShared ? GeneratedAppVisibility::Tenant : GeneratedAppVisibility::Private,
+        );
     }
 
     public function deleteForUser(int $userId, int $id): bool
@@ -419,7 +463,7 @@ PROMPT;
             return false;
         }
 
-        $this->appRepository->delete($app);
+        $this->purgeService->purgeDatastore($app);
 
         return true;
     }
@@ -429,20 +473,28 @@ PROMPT;
      */
     public function serialize(GeneratedApp $app, bool $includeHtml = true, ?int $viewerUserId = null): array
     {
-        $ownerName = trim((string) ($app->user?->nickname ?: ($app->user?->name ?: '')));
+        $ownerName = trim($this->ownerResolver->nickname($app));
         if ($ownerName === '') {
             $ownerName = __('moabom-apps::messages.apps.generated.owner_unknown');
         }
 
         $isOwner = $viewerUserId !== null && (int) $app->user_id === $viewerUserId;
-        $canRemix = $viewerUserId !== null && ! $isOwner && (bool) $app->is_shared;
+        $visibility = GeneratedAppPublishPolicy::visibilityOf($app);
+        $canRemix = $viewerUserId !== null
+            && ! $isOwner
+            && $visibility->isPublished()
+            && GeneratedAppPublishPolicy::viewerCanSeePublished($app);
         $payload = [
             'id' => $app->id,
             'title' => $app->title,
             'app_type' => $app->app_type,
+            'tier' => $app->tier ?? AppTier::Standard->value,
+            'hosted_subdomain' => $app->hosted_subdomain,
+            'preview_url' => $this->previewService->buildPreviewUrl($app, $viewerUserId),
             'model_id' => $app->model_id,
             'prompt' => $app->prompt,
-            'is_shared' => (bool) $app->is_shared,
+            'visibility' => $visibility->value,
+            'is_shared' => $visibility->isPublished(),
             'parent_app_id' => $app->parent_app_id,
             'version' => $app->version ?? 1,
             'metadata' => $app->metadata ?? [],
@@ -779,5 +831,28 @@ HTML,
             'fallback' => true,
             'notice' => $notice,
         ];
+    }
+
+  /**
+     * @param  bool|string|GeneratedAppVisibility|null  $value
+     */
+    private function resolveVisibility(mixed $value): string
+    {
+        if ($value instanceof GeneratedAppVisibility) {
+            return $value->value;
+        }
+
+        if (is_string($value)) {
+            $parsed = GeneratedAppVisibility::tryFrom(trim($value));
+            if ($parsed !== null) {
+                return $parsed->value;
+            }
+        }
+
+        if ($value === true) {
+            return GeneratedAppVisibility::Tenant->value;
+        }
+
+        return GeneratedAppVisibility::Private->value;
     }
 }

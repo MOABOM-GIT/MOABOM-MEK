@@ -49,6 +49,26 @@ import { Icon } from '../basic/Icon';
 // G7Core 참조
 const getG7Core = () => (window as any).G7Core;
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resolveCurrentUserUuid(): string | null {
+  const user = getG7Core()?.AuthManager?.getInstance?.()?.getUser?.();
+  const uuid = typeof user?.uuid === 'string' ? user.uuid.trim() : '';
+  return uuid || null;
+}
+
+function resolveAuthorUuid(author?: AuthorInfo, userId?: string | number): string | null {
+  const fromAuthor = typeof author?.uuid === 'string' ? author.uuid.trim() : '';
+  if (fromAuthor && UUID_PATTERN.test(fromAuthor)) {
+    return fromAuthor;
+  }
+  const raw = userId != null ? String(userId).trim() : '';
+  if (raw && UUID_PATTERN.test(raw)) {
+    return raw;
+  }
+  return null;
+}
+
 // G7Core.t() 번역 함수 참조
 const t = (key: string, params?: Record<string, string | number>) =>
   (window as any).G7Core?.t?.(key, params) ?? key;
@@ -186,18 +206,18 @@ const LAYOUT_CLASSES = {
 } as const;
 
 // 기본 메뉴 항목 생성
-const createDefaultMenuItems = (): MenuItemConfig[] => [
+const createDefaultMenuItems = (userUuid: string): MenuItemConfig[] => [
   {
     key: 'view_profile',
     label: t('userinfo.view_profile'),
     icon: 'user',
-    path: '/users/{{userId}}',
+    path: `/users/${userUuid}`,
   },
   {
     key: 'view_posts',
     label: t('userinfo.view_posts'),
     icon: 'file-lines',
-    path: '/users/{{userId}}/posts',
+    path: `/users/${userUuid}/posts`,
   },
 ];
 
@@ -237,6 +257,8 @@ export const UserInfo: React.FC<UserInfoProps> = ({
 }) => {
   // 명시적 props > author 추출값 순서로 결정
   const actualUserId = userId ?? author?.id ?? author?.uuid;
+  const actualUserUuid = resolveAuthorUuid(author, userId ?? author?.uuid ?? author?.id);
+  const currentUserUuid = resolveCurrentUserUuid();
   const actualIsGuest = isGuest || author?.is_guest || false;
   const actualIsWithdrawn = isWithdrawn || author?.status === 'withdrawn';
 
@@ -254,7 +276,9 @@ export const UserInfo: React.FC<UserInfoProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // 프로필 경로 생성
-  const actualProfilePath = profilePath.replace('{userId}', String(actualUserId ?? ''));
+  const actualProfilePath = actualUserUuid
+    ? `/users/${actualUserUuid}`
+    : profilePath.replace('{userId}', String(actualUserId ?? ''));
 
   // 컨테이너 클래스
   const containerClass = `${LAYOUT_CLASSES[layout]} ${className}`;
@@ -292,11 +316,54 @@ export const UserInfo: React.FC<UserInfoProps> = ({
       return menuItems.filter((item) => item.show !== false);
     }
 
+    if (!actualUserUuid) {
+      return [];
+    }
+
     // 기본 메뉴에서 숨길 항목 제거
-    const defaultItems = createDefaultMenuItems();
+    const defaultItems = createDefaultMenuItems(actualUserUuid);
     let items = defaultItems.filter(
       (item) => !hideMenuItems.includes(item.key) && item.show !== false
     );
+
+    const canRequestFriend = Boolean(
+      currentUserUuid
+      && currentUserUuid !== actualUserUuid
+      && getG7Core()?.AuthManager?.getInstance?.()?.isAuthenticated?.(),
+    );
+    if (canRequestFriend && !hideMenuItems.includes('friend_request')) {
+      items = [
+        ...items,
+        {
+          key: 'friend_request',
+          label: t('userinfo.friend_request'),
+          icon: 'user-plus',
+          onClick: async () => {
+            try {
+              const { requestPresenceFriend } = await import('../../api/moabomPresenceApi');
+              await requestPresenceFriend(actualUserUuid);
+              getG7Core()?.dispatch?.({
+                handler: 'toast',
+                params: {
+                  type: 'success',
+                  message: t('userinfo.friend_request_sent'),
+                  duration: 3000,
+                },
+              });
+            } catch {
+              getG7Core()?.dispatch?.({
+                handler: 'toast',
+                params: {
+                  type: 'error',
+                  message: t('userinfo.friend_request_failed'),
+                  duration: 4500,
+                },
+              });
+            }
+          },
+        },
+      ];
+    }
 
     // 추가 항목 병합
     if (appendMenuItems && appendMenuItems.length > 0) {
@@ -304,7 +371,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({
     }
 
     return items;
-  }, [menuItems, hideMenuItems, appendMenuItems]);
+  }, [actualUserUuid, appendMenuItems, currentUserUuid, hideMenuItems, menuItems]);
 
   // 드롭다운 위치 계산 (뷰포트 기준 fixed 위치 — Portal 사용)
   const updateMenuPosition = useCallback(() => {
@@ -324,9 +391,9 @@ export const UserInfo: React.FC<UserInfoProps> = ({
     setShowMenu(false);
 
     if (item.onClick) {
-      item.onClick();
+      void item.onClick();
     } else if (item.path) {
-      const path = item.path.replace(/\{\{userId\}\}/g, String(actualUserId ?? ''));
+      const path = item.path;
       const g7Core = getG7Core();
       if (g7Core?.navigate) {
         g7Core.navigate(path);
@@ -334,7 +401,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({
         window.location.href = path;
       }
     }
-  }, [actualUserId]);
+  }, []);
 
   // 클릭 핸들러 (드롭다운 또는 프로필 이동)
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -344,8 +411,8 @@ export const UserInfo: React.FC<UserInfoProps> = ({
       e.stopPropagation();
     }
 
-    // 비회원이거나 userId가 없으면 아무 동작 안 함
-    if (actualIsGuest || !actualUserId) {
+    // 비회원이거나 uuid가 없으면 아무 동작 안 함
+    if (actualIsGuest || !actualUserUuid) {
       return;
     }
 
@@ -360,10 +427,10 @@ export const UserInfo: React.FC<UserInfoProps> = ({
     else if (clickable) {
       getG7Core()?.navigate?.(actualProfilePath);
     }
-  }, [stopPropagation, actualIsGuest, actualUserId, showDropdown, showMenu, updateMenuPosition, clickable, actualProfilePath]);
+  }, [stopPropagation, actualIsGuest, actualUserUuid, showDropdown, showMenu, updateMenuPosition, clickable, actualProfilePath]);
 
   // 비회원인 경우
-  if (actualIsGuest || !actualUserId) {
+  if (actualIsGuest || !actualUserUuid) {
     return (
       <Div className={containerClass}>
         <Div className="flex items-center gap-1.5 text-faint">

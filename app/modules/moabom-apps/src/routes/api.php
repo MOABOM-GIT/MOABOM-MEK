@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Moabom\Apps\Http\Controllers\Admin\GeneratedAppAdminController;
 use Modules\Moabom\Apps\Http\Controllers\AiAppController;
 use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
+use Modules\Moabom\Apps\Http\Controllers\AiStreamQueueController;
 use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
 
 /*
@@ -35,6 +37,13 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
         ->middleware('throttle:20,1')
         ->name('apps.ai.generate.stream');
 
+    Route::get('ai/generate/queue', [AiStreamQueueController::class, 'show'])
+        ->middleware('throttle:60,1')
+        ->name('apps.ai.generate.queue.show');
+    Route::delete('ai/generate/queue', [AiStreamQueueController::class, 'destroy'])
+        ->middleware('throttle:30,1')
+        ->name('apps.ai.generate.queue.destroy');
+
     Route::get('ai/sessions/active', [AiGenerationSessionController::class, 'active'])
         ->name('apps.ai.sessions.active');
     Route::delete('ai/sessions/streaming', [AiGenerationSessionController::class, 'cancelStreaming'])
@@ -62,4 +71,24 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
     Route::delete('generated/{id}', [AiAppController::class, 'destroy'])
         ->whereNumber('id')
         ->name('apps.generated.destroy');
+});
+
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::prefix('generated-apps')->group(function () {
+        Route::get('/', [GeneratedAppAdminController::class, 'index'])
+            ->middleware('permission:admin,moabom-apps.generated.read')
+            ->name('admin.generated-apps.index');
+        Route::get('{id}', [GeneratedAppAdminController::class, 'show'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.generated.read')
+            ->name('admin.generated-apps.show');
+        Route::patch('{id}/visibility', [GeneratedAppAdminController::class, 'updateVisibility'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.generated.manage')
+            ->name('admin.generated-apps.visibility');
+        Route::delete('{id}', [GeneratedAppAdminController::class, 'destroy'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.generated.manage')
+            ->name('admin.generated-apps.destroy');
+    });
 });

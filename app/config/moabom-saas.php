@@ -12,7 +12,7 @@ return [
     'base_domain' => env('MOABOM_SAAS_BASE_DOMAIN', 'mek360.com'),
     'platform_hosts' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('MOABOM_SAAS_PLATFORM_HOSTS', 'mek360.com,www.mek360.com,auth.mek360.com')),
+        explode(',', (string) env('MOABOM_SAAS_PLATFORM_HOSTS', 'mek360.com,www.mek360.com,auth.mek360.com,apps.mek360.com')),
     ))),
     'platform_database' => env('MOABOM_PLATFORM_DATABASE', 'moabom-platform'),
     // tenant bootstrap 후에도 cross-query SSOT (SNS master credential 등)

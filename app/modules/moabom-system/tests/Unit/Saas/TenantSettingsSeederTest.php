@@ -9,9 +9,16 @@ use Modules\Moabom\System\Saas\TenantFilesystemConfigurator;
 use Modules\Moabom\System\Saas\TenantRecord;
 use Modules\Moabom\System\Saas\TenantSettingsSeeder;
 use Modules\Moabom\System\Tests\ModuleTestCase;
+use Plugins\Moabom\Reverb\Providers\ReverbServiceProvider;
 
 class TenantSettingsSeederTest extends ModuleTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->register(ReverbServiceProvider::class);
+    }
+
     public function test_seeds_general_json_under_tenant_gcs_prefix(): void
     {
         config(['moabom-system.saas.enabled' => true]);

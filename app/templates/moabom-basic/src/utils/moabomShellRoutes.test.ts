@@ -78,7 +78,25 @@ describe('moabomShellRoutes', () => {
     expect(formatBoardShellPath('notice', undefined, 'page=2')).toBe('/board/notice?page=2');
   });
 
-  it('formatShellPathForWindow 가 게시판 윈도우 경로를 생성한다', () => {
+  it('formatShellPathForWindow 가 사용자 프로필 윈도우 경로를 생성한다', () => {
+    const appId = 'moa-shell-user:00000000-0000-4000-8000-000000000001';
+    expect(formatShellPathForWindow({ appId, userProfileUuid: '00000000-0000-4000-8000-000000000001' }))
+      .toBe('/users/00000000-0000-4000-8000-000000000001');
+  });
+
+  it('parseShellRoute 가 /users/:uuid 및 /users/:uuid/posts 를 해석한다', () => {
+    const uuid = '00000000-0000-4000-8000-000000000001';
+    expect(parseShellRoute(`/users/${uuid}`)).toEqual({
+      kind: 'userProfile',
+      uuid,
+    });
+    expect(parseShellRoute(`/users/${uuid}/posts`)).toEqual({
+      kind: 'userProfile',
+      uuid,
+    });
+  });
+
+  it('formatShellPathForWindow 가 게시판·프로필 윈도우 경로를 생성한다', () => {
     const appId = moaShellBoardAppId('notice');
     expect(formatShellPathForWindow({ appId, boardSlug: 'notice' })).toBe('/board/notice');
     expect(formatShellPathForWindow({ appId, boardSlug: 'notice', boardPostId: '42' })).toBe('/board/notice/42');

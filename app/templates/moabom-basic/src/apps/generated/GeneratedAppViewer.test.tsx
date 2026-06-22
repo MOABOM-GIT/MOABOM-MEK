@@ -26,18 +26,23 @@ describe('GeneratedAppViewer', () => {
     vi.mocked(fetchVisibleGeneratedApp).mockReset();
   });
 
-  it('loads saved app html into iframe preview', async () => {
+  it('loads saved app into iframe preview via preview_url', async () => {
     vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
       id: 7,
       title: 'Sleep Tracker',
       app_type: 'general',
+      tier: 'standard',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
       html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
     });
 
     renderViewer(7);
 
     await waitFor(() => {
-      expect(screen.getByTitle('Sleep Tracker')).toBeInTheDocument();
+      const frame = screen.getByTitle('Sleep Tracker') as HTMLIFrameElement;
+      expect(frame.tagName).toBe('IFRAME');
+      expect(frame.src).toContain('/modules/moabom-apps/preview/g/7');
     });
   });
 
@@ -58,6 +63,7 @@ describe('GeneratedAppViewer', () => {
       title: 'Sleep Tracker',
       app_type: 'general',
       html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
       is_shared: false,
       owner: { id: 1, nickname: 'A' },
       permissions: {
@@ -90,6 +96,7 @@ describe('GeneratedAppViewer', () => {
       title: 'Sleep Tracker',
       app_type: 'general',
       html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
       is_shared: true,
       owner: { id: 1, nickname: 'A' },
       permissions: {
@@ -118,6 +125,7 @@ describe('GeneratedAppViewer', () => {
       title: 'Sleep Tracker',
       app_type: 'general',
       html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
       is_shared: false,
       owner: { id: 1, nickname: 'A' },
       permissions: {

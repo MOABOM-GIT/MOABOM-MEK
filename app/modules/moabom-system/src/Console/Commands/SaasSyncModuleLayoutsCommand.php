@@ -7,25 +7,27 @@ namespace Modules\Moabom\System\Console\Commands;
 use App\Services\ModuleService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
+use Modules\Moabom\System\Saas\ModuleLayoutSyncCatalog;
 use Modules\Moabom\System\Saas\PlatformConnectionFactory;
 use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
 use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRecord;
 
 /**
- * moabom-system module layouts (admin_mypage_settings 등) → platform·tenant DB 동기화.
+ * 활성 모듈의 module layouts → platform·tenant DB 동기화.
  *
  * module:refresh-layout 은 Job 기본 connection(플랫폼)만 갱신해 테넌트 DB에
- * 구형 admin_mypage_settings(tenant-settings endpoint) 가 남을 수 있다.
+ * 구형 layout 잔재가 남을 수 있다. --module=* (기본) 는 admin/user layout JSON 이
+ * 있는 모든 활성 모듈을 갱신한다.
  */
 final class SaasSyncModuleLayoutsCommand extends Command
 {
     protected $signature = 'moabom:saas:sync-module-layouts
         {slug? : 생략·* = platform + active tenants, 또는 tenant slug 1건}
-        {--module=moabom-system : 모듈 identifier}
+        {--module= : 모듈 identifier; 생략·* = layout JSON 보유 활성 모듈 전체}
         {--skip-platform : platform DB 갱신 생략}';
 
-    protected $description = 'moabom-system module layouts → DB (platform + SaaS tenants)';
+    protected $description = 'module layouts → DB (platform + SaaS tenants, 기본: layout 보유 모듈 전체)';
 
     public function handle(
         PlatformConnectionFactory $platformConnections,
@@ -37,43 +39,66 @@ final class SaasSyncModuleLayoutsCommand extends Command
         if ($slugArg === '' || $slugArg === 'all') {
             $slugArg = '*';
         }
-        $moduleId = (string) $this->option('module');
+        $moduleOption = $this->option('module');
+        if (is_array($moduleOption)) {
+            $moduleOption = '*';
+        }
+        $moduleOption = (string) ($moduleOption ?? '*');
+        if ($moduleOption === '') {
+            $moduleOption = '*';
+        }
+        $moduleIds = ModuleLayoutSyncCatalog::resolveModuleOption($moduleOption);
+        if ($moduleIds === []) {
+            $this->warn('동기화할 module layout 대상 없음 (활성 모듈 중 resources/layouts/*.json 없음)');
+
+            return self::SUCCESS;
+        }
         $skipPlatform = (bool) $this->option('skip-platform');
 
         $platformConnections->registerConnection();
         $platformRuntimeConfigurator->applyPlatform();
 
+        $this->info('module layout sync targets: '.implode(', ', $moduleIds));
+
         $failures = 0;
 
-        if (! $skipPlatform && ($slugArg === '*' || $slugArg === '')) {
-            $this->info("=== platform (module layouts: {$moduleId}) ===");
-            if (! $this->refreshModule($moduleService, $moduleId, 'platform')) {
-                $failures++;
-            }
-            $this->newLine();
-        }
-
-        $tenants = ($slugArg === '*' || $slugArg === '')
-            ? $this->loadActiveTenants()
-            : $this->loadTenants($slugArg);
-
-        foreach ($tenants as $tenant) {
-            $this->info(sprintf('=== %s (host=%s db=%s) ===', $tenant->slug, $tenant->host, $tenant->dbDatabase));
-
-            try {
-                $databaseConfigurator->apply($tenant);
-            } catch (\Throwable $e) {
-                $this->error('  DB switch err: '.$e->getMessage());
-                $failures++;
-
-                continue;
+        foreach ($moduleIds as $moduleId) {
+            if (! $skipPlatform && ($slugArg === '*' || $slugArg === '')) {
+                $this->info("=== platform (module layouts: {$moduleId}) ===");
+                if (! $this->refreshModule($moduleService, $moduleId, 'platform')) {
+                    $failures++;
+                }
+                $this->newLine();
             }
 
-            if (! $this->refreshModule($moduleService, $moduleId, $tenant->slug)) {
-                $failures++;
-            }
+            $tenants = ($slugArg === '*' || $slugArg === '')
+                ? $this->loadActiveTenants()
+                : $this->loadTenants($slugArg);
 
-            $this->newLine();
+            foreach ($tenants as $tenant) {
+                $this->info(sprintf(
+                    '=== %s / %s (host=%s db=%s) ===',
+                    $tenant->slug,
+                    $moduleId,
+                    $tenant->host,
+                    $tenant->dbDatabase,
+                ));
+
+                try {
+                    $databaseConfigurator->apply($tenant);
+                } catch (\Throwable $e) {
+                    $this->error('  DB switch err: '.$e->getMessage());
+                    $failures++;
+
+                    continue;
+                }
+
+                if (! $this->refreshModule($moduleService, $moduleId, $tenant->slug)) {
+                    $failures++;
+                }
+
+                $this->newLine();
+            }
         }
 
         $platformRuntimeConfigurator->applyPlatform();

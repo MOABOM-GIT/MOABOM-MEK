@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchVisibleGeneratedApp, type StoredGeneratedApp } from '../../api/moabomAppsApi';
 import { useMoabomShellT } from 'moabom-shell-i18n';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
@@ -6,8 +6,8 @@ import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
-import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
-import { extractCompleteHtml, injectAiPreviewSafety } from '../ai-generator/aiHtmlUtils';
+import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
+import { resolveGeneratedAppPreviewUrl, generatedAppPreviewSandbox } from './generatedAppPreviewUrl';
 
 export interface GeneratedAppViewerProps {
   serverId: number;
@@ -24,7 +24,7 @@ export function GeneratedAppViewer({
 }: GeneratedAppViewerProps) {
   const { t } = useMoabomShellT();
   const [app, setApp] = useState<StoredGeneratedApp | null>(null);
-  const [html, setHtml] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -56,18 +56,18 @@ export function GeneratedAppViewer({
     setError('');
     setIsMenuOpen(false);
     setApp(null);
-    setHtml('');
+    setPreviewUrl(null);
     setTitle('');
 
     void (async () => {
       try {
-        const app = await fetchVisibleGeneratedApp(serverId);
+        const loaded = await fetchVisibleGeneratedApp(serverId);
         if (cancelled) {
           return;
         }
-        setApp(app);
-        setTitle(app.title?.trim() || `App #${app.id}`);
-        setHtml(app.html ?? '');
+        setApp(loaded);
+        setTitle(loaded.title?.trim() || `App #${loaded.id}`);
+        setPreviewUrl(resolveGeneratedAppPreviewUrl(loaded));
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t('moa_apps_ai.viewer_error'));
@@ -84,23 +84,27 @@ export function GeneratedAppViewer({
     };
   }, [serverId, t]);
 
-  const previewHtml = useMemo(
-    () => extractCompleteHtml(html) || injectAiPreviewSafety(html),
-    [html],
-  );
   const ownerNickname = app?.owner?.nickname?.trim() || '';
   const permissions = app?.permissions;
-  const isShared = Boolean(app?.is_shared);
+  const isPublished = Boolean(app?.visibility && app.visibility !== 'private') || Boolean(app?.is_shared);
   const handleToggleShare = async () => {
     if (!onToggleGeneratedAppShare) {
       return;
     }
-    const nextShared = !isShared;
-    setApp(prev => prev ? { ...prev, is_shared: nextShared } : prev);
+    const nextPublished = !isPublished;
+    setApp(prev => prev ? {
+      ...prev,
+      visibility: nextPublished ? 'tenant' : 'private',
+      is_shared: nextPublished,
+    } : prev);
     try {
-      await onToggleGeneratedAppShare(serverId, nextShared);
+      await onToggleGeneratedAppShare(serverId, nextPublished);
     } catch {
-      setApp(prev => prev ? { ...prev, is_shared: !nextShared } : prev);
+      setApp(prev => prev ? {
+        ...prev,
+        visibility: !nextPublished ? 'tenant' : 'private',
+        is_shared: !nextPublished,
+      } : prev);
     }
   };
 
@@ -118,7 +122,7 @@ export function GeneratedAppViewer({
   if (error) {
     return (
       <Div className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} flex min-h-[320px] items-center justify-center`}>
-        <Div className={`${APP_SHELL_PANEL_CLASS} max-w-md text-center`}>
+        <Div className={`${APP_SHELL_PANEL_BODY_CLASS} max-w-md text-center`}>
           <Icon name="exclamation-circle" className="mb-3 text-3xl text-red-500" />
           <Div className={APP_SHELL_BODY_CLASS}>{error}</Div>
         </Div>
@@ -126,10 +130,10 @@ export function GeneratedAppViewer({
     );
   }
 
-  if (!previewHtml) {
+  if (!previewUrl) {
     return (
       <Div className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} flex min-h-[320px] items-center justify-center`}>
-        <Div className={`${APP_SHELL_PANEL_CLASS} max-w-md text-center`}>
+        <Div className={`${APP_SHELL_PANEL_BODY_CLASS} max-w-md text-center`}>
           <Icon name="file-alt" className="mb-3 text-3xl text-faint" />
           <Div className={APP_SHELL_BODY_CLASS}>{t('moa_apps_ai.viewer_empty')}</Div>
           {title ? <Div className={`mt-2 ${APP_SHELL_DESC_CLASS}`}>{title}</Div> : null}
@@ -186,15 +190,15 @@ export function GeneratedAppViewer({
               {canShare ? (
                 <Button
                   type="button"
-                  aria-label={t(isShared ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
-                  title={t(isShared ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
+                  aria-label={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
+                  title={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
                   onClick={handleToggleShare}
                   variant="neutral"
                   size="xs"
                   className="generated-app-action-button is-share"
                 >
-                  <Icon name={isShared ? 'share-alt' : 'share'} />
-                  <Span>{t(isShared ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}</Span>
+                  <Icon name={isPublished ? 'share-alt' : 'share'} />
+                  <Span>{t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}</Span>
                 </Button>
               ) : null}
               {canDelete ? (
@@ -218,8 +222,8 @@ export function GeneratedAppViewer({
       <iframe
         title={title || t('moa_apps_ai.preview_title')}
         className="generated-app-preview-frame"
-        srcDoc={previewHtml}
-        sandbox="allow-scripts"
+        src={previewUrl}
+        sandbox={generatedAppPreviewSandbox(previewUrl)}
       />
     </Div>
   );

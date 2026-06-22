@@ -1,16 +1,18 @@
 import type { ButtonProps } from '../../basic/Button';
+import { APP_SHELL_PANEL_CLASS } from '../../../apps/appShellTypography';
 import { moaFieldControlClass, moaFieldTextareaClass } from '../../../theme/moabomFieldSurface';
 
 /** 마이페이지 창 루트 — 패딩은 `.moa-app-window-viewport` SSOT */
 export const OUTER_GLASS = 'moa-mypage-surface';
-export const SIDEBAR_GROUP = 'moa-group rounded-2xl py-4 px-1';
-export const GROUP_PANEL = 'moa-group rounded-2xl';
+export const SIDEBAR_GROUP = `${APP_SHELL_PANEL_CLASS} py-4 px-1`;
+/** 마이페이지·앱 창 공통 섹션 패널 — `APP_SHELL_PANEL_CLASS` 와 동일 */
+export const GROUP_PANEL = APP_SHELL_PANEL_CLASS;
 /** 단일 라인 텍스트 인풋 — `.moa-field` + 버튼 `medium` 티어 치수 (`moa-home/09-form-fields.css`). */
 export const INPUT_SURFACE = moaFieldControlClass('medium');
 /** 멀티라인 — 최소 높이는 소비자가 `min-h-*`로 덧씌운다. */
 export const TEXTAREA_SURFACE = moaFieldTextareaClass('medium', 'resize-none');
 export const ACTION_BUTTON_VARIANT: ButtonProps['variant'] = 'primary-outline';
-export const TAB_BUTTON_BASE = 'w-full justify-start gap-3 rounded-2xl px-3 py-3 text-left transition-[background-color,box-shadow,opacity]';
+export const TAB_BUTTON_BASE = 'w-full justify-start gap-3 moa-app-panel px-3 py-3 text-left transition-[background-color,box-shadow,opacity]';
 export const ACTIVE_TAB_CLASS = 'moa-point-fill text-white cursor-pointer';
 /** 라벨/설명 색은 자식(Marquee·desc)에서 지정 — 루트는 글래스+호버만 */
 export const INACTIVE_TAB_CLASS = 'glass-sm cursor-pointer hover:opacity-95';

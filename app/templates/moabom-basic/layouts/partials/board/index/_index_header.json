@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "게시판 목록 헤더. 게시판명·설명 가운데 정렬 + 우측 글쓰기 (좌우 1fr로 균형)"
+  },
+  "comment": "헤더 (게시판명 + 설명 + 글쓰기 버튼)",
+  "type": "basic",
+  "name": "Div",
+  "props": {
+    "className": "moa-board-index-header grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-3"
+  },
+  "children": [
+    {
+      "comment": "좌측 균형 영역 (우측 글쓰기와 대칭)",
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "min-w-0",
+        "aria-hidden": "true"
+      }
+    },
+    {
+      "comment": "게시판명 + 설명 (가운데)",
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "text-center min-w-0"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "H1",
+          "props": {
+            "className": "text-2xl font-bold text-gray-900 dark:text-white"
+          },
+          "text": "{{posts?.data?.board?.name ?? ''}}"
+        },
+        {
+          "type": "basic",
+          "name": "P",
+          "if": "{{posts?.data?.board?.description}}",
+          "props": {
+            "className": "text-gray-600 dark:text-gray-400 mt-1"
+          },
+          "text": "{{posts?.data?.board?.description}}"
+        }
+      ]
+    },
+    {
+      "comment": "우측 영역 (글쓰기 버튼)",
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "flex items-center justify-end min-w-0"
+      },
+      "children": [
+        {
+          "comment": "상단 글쓰기 버튼",
+          "partial": "_write_button.json"
+        }
+      ]
+    }
+  ]
+}

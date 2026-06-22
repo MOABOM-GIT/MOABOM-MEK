@@ -51,7 +51,10 @@ class AiAppStreamService
         }
 
         $userPrompt = $this->aiAppService->buildStreamUserPrompt($data, $continue, $partialRaw);
-        $systemPrompt = $this->aiAppService->systemPromptForType($data['app_type']);
+        $systemPrompt = $this->aiAppService->systemPromptForType(
+            $data['app_type'],
+            isset($data['tier']) ? (string) $data['tier'] : null,
+        );
 
         $streamResult = match ($resolvedProvider) {
             'anthropic' => $this->streamAnthropic($systemPrompt, $userPrompt, $model['model'], $emit),

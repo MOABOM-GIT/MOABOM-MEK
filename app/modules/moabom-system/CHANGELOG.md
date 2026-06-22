@@ -1,5 +1,73 @@
 # Changelog
 
+## [0.8.4] - 2026-06-22
+
+### Added
+
+- 사용자 설정 API `shell.home.mainAppOrderCustomized` — 메인 그리드 빈 배열을 의도적 빈 레이아웃으로 저장.
+
+## [Unreleased]
+
+## [0.8.3] - 2026-06-21
+
+### Changed
+
+- 셸 랭킹 **등락**을 DB 스냅샷 대신 테넌트 캐시의 직전 순위 맵과 비교.
+- `shell-boot`에 `shell_rankings.usage_ingest_token` 제공(시간별 HMAC, 캐시 밖 갱신).
+
+### Added
+
+- usage ingest **IP rate limit** + 선택적 signed token 검증(`ShellUsageIngestGuard`).
+- post-deploy migration allowlist 기본값에 `moabom-system` 포함.
+- 배포 스모크: `GET .../shell/rankings/apps` 검증.
+
+## [0.8.2] - 2026-06-21
+
+### Fixed
+
+- 셸 usage 수집 성공 시 랭킹 API 캐시 무효화.
+- 유저 랭킹: 비활성 계정을 건너뛰며 상위 N명을 채우도록 정렬 루프 보정.
+- usage FormRequest 상한을 `shell_rankings` config와 동기화.
+
+## [0.8.1] - 2026-06-21
+
+### Changed
+
+- 홈 셸 **유저 랭킹**을 크레딧 잔액 대신 **활동지수**(글·댓글·앱 사용, CPAP 측정 제외)로 집계.
+- 앱 사용량 수집 API에 `optional.sanctum` 적용 — 로그인 시 유저별 시간 버킷(`moabom_shell_user_usage_buckets`)에 합산.
+
+### Added
+
+- `moabom_shell_user_usage_buckets` 마이그레이션·집계 API.
+
+## [0.8.0] - 2026-06-21
+
+### Added
+
+- 홈 셸 **앱·유저 랭킹** 실데이터 API — 시간 버킷 집계(오픈 HIT + 활성 사용시간), 24시간 순위·등락, 공개 조회·사용량 수집 엔드포인트.
+
+## [0.7.9] - 2026-06-21
+
+### Changed
+
+- 관리자 사이드바 **플랫폼 환경설정**을 **플랫폼 메뉴**로 명칭 변경하고 대시보드 위(order 0)로 이동.
+- **병원 관리**를 플랫폼 메뉴 하위(order 10)로 재배치 — 마스터 Host 전용 규칙은 `TenantAdminMenuPolicy` 로 유지.
+- 테넌트 repair 필수 메뉴에 AI 생성 앱·마스크피팅 관리 slug 추가.
+
+### Added
+
+- 플랫폼 메뉴 재구성 DB 반영 업그레이드 스텝(`Upgrade_0_7_9`).
+
+## [0.7.8] - 2026-06-19
+
+### Changed
+
+- **구조 정리 (셸·admin SSOT)**: 알림 URL·레거시 mypage 경로 유틸을 `moabom-basic` 템플릿으로 이전 — 모듈에 둘 UI 라우팅 책임 제거.
+- **admin composite 중복 제거**: `HomeBackgroundManager`·`SortableMypageMenuList`·deferred plugin prefetch 는 `moabom-admin_basic` SSOT 만 사용. 모듈 `module.json` assets·Cloud Build `moabom-system` npm 빌드 제거.
+- **shell-boot 저결합**: `social_providers`·공개 API 캐시 revision 을 `moabom.shell_boot.social_providers`·`moabom.public_api.cache_fragment.social_providers` 훅으로 분리 (`moabom-social-auth` 가 기여).
+- **Reverb 분리**: `Broadcasting/*` → `moabom-reverb` 플러그인. `TenantSettingsSeeder`·`SaasCoreSettingsHydrator` 는 `moabom.saas.drivers.seed_defaults` / `apply_runtime` 훅만 사용.
+- 병원 기본 패키지에 `moabom-reverb` 플러그인 추가.
+
 ## [0.7.6] - 2026-06-18
 
 ### Added

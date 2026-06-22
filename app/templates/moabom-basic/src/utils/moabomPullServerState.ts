@@ -2,10 +2,14 @@ import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSys
 import { loadMoabomSettingsPayloadForMerge } from '../api/moabomSystemApi';
 import {
   extractServerMainAppOrder,
+  extractServerMainAppOrderCustomized,
+  hasLocalMainAppOrderCustomized,
   loadLocalMainAppOrder,
   mergeMainAppOrderFromPull,
   saveLocalMainAppOrder,
-} from '../pages/home/moaHomeShellOrder';
+  clearLocalMainAppOrder,
+  type MainAppOrderSnapshot,
+} from '../shell/moaShellAppOrder';
 import { queueSaveMoabomSystemSettings, isRecentlySavedSettings } from './moabomSettingsSaveQueue';
 import { isRecentlySavedShellOrder, queueSaveShellMainAppOrder } from './moabomShellOrderSaveQueue';
 import { mergeMoabomSystemStateFromSettingsApi, writeStoredMoabomDefaultsRevision } from './moabomSystemServerMerge';
@@ -58,7 +62,7 @@ export async function pullMoabomServerState(input: {
   isLoggedIn: boolean;
   coreUserLanguage?: string | null;
   preserveShellPanelOpen: boolean;
-}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: string[] } | null> {
+}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: MainAppOrderSnapshot } | null> {
   const payload = await loadMoabomSettingsPayloadForMerge(input.isLoggedIn);
   if (!payload) {
     return null;
@@ -97,22 +101,34 @@ export async function pullMoabomServerState(input: {
   }
 
   const localMainAppOrder = loadLocalMainAppOrder();
+  const localMainAppOrderCustomized = hasLocalMainAppOrderCustomized();
   const serverMainAppOrder = extractServerMainAppOrder(payload.settings);
+  const serverMainAppOrderCustomized = extractServerMainAppOrderCustomized(payload.settings);
   const trustLocalShellOrder = isRecentlySavedSettings() || isRecentlySavedShellOrder();
   const mergedMainAppOrder = mergeMainAppOrderFromPull({
     isLoggedIn: input.isLoggedIn,
     trustLocalDuringCooldown: trustLocalShellOrder,
     localOrder: localMainAppOrder,
+    localCustomized: localMainAppOrderCustomized,
     serverOrder: serverMainAppOrder,
+    serverCustomized: serverMainAppOrderCustomized,
   });
 
-  if (mergedMainAppOrder.join('\0') !== localMainAppOrder.join('\0')) {
-    saveLocalMainAppOrder(mergedMainAppOrder);
+  if (
+    mergedMainAppOrder.order.join('\0') !== localMainAppOrder.join('\0')
+    || mergedMainAppOrder.customized !== localMainAppOrderCustomized
+  ) {
+    if (mergedMainAppOrder.customized) {
+      saveLocalMainAppOrder(mergedMainAppOrder.order);
+    } else {
+      clearLocalMainAppOrder();
+    }
   } else if (
     input.isLoggedIn
     && !trustLocalShellOrder
+    && serverMainAppOrderCustomized !== true
     && serverMainAppOrder === null
-    && localMainAppOrder.length > 0
+    && localMainAppOrderCustomized
   ) {
     void queueSaveShellMainAppOrder(localMainAppOrder, true);
   }

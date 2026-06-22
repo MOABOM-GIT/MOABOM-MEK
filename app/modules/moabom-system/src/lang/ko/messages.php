@@ -44,6 +44,11 @@ return [
         'invalid_json' => 'routes.json 이 올바른 JSON 이 아닙니다.',
         'unknown_error' => '라우트 데이터를 불러오지 못했습니다.',
     ],
+    'shell_rankings' => [
+        'usage_accepted' => '앱 사용량을 반영했습니다.',
+        'apps_fetch_success' => '앱 순위를 조회했습니다.',
+        'users_fetch_success' => '유저 순위를 조회했습니다.',
+    ],
     'saas' => [
         'hospitals' => [
             'list_success' => '등록된 병원 목록을 조회했습니다.',

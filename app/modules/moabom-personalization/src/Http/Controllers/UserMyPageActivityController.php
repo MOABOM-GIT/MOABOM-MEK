@@ -22,11 +22,13 @@ class UserMyPageActivityController extends AuthBaseController
 {
     private const VALID_TYPES = ['all', 'posts', 'comments', 'interactions'];
 
-    private const DEFAULT_LIMIT = 20;
+    private const DEFAULT_LIMIT = 10;
 
     private const MIN_LIMIT = 1;
 
     private const MAX_LIMIT = 50;
+
+    private const MAX_OFFSET = 5000;
 
     public function __construct(
         private readonly UserMyPageActivityService $activityService,
@@ -57,10 +59,13 @@ class UserMyPageActivityController extends AuthBaseController
             $limit = (int) $request->query('limit', self::DEFAULT_LIMIT);
             $limit = min(max($limit, self::MIN_LIMIT), self::MAX_LIMIT);
 
+            $offset = (int) $request->query('offset', 0);
+            $offset = min(max($offset, 0), self::MAX_OFFSET);
+
             return ResponseHelper::moduleSuccess(
                 'moabom-personalization',
                 'messages.mypage_activity.fetch_success',
-                $this->activityService->buildPayload($user->id, $type, $limit)
+                $this->activityService->buildPayload($user->id, $type, $limit, $offset)
             );
         } catch (\Throwable $e) {
             // 외부에 원본 예외 메시지를 노출하지 않고, 운영 로그에만 남긴다.

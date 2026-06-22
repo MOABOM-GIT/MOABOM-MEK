@@ -15,10 +15,13 @@ export interface Moa_MyPageCreditPanelProps {
   creditBalance: number;
   creditOverview: CreditOverview | null;
   creditLoading: boolean;
+  creditLoadingMore?: boolean;
+  creditHasMore?: boolean;
   creditError: string;
   attendanceLoading: boolean;
   attendanceMessage: string;
   onAttendanceCheck: () => void;
+  onLoadMoreCredits?: () => void;
 }
 
 export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
@@ -26,10 +29,13 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
   creditBalance,
   creditOverview,
   creditLoading,
+  creditLoadingMore = false,
+  creditHasMore = false,
   creditError,
   attendanceLoading,
   attendanceMessage,
   onAttendanceCheck,
+  onLoadMoreCredits,
 }) => (
   <Div className={`moa-mypage-credit ${APP_STACK_GRID_CLASS} grid grid-cols-[240px_1fr]`}>
     <Div className={`rounded-3xl p-6 text-white shadow-xl ${APP_STACK_CLASS}`} style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}>
@@ -100,6 +106,18 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
             </Div>
           );
         }) : null}
+        {creditHasMore && onLoadMoreCredits ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="medium"
+            className="w-full justify-center"
+            disabled={creditLoadingMore || creditLoading}
+            onClick={() => void onLoadMoreCredits()}
+          >
+            {creditLoadingMore ? t('moa_mypage.credit.loading_more') : t('moa_mypage.credit.load_more')}
+          </Button>
+        ) : null}
       </Div>
     </Div>
   </Div>

@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "routes": [
+    {
+      "path": "*/admin/apps/generated",
+      "layout": "admin_generated_apps",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-apps.admin.generated.title",
+        "permission": "moabom-apps.generated.read"
+      }
+    }
+  ]
+}

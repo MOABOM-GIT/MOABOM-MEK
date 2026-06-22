@@ -61,6 +61,16 @@ final readonly class TenantPackage
 
         $artisan = is_array($data['post_bootstrap_artisan'] ?? null) ? $data['post_bootstrap_artisan'] : [];
 
+        $explicitRefresh = $artisan['module_refresh_layout'] ?? null;
+        if (is_array($explicitRefresh)) {
+            $moduleRefreshLayout = array_values(array_filter(array_map('strval', $explicitRefresh)));
+        } else {
+            $moduleRefreshLayout = array_values(array_intersect(
+                $modules,
+                ModuleLayoutSyncCatalog::identifiersWithFilesystemLayouts($modules),
+            ));
+        }
+
         return new self(
             id: $id,
             label: (string) ($data['label'] ?? $id),
@@ -73,10 +83,7 @@ final readonly class TenantPackage
                 'strval',
                 $artisan['module_sync_declarations'] ?? $modules,
             ))),
-            moduleRefreshLayout: array_values(array_filter(array_map(
-                'strval',
-                $artisan['module_refresh_layout'] ?? ['moabom-system'],
-            ))),
+            moduleRefreshLayout: $moduleRefreshLayout,
         );
     }
 }

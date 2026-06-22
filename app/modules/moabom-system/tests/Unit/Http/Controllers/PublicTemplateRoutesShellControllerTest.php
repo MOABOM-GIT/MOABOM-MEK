@@ -45,8 +45,10 @@ class PublicTemplateRoutesShellControllerTest extends TestCase
 
         $payload = $response->getData(true);
         $this->assertTrue($payload['success']);
-        $this->assertCount(1, $payload['data']['routes']);
-        $this->assertSame('/', $payload['data']['routes'][0]['path']);
+        $paths = array_column($payload['data']['routes'], 'path');
+        $this->assertContains('/', $paths);
+        $this->assertNotContains('/shop', $paths);
+        $this->assertContains('/404', $paths);
     }
 
     public function test_full_scope_does_not_filter_routes(): void

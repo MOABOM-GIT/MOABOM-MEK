@@ -4,6 +4,7 @@ namespace Modules\Moabom\Apps\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\Moabom\Apps\Enums\AppTier;
 use Modules\Moabom\Apps\Enums\AppType;
 
 class StoreGeneratedAppRequest extends FormRequest
@@ -21,6 +22,7 @@ class StoreGeneratedAppRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:120'],
             'app_type' => ['required', Rule::in(AppType::values())],
+            'tier' => ['sometimes', Rule::in(AppTier::values())],
             'model_id' => ['nullable', Rule::in(['claude-sonnet', 'gpt-chat-latest', 'gpt-4o', 'gemini-flash-lite'])],
             'prompt' => ['nullable', 'string', 'max:8000'],
             'html' => ['required', 'string', 'min:20', 'max:524288'],

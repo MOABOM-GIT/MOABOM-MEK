@@ -84,23 +84,23 @@
       "name": "Div",
       "if": "{{(post?.data?.comment_count ?? 0) === 0 && post?.data?.abilities?.can_write_comments && post?.data?.status !== 'blinded'}}",
       "props": {
-        "className": "px-6 py-8 text-center"
+        "className": "moa-board-comment-empty"
       },
       "children": [
         {
           "type": "composite",
           "name": "Icon",
           "props": {
-            "name": "message-square",
+            "name": "comment-dots",
             "size": "xl",
-            "className": "mx-auto text-gray-300 dark:text-gray-600 mb-3"
+            "className": "moa-board-comment-empty-icon"
           }
         },
         {
           "type": "basic",
           "name": "P",
           "props": {
-            "className": "text-gray-500 dark:text-gray-400"
+            "className": "moa-board-comment-empty-text"
           },
           "text": "$t:board.no_comments_yet"
         }
@@ -109,6 +109,7 @@
     {
       "type": "basic",
       "name": "Div",
+      "if": "{{(post?.data?.comment_count ?? 0) > 0}}",
       "props": {
         "className": "space-y-4"
       },
@@ -171,9 +172,9 @@
       "comment": "블라인드 게시글 댓글 작성 불가 안내",
       "type": "basic",
       "name": "Div",
-      "if": "{{post?.data?.status === 'blinded' && post?.data?.abilities?.can_read_comments}}",
+      "if": "{{post?.data?.status === 'blinded' && post?.data?.abilities?.can_read_comments && (post?.data?.comment_count ?? 0) === 0}}",
       "props": {
-        "className": "px-6 py-8 text-center border-t border-gray-200 dark:border-gray-700"
+        "className": "moa-board-comment-empty"
       },
       "children": [
         {
@@ -182,26 +183,26 @@
           "props": {
             "name": "eye-slash",
             "size": "xl",
-            "className": "mx-auto text-gray-300 dark:text-gray-600 mb-5"
+            "className": "moa-board-comment-empty-icon"
           }
         },
         {
           "type": "basic",
           "name": "P",
           "props": {
-            "className": "text-gray-500 dark:text-gray-400"
+            "className": "moa-board-comment-empty-text"
           },
           "text": "$t:board.blinded_comment_disabled"
         }
       ]
     },
     {
-      "comment": "작성 권한 없음 안내 (조회 권한 O, 작성 권한 X, 블라인드 아님)",
+      "comment": "작성 권한 없음 안내 (조회 권한 O, 작성 권한 X, 블라인드 아님, 댓글 0개)",
       "type": "basic",
       "name": "Div",
-      "if": "{{post?.data?.abilities?.can_read_comments && !post?.data?.abilities?.can_write_comments && post?.data?.status !== 'blinded'}}",
+      "if": "{{post?.data?.abilities?.can_read_comments && !post?.data?.abilities?.can_write_comments && post?.data?.status !== 'blinded' && (post?.data?.comment_count ?? 0) === 0}}",
       "props": {
-        "className": "px-6 py-8 text-center border-t border-gray-200 dark:border-gray-700"
+        "className": "moa-board-comment-empty"
       },
       "children": [
         {
@@ -210,14 +211,14 @@
           "props": {
             "name": "lock",
             "size": "xl",
-            "className": "mx-auto text-gray-300 dark:text-gray-600 mb-3"
+            "className": "moa-board-comment-empty-icon"
           }
         },
         {
           "type": "basic",
           "name": "P",
           "props": {
-            "className": "text-gray-500 dark:text-gray-400"
+            "className": "moa-board-comment-empty-text"
           },
           "text": "$t:board.no_comment_write_permission"
         }

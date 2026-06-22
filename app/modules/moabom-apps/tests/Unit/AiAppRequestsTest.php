@@ -41,4 +41,16 @@ class AiAppRequestsTest extends ModuleTestCase
 
         $this->assertFalse($passes);
     }
+
+    public function test_store_generated_app_request_accepts_tier(): void
+    {
+        $passes = Validator::make([
+            'title' => '테스트 앱',
+            'app_type' => 'general',
+            'tier' => 'hosted',
+            'html' => '<!DOCTYPE html><html><head></head><body>테스트</body></html>',
+        ], (new StoreGeneratedAppRequest)->rules())->passes();
+
+        $this->assertTrue($passes);
+    }
 }

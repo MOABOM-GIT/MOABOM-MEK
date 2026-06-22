@@ -15,6 +15,7 @@ use App\Services\PluginSettingsService;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\View;
 use Modules\Moabom\System\Contracts\ExtensionCatalogBuilderInterface;
+use Modules\Moabom\System\Contracts\ShellAppUsageRepositoryInterface;
 use Modules\Moabom\System\Contracts\SystemSettingsServiceInterface;
 use Modules\Moabom\System\Experience\TenantExperienceDefaultsReader;
 use Modules\Moabom\System\Experience\TenantExperienceRevision;
@@ -56,6 +57,7 @@ use Modules\Moabom\System\Http\Middleware\ResolveMoabomTenant;
 use Modules\Moabom\System\Http\Middleware\RestrictPlatformApiToPlatformHost;
 use App\Repositories\JsonConfigRepository;
 use Modules\Moabom\System\Repositories\MoabomJsonConfigRepository;
+use Modules\Moabom\System\Repositories\ShellAppUsageRepository;
 use Modules\Moabom\System\Saas\PlatformConnectionFactory;
 use Modules\Moabom\System\Saas\TenantContext;
 use Modules\Moabom\System\Saas\PlatformFilesystemSnapshot;
@@ -108,6 +110,9 @@ use Modules\Moabom\System\Services\MoabomExtensionAssetGroupService;
 use Modules\Moabom\System\Services\MoabomModuleSettingsService;
 use Modules\Moabom\System\Services\MoabomPluginSettingsService;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
+use Modules\Moabom\System\Services\Shell\ShellAppUsageIngestService;
+use Modules\Moabom\System\Services\Shell\ShellRankingService;
+use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
 use Modules\Moabom\System\Services\SystemSettingsService;
 class SystemServiceProvider extends BaseModuleServiceProvider
 {
@@ -178,6 +183,10 @@ class SystemServiceProvider extends BaseModuleServiceProvider
 
         $this->app->scoped(SystemSettingsServiceInterface::class, SystemSettingsService::class);
         $this->app->bind(ExtensionCatalogBuilderInterface::class, ExtensionCatalogBuilder::class);
+        $this->app->bind(ShellAppUsageRepositoryInterface::class, ShellAppUsageRepository::class);
+        $this->app->scoped(ShellAppUsageIngestService::class);
+        $this->app->scoped(ShellRankingService::class);
+        $this->app->scoped(ShellUsageIngestGuard::class);
 
         // 요청당 1 instance — GCS category read memo + Run 워커 간 singleton 오염 방지
         $this->app->scoped(ConfigRepositoryInterface::class, MoabomJsonConfigRepository::class);

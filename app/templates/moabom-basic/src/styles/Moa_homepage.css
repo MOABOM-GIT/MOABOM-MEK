@@ -42,3 +42,9 @@
 @import './moa-home/23-create-app-window-title.css';
 @import './moa-home/25-cpap-survey.css';
 @import './moa-home/31-board-window.css';
+@import './moa-home/32-error-window.css';
+@import './moa-home/33-app-panel-radius.css';
+@import './moa-home/34-app-shell-panel.css';
+@import './moa-home/35-consulting-app.css';
+@import './moa-home/36-ai-generation-queue.css';
+@import './moa-home/37-ai-generation-recovery.css';

@@ -1,5 +1,6 @@
 import type { App } from '../data/Moa_apps';
 import type { StoredGeneratedAppSummary } from '../api/moabomAppsApi';
+import { isGeneratedAppPublished } from '../api/moabomAppsApi';
 
 const GENERATED_APP_GRADIENT_PALETTES = [
   ['#6366f1', '#8b5cf6'],
@@ -100,11 +101,44 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
     defaultLocale: 'ko',
     metadata: {
       generatedServerId: item.id,
-      isShared: Boolean(item.is_shared),
+      tier: item.tier ?? 'standard',
+      isShared: isGeneratedAppPublished(item),
+      visibility: item.visibility ?? (item.is_shared ? 'tenant' : 'private'),
       owner: item.owner,
       permissions: item.permissions,
     },
   };
+}
+
+/** URL·taskbar 복원용 최소 library App (제목은 뷰어 로드 후 갱신 가능) */
+export function hydrateGeneratedPlaceholdersForOrder(
+  order: string[],
+  library: App[],
+  customized = false,
+): App[] {
+  if (!customized) {
+    return library;
+  }
+
+  if (order.length === 0) {
+    return [];
+  }
+
+  const known = new Set(library.map(app => app.id));
+  const placeholders: App[] = [];
+
+  for (const id of order) {
+    if (!isGeneratedLibraryAppId(id) || known.has(id)) {
+      continue;
+    }
+    const synthetic = buildSyntheticGeneratedLibraryApp(id);
+    if (synthetic) {
+      placeholders.push(synthetic);
+      known.add(id);
+    }
+  }
+
+  return [...library, ...placeholders];
 }
 
 /** URL·taskbar 복원용 최소 library App (제목은 뷰어 로드 후 갱신 가능) */

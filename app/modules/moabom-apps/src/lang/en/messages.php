@@ -10,6 +10,13 @@ return [
             'session_not_found' => 'AI generation session not found.',
             'session_resume_available' => 'A session is available to resume.',
             'session_cancel_success' => 'Generation stopped and the session was cleared.',
+            'queue_waiting' => 'High demand right now. You are #:position in line. Estimated wait about :minutes min.',
+            'queue_ready' => 'Your turn is ready. Starting generation shortly.',
+            'queue_cancel_success' => 'Removed your request from the queue.',
+            'queue_ticket_required' => 'A queue ticket is required.',
+            'queue_ticket_not_found' => 'Queue ticket not found or expired.',
+            'queue_full' => 'The queue is full. Please try again in a few minutes.',
+            'queue_denied' => 'AI generation cannot start right now. Please try again shortly.',
             'notice' => [
                 'default' => 'Default preview shown until an AI provider is configured.',
                 'anthropic_no_key' => 'The Anthropic API key is not configured, so a preview HTML was generated.',
@@ -29,6 +36,14 @@ return [
             'share_success' => 'Updated generated app sharing.',
             'delete_success' => 'Deleted the generated app.',
             'owner_unknown' => 'Unknown creator',
+        ],
+        'admin' => [
+            'generated' => [
+                'list_success' => 'Loaded AI generated apps.',
+                'show_success' => 'Loaded the AI generated app.',
+                'visibility_success' => 'Updated AI generated app visibility.',
+                'delete_success' => 'Permanently deleted the AI generated app.',
+            ],
         ],
     ],
 ];

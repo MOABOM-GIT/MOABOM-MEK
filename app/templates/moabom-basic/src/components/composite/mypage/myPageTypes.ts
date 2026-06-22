@@ -1,6 +1,7 @@
 /** 마이페이지 탭·API·도메인 타입 (Moa_MyPageWindowContent 분리용) */
 
 import type { App } from '../../../data/Moa_apps';
+import type { ShellUrlSync } from '../../../shell/moaShellTypes';
 
 export type MyPageTab = 'profile' | 'settings' | 'credit' | 'library' | 'activity' | 'account' | 'subscription';
 
@@ -44,6 +45,8 @@ export interface MyPageWindowContentProps {
   onProfileUpdated?: (user?: AuthManagerUserSnapshot | null) => void;
   /** 활성 탭 변경 시 (REST 경로 `/me/:tab` 동기화용) */
   onActiveTabChange?: (tab: MyPageTab) => void;
+  /** 내 활동 항목 → 게시판 윈도우 (좌측 공지와 동일) */
+  onOpenBoard?: (slug: string, postId?: string, sync?: ShellUrlSync) => void;
 }
 
 /** AuthManager.getUser() 등과 호환되는 최소 사용자 스냅샷 */
@@ -117,6 +120,12 @@ export interface CreditOverview {
     transaction_count: number;
   };
   transactions: CreditTransaction[];
+  pagination?: {
+    limit: number;
+    offset: number;
+    total: number;
+    has_more: boolean;
+  };
 }
 
 export interface ApiCreditResponse {
@@ -162,6 +171,12 @@ export interface ActivityOverview {
     likes_supported?: boolean;
   };
   items: ActivityItem[];
+  pagination?: {
+    limit: number;
+    offset: number;
+    total: number;
+    has_more: boolean;
+  };
 }
 
 export interface ApiActivityResponse {

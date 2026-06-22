@@ -30,8 +30,21 @@ export async function updateUserProfileApi(
   return moabomApiPut<ProfileApiPayload>('/api/me', body);
 }
 
-export async function fetchUserCreditsApi(): Promise<MoabomApiResult<CreditOverview>> {
-  return moabomApiGet<CreditOverview>('/api/modules/moabom-credit/user/credits');
+export async function fetchUserCreditsApi(
+  params: { limit?: number; offset?: number } = {},
+): Promise<MoabomApiResult<CreditOverview>> {
+  const query = new URLSearchParams();
+  if (params.limit != null) {
+    query.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    query.set('offset', String(params.offset));
+  }
+
+  const suffix = query.toString();
+  return moabomApiGet<CreditOverview>(
+    `/api/modules/moabom-credit/user/credits${suffix ? `?${suffix}` : ''}`,
+  );
 }
 
 export async function checkAttendanceApi(): Promise<MoabomApiResult<ApiAttendanceResponse['data']>> {
@@ -40,8 +53,15 @@ export async function checkAttendanceApi(): Promise<MoabomApiResult<ApiAttendanc
 
 export async function fetchUserActivitiesApi(
   type: string,
+  params: { limit?: number; offset?: number } = {},
 ): Promise<MoabomApiResult<ActivityOverview>> {
-  const query = new URLSearchParams({ type, limit: '20' });
+  const query = new URLSearchParams({ type });
+  if (params.limit != null) {
+    query.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    query.set('offset', String(params.offset));
+  }
   return moabomApiGet<ActivityOverview>(
     `/api/modules/moabom-personalization/user/activities?${query.toString()}`,
   );

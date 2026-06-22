@@ -2,7 +2,8 @@ import { A } from '../../components/basic/A';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
-import { APP_WINDOW_BODY_CLASS } from '../appShellTypography';
+import { APP_STACK_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_SHELL_SECTION_TITLE_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
+import { AppWindowHeader } from '../_shared/AppWindowHeader';
 import { getMoabomShellBootData } from '../../runtime/moabomShellBoot';
 import { useMoabomSiteDisplayName } from '../../utils/moabomSiteBranding';
 import { hospitalInfoAppMetadata } from './metadata';
@@ -40,26 +41,16 @@ export function HospitalInfoApp() {
 
   return (
     <Div className={`${APP_WINDOW_BODY_CLASS} hospital-info-app`}>
-      <Div
-        className="hospital-info-hero"
-        style={{ background: hospitalInfoAppMetadata.gradient }}
-      >
-        <Div className="hospital-info-hero-content">
-          <Div className="hospital-info-hero-icon">
-            <Icon name={hospitalInfoAppMetadata.icon} className="text-white" />
-          </Div>
-          <Div className="hospital-info-hero-title">
-            <Div className="hospital-info-hero-name">{hospitalName}</Div>
-            <Div className="hospital-info-hero-subtitle">
-              병원소개 및 찾아오시는길
-            </Div>
-          </Div>
-        </Div>
-      </Div>
+      <AppWindowHeader
+        title={hospitalName}
+        subtitle="병원소개 및 찾아오시는길"
+        icon={hospitalInfoAppMetadata.icon}
+        gradient={hospitalInfoAppMetadata.gradient}
+      />
 
       <Div className="hospital-info-grid">
-        <Div className="hospital-info-card">
-          <Span className="hospital-info-card-title">
+        <Div className={`${APP_SHELL_PANEL_BODY_CLASS} ${APP_STACK_CLASS}`}>
+          <Span className={`${APP_SHELL_SECTION_TITLE_CLASS} flex items-center gap-2`}>
             <Icon name="building" />
             병원소개
           </Span>
@@ -67,8 +58,8 @@ export function HospitalInfoApp() {
           <Div className="hospital-info-text">{displayIntro}</Div>
         </Div>
 
-        <Div className="hospital-info-card">
-          <Span className="hospital-info-card-title">
+        <Div className={`${APP_SHELL_PANEL_BODY_CLASS} ${APP_STACK_CLASS}`}>
+          <Span className={`${APP_SHELL_SECTION_TITLE_CLASS} flex items-center gap-2`}>
             <Icon name="map-marker" />
             찾아오시는길
           </Span>

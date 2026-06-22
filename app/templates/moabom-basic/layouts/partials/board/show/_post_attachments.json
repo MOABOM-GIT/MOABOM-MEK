@@ -23,7 +23,7 @@
           "handler": "setState",
           "params": {
             "target": "local",
-            "showAttachments": "{{_local.showAttachments === false ? true : false}}"
+            "showAttachments": "{{_local.showAttachments === true ? false : true}}"
           }
         }
       ],
@@ -67,7 +67,7 @@
           "type": "composite",
           "name": "Icon",
           "props": {
-            "name": "{{_local.showAttachments === false ? 'chevron-down' : 'chevron-up'}}",
+            "name": "{{_local.showAttachments === true ? 'chevron-up' : 'chevron-down'}}",
             "size": "lg",
             "className": "text-gray-500 dark:text-gray-400"
           }
@@ -78,7 +78,7 @@
       "comment": "첨부파일 목록",
       "type": "basic",
       "name": "Div",
-      "if": "{{_local.showAttachments !== false}}",
+      "if": "{{_local.showAttachments === true}}",
       "props": {
         "className": "space-y-2 mb-2"
       },

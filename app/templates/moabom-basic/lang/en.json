@@ -30,6 +30,8 @@
     "403_message": "You do not have permission to access this page.",
     "500_title": "Server Error",
     "500_message": "A temporary error occurred. Please try again later.",
+    "503_title": "Service maintenance",
+    "maintenance_title": "Under maintenance",
     "go_home": "Go to Home"
   },
   "mypage": {
@@ -149,6 +151,29 @@
       "save": "Save profile",
       "saving": "Saving…"
     },
+    "presence": {
+      "section_title": "Presence display",
+      "loading": "Loading presence settings…",
+      "save": "Save presence settings",
+      "saving": "Saving…",
+      "save_success": "Presence settings saved.",
+      "save_failed": "Failed to save presence settings.",
+      "load_failed": "Failed to load presence settings.",
+      "availability_title": "Availability",
+      "availability_online": "Online",
+      "availability_away": "Away",
+      "availability_busy": "Busy",
+      "availability_offline": "Appear offline",
+      "availability_hint_online": "Shown in the online list with a green status.",
+      "availability_hint_away": "Shown in the online list with a gray status.",
+      "availability_hint_busy": "Shown in the online list with an orange status.",
+      "availability_hint_offline": "Hidden from the online list; friends see you as offline.",
+      "subtitle_title": "Info shown to others",
+      "subtitle_profile_bio": "Show profile bio",
+      "subtitle_activity": "Show activity info",
+      "subtitle_hidden": "Hide info",
+      "activity_auto_hint": "Activity messages are generated automatically from your current screen or app."
+    },
     "credit": {
       "amount_unit": "{amount} credits",
       "balance_label": "Balance",
@@ -160,7 +185,9 @@
       "loading_short": "Loading",
       "loading_rows": "Loading credit history…",
       "empty": "No credit history yet.",
-      "transaction_fallback": "Credit transaction"
+      "transaction_fallback": "Credit transaction",
+      "load_more": "Load more",
+      "loading_more": "Loading more…"
     },
     "library": {
       "created_title": "My apps",
@@ -188,7 +215,9 @@
       "likes_notice": "Likes/recommendations will appear here when the board module provides that data.",
       "admin_session_notice": "You are signed in with an administrator account. Activity below is for the member account you are logged in as.",
       "loading": "Loading activity…",
-      "empty": "No activity to show."
+      "empty": "No activity to show.",
+      "load_more": "Load more",
+      "loading_more": "Loading more…"
     },
     "subscription": {
       "title": "MOA PRO+",
@@ -275,6 +304,24 @@
       "badge_notice": "Notice",
       "badge_update": "Update"
     },
+    "presence": {
+      "activity_home": "Browsing the home screen",
+      "activity_board": "Browsing {slug} board",
+      "activity_board_post": "Reading a post",
+      "activity_board_write": "Writing a post",
+      "activity_board_edit": "Editing a post",
+      "activity_profile": "Viewing a profile",
+      "activity_app": "Using {title}",
+      "activity_app_generic": "Using an app",
+      "activity_auth": "On the sign-in screen",
+      "activity_mypage_profile": "My page · Profile",
+      "activity_mypage_settings": "My page · Settings",
+      "activity_mypage_credit": "My page · Credits",
+      "activity_mypage_library": "My page · Library",
+      "activity_mypage_activity": "My page · Activity",
+      "activity_mypage_account": "My page · Account",
+      "activity_mypage_subscription": "My page · Subscription"
+    },
     "nav": {
       "launcher": "All Apps",
       "economy": "Ranking",
@@ -299,6 +346,11 @@
       "notice_loading": "Loading posts",
       "empty_notices": "No notices yet",
       "empty_updates": "No updates yet",
+      "rankings_loading": "Loading rankings…",
+      "rankings_apps_empty": "No app rankings yet",
+      "rankings_users_empty": "No user rankings yet",
+      "rankings_load_failed": "Could not load rankings",
+      "rankings_activity_score": "{{score}} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -310,8 +362,28 @@
       "tab_connect": "Online",
       "tab_friend": "Friends",
       "tab_alarm": "Alerts",
-      "online_summary": "42 people active now",
-      "friends_summary": "12 friends",
+      "online_summary": "Loading presence summary…",
+      "online_summary_live": "Platform {platform} | {tenant} active now",
+      "friends_summary": "My friends",
+      "friends_summary_live": "{count} friends",
+      "presence_view_profile": "View profile",
+      "presence_menu": "User menu",
+      "presence_add_friend": "Add friend",
+      "presence_accept_friend": "Accept friend",
+      "presence_friend_request_sent": "Friend request sent.",
+      "presence_friend_accepted": "Friend request accepted.",
+      "presence_friend_request_failed": "Could not send friend request.",
+      "presence_device_desktop": "Desktop",
+      "presence_device_mobile": "Mobile",
+      "presence_loading": "Loading online users…",
+      "presence_empty": "No one is online right now",
+      "presence_active": "Active",
+      "presence_away": "Away",
+      "presence_busy": "Busy",
+      "presence_idle": "Away",
+      "presence_offline": "Offline",
+      "friends_login_required": "Sign in to view your friends",
+      "friends_empty": "No friends yet",
       "mark_all_read": "Mark all as read",
       "notifications_empty": "No notifications",
       "notifications_loading": "Loading notifications…",
@@ -340,6 +412,13 @@
       "legal_page_retry": "Try again",
       "board_window": "Board · {slug}",
       "board_loading": "Loading board…",
+      "user_profile_window": "User profile",
+      "user_profile_loading": "Loading profile…",
+      "user_profile_error": "Could not load profile",
+      "error_window": "Error · {code}",
+      "error_page_loading": "Loading error message…",
+      "error_page_error": "Could not load the error message.",
+      "error_page_retry": "Try again",
       "board_error": "Could not load the board.",
       "board_retry": "Try again",
       "toggle_left_panel_on": "Close left panel",
@@ -392,10 +471,11 @@
       "toast_max_taskbar": "You can keep up to {max} minimized buttons. Open or close one first.",
       "toast_app_added": "App added to the home grid.",
       "toast_app_already": "This app is already on the grid.",
+      "toast_main_grid_saved": "Home app layout saved.",
       "confirm_delete_generated": "Permanently delete \"{name}\"?",
       "toast_delete_generated_failed": "Failed to delete the generated app. Please try again shortly.",
-      "toast_share_generated_on": "Shared. It now appears under User Apps in All Apps.",
-      "toast_share_generated_off": "Sharing turned off.",
+      "toast_share_generated_on": "Registered on this hospital's app list.",
+      "toast_share_generated_off": "Removed from the hospital app list.",
       "toast_share_generated_failed": "Failed to update sharing. Please try again shortly.",
       "sns_login_success": "Signed in with social account.",
       "sns_login_failed": "Social sign-in failed.",
@@ -422,7 +502,7 @@
       "description": "Recommend a CPAP mask from face measurements"
     },
     "consulting": {
-      "name": "360 Consulting",
+      "name": "Smart Consulting",
       "description": "Hospital profitability simulation & e-contract"
     },
     "hospital-info": {
@@ -464,6 +544,7 @@
     "field_title": "App title",
     "field_title_placeholder": "Example: Sleep calculator",
     "field_type": "App type",
+    "field_tier": "Data storage",
     "field_model": "AI model",
     "field_prompt": "Prompt",
     "field_prompt_placeholder": "Describe the screen, features, colors, and interactions you want.",
@@ -474,6 +555,13 @@
       "game": "Interaction (phaser.js)",
       "dataviz": "Chart builder (chart.js)"
     },
+    "tiers": {
+      "standard": "Save on my device",
+      "hosted": "Save on app server"
+    },
+    "tier_standard_hint": "Stored in local storage.",
+    "tier_hosted_hint": "Stored on the dedicated app server.",
+    "tier_hosted_provision_hint": "Hosted apps get a dedicated URL only after a successful save. Interrupted generation is not stored on the server.",
     "models": {
       "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
@@ -503,6 +591,7 @@
     "notice_truncated": "Generation stopped due to token limits. Use Continue to finish the app.",
     "stream_title": "Generated code",
     "stream_title_loading": "AI is writing code…",
+    "stream_title_partial": "Incomplete draft code",
     "continue_generate": "Continue",
     "resume_banner": "A previous generation session can be resumed.",
     "resume_load": "Resume",
@@ -513,6 +602,30 @@
       "prompt_required": "Please enter a prompt.",
       "title_required": "Please enter an app title.",
       "html_required": "There is no generated HTML to save."
+    },
+    "queue": {
+      "headline_waiting": "High demand for AI generation",
+      "headline_starting": "Starting your generation",
+      "description_waiting": "We will start automatically when it is your turn. You can keep this window open.",
+      "description_starting": "Your turn is ready. Code generation will begin shortly.",
+      "position_label": "Your place in line",
+      "estimated_wait": "Estimated wait ~{value}{unit}",
+      "wait_unit_seconds": "s",
+      "wait_unit_minutes": " min",
+      "capacity": "{active} of {max} generation slots in use",
+      "cancel": "Leave queue",
+      "waiting_button": "Waiting…"
+    },
+    "recovery": {
+      "headline_truncated": "Generation stopped due to token limits",
+      "headline_paused": "Generation was interrupted",
+      "description_truncated": "Code written so far is shown in the preview. Continue to finish or save as a draft.",
+      "description_paused": "Code up to the interruption is kept. Continue or save as a draft.",
+      "notice_paused": "Generation stopped. The draft remains in the preview.",
+      "save_draft": "Save as draft",
+      "save_draft_success": "Incomplete draft saved. You can continue later.",
+      "hosted_hint": "Hosted apps get a dedicated subdomain only after saving.",
+      "badge_partial": "Draft"
     }
   },
   "moa_apps_cpap": {

@@ -115,9 +115,11 @@
   min-height: 0;
   width: 100%;
   flex: 1;
-  border: 1px solid rgb(255 255 255 / 60%);
   border-radius: 1rem;
-  background: #fff;
+}
+
+.moa-window-frame--maximized .generated-app-preview-frame {
+  border-radius: 0;
 }
 
 @media (width <= 480px) {

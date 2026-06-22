@@ -5,7 +5,7 @@
         "ko": "SNS 로그인",
         "en": "Social Auth"
     },
-    "version": "0.2.13",
+    "version": "0.2.15",
     "license": "MIT",
     "description": {
         "ko": "카카오, 네이버, 구글 SNS 가입 및 로그인을 제공하는 모듈",
@@ -14,7 +14,7 @@
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {
         "modules": {
-            "moabom-system": ">=0.6.10"
+            "moabom-system": ">=0.7.9"
         },
         "plugins": {}
     }

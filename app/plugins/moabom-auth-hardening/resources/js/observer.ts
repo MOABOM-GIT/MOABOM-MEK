@@ -52,15 +52,13 @@ function collectTargets(records: MutationRecord[]): ParentNode[] {
 let installedObserver: MutationObserver | null = null;
 
 /**
- * 전역 MutationObserver 를 설치하고 document 전체에 대한 초기 스캔을 수행합니다.
+ * 전역 MutationObserver 를 설치합니다.
  *
+ * 추가되는 input 은 mutation 시 idle 처리하고, 기존 DOM 은 idle 백업 스캔으로 보완합니다.
  * 이미 설치된 경우 중복 설치를 하지 않습니다.
  */
 export function installGlobalHardeningObserver(): void {
     if (installedObserver) return;
-
-    // 초기 스캔: 현재 DOM 에 존재하는 input 에 즉시 적용
-    applyAutocompleteHardening(document);
 
     const observer = new MutationObserver(records => {
         // 성능 보호: idle 타이밍에 처리 (입력 중 레이아웃 스래싱 방지)
@@ -85,6 +83,9 @@ export function installGlobalHardeningObserver(): void {
     });
 
     installedObserver = observer;
+
+    // SPA 는 폼을 나중에 mount 하므로 크리티컬 패스를 막지 않고 idle 에 백업 스캔
+    defer(() => applyAutocompleteHardening(document));
 }
 
 /**

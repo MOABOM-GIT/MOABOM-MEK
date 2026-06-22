@@ -27,6 +27,8 @@
     "403_message": "您没有权限访问此页面。",
     "500_title": "服务器错误",
     "500_message": "发生临时错误，请稍后重试。",
+    "503_title": "服务维护",
+    "maintenance_title": "维护中",
     "go_home": "返回首页"
   },
   "mypage": {
@@ -185,7 +187,9 @@
       "likes_notice": "点赞与推荐将在论坛模块提供数据后显示于此。",
       "admin_session_notice": "您正以管理员账号登录。以下活动按当前登录的会员账号显示。",
       "loading": "正在加载动态…",
-      "empty": "暂无动态。"
+      "empty": "暂无动态。",
+      "load_more": "加载更多",
+      "loading_more": "正在加载更多…"
     },
     "subscription": {
       "title": "MOA PRO+",
@@ -296,6 +300,11 @@
       "notice_loading": "正在加载帖子",
       "empty_notices": "暂无公告",
       "empty_updates": "暂无更新",
+      "rankings_loading": "正在加载排行…",
+      "rankings_apps_empty": "暂无应用排行数据",
+      "rankings_users_empty": "暂无用户排行数据",
+      "rankings_load_failed": "无法加载排行",
+      "rankings_activity_score": "{{score}} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -307,8 +316,13 @@
       "tab_connect": "在线",
       "tab_friend": "好友",
       "tab_alarm": "通知",
-      "online_summary": "当前 42 人在线",
-      "friends_summary": "好友 12 人",
+      "online_summary": "正在加载在线人数…",
+      "online_summary_live": "平台 {platform} 人 | 当前 {tenant} 人在线",
+      "friends_summary": "好友",
+      "friends_summary_live": "好友 {count} 人",
+      "presence_view_profile": "查看资料",
+      "presence_add_friend": "添加好友",
+      "presence_accept_friend": "接受好友",
       "mark_all_read": "全部标记已读",
       "notifications_empty": "暂无通知",
       "notifications_loading": "正在加载通知…",
@@ -337,6 +351,10 @@
       "legal_page_retry": "重试",
       "board_window": "论坛 · {slug}",
       "board_loading": "正在加载论坛…",
+      "error_window": "错误 · {code}",
+      "error_page_loading": "正在加载错误提示…",
+      "error_page_error": "无法加载错误提示。",
+      "error_page_retry": "重试",
       "board_error": "无法加载论坛。",
       "board_retry": "重试",
       "toggle_left_panel_on": "关闭左侧面板",
@@ -389,6 +407,7 @@
       "toast_max_taskbar": "任务栏最多保存 {max} 个最小化按钮。请先打开或关闭窗口。",
       "toast_app_added": "已添加到主页网格。",
       "toast_app_already": "该应用已在网格中。",
+      "toast_main_grid_saved": "主屏幕应用布局已保存。",
       "confirm_delete_generated": "要永久删除生成应用“{name}”吗？",
       "toast_delete_generated_failed": "删除生成应用失败。请稍后重试。",
       "toast_share_generated_on": "已分享。会显示在全部应用的用户应用中。",
@@ -419,7 +438,7 @@
       "description": "通过面部测量推荐 CPAP 面罩"
     },
     "consulting": {
-      "name": "360 咨询",
+      "name": "智能咨询",
       "description": "医院盈利能力模拟与电子合同"
     },
     "hospital-info": {
@@ -461,6 +480,7 @@
     "field_title": "应用标题",
     "field_title_placeholder": "例如：睡眠计算器",
     "field_type": "应用类型",
+    "field_tier": "数据存储",
     "field_model": "AI 模型",
     "field_prompt": "提示词",
     "field_prompt_placeholder": "请具体描述画面、功能、颜色和交互。",
@@ -471,6 +491,13 @@
       "game": "交互 (phaser.js)",
       "dataviz": "图表生成 (chart.js)"
     },
+    "tiers": {
+      "standard": "保存在本机",
+      "hosted": "保存在应用服务器"
+    },
+    "tier_standard_hint": "保存在本地存储中。",
+    "tier_hosted_hint": "保存在应用专用服务器中。",
+    "tier_hosted_provision_hint": "Hosted 应用仅在保存成功后才会生成专用地址。生成中断时不会保存到服务器。",
     "models": {
       "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
@@ -495,12 +522,44 @@
     "preview_empty_title": "尚未生成应用",
     "preview_empty_description": "输入提示词并点击生成查看预览。",
     "notice_fallback": "在配置 AI provider 前将显示默认预览。",
+    "notice_truncated": "因令牌限制生成中断。可使用「继续完成」继续。",
+    "stream_title": "生成代码",
+    "stream_title_loading": "AI 正在编写代码…",
+    "stream_title_partial": "未完成草稿代码",
+    "continue_generate": "继续完成",
+    "resume_banner": "可以恢复上一次的生成会话。",
+    "resume_load": "继续加载",
+    "resume_dismiss": "忽略",
     "error_generate": "应用生成失败。",
     "error_save": "保存生成应用失败。",
     "validation": {
       "prompt_required": "请输入提示词。",
       "title_required": "请输入应用标题。",
       "html_required": "没有可保存的生成 HTML。"
+    },
+    "queue": {
+      "headline_waiting": "当前 AI 生成请求较多",
+      "headline_starting": "即将开始生成",
+      "description_waiting": "轮到您时会自动开始生成，无需关闭此窗口。",
+      "description_starting": "等待已结束，代码生成即将开始。",
+      "position_label": "排队位置",
+      "estimated_wait": "预计等待约 {value}{unit}",
+      "wait_unit_seconds": "秒",
+      "wait_unit_minutes": "分钟",
+      "capacity": "当前 {active}/{max} 个生成任务进行中",
+      "cancel": "取消排队",
+      "waiting_button": "排队中…"
+    },
+    "recovery": {
+      "headline_truncated": "因令牌限制生成中断",
+      "headline_paused": "生成已中断",
+      "description_truncated": "已编写的代码会显示在预览中。可继续完成或保存为草稿。",
+      "description_paused": "中断前的代码已保留。请继续完成或保存为草稿。",
+      "notice_paused": "已停止生成。草稿仍保留在预览中。",
+      "save_draft": "保存为草稿",
+      "save_draft_success": "已保存未完成草稿。稍后可继续完成。",
+      "hosted_hint": "Hosted 应用仅在保存后才会创建专用子域名。",
+      "badge_partial": "草稿"
     }
   },
   "moa_apps_cpap": {

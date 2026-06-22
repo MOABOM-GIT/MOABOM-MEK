@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2026-06-21
+
+### Added
+
+- 관리자 **마스크피팅 관리** 메뉴·목록 API·레이아웃 — 플랫폼 메뉴 하위(order 60), `moabom-cpap.measurements.read` 권한.
+
 ## [0.2.0] - 2026-06-07
 
 ### Changed

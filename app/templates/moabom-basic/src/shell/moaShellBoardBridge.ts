@@ -15,6 +15,7 @@ export interface MoaShellBoardBridge {
   isActive: () => boolean;
   openBoard: (slug: string, postId?: string, options?: MoaShellBoardOpenOptions) => void;
   openAuth: (mode: AuthWindowMode) => void;
+  openUserProfile?: (userUuid: string) => void;
 }
 
 export function notifyBoardShellUrlChanged(): void {

@@ -7,8 +7,7 @@ use Illuminate\Support\Facades\Cache;
 /**
  * PWA Service Worker 버전 리졸버.
  *
- * `moabom-basic` 템플릿의 dist 산출물 + 활성 플러그인 dist(`plugins/* /dist/** `) +
- * `moabom-system` 모듈 dist(존재 시) 의 mtime 집합을 입력으로 하여
+ * `moabom-basic` 템플릿의 dist 산출물 + 활성 플러그인 dist(`plugins/* /dist/** `) 의 mtime 집합을 입력으로 하여
  * 결정적 버전 문자열을 산출한다. 파일이 하나라도 갱신되면 결과 문자열이
  * 단조 변경되며, 동일 입력에 대해 동일 출력을 보장한다(Req 4.3/4.4).
  *
@@ -31,8 +30,6 @@ final class PwaVersionResolver
         // moabom-basic 활성 디렉토리 산출물
         'templates/moabom-basic/dist/css/**/*',
         'templates/moabom-basic/dist/js/**/*',
-        // moabom-system 모듈 dist(현재는 프론트 에셋 없음 — 향후 대비)
-        'modules/moabom-system/dist/**/*',
     ];
 
     /** 활성 플러그인 번들 — 본 플러그인의 의존 범위에서만 스캔. */

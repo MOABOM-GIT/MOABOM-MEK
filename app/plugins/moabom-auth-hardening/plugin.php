@@ -49,7 +49,7 @@ class Plugin extends AbstractPlugin
             ],
             'console_masking_enabled' => [
                 'type' => 'boolean',
-                'default' => true,
+                'default' => false,
                 'label' => [
                     'ko' => '콘솔 민감정보 마스킹',
                     'en' => 'Mask Sensitive Console Data',
@@ -62,7 +62,7 @@ class Plugin extends AbstractPlugin
             ],
             'dom_guard_enabled' => [
                 'type' => 'boolean',
-                'default' => true,
+                'default' => false,
                 'label' => [
                     'ko' => 'DOM XSS 보조 가드',
                     'en' => 'DOM XSS Guard',
@@ -150,8 +150,8 @@ class Plugin extends AbstractPlugin
     {
         return [
             'enabled' => true,
-            'console_masking_enabled' => true,
-            'dom_guard_enabled' => true,
+            'console_masking_enabled' => false,
+            'dom_guard_enabled' => false,
             'security_headers_enabled' => true,
             'csp_report_only_enabled' => true,
             'trusted_types_enabled' => true,

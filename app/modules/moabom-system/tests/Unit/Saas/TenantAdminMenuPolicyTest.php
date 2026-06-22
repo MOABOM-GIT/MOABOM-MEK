@@ -42,7 +42,7 @@ final class TenantAdminMenuPolicyTest extends ModuleTestCase
 
         $platformSettingsId = DB::table('menus')->insertGetId([
             'slug' => 'platform-settings',
-            'name' => json_encode(['ko' => '플랫폼 환경설정'], JSON_UNESCAPED_UNICODE),
+            'name' => json_encode(['ko' => '플랫폼 메뉴'], JSON_UNESCAPED_UNICODE),
             'url' => null,
             'parent_id' => null,
             'order' => 2,

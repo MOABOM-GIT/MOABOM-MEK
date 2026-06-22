@@ -75,9 +75,9 @@
   /** 앱 윈도우 크롬 (구 GlassCard light) */
   --moa-window-content-padding: 10px;
   /** 창 본문 `.moa-app-window-viewport` 안쪽 여백 SSOT — 모든 셸 앱·마이페이지·인증 공통 */
-  --moa-app-window-body-padding: 0.75rem;
+  --moa-app-window-body-padding: 0.6rem;
   /** 앱 창·마이페이지 본문 블록(섹션) 사이 세로·그리드 간격 SSOT — Tailwind `gap-3` 와 동일 */
-  --moa-app-stack-gap: 0.75rem;
+  --moa-app-stack-gap: 0.6rem;
   --moa-window-blur: 15px;
   --moa-window-saturation: 120%;
   --moa-window-brightness: 100%;
@@ -89,6 +89,8 @@
   --moa-window-outer-glow: rgb(0 0 0 / 10%);
   --moa-window-outer-glow-blur: 20px;
   --moa-window-outer-glow-spread: 1px;
+
+  /** 홈 셸 외곽·오버레이 여백 — `moaHomeShellCssVars()` / `moaShellLayoutConstants.ts` SSOT (여기 정의 없음) */
 
   /** `.liquid-glass` 옵트인 유틸 (구 GlassCard + SVG 굴절) */
   --moa-liquid-blur: 2px;

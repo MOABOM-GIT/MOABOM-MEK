@@ -13,15 +13,17 @@
     "moabom-system",
     "moabom-social-auth",
     "moabom-credit",
+    "moabom-presence",
     "moabom-personalization",
     "moabom-apps",
     "moabom-cpap",
     "moabom-consulting",
     "sirsoft-ecommerce"
   ],
-  "plugins": [
+    "plugins": [
     "moabom-auth-hardening",
     "moabom-pwa",
+    "moabom-reverb",
     "moabom-weather",
     "sirsoft-daum_postcode",
     "sirsoft-ckeditor5",
@@ -36,14 +38,12 @@
       "moabom-system",
       "moabom-social-auth",
       "moabom-credit",
+      "moabom-presence",
       "moabom-personalization",
       "moabom-apps",
       "moabom-cpap",
       "moabom-consulting",
       "sirsoft-ecommerce"
-    ],
-    "module_refresh_layout": [
-      "moabom-system"
     ]
   }
 }

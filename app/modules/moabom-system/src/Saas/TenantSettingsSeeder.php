@@ -2,10 +2,10 @@
 
 namespace Modules\Moabom\System\Saas;
 
+use App\Extension\HookManager;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Modules\Moabom\System\Broadcasting\ReverbDriversDefaults;
 use Modules\Moabom\System\Models\ModuleSetting;
 
 /**
@@ -72,7 +72,7 @@ final class TenantSettingsSeeder
 
     private function seedDriversSettings(TenantRecord $tenant): void
     {
-        $drivers = ReverbDriversDefaults::mergeInto([
+        $drivers = HookManager::applyFilters('moabom.saas.drivers.seed_defaults', [
             '_meta' => [
                 'version' => '1.0.0',
                 'updated_at' => now()->toIso8601String(),

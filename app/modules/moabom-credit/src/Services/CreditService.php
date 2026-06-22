@@ -24,11 +24,14 @@ class CreditService
      *
      * @return array<string, mixed>
      */
-    public function getUserCreditOverview(User $user, int $limit = 10): array
+    public function getUserCreditOverview(User $user, int $limit = 8, int $offset = 0): array
     {
         $balance = $this->creditRepository->getOrCreateBalance($user);
         $summary = $this->creditRepository->getSummary($user);
-        $transactions = $this->creditRepository->getRecentTransactions($user, $limit)
+        $transactionTotal = $this->creditRepository->getTransactionCount($user);
+        $safeLimit = max(1, min(50, $limit));
+        $safeOffset = max(0, $offset);
+        $transactions = $this->creditRepository->getRecentTransactions($user, $safeLimit, $safeOffset)
             ->map(fn (CreditTransaction $transaction) => $this->formatTransaction($transaction))
             ->values()
             ->all();
@@ -37,9 +40,15 @@ class CreditService
             'balance' => $balance->balance,
             'summary' => [
                 ...$summary,
-                'transaction_count' => count($transactions),
+                'transaction_count' => $transactionTotal,
             ],
             'transactions' => $transactions,
+            'pagination' => [
+                'limit' => $safeLimit,
+                'offset' => $safeOffset,
+                'total' => $transactionTotal,
+                'has_more' => ($safeOffset + count($transactions)) < $transactionTotal,
+            ],
         ], $user);
     }
 

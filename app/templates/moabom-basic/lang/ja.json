@@ -27,6 +27,8 @@
     "403_message": "このページにアクセスする権限がありません。",
     "500_title": "サーバーエラー",
     "500_message": "一時的なエラーが発生しました。しばらくしてからお試しください。",
+    "503_title": "サービス点検",
+    "maintenance_title": "点検中",
     "go_home": "ホームへ"
   },
   "mypage": {
@@ -185,7 +187,9 @@
       "likes_notice": "おすすめやいいねは、掲示板モジュールがデータを提供するとここに表示されます。",
       "admin_session_notice": "管理者アカウントでログインしています。以下の活動は、現在ログインしている会員基準で表示されます。",
       "loading": "アクティビティを読み込み中…",
-      "empty": "表示するアクティビティがありません。"
+      "empty": "表示するアクティビティがありません。",
+      "load_more": "もっと見る",
+      "loading_more": "読み込み中…"
     },
     "subscription": {
       "title": "MOA PRO+",
@@ -296,6 +300,11 @@
       "notice_loading": "投稿を読み込み中です",
       "empty_notices": "お知らせはまだありません",
       "empty_updates": "アップデートはまだありません",
+      "rankings_loading": "ランキングを読み込み中です",
+      "rankings_apps_empty": "集計されたアプリ順位はまだありません",
+      "rankings_users_empty": "集計されたユーザーランキングはまだありません",
+      "rankings_load_failed": "ランキングを読み込めませんでした",
+      "rankings_activity_score": "{{score}} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -307,8 +316,13 @@
       "tab_connect": "接続中",
       "tab_friend": "フレンド",
       "tab_alarm": "通知",
-      "online_summary": "現在42名がアクティブ",
-      "friends_summary": "フレンド12名",
+      "online_summary": "接続者数を読み込み中…",
+      "online_summary_live": "プラットフォーム {platform}名 | 現在 {tenant}名がアクティブ",
+      "friends_summary": "フレンド",
+      "friends_summary_live": "フレンド {count}名",
+      "presence_view_profile": "プロフィールを見る",
+      "presence_add_friend": "フレンド追加",
+      "presence_accept_friend": "フレンド承認",
       "mark_all_read": "すべて既読にする",
       "notifications_empty": "通知はありません",
       "notifications_loading": "通知を読み込み中…",
@@ -337,6 +351,10 @@
       "legal_page_retry": "再試行",
       "board_window": "掲示板 · {slug}",
       "board_loading": "掲示板を読み込み中…",
+      "error_window": "エラー · {code}",
+      "error_page_loading": "エラー案内を読み込み中…",
+      "error_page_error": "エラー案内を読み込めませんでした。",
+      "error_page_retry": "再試行",
       "board_error": "掲示板を読み込めませんでした。",
       "board_retry": "再試行",
       "toggle_left_panel_on": "左パネルを閉じる",
@@ -389,6 +407,7 @@
       "toast_max_taskbar": "最小化ボタンは最大{max}個までです。先にウィンドウを開くか閉じてください。",
       "toast_app_added": "アプリを追加しました。",
       "toast_app_already": "すでに追加済みのアプリです。",
+      "toast_main_grid_saved": "ホームのアプリ配置を保存しました。",
       "confirm_delete_generated": "生成アプリ「{name}」を完全に削除しますか？",
       "toast_delete_generated_failed": "生成アプリの削除に失敗しました。しばらくしてから再試行してください。",
       "toast_share_generated_on": "共有しました。すべてのアプリのユーザーアプリに表示されます。",
@@ -419,7 +438,7 @@
       "description": "顔測定でCPAPマスクを推薦"
     },
     "consulting": {
-      "name": "360コンサルティング",
+      "name": "スマートコンサルティング",
       "description": "病院収益性シミュレーション・電子契約"
     },
     "hospital-info": {
@@ -461,6 +480,7 @@
     "field_title": "アプリ名",
     "field_title_placeholder": "例: 睡眠計算機",
     "field_type": "アプリ種別",
+    "field_tier": "データ保存",
     "field_model": "AIモデル",
     "field_prompt": "プロンプト",
     "field_prompt_placeholder": "画面、機能、色、動作を具体的に入力してください。",
@@ -471,6 +491,13 @@
       "game": "インタラクション (phaser.js)",
       "dataviz": "チャート作成 (chart.js)"
     },
+    "tiers": {
+      "standard": "端末に保存",
+      "hosted": "アプリサーバーに保存"
+    },
+    "tier_standard_hint": "ローカルストレージに保存されます。",
+    "tier_hosted_hint": "アプリ専用サーバーに保存されます。",
+    "tier_hosted_provision_hint": "Hostedアプリは保存完了後にのみ専用URLが作成されます。生成中断時はサーバーに保存されません。",
     "models": {
       "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
@@ -495,12 +522,44 @@
     "preview_empty_title": "まだ生成されたアプリはありません",
     "preview_empty_description": "プロンプトを入力して生成ボタンを押してください。",
     "notice_fallback": "AI provider設定前は基本プレビューを表示します。",
+    "notice_truncated": "トークン制限で生成が途中で止まりました。「続きから完成」で続行できます。",
+    "stream_title": "生成コード",
+    "stream_title_loading": "AIがコードを書いています…",
+    "stream_title_partial": "未完成の下書きコード",
+    "continue_generate": "続きから完成",
+    "resume_banner": "前回の生成セッションを再開できます。",
+    "resume_load": "続きを読み込む",
+    "resume_dismiss": "無視",
     "error_generate": "アプリ生成に失敗しました。",
     "error_save": "生成アプリの保存に失敗しました。",
     "validation": {
       "prompt_required": "プロンプトを入力してください。",
       "title_required": "アプリ名を入力してください。",
       "html_required": "保存する生成HTMLがありません。"
+    },
+    "queue": {
+      "headline_waiting": "現在AI生成のリクエストが集中しています",
+      "headline_starting": "まもなく生成を開始します",
+      "description_waiting": "順番になると自動的に生成が始まります。この画面を閉じなくても大丈夫です。",
+      "description_starting": "待機が終わりました。まもなくコード生成が始まります。",
+      "position_label": "待機順番",
+      "estimated_wait": "予想待ち時間 約{value}{unit}",
+      "wait_unit_seconds": "秒",
+      "wait_unit_minutes": "分",
+      "capacity": "現在 {active}/{max} 件の生成が進行中",
+      "cancel": "待機をキャンセル",
+      "waiting_button": "待機中…"
+    },
+    "recovery": {
+      "headline_truncated": "トークン制限で生成が途中で止まりました",
+      "headline_paused": "生成が中断されました",
+      "description_truncated": "これまでのコードはプレビューに反映されています。続きから完成するか、下書きとして保存できます。",
+      "description_paused": "中断時点までのコードは保持されています。続きから完成するか、下書きとして保存してください。",
+      "notice_paused": "生成を停止しました。下書きはプレビューに残っています。",
+      "save_draft": "下書きとして保存",
+      "save_draft_success": "未完成の下書きを保存しました。後から続きを完成できます。",
+      "hosted_hint": "Hostedアプリは保存後にのみ専用サブドメインが作成されます。",
+      "badge_partial": "下書き"
     }
   },
   "moa_apps_cpap": {

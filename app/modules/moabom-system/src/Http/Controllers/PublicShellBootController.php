@@ -9,10 +9,10 @@ use App\Helpers\ResponseHelper;
 use App\Services\TemplateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use Modules\Moabom\Social\Auth\Services\SocialAuthService;
 use Modules\Moabom\System\Experience\TenantExperienceDefaultsReader;
 use Modules\Moabom\System\Http\Requests\Public\GetMoabomShellTemplateRoutesRequest;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
+use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
 use Modules\Moabom\System\Support\MoabomPublicApiCache;
 use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 use Modules\Moabom\System\Support\MoabomUiLocales;
@@ -29,53 +29,57 @@ final class PublicShellBootController extends Controller
         TenantExperienceDefaultsReader $defaultsReader,
         TemplateService $templateService,
         MoabomShellRoutesFilter $shellRoutesFilter,
-        SocialAuthService $socialAuthService,
+        ShellUsageIngestGuard $usageIngestGuard,
     ): JsonResponse {
         $identifier = $request->resolvedTemplate();
         $scope = $request->resolvedScope();
         $revision = $defaultsReader->combinedRevision();
 
-        return MoabomPublicApiCache::remember(
+        $routesPayload = $this->resolveShellRoutesPayload(
+            $identifier,
+            $templateService,
+            $shellRoutesFilter,
+        );
+
+        if ($routesPayload instanceof JsonResponse) {
+            return $routesPayload;
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = MoabomPublicApiCache::remember(
             MoabomPublicApiCacheKeys::shellBoot($identifier, $scope, $revision),
             function () use (
                 $identifier,
-                $scope,
-                $revision,
                 $defaultsReader,
-                $templateService,
-                $shellRoutesFilter,
-                $socialAuthService,
-            ): JsonResponse {
-                $routesPayload = $this->resolveShellRoutesPayload(
-                    $identifier,
-                    $templateService,
-                    $shellRoutesFilter,
-                );
-
-                if ($routesPayload instanceof JsonResponse) {
-                    return $routesPayload;
-                }
-
-                return ResponseHelper::moduleSuccess(
-                    'moabom-system',
-                    'messages.public_shell_boot.fetch_success',
-                    [
-                        'defaults' => $defaultsReader->frontendDefaults(),
-                        'defaults_revision' => $revision,
-                        'site' => $defaultsReader->siteMeta(),
-                        'locale_catalog' => MoabomUiLocales::catalog(),
-                        'shell_routes' => $routesPayload,
-                        'social_providers' => $socialAuthService->enabledProviders(),
-                        // 앱 SDK (Phase 4) — 활성 모듈 app.json 집계. moabom-apps 가 필터로 기여하며
-                        // 미설치/비활성이면 [] (무손상). moabom-system 은 moabom-apps 를 직접 의존하지 않음.
-                        'apps' => array_values((array) HookManager::applyFilters(
-                            'moabom.shell_boot.apps',
-                            [],
-                            $identifier,
-                        )),
-                    ],
-                );
+                $revision,
+                $routesPayload,
+            ): array {
+                return [
+                    'defaults' => $defaultsReader->frontendDefaults(),
+                    'defaults_revision' => $revision,
+                    'site' => $defaultsReader->siteMeta(),
+                    'locale_catalog' => MoabomUiLocales::catalog(),
+                    'shell_routes' => $routesPayload,
+                    'social_providers' => array_values((array) HookManager::applyFilters(
+                        'moabom.shell_boot.social_providers',
+                        [],
+                        $identifier,
+                    )),
+                    'apps' => array_values((array) HookManager::applyFilters(
+                        'moabom.shell_boot.apps',
+                        [],
+                        $identifier,
+                    )),
+                ];
             },
+        );
+
+        $payload['shell_rankings'] = $usageIngestGuard->bootPayload();
+
+        return ResponseHelper::moduleSuccess(
+            'moabom-system',
+            'messages.public_shell_boot.fetch_success',
+            $payload,
         );
     }
 

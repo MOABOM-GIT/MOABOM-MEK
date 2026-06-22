@@ -144,6 +144,7 @@ class StoreUserSystemSettingsRequest extends FormRequest
             'shell.home' => ['sometimes', 'array'],
             'shell.home.mainAppOrder' => ['sometimes', 'array', 'max:64'],
             'shell.home.mainAppOrder.*' => ['string', 'max:128', 'regex:/^[a-z0-9][a-z0-9-]*$/'],
+            'shell.home.mainAppOrderCustomized' => ['sometimes', 'boolean'],
         ];
     }
 }

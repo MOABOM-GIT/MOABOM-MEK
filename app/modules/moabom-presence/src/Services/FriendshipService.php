@@ -1,0 +1,106 @@
+<?php
+
+namespace Modules\Moabom\Presence\Services;
+
+use App\Models\User;
+use Modules\Moabom\Presence\Contracts\FriendshipRepositoryInterface;
+use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
+use Modules\Moabom\Presence\Enums\FriendshipStatus;
+use Modules\Moabom\Presence\Models\Friendship;
+
+final class FriendshipService
+{
+    public function __construct(
+        private FriendshipRepositoryInterface $friendships,
+        private TenantOnlineUsersService $onlineUsers,
+        private PresenceUserPreferencesRepositoryInterface $preferences,
+        private PresencePresentationService $presentation,
+    ) {}
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listFriends(User $viewer): array
+    {
+        $rows = $this->friendships->listAcceptedForUser($viewer->id);
+        $onlineByUuid = collect($this->onlineUsers->listFriendsOnline($viewer, 200))
+            ->filter(fn (array $row) => ! empty($row['user_uuid']))
+            ->keyBy('user_uuid');
+
+        $friendUserIds = $rows
+            ->map(fn (Friendship $friendship) => (int) ($friendship->requester_id === $viewer->id
+                ? $friendship->addressee_id
+                : $friendship->requester_id))
+            ->unique()
+            ->values()
+            ->all();
+
+        $preferenceMap = $this->preferences->findForUsers($friendUserIds);
+
+        return $rows
+            ->map(function (Friendship $friendship) use ($viewer, $onlineByUuid, $preferenceMap): array {
+                $friend = (int) $friendship->requester_id === $viewer->id
+                    ? $friendship->addressee
+                    : $friendship->requester;
+
+                $online = $friend ? $onlineByUuid->get($friend->uuid) : null;
+                $prefs = $friend ? $preferenceMap->get($friend->id) : null;
+                $availability = $this->presentation->availabilityFor($prefs);
+                $hasSession = $online !== null;
+                $isReachable = $this->presentation->isReachable($hasSession, $prefs);
+                $subtitle = $online['presence_subtitle']
+                    ?? $this->presentation->resolveSubtitle($friend, $prefs);
+
+                return [
+                    'user_uuid' => $friend?->uuid,
+                    'display_name' => (string) ($friend?->nickname ?: $friend?->name),
+                    'avatar' => $friend?->avatar,
+                    'status_text' => $subtitle,
+                    'presence_subtitle' => $subtitle,
+                    'availability' => $availability->value,
+                    'is_online' => $isReachable,
+                    'friendship' => 'accepted',
+                    'accepted_at' => $friendship->accepted_at?->toIso8601String(),
+                ];
+            })
+            ->filter(fn (array $row) => $row['user_uuid'] !== null)
+            ->values()
+            ->all();
+    }
+
+    public function sendRequest(User $requester, User $addressee): Friendship
+    {
+        if ($requester->id === $addressee->id) {
+            throw new \InvalidArgumentException('cannot_friend_self');
+        }
+
+        $existing = $this->friendships->findBetween($requester->id, $addressee->id);
+        if ($existing) {
+            if ($existing->status === FriendshipStatus::Accepted) {
+                return $existing;
+            }
+            if ($existing->status === FriendshipStatus::Pending && $existing->addressee_id === $requester->id) {
+                return $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+            }
+
+            throw new \InvalidArgumentException('friendship_already_exists');
+        }
+
+        return $this->friendships->createRequest($requester->id, $addressee->id);
+    }
+
+    public function acceptRequest(User $viewer, User $requester): Friendship
+    {
+        $existing = $this->friendships->findBetween($viewer->id, $requester->id);
+        if (! $existing || $existing->status !== FriendshipStatus::Pending || $existing->requester_id !== $requester->id) {
+            throw new \InvalidArgumentException('friendship_request_not_found');
+        }
+
+        return $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+    }
+
+    public function removeFriendship(User $viewer, User $other): int
+    {
+        return $this->friendships->deletePair($viewer->id, $other->id);
+    }
+}

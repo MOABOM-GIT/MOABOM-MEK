@@ -5,6 +5,11 @@ import {
   hasShellAccessToken,
   MoabomShellAuthRequiredError,
 } from './moabomShellHttp';
+import type { AppTier, GeneratedAppPreviewFields } from '../apps/generated/generatedAppPreviewUrl';
+
+export type { AppTier };
+
+export type GeneratedAppVisibility = 'private' | 'tenant' | 'global';
 
 export type AiAppType = 'general' | '3d' | 'game' | 'dataviz';
 
@@ -12,6 +17,7 @@ export interface GenerateAiAppPayload {
   prompt: string;
   app_type: AiAppType;
   model_id: string;
+  tier?: AppTier;
   current_html?: string | null;
 }
 
@@ -29,6 +35,8 @@ export interface StreamAiAppPayload extends GenerateAiAppPayload {
   continue?: boolean;
   generation_mode?: 'generate' | 'append' | 'patch';
   generated_app_id?: number | null;
+  lease_token?: string | null;
+  queue_ticket?: string | null;
 }
 
 export interface AiGenerationSession {
@@ -55,14 +63,41 @@ export interface StreamAiAppHandlers {
   onSession?: (sessionId: number) => void;
   onDone?: (result: StreamAiAppDonePayload) => void;
   onError?: (message: string) => void;
+  onQueueUpdate?: (queue: AiGenerationQueueState) => void;
+}
+
+export type AiGenerationQueueStatus = 'queued' | 'ready' | 'starting' | 'expired';
+
+export interface AiGenerationQueueState {
+  status: AiGenerationQueueStatus;
+  ticketId: string;
+  queuePosition: number;
+  estimatedWaitSeconds: number;
+  retryAfterSeconds: number;
+  activeCount: number;
+  maxActive: number;
+  leaseToken?: string | null;
+  message?: string;
+}
+
+export class AiGenerationQueueError extends Error {
+  readonly queue: AiGenerationQueueState;
+
+  constructor(message: string, queue: AiGenerationQueueState) {
+    super(message);
+    this.name = 'AiGenerationQueueError';
+    this.queue = queue;
+  }
 }
 
 export interface StoreGeneratedAppPayload {
   title: string;
   app_type: AiAppType;
+  tier?: AppTier;
   model_id?: string | null;
   prompt?: string | null;
   html: string;
+  visibility?: GeneratedAppVisibility;
   is_shared?: boolean;
   parent_app_id?: number | null;
   version?: number;
@@ -82,7 +117,7 @@ export interface GeneratedAppPermissions {
   edit_mode: 'owner' | 'remix' | 'none';
 }
 
-export interface StoredGeneratedApp extends StoreGeneratedAppPayload {
+export interface StoredGeneratedApp extends StoreGeneratedAppPayload, GeneratedAppPreviewFields {
   id: number;
   owner?: GeneratedAppOwner;
   permissions?: GeneratedAppPermissions;
@@ -92,7 +127,7 @@ export interface StoredGeneratedApp extends StoreGeneratedAppPayload {
 /** 목록 조회 응답 항목 (HTML 제외) */
 export type StoredGeneratedAppSummary = Pick<
   StoredGeneratedApp,
-  'id' | 'title' | 'app_type' | 'model_id' | 'prompt' | 'is_shared' | 'metadata' | 'owner' | 'permissions' | 'created_at'
+  'id' | 'title' | 'app_type' | 'tier' | 'preview_url' | 'hosted_subdomain' | 'model_id' | 'prompt' | 'visibility' | 'is_shared' | 'metadata' | 'owner' | 'permissions' | 'created_at'
 >;
 
 export interface CpapUserProfile {
@@ -210,11 +245,27 @@ export async function deleteGeneratedApp(id: number): Promise<void> {
   });
 }
 
-export async function updateGeneratedAppShare(id: number, isShared: boolean): Promise<StoredGeneratedApp> {
+export function isGeneratedAppPublished(item: Pick<StoredGeneratedAppSummary, 'visibility' | 'is_shared'>): boolean {
+  if (item.visibility) {
+    return item.visibility !== 'private';
+  }
+
+  return Boolean(item.is_shared);
+}
+
+export async function updateGeneratedAppVisibility(
+  id: number,
+  visibility: GeneratedAppVisibility,
+): Promise<StoredGeneratedApp> {
   return requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}/share`, {
     method: 'PATCH',
-    body: { is_shared: isShared },
+    body: { visibility },
   });
+}
+
+/** @deprecated use updateGeneratedAppVisibility */
+export async function updateGeneratedAppShare(id: number, isShared: boolean): Promise<StoredGeneratedApp> {
+  return updateGeneratedAppVisibility(id, isShared ? 'tenant' : 'private');
 }
 
 export async function fetchLatestCpapMeasurement(): Promise<CpapStoredMeasurement | null> {
@@ -259,7 +310,97 @@ function parseSseChunk(buffer: string): { events: Array<{ event: string; data: s
   return { events, rest };
 }
 
-/** AI 앱 HTML SSE 스트리밍 생성 (fetch 전용 — Axios 미사용). */
+function parseQueuePayload(
+  payload: Record<string, unknown> | undefined,
+  fallbackMessage = '',
+): AiGenerationQueueState | null {
+  if (!payload || payload.code !== 'ai_generation_queued') {
+    return null;
+  }
+
+  return {
+    status: (payload.status as AiGenerationQueueStatus) ?? 'queued',
+    ticketId: String(payload.ticket_id ?? ''),
+    queuePosition: Number(payload.queue_position ?? 0),
+    estimatedWaitSeconds: Number(payload.estimated_wait_seconds ?? 0),
+    retryAfterSeconds: Math.max(2, Number(payload.retry_after_seconds ?? 5)),
+    activeCount: Number(payload.active_count ?? 0),
+    maxActive: Number(payload.max_active ?? 0),
+    leaseToken: typeof payload.lease_token === 'string' ? payload.lease_token : null,
+    message: fallbackMessage,
+  };
+}
+
+function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+export async function fetchAiGenerationQueueStatus(ticketId: string): Promise<AiGenerationQueueState> {
+  const data = await requestMoabomAppsApi<{ queue: Record<string, unknown> }>(
+    `apps/ai/generate/queue?ticket=${encodeURIComponent(ticketId)}`,
+  );
+  const queue = data.queue ?? {};
+
+  return {
+    status: (queue.status as AiGenerationQueueStatus) ?? 'queued',
+    ticketId: String(queue.ticket_id ?? ticketId),
+    queuePosition: Number(queue.queue_position ?? 0),
+    estimatedWaitSeconds: Number(queue.estimated_wait_seconds ?? 0),
+    retryAfterSeconds: Math.max(2, Number(queue.retry_after_seconds ?? 5)),
+    activeCount: Number(queue.active_count ?? 0),
+    maxActive: Number(queue.max_active ?? 0),
+    leaseToken: typeof queue.lease_token === 'string' ? queue.lease_token : null,
+  };
+}
+
+export async function cancelAiGenerationQueue(ticketId: string): Promise<void> {
+  await requestMoabomAppsApi<{ ticket_id: string }>('apps/ai/generate/queue', {
+    method: 'DELETE',
+    body: { ticket: ticketId },
+  });
+}
+
+async function waitForQueueTurn(
+  initial: AiGenerationQueueState,
+  handlers: StreamAiAppHandlers,
+  signal?: AbortSignal,
+): Promise<{ leaseToken: string; ticketId: string }> {
+  let queue = initial;
+
+  while (!signal?.aborted) {
+    handlers.onQueueUpdate?.(queue);
+    await sleepMs(queue.retryAfterSeconds * 1000, signal);
+
+    const next = await fetchAiGenerationQueueStatus(queue.ticketId);
+    queue = { ...next, message: initial.message };
+
+    if (queue.status === 'ready' && queue.leaseToken) {
+      handlers.onQueueUpdate?.({ ...queue, status: 'starting' });
+      return { leaseToken: queue.leaseToken, ticketId: queue.ticketId };
+    }
+  }
+
+  throw new DOMException('Aborted', 'AbortError');
+}
+
+/** AI 앱 HTML SSE 스트리밍 생성 (대기열 자동 재시도 포함). */
 export async function streamAiApp(
   payload: StreamAiAppPayload,
   handlers: StreamAiAppHandlers,
@@ -267,76 +408,111 @@ export async function streamAiApp(
   initialAccumulated = '',
 ): Promise<StreamAiAppDonePayload | null> {
   const token = assertShellAccessToken();
+  let leaseToken = payload.lease_token ?? null;
+  let queueTicket = payload.queue_ticket ?? null;
 
-  const response = await fetch('/api/modules/moabom-apps/apps/ai/generate/stream', {
-    method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  while (!signal?.aborted) {
+    const response = await fetch('/api/modules/moabom-apps/apps/ai/generate/stream', {
+      method: 'POST',
+      headers: {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...payload,
+        lease_token: leaseToken,
+        queue_ticket: queueTicket,
+      }),
+      signal,
+    });
 
-  if (!response.ok) {
-    let message = '스트리밍 생성에 실패했습니다.';
-    try {
-      const json = await response.json() as { message?: string };
-      if (json.message) {
-        message = json.message;
+    if (response.status === 429) {
+      let message = 'AI 생성 대기열에 등록되었습니다.';
+      let queueState: AiGenerationQueueState | null = null;
+      try {
+        const json = await response.json() as { message?: string; errors?: Record<string, unknown> };
+        if (json.message) {
+          message = json.message;
+        }
+        queueState = parseQueuePayload(json.errors, message);
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
-    handlers.onError?.(message);
-    throw new Error(message);
-  }
 
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('스트리밍 응답 본문을 읽을 수 없습니다.');
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let accumulated = initialAccumulated;
-  let donePayload: StreamAiAppDonePayload | null = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-    const parsed = parseSseChunk(buffer);
-    buffer = parsed.rest;
-
-    for (const { event, data } of parsed.events) {
-      if (event === 'session') {
-        const payloadJson = JSON.parse(data) as { session_id?: number };
-        if (payloadJson.session_id) {
-          handlers.onSession?.(payloadJson.session_id);
-        }
-      } else if (event === 'delta') {
-        const payloadJson = JSON.parse(data) as { text?: string };
-        const text = payloadJson.text ?? '';
-        if (text) {
-          accumulated += text;
-          handlers.onDelta?.(text, accumulated);
-        }
-      } else if (event === 'done') {
-        donePayload = JSON.parse(data) as StreamAiAppDonePayload;
-        handlers.onDone?.(donePayload);
-      } else if (event === 'error') {
-        const payloadJson = JSON.parse(data) as { message?: string };
-        const message = payloadJson.message ?? '스트리밍 생성 중 오류가 발생했습니다.';
+      if (!queueState?.ticketId) {
         handlers.onError?.(message);
         throw new Error(message);
       }
+
+      handlers.onQueueUpdate?.(queueState);
+      const ready = await waitForQueueTurn(queueState, handlers, signal);
+      leaseToken = ready.leaseToken;
+      queueTicket = ready.ticketId;
+      continue;
     }
+
+    if (!response.ok) {
+      let message = '스트리밍 생성에 실패했습니다.';
+      try {
+        const json = await response.json() as { message?: string };
+        if (json.message) {
+          message = json.message;
+        }
+      } catch {
+        // ignore
+      }
+      handlers.onError?.(message);
+      throw new Error(message);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('스트리밍 응답 본문을 읽을 수 없습니다.');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = initialAccumulated;
+    let donePayload: StreamAiAppDonePayload | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const parsed = parseSseChunk(buffer);
+      buffer = parsed.rest;
+
+      for (const { event, data } of parsed.events) {
+        if (event === 'session') {
+          const payloadJson = JSON.parse(data) as { session_id?: number };
+          if (payloadJson.session_id) {
+            handlers.onSession?.(payloadJson.session_id);
+          }
+        } else if (event === 'delta') {
+          const payloadJson = JSON.parse(data) as { text?: string };
+          const text = payloadJson.text ?? '';
+          if (text) {
+            accumulated += text;
+            handlers.onDelta?.(text, accumulated);
+          }
+        } else if (event === 'done') {
+          donePayload = JSON.parse(data) as StreamAiAppDonePayload;
+          handlers.onDone?.(donePayload);
+        } else if (event === 'error') {
+          const payloadJson = JSON.parse(data) as { message?: string };
+          const message = payloadJson.message ?? '스트리밍 생성 중 오류가 발생했습니다.';
+          handlers.onError?.(message);
+          throw new Error(message);
+        }
+      }
+    }
+
+    return donePayload;
   }
 
-  return donePayload;
+  throw new DOMException('Aborted', 'AbortError');
 }

@@ -1,8 +1,8 @@
 /* 데스크톱 셸(아이콘 그리드·센터 패널 등) — 뷰포트 기준, Tailwind 기본 `lg`(1024px) 미만 */
 @media (width < 1024px) {
   .moa-center-panel {
-    top: 10px !important;
-    bottom: 10px !important;
+    top: var(--moa-home-shell-overlay-edge) !important;
+    bottom: var(--moa-home-shell-overlay-edge) !important;
   }
 
   .moa-main-app-grid {
@@ -19,21 +19,29 @@
 
 /* 창 본문 — `md` 미만: 좌우 패딩 제거 (리터럴 px — size @container 에 var() 금지) */
 @container moa-app-window (width < 768px) {
-  .moa-app-window-viewport:not(:has(.moa-cpap-fit-app)) {
+  .moa-app-window-viewport {
     padding: var(--moa-app-window-body-padding) 0;
   }
+}
+
+/** 최대화 — 컨테이너 쿼리·토큰보다 우선, 복원 시 viewport 기본 패딩으로 되돌아감 */
+.moa-window-frame--maximized .moa-app-window-viewport {
+  padding: 0;
 }
 
 /*
  * 창 크롬 — 최소 모바일(≤480px, BREAKPOINT_COMPACT_CONTROLS): 패딩 최소화로 콘텐츠 영역 확보.
  * 프레임 padding·타이틀 바는 `moa-app-window` 컨테이너 밖이라 @container 로 못 잡음 → 뷰포트 @media.
  * (이 폭에서 창은 풀스크린 compact → 뷰포트 폭 ≈ 창 폭)
- * 타이틀↔본문이 붙지 않도록 프레임 flex gap 으로 5px 간격만 유지한다.
+ * 타이틀↔본문 간격(gap 5px)은 창 축소 시에만 — 최대화 시 gap·헤더 radius 제거(복원 시 다시 적용).
  */
 @media (width <= 480px) {
   .moa-window-frame {
     --moa-window-content-padding: 5px;
     --moa-app-window-body-padding: 0px;
+  }
+
+  .moa-window-frame:not(.moa-window-frame--maximized) {
     gap: 5px;
   }
 }

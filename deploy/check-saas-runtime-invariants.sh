@@ -193,6 +193,10 @@ grep -q 'forEach' "${ACTIVE_SYS}/resources/layouts/admin/admin_saas_hospitals.js
   && fail "admin_saas_hospitals.json 에 forEach 사용 (RF-16 위반)" || true
 grep -q "moabom:saas:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" \
   || fail "cloudrun-entrypoint.sh 가 platform-migrate 미호출 (idempotent 운영 적용용)"
+grep -q "moabom:apps:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+  || fail "cloudrun-entrypoint.sh 가 apps platform-migrate 미호출"
+grep -q "moabom:apps:migrate-to-platform" "${ROOT}/deploy/run-saas-phase-e-post-deploy.sh" \
+  && fail "run-saas-phase-e-post-deploy.sh 에 migrate-to-platform 금지 (SaaS 쓰기 SSOT=platform, 배포마다 legacy 이관 시 삭제 앱 복원)"
 grep -q 'display_name' "${ACTIVE_SYS}/src/Saas/TenantProvisioner.php" \
   || fail "TenantProvisioner 가 display_name 미upsert"
 grep -q 'display_name' "${ACTIVE_SYS}/src/Saas/TenantRecord.php" \
@@ -945,18 +949,53 @@ PY
 ok "큐 잡 테넌트 전파/복원 (v9-job-tenant)"
 
 echo "==> [v9-iframe] AI 미리보기 iframe 출처 격리 + CSP (C2)"
-# 활성 src 에서 allow-same-origin 잔존 0 (부모 출처 격리).
-# NOTE: _bundled/moabom-basic/src 동참 스캔 제거 (G7 업스트림 준비 — moabom-* 는 _bundled 미배치).
+# dedicated_host: cross-origin(apps.mek360.com) → sandbox allow-scripts allow-same-origin
 _iframe_active_src="${APP}/templates/moabom-basic/src/apps"
-if [[ -d "${_iframe_active_src}" ]] && grep -rEqn 'sandbox="[^"]*allow-same-origin' "${_iframe_active_src}" 2>/dev/null; then
-  grep -rEn 'sandbox="[^"]*allow-same-origin' "${_iframe_active_src}" 2>/dev/null || true
-  fail "AI 앱 iframe sandbox 에 allow-same-origin 잔존 (부모 출처 격리 실패)"
+_iframe_viewer="${_iframe_active_src}/generated/GeneratedAppViewer.tsx"
+if [[ -d "${_iframe_active_src}" ]]; then
+  grep -q 'src={previewUrl}' "${_iframe_viewer}" \
+    || fail "GeneratedAppViewer 가 preview_url src 프리뷰를 사용하지 않음"
+  grep -q 'generatedAppPreviewSandbox' "${_iframe_viewer}" \
+    || fail "GeneratedAppViewer 가 cross-origin sandbox 헬퍼를 사용하지 않음"
+  grep -q 'allow-same-origin' "${_iframe_active_src}/generated/generatedAppPreviewUrl.ts" \
+    || fail "generatedAppPreviewUrl.ts 에 cross-origin allow-same-origin 분기 없음"
+  while IFS= read -r _iframe_file; do
+    [[ -z "${_iframe_file}" ]] && continue
+    if [[ "${_iframe_file}" == "${_iframe_viewer}" ]]; then
+      continue
+    fi
+    if grep -qE 'sandbox="[^"]*allow-same-origin' "${_iframe_file}" 2>/dev/null; then
+      echo "${_iframe_file}"
+      fail "AI 앱 iframe sandbox 에 allow-same-origin 잔존 (GeneratedAppViewer 외 금지)"
+    fi
+  done < <(grep -rl 'allow-same-origin' "${_iframe_active_src}" 2>/dev/null || true)
 fi
 # CSP 주입(프론트 유틸 + 백엔드 서비스).
 grep -q 'Content-Security-Policy' "${APP}/templates/moabom-basic/src/apps/ai-generator/aiHtmlUtils.ts" \
   || fail "aiHtmlUtils.ts 에 CSP 메타 주입 없음 (C2 심층 방어)"
-grep -q 'Content-Security-Policy' "${APP}/modules/moabom-apps/src/Services/AiAppService.php" \
-  || fail "AiAppService 에 서버측 CSP 하드닝 없음 (C2 심층 방어)"
+grep -q 'Content-Security-Policy' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
+  || fail "GeneratedAppHtmlService 에 서버측 CSP 하드닝 없음 (C2 심층 방어)"
+grep -q 'shellFrameAncestors' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPreviewRouting.php" \
+  || fail "GeneratedAppPreviewRouting shellFrameAncestors (테넌트 셸 frame-ancestors) 누락"
+grep -q 'frame-ancestors' "${APP}/modules/moabom-apps/src/Services/GeneratedAppPreviewService.php" \
+  || fail "GeneratedAppPreviewService 에 frame-ancestors HTTP CSP 없음"
+grep -q 'MODE_TENANT_PATH' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPreviewRouting.php" \
+  || fail "GeneratedAppPreviewRouting tenant_path 레거시 모드 누락"
+grep -q 'GeneratedAppHostParser' "${APP}/modules/moabom-apps/src/Support/GeneratedAppHostParser.php" \
+  || fail "GeneratedAppHostParser 누락"
+grep -q 'apps.mek360.com' "${APP}/modules/moabom-apps/config/moabom-apps.php" \
+  || fail "moabom-apps preview standard_host 가 apps.mek360.com SSOT 아님"
+_PROD_ENV="${ROOT}/deploy/production.env.yaml"
+if [[ -f "${_PROD_ENV}" ]]; then
+  grep -q 'apps.mek360.com' "${_PROD_ENV}" \
+    || fail "production.env.yaml MOABOM_SAAS_PLATFORM_HOSTS 또는 preview host 에 apps.mek360.com 누락"
+  grep -q 'MOABOM_APPS_PREVIEW_ROUTING: dedicated_host' "${_PROD_ENV}" \
+    || fail "production.env.yaml MOABOM_APPS_PREVIEW_ROUTING 이 dedicated_host 가 아님"
+fi
+grep -q 'moabom.saas.override_host_parse' "${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php" \
+  || fail "AppsServiceProvider 에 moabom.saas.override_host_parse 훅 누락"
+grep -q 'viewerCanSeePublishedHtmlOnDedicatedHost' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPublishPolicy.php" \
+  || fail "GeneratedAppPublishPolicy dedicated_host 게스트 HTML 정책 누락"
 ok "AI iframe 출처 격리 + CSP (v9-iframe)"
 
 echo "==> [v9-app-manifest] 앱 SDK 매니페스트 계약 + 레지스트리/shell-boot 배선 (Phase 4)"

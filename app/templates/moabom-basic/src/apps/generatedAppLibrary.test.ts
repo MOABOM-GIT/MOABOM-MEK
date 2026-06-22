@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   generatedAppLibraryId,
+  hydrateGeneratedPlaceholdersForOrder,
   mapStoredGeneratedAppToLibraryApp,
   parseGeneratedLibraryServerId,
 } from './generatedAppLibrary';
@@ -50,6 +51,20 @@ describe('generatedAppLibrary', () => {
 
     expect(first.icon).toBe('calculator');
     expect(first.gradient).toBe(second.gradient);
+  });
+
+  it('hydrateGeneratedPlaceholdersForOrder adds synthetic apps for pinned order ids', () => {
+    const owned = [mapStoredGeneratedAppToLibraryApp({ id: 1, title: 'Owned', app_type: 'general' })];
+    const hydrated = hydrateGeneratedPlaceholdersForOrder(
+      ['cpap-mask', 'generated-app-1', 'generated-app-99'],
+      owned,
+    );
+
+    expect(hydrated.map(app => app.id)).toEqual([
+      'generated-app-1',
+      'generated-app-99',
+    ]);
+    expect(hydrated.find(app => app.id === 'generated-app-99')?.name).toBe('App #99');
   });
 
   it('keeps owner and permission metadata for generated app windows', () => {

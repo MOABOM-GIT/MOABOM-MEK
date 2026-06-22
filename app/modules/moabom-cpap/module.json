@@ -5,7 +5,7 @@
         "ko": "CPAP 마스크 피팅",
         "en": "CPAP Mask Fitting"
     },
-    "version": "0.2.0",
+    "version": "0.2.1",
     "license": "MIT",
     "description": {
         "ko": "양압기(CPAP) 마스크 피팅 측정 결과의 사용자별 저장/조회를 제공하는 모듈. 안면 측정값과 추천 결과를 moabom_system_cpap_measurements 테이블에 보관한다.",
@@ -13,7 +13,9 @@
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {
-        "modules": {},
+        "modules": {
+            "moabom-system": ">=0.7.9"
+        },
         "plugins": {}
     }
 }

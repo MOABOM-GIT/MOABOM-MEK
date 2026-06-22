@@ -58,7 +58,7 @@ abstract class ModuleTestCase extends TestCase
             ['identifier' => 'moabom-consulting'],
             [
                 'vendor' => 'moabom',
-                'name' => ['ko' => '스마트케어360 컨설팅', 'en' => 'SmartCare360 Consulting'],
+                'name' => ['ko' => '스마트 컨설팅', 'en' => 'Smart Consulting'],
                 'status' => ExtensionStatus::Active->value,
                 'version' => '0.1.0',
                 'config' => [],

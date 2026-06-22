@@ -45,11 +45,13 @@ class SaasTenantRepairCommand extends Command
     /**
      * Tenant host 에 항상 유지해야 하는 공통 플랫폼 설정 메뉴.
      *
-     * 마스터/테넌트 공통 요구사항:
-     * - 플랫폼 환경설정
+     * 마스터/테넌트 공통 요구사항(플랫폼 메뉴 하위):
+     * - 플랫폼 메뉴
      * - 마이페이지 설정
-     * - SNS 설정
+     * - SNS 연결 설정
      * - 크레딧 설정
+     * - AI 생성 앱 관리
+     * - 마스크피팅 관리
      *
      * @var list<string>
      */
@@ -58,6 +60,8 @@ class SaasTenantRepairCommand extends Command
         'moabom-system-settings',
         'moabom-social-auth-settings',
         'moabom-credit-settings',
+        'moabom-apps-generated',
+        'moabom-cpap-measurements',
     ];
 
     protected $signature = 'moabom:saas:tenant-repair

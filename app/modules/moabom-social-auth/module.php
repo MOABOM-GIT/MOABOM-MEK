@@ -74,14 +74,14 @@ class Module extends AbstractModule
         return [
             [
                 'name' => [
-                    'ko' => 'SNS 연결설정',
+                    'ko' => 'SNS 연결 설정',
                     'en' => 'Social Connections',
                 ],
                 'slug' => 'moabom-social-auth-settings',
                 'parent_slug' => 'platform-settings',
                 'url' => '/admin/platform/settings/social-auth',
                 'icon' => 'fas fa-share-alt',
-                'order' => 10,
+                'order' => 30,
                 'permission' => 'moabom-social-auth.settings.read',
             ],
         ];

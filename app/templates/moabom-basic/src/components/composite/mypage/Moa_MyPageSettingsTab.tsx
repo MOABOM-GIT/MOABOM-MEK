@@ -13,7 +13,7 @@ import type { PointColorPresetItem } from './myPageConstants';
 import { Img } from '../../basic/Img';
 import { isMoabomCustomBackgroundUuid, moabomUploadedBackgroundUrl } from '../../../utils/moBackgroundAssets';
 import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
-import { MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
+import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import { useWeatherStatusLabel } from '../../../runtime/weather/useWeatherStatusLabel';
 
 interface MyPageSettingsTabProps {
@@ -38,7 +38,6 @@ interface MyPageSettingsTabProps {
   onChange: (next: MoabomSystemState) => void;
 }
 
-const GROUP_PANEL = 'moa-group rounded-2xl';
 const OPTION_BUTTON_BASE = 'w-full';
 
 const FONT_SIZE_LEVELS: readonly MoabomFontSizeLevel[] = [1, 2, 3, 4, 5];

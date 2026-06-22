@@ -6,7 +6,7 @@ import {
   markShellNotificationRead,
   type ShellNotificationItem,
 } from '../api/moabomShellNotificationsApi';
-import { pushNotificationToast } from '../pages/home/moaHomeToasts';
+import { pushNotificationToast } from '../runtime/moaShellToasts';
 import {
   subscribeShellNotificationChannel,
   unsubscribeShellNotificationChannel,

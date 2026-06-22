@@ -3,6 +3,8 @@
 namespace Modules\Moabom\Apps\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 
 class ShareGeneratedAppRequest extends FormRequest
 {
@@ -17,7 +19,12 @@ class ShareGeneratedAppRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'is_shared' => ['required', 'boolean'],
+            // global 은 admin plane 전용 (§9.5). 회원은 병원 등록(tenant)·비공개만.
+            'visibility' => ['sometimes', Rule::in([
+                GeneratedAppVisibility::Private->value,
+                GeneratedAppVisibility::Tenant->value,
+            ])],
+            'is_shared' => ['sometimes', 'boolean'],
         ];
     }
 }

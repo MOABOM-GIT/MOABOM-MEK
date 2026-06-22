@@ -187,6 +187,20 @@ PATCH;
         $this->assertStringContainsString("base-uri 'none'", (string) $app->html);
     }
 
+    public function test_store_strips_base_tag_from_generated_html(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $app = $service->store($user->id, [
+            'title' => 'base 제거',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head><base href="https://mek360.com/app/generated-app-8"><title>x</title></head><body>ok</body></html>',
+        ]);
+
+        $this->assertStringNotContainsString('<base', (string) $app->html);
+    }
+
     public function test_store_is_idempotent_when_csp_already_present(): void
     {
         $user = User::factory()->create();
@@ -302,6 +316,8 @@ PATCH;
         $viewerPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $viewer->id);
         $guestPayload = $service->serialize($app->fresh(['user']), includeHtml: false);
 
+        $this->assertSame('standard', $ownerPayload['tier']);
+        $this->assertStringContainsString('/g/'.$app->id, (string) $ownerPayload['preview_url']);
         $this->assertSame('A', $ownerPayload['owner']['nickname']);
         $this->assertTrue($ownerPayload['permissions']['is_owner']);
         $this->assertTrue($ownerPayload['permissions']['can_share']);

@@ -7,38 +7,48 @@
   "type": "basic",
   "name": "Div",
   "props": {
-    "className": "flex items-center justify-between mb-6"
+    "className": "grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-3"
   },
   "children": [
     {
-      "comment": "목록으로 버튼",
+      "comment": "좌측 영역 (목록 버튼)",
       "type": "basic",
-      "name": "Button",
+      "name": "Div",
       "props": {
-        "className": "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all shadow-sm cursor-pointer"
+        "className": "flex items-center justify-start min-w-0"
       },
-      "actions": [
-        {
-          "type": "click",
-          "handler": "navigate",
-          "params": {
-            "path": "/board/{{route.slug}}"
-          }
-        }
-      ],
       "children": [
         {
+          "comment": "목록으로 버튼",
           "type": "basic",
-          "name": "Icon",
+          "name": "Button",
           "props": {
-            "name": "list",
-            "size": "sm"
-          }
-        },
-        {
-          "type": "basic",
-          "name": "Span",
-          "text": "$t:board.back_to_list"
+            "className": "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all shadow-sm cursor-pointer"
+          },
+          "actions": [
+            {
+              "type": "click",
+              "handler": "navigate",
+              "params": {
+                "path": "/board/{{route.slug}}"
+              }
+            }
+          ],
+          "children": [
+            {
+              "type": "basic",
+              "name": "Icon",
+              "props": {
+                "name": "list",
+                "size": "sm"
+              }
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "text": "$t:board.back_to_list"
+            }
+          ]
         }
       ]
     },
@@ -47,15 +57,16 @@
       "type": "basic",
       "name": "Span",
       "props": {
-        "className": "text-lg font-semibold text-gray-900 dark:text-white"
+        "className": "text-lg font-semibold text-gray-900 dark:text-white text-center truncate px-1"
       },
       "text": "{{post?.data?.board?.name ?? ''}}"
     },
     {
+      "comment": "우측 영역 (이전글/다음글)",
       "type": "basic",
       "name": "Div",
       "props": {
-        "className": "flex items-center gap-2"
+        "className": "flex items-center justify-end gap-2 min-w-0"
       },
       "children": [
         {

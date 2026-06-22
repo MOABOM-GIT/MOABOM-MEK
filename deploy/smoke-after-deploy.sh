@@ -51,13 +51,17 @@ check() {
 }
 
 SHELL_BOOT_BODY="${SMOKE_DIR}/shell-boot.json"
+RANKINGS_APPS_BODY="${SMOKE_DIR}/rankings-apps.json"
 
 FAIL=0
 check "/api/modules/moabom-system/public/frontend-defaults" 200 || FAIL=1
 check "/api/modules/moabom-social-auth/providers" 200 || FAIL=1
 check "/api/modules/moabom-system/public/shell-boot?template=moabom-basic&scope=shell" 200 "${SHELL_BOOT_BODY}" || FAIL=1
+check "/api/modules/moabom-system/public/shell/rankings/apps?limit=5" 200 "${RANKINGS_APPS_BODY}" || FAIL=1
 check "/api/plugins/moabom-weather/weather/current?lat=37.5&lon=127.0&lang=ko" 200 || FAIL=1
 check "/api/plugins/moabom-weather/weather/geolocate" 200 || FAIL=1
+check "/api/modules/moabom-presence/public/summary" 200 || FAIL=1
+check "/api/modules/moabom-presence/public/online" 200 || FAIL=1
 
 # 분리 모듈 라우트 — DB active + ModuleRouteServiceProvider 등록 확인 (401 = 라우트·auth 정상)
 check_auth_or_ok() {
@@ -111,12 +115,23 @@ import sys
 path = sys.argv[1]
 d = json.load(open(path))
 keys = list((d.get('data') or {}).keys())
-need = {'defaults', 'shell_routes', 'social_providers'}
+need = {'defaults', 'shell_routes', 'social_providers', 'shell_rankings'}
 missing = need - set(keys)
 if missing:
     raise SystemExit(f'shell-boot data missing: {missing}')
 print('OK   shell-boot payload keys:', ', '.join(sorted(keys)))
 " "${SHELL_BOOT_BODY}" || FAIL=1
+
+  python3 -c "
+import json
+import sys
+path = sys.argv[1]
+d = json.load(open(path))
+data = d.get('data') or {}
+if 'period_hours' not in data or 'items' not in data:
+    raise SystemExit('rankings/apps data missing period_hours or items')
+print('OK   shell rankings/apps payload keys:', ', '.join(sorted(data.keys())))
+" "${RANKINGS_APPS_BODY}" || FAIL=1
 fi
 
 if [[ "${FAIL}" -ne 0 ]]; then

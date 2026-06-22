@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- 홈 메인 패널 앱 삭제 후 새로고침 시 병원소개·AI 생성 앱이 되살아나던 문제 — 빈 `mainAppOrder` 를 “기본 전체 그리드”와 “사용자가 비운 그리드”로 구분하는 `customized` SSOT 도입, `hospital-info` 강제 삽입 제거, 생성 앱은 order 에 고정된 id 만 표시.
+- 메인 order 변경 경로 `commitMainAppOrder` 통합 — DnD·삭제·AI 저장 후 카탈로그 재조립 일관성, `createdAppsRef` 동기 갱신, pull 시 `customized=false` 이면 localStorage order 키 제거.
+
+### Added
+
+- 메인 패널 편집 모드에서 빈 곳 탭으로 종료 시 「메인 앱 배치를 저장했습니다」 성공 토스트.
+
+### Changed
+
+- 알림 클릭 URL·레거시 `/mypage` → `/me/*` 경로 정규화 유틸 SSOT를 이 템플릿 `src/utils/` 로 확정 (기존 `moabom-system` 모듈 re-export 제거).
+
 ### Added
 
 - 홈 셸 메인 앱 순서 SSOT: `moaHomeShellOrder` + `moabomShellOrderSaveQueue` — `localStorage`(`moabom_main_order`)와 로그인 시 `user/settings` `shell.home.mainAppOrder` 양방향 동기화.

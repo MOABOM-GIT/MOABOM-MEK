@@ -6,6 +6,13 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * AI 생성 세션 — tenant DB 전용.
+ *
+ * `generated_app_id` 는 moabom-platform 의 앱 ID (논리 참조, DB FK 없음).
+ *
+ * @see docs/GENERATED-APP-TIERS.md §4 · §12
+ */
 class AiGenerationSession extends Model
 {
     protected $table = 'moabom_ai_generation_sessions';

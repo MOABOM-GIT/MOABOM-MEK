@@ -33,8 +33,25 @@ class MoabomShellRoutesFilterTest extends TestCase
 
         $out = $filter->filterForShell($routes, 'moabom-basic');
 
-        $this->assertCount(1, $out);
-        $this->assertSame('/about', $out[0]['path']);
-        $this->assertSame('page.about', $out[0]['layout']);
+        $paths = array_column($out, 'path');
+        $this->assertContains('/about', $paths);
+        $this->assertContains('/404', $paths);
+        $this->assertNotContains('/shop', $paths);
+        $this->assertNotContains('/cart', $paths);
+    }
+
+    public function test_moabom_basic_merges_shell_essential_routes_when_missing(): void
+    {
+        $filter = new MoabomShellRoutesFilter;
+        $routes = [
+            ['path' => '/', 'layout' => 'home'],
+        ];
+
+        $out = $filter->filterForShell($routes, 'moabom-basic');
+
+        $paths = array_column($out, 'path');
+        $this->assertContains('/404', $paths);
+        $this->assertContains('/board/:slug', $paths);
+        $this->assertContains('/maintenance', $paths);
     }
 }

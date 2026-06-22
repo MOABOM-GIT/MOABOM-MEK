@@ -16,6 +16,7 @@ import { Svg } from '../basic/Svg';
 import { SwitchCheckbox } from '../basic/SwitchCheckbox';
 import { fetchEnabledSocialProviders, startSocialAuth } from '../../utils/socialAuth';
 import { moaFieldControlClass } from '../../theme/moabomFieldSurface';
+import { APP_SHELL_PANEL_BODY_CLASS } from '../../apps/appShellTypography';
 
 export type AuthWindowMode = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
@@ -411,7 +412,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
     <Div
       className={`moa-auth-window text-primary ${stretchVertically ? `min-h-full ${shouldCenterContent ? 'justify-center' : 'justify-start'}` : ''}`}
     >
-      <Div className="moa-group rounded-3xl p-6">
+      <Div className={APP_SHELL_PANEL_BODY_CLASS}>
           <Div className="mb-6 text-center">
             <Div
               className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-white"
@@ -440,6 +441,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="email"
                   name="email"
+                  autoComplete="username"
                   className={inputClassName}
                   placeholder="email@example.com"
                   value={loginForm.email}
@@ -454,6 +456,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="password"
                   name="password"
+                  autoComplete="current-password"
                   className={inputClassName}
                   value={loginForm.password}
                   onChange={(event) => setLoginForm(prev => ({ ...prev, password: event.target.value }))}
@@ -489,6 +492,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="email"
                   name="email"
+                  autoComplete="username"
                   className={inputClassName}
                   placeholder="email@example.com"
                   value={registerForm.email}
@@ -503,6 +507,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="password"
                   name="password"
+                  autoComplete="new-password"
                   className={inputClassName}
                   value={registerForm.password}
                   onChange={(event) => setRegisterForm(prev => ({ ...prev, password: event.target.value }))}
@@ -516,6 +521,8 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Span className={labelClassName}>{t('moa_auth.password_confirm')}</Span>
                 <Input
                   type="password"
+                  name="password_confirmation"
+                  autoComplete="new-password"
                   className={inputClassName}
                   value={registerForm.password_confirmation}
                   onChange={(event) => setRegisterForm(prev => ({ ...prev, password_confirmation: event.target.value }))}
@@ -594,6 +601,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="email"
                   name="email"
+                  autoComplete="username"
                   className={inputClassName}
                   placeholder="email@example.com"
                   value={forgotForm.email}
@@ -620,6 +628,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="email"
                   name="email"
+                  autoComplete="username"
                   className={inputClassName}
                   placeholder="email@example.com"
                   value={resetForm.email}
@@ -646,6 +655,7 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Input
                   type="password"
                   name="password"
+                  autoComplete="new-password"
                   className={inputClassName}
                   value={resetForm.password}
                   onChange={(event) => setResetForm(prev => ({ ...prev, password: event.target.value }))}
@@ -659,6 +669,8 @@ export const AuthWindowContent: React.FC<AuthWindowContentProps> = ({
                 <Span className={labelClassName}>{t('moa_auth.new_password_confirm_label')}</Span>
                 <Input
                   type="password"
+                  name="password_confirmation"
+                  autoComplete="new-password"
                   className={inputClassName}
                   value={resetForm.password_confirmation}
                   onChange={(event) => setResetForm(prev => ({ ...prev, password_confirmation: event.target.value }))}

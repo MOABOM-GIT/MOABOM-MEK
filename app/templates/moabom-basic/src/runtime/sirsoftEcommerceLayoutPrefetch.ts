@@ -438,7 +438,10 @@ async function moabomBeforeLayoutLoad(
         await ensureSirsoftTosspaymentsPluginLoaded();
     }
 
-    if (layoutPath.startsWith('board/')) {
+    if (
+        layoutPath.startsWith('board/')
+        || layoutPath.startsWith('moabom-presence.')
+    ) {
         await ensureSirsoftBoardExtensionLoaded();
     }
 }

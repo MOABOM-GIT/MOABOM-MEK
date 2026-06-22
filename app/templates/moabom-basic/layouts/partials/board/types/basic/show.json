@@ -1082,7 +1082,7 @@
       "type": "basic",
       "name": "Div",
       "props": {
-        "className": "mt-6 glass-panel rounded-lg shadow"
+        "className": "mt-3 glass-panel rounded-lg shadow"
       },
       "children": [
         {
@@ -1119,7 +1119,7 @@
       "type": "basic",
       "name": "Div",
       "props": {
-        "className": "mt-6"
+        "className": "mt-3"
       },
       "children": [
         {

@@ -8,12 +8,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Modules\Moabom\Apps\Exceptions\AiStreamCancelledException;
 use Modules\Moabom\Apps\Http\Requests\GenerateAiAppRequest;
+use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 use Modules\Moabom\Apps\Http\Requests\ShareGeneratedAppRequest;
 use Modules\Moabom\Apps\Http\Requests\StoreGeneratedAppRequest;
 use Modules\Moabom\Apps\Http\Requests\StreamAiAppRequest;
 use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiAppStreamService;
 use Modules\Moabom\Apps\Services\AiGenerationSessionService;
+use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Support\AiStreamGateResult;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AiAppController extends AuthBaseController
@@ -22,6 +25,7 @@ class AiAppController extends AuthBaseController
         private readonly AiAppService $aiAppService,
         private readonly AiAppStreamService $aiAppStreamService,
         private readonly AiGenerationSessionService $sessionService,
+        private readonly AiStreamConcurrencyService $concurrency,
     ) {
         parent::__construct();
     }
@@ -60,6 +64,41 @@ class AiAppController extends AuthBaseController
         if ($generatedAppId > 0 && $this->aiAppService->findForUser($user->id, $generatedAppId) === null) {
             unset($validated['generated_app_id']);
         }
+
+        $gate = $this->concurrency->requestAccess(
+            $user->id,
+            isset($validated['lease_token']) ? (string) $validated['lease_token'] : null,
+            isset($validated['queue_ticket']) ? (string) $validated['queue_ticket'] : null,
+        );
+
+        if ($gate->status === AiStreamGateResult::STATUS_DENIED) {
+            $messageKey = $gate->reason === 'queue_full'
+                ? 'messages.apps.ai.queue_full'
+                : 'messages.apps.ai.queue_denied';
+
+            return ResponseHelper::moduleError(
+                'moabom-apps',
+                $messageKey,
+                503,
+            );
+        }
+
+        if ($gate->status === AiStreamGateResult::STATUS_QUEUED) {
+            $response = ResponseHelper::moduleError(
+                'moabom-apps',
+                'messages.apps.ai.queue_waiting',
+                429,
+                $gate->toQueuePayload(),
+                [
+                    'position' => $gate->queuePosition,
+                    'minutes' => max(1, (int) ceil($gate->estimatedWaitSeconds / 60)),
+                ],
+            );
+
+            return $response->header('Retry-After', (string) $gate->retryAfterSeconds);
+        }
+
+        $leaseToken = (string) $gate->leaseToken;
         $continue = (bool) ($validated['continue'] ?? false);
         $sessionId = isset($validated['session_id']) ? (int) $validated['session_id'] : null;
 
@@ -86,8 +125,22 @@ class AiAppController extends AuthBaseController
         $lastPersistAt = 0;
         $streamService = $this->aiAppStreamService;
         $sessionService = $this->sessionService;
+        $concurrency = $this->concurrency;
 
-        return response()->stream(function () use ($validated, $userId, $session, &$buffer, &$lastPersistAt, $streamService, $sessionService): void {
+        return response()->stream(function () use ($validated, $userId, $session, &$buffer, &$lastPersistAt, $streamService, $sessionService, $concurrency, $leaseToken): void {
+            $released = false;
+            $releaseLease = static function () use ($concurrency, $leaseToken, &$released): void {
+                if ($released || $leaseToken === '') {
+                    return;
+                }
+                $released = true;
+                $concurrency->releaseLease($leaseToken);
+            };
+
+            register_shutdown_function(static function () use ($releaseLease): void {
+                $releaseLease();
+            });
+
             $emit = function (string $event, array $payload) use (&$buffer, &$lastPersistAt, $session, $sessionService): void {
                 if (connection_aborted()) {
                     throw new AiStreamCancelledException();
@@ -127,6 +180,8 @@ class AiAppController extends AuthBaseController
                     $sessionService->pause($session, $buffer);
                 }
                 $emit('error', ['message' => $e->getMessage()]);
+            } finally {
+                $releaseLease();
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',
@@ -210,10 +265,17 @@ class AiAppController extends AuthBaseController
             return $this->unauthorized('auth.unauthenticated');
         }
 
-        $app = $this->aiAppService->setSharedForUser(
+        $validated = $request->validated();
+        $visibility = isset($validated['visibility'])
+            ? GeneratedAppVisibility::from((string) $validated['visibility'])
+            : (($validated['is_shared'] ?? false)
+                ? GeneratedAppVisibility::Tenant
+                : GeneratedAppVisibility::Private);
+
+        $app = $this->aiAppService->setVisibilityForUser(
             $user->id,
             $id,
-            (bool) $request->validated('is_shared')
+            $visibility,
         );
         if ($app === null) {
             return ResponseHelper::moduleError(

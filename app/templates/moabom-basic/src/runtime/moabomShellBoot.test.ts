@@ -111,6 +111,7 @@ describe('installMoabomShellBootFetch', () => {
         expect(providersJson.data.providers).toEqual(['google', 'kakao']);
 
         const routesJson = await routesRes.json();
-        expect(routesJson.data.routes).toHaveLength(1);
+        expect(routesJson.data.routes.length).toBeGreaterThan(1);
+        expect(routesJson.data.routes.some((r: { path?: string }) => r.path === '/404')).toBe(true);
     });
 });
