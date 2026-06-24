@@ -26,6 +26,8 @@ import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 import { AUTH_WINDOW_APP_IDS } from '../../shell/moaShellLayoutConstants';
 import { MoabomShellAppFromChunk } from './MoabomShellAppFromChunk';
 import type { AuthUserLike, MoaCurrentUser, ShellUrlSync } from '../../shell/moaShellTypes';
+import type { MoabomSystemDefaults, MoabomSystemState } from '../../types/moabomSystem';
+import type { Dispatch, SetStateAction } from 'react';
 
 const AuthWindowContentLazy = React.lazy(async () => {
   const m = await import('../../components/composite/Moa_AuthWindowContent');
@@ -65,6 +67,12 @@ export interface Moa_ShellWindowRendererProps {
   createdApps: App[];
   favoriteApps: App[];
   recentApps: App[];
+  shellSystem?: {
+    systemState: MoabomSystemState;
+    systemDefaults: MoabomSystemDefaults | null;
+    setSystemState: Dispatch<SetStateAction<MoabomSystemState>>;
+    setSystemDefaults: Dispatch<SetStateAction<MoabomSystemDefaults | null>>;
+  };
   resolveWinTitle: (win: WindowState) => string;
   onOpenApp: (app: App) => void;
   onEditGeneratedApp: (serverId: number) => void;
@@ -78,6 +86,7 @@ export interface Moa_ShellWindowRendererProps {
   onLegalPageTitleResolved: (windowId: string, title: string) => void;
   onBoardWindowTitleResolved: (windowId: string, title: string) => void;
   onUserProfileWindowTitleResolved: (windowId: string, title: string) => void;
+  onUserProfileViewChange: (windowId: string, view: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
   onErrorWindowTitleResolved: (windowId: string, title: string) => void;
 }
 
@@ -89,6 +98,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   createdApps,
   favoriteApps,
   recentApps,
+  shellSystem,
   resolveWinTitle,
   onOpenApp,
   onEditGeneratedApp,
@@ -102,6 +112,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   onLegalPageTitleResolved,
   onBoardWindowTitleResolved,
   onUserProfileWindowTitleResolved,
+  onUserProfileViewChange,
   onErrorWindowTitleResolved,
 }) => {
   if ((AUTH_WINDOW_APP_IDS as readonly string[]).includes(win.appId)) {
@@ -141,6 +152,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           onProfileUpdated={onProfileUpdated}
           onActiveTabChange={tab => onMyPageTabChange(win.id, tab)}
           onOpenBoard={onOpenBoard}
+          shellSystem={shellSystem}
         />
       </Suspense>
     );
@@ -195,8 +207,10 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
         <UserProfileWindowHostLazy
           appId={win.appId}
           userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
+          userProfileView={win.userProfileView ?? 'profile'}
           authStateKey={currentUser?.memberKey ?? ''}
           onResolvedTitle={title => onUserProfileWindowTitleResolved(win.id, title)}
+          onViewChange={view => onUserProfileViewChange(win.id, view)}
         />
       </Suspense>
     );

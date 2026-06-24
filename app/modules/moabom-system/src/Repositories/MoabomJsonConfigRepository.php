@@ -2,6 +2,7 @@
 
 namespace Modules\Moabom\System\Repositories;
 
+use App\Contracts\Repositories\ConfigRepositoryInterface;
 use App\Repositories\JsonConfigRepository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -33,6 +34,16 @@ class MoabomJsonConfigRepository extends JsonConfigRepository
      */
     public function getCategory(string $category): array
     {
+        if ($this->shouldDelegateToDbRepository()) {
+            if (array_key_exists($category, $this->categoryMemo)) {
+                return $this->categoryMemo[$category];
+            }
+
+            $this->categoryMemo[$category] = app(ConfigRepositoryInterface::class)->getCategory($category);
+
+            return $this->categoryMemo[$category];
+        }
+
         if (array_key_exists($category, $this->categoryMemo)) {
             return $this->categoryMemo[$category];
         }
@@ -79,6 +90,12 @@ class MoabomJsonConfigRepository extends JsonConfigRepository
      */
     public function saveCategory(string $category, array $settings): bool
     {
+        if ($this->shouldDelegateToDbRepository()) {
+            unset($this->categoryMemo[$category]);
+
+            return app(ConfigRepositoryInterface::class)->saveCategory($category, $settings);
+        }
+
         if (! $this->categoryExists($category)) {
             return false;
         }
@@ -145,5 +162,20 @@ class MoabomJsonConfigRepository extends JsonConfigRepository
         }
 
         return app(TenantContext::class)->isPlatformRequest();
+    }
+
+    private function shouldDelegateToDbRepository(): bool
+    {
+        if (! config('moabom-system.saas.enabled', false)) {
+            return false;
+        }
+
+        try {
+            $resolved = app(ConfigRepositoryInterface::class);
+
+            return ! $resolved instanceof self;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

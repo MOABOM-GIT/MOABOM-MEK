@@ -2,6 +2,7 @@
 
 namespace Modules\Moabom\Presence\Services;
 
+use App\Extension\HookManager;
 use App\Models\User;
 use Modules\Moabom\Presence\Contracts\FriendshipRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
@@ -54,7 +55,7 @@ final class FriendshipService
                 return [
                     'user_uuid' => $friend?->uuid,
                     'display_name' => (string) ($friend?->nickname ?: $friend?->name),
-                    'avatar' => $friend?->avatar,
+                    'avatar' => $this->presentation->resolveConnectListAvatar($friend, $prefs),
                     'status_text' => $subtitle,
                     'presence_subtitle' => $subtitle,
                     'availability' => $availability->value,
@@ -86,7 +87,10 @@ final class FriendshipService
             throw new \InvalidArgumentException('friendship_already_exists');
         }
 
-        return $this->friendships->createRequest($requester->id, $addressee->id);
+        $friendship = $this->friendships->createRequest($requester->id, $addressee->id);
+        HookManager::doAction('moabom-presence.friendship.after_request', $friendship, $requester, $addressee);
+
+        return $friendship;
     }
 
     public function acceptRequest(User $viewer, User $requester): Friendship

@@ -1,0 +1,346 @@
+{
+  "version": "1.0.0",
+  "layout_name": "users/show",
+  "permissions": [],
+  "meta": {
+    "seo": {
+      "enabled": true,
+      "data_sources": [
+        "profile"
+      ],
+      "priority": 0.4,
+      "changefreq": "monthly",
+      "og": {
+        "type": "profile"
+      },
+      "structured_data": {
+        "@type": "ProfilePage"
+      }
+    }
+  },
+  "data_sources": [
+    {
+      "id": "profile",
+      "type": "api",
+      "endpoint": "/api/users/{{route.userId}}/profile",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "refetchOnMount": true,
+      "loading_strategy": "progressive",
+      "errorHandling": {
+        "404": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content"
+          }
+        }
+      }
+    },
+    {
+      "id": "postStats",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.userId}}/posts/stats",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "loading_strategy": "progressive"
+    },
+    {
+      "id": "recentPosts",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.userId}}/posts",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "loading_strategy": "progressive",
+      "params": {
+        "per_page": 5
+      }
+    }
+  ],
+  "components": [
+    {
+      "type": "layout",
+      "name": "Container",
+      "props": {
+        "className": "py-8"
+      },
+      "children": [
+            {
+              "comment": "로딩/에러 상태 처리",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{profile.loading}}",
+              "props": {
+                "className": "flex justify-center items-center py-20"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"
+                  }
+                }
+              ]
+            },
+            {
+              "comment": "프로필 내용",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{profile.data && !profile.loading && !profile.error}}",
+              "props": {
+                "className": "space-y-3"
+              },
+              "children": [
+                {
+                  "comment": "프로필 카드",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+                  },
+                  "responsive": {
+                    "portable": {
+                      "props": {
+                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                      }
+                    }
+                  },
+                  "children": [
+                    {
+                      "comment": "프로필 헤더 — 아바타(좌) · 닉네임·가입일·SNS(우)",
+                      "type": "composite",
+                      "name": "UserProfileHero",
+                      "props": {
+                        "profile": "{{profile.data}}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "comment": "활동 통계 카드",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "grid grid-cols-2 gap-4"
+                  },
+                  "responsive": {
+                    "portable": {
+                      "props": {
+                        "className": "grid grid-cols-2 gap-3"
+                      }
+                    }
+                  },
+                  "children": [
+                    {
+                      "comment": "게시글 수",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "props": {
+                            "className": "text-3xl font-bold text-blue-600 dark:text-blue-400"
+                          },
+                          "text": "{{postStats.data.posts_count ?? 0 | number}}"
+                        },
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "props": {
+                            "className": "text-sm text-gray-500 dark:text-gray-400 mt-1"
+                          },
+                          "text": "$t:user.profile.posts_count"
+                        }
+                      ]
+                    },
+                    {
+                      "comment": "댓글 수",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "props": {
+                            "className": "text-3xl font-bold text-green-600 dark:text-green-400"
+                          },
+                          "text": "{{postStats.data.comments_count ?? 0 | number}}"
+                        },
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "props": {
+                            "className": "text-sm text-gray-500 dark:text-gray-400 mt-1"
+                          },
+                          "text": "$t:user.profile.comments_count"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "comment": "최근 게시글 섹션",
+                  "if": "{{recentPosts.data?.data?.length > 0}}",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "H3",
+                          "props": {
+                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                          },
+                          "text": "$t:user.profile.recent_posts"
+                        },
+                        {
+                          "type": "basic",
+                          "name": "Button",
+                          "props": {
+                            "className": "text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          },
+                          "actions": [
+                            {
+                              "type": "click",
+                              "handler": "navigate",
+                              "params": {
+                                "path": "/users/{{route.userId}}/posts"
+                              }
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "basic",
+                              "name": "Span",
+                              "text": "$t:user.profile.view_all"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "flex flex-col gap-2 p-3 min-w-0"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "iteration": {
+                            "source": "{{recentPosts.data?.data ?? []}}",
+                            "item_var": "post"
+                          },
+                          "children": [
+                            {
+                              "partial": "../partials/users/_user_post_row.json"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "comment": "최근 게시글 없음 상태",
+                  "if": "{{!recentPosts.data?.data?.length}}",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "H3",
+                          "props": {
+                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                          },
+                          "text": "$t:user.profile.recent_posts"
+                        },
+                        {
+                          "type": "basic",
+                          "name": "Button",
+                          "props": {
+                            "className": "text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          },
+                          "actions": [
+                            {
+                              "type": "click",
+                              "handler": "navigate",
+                              "params": {
+                                "path": "/users/{{route.userId}}/posts"
+                              }
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "basic",
+                              "name": "Span",
+                              "text": "$t:user.profile.view_all"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "text-center py-12"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Icon",
+                          "props": {
+                            "name": "file-circle-xmark",
+                            "size": "3x",
+                            "className": "text-gray-300 dark:text-gray-600 mb-4"
+                          }
+                        },
+                        {
+                          "type": "basic",
+                          "name": "P",
+                          "props": {
+                            "className": "text-gray-500 dark:text-gray-400"
+                          },
+                          "text": "$t:user.profile.no_posts"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+  ]
+}

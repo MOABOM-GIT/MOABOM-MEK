@@ -82,17 +82,36 @@ describe('moabomShellRoutes', () => {
     const appId = 'moa-shell-user:00000000-0000-4000-8000-000000000001';
     expect(formatShellPathForWindow({ appId, userProfileUuid: '00000000-0000-4000-8000-000000000001' }))
       .toBe('/users/00000000-0000-4000-8000-000000000001');
+    expect(formatShellPathForWindow({
+      appId,
+      userProfileUuid: '00000000-0000-4000-8000-000000000001',
+      userProfileView: 'posts',
+    }))
+      .toBe('/users/00000000-0000-4000-8000-000000000001/posts');
+    expect(formatShellPathForWindow({
+      appId,
+      userProfileUuid: '00000000-0000-4000-8000-000000000001',
+      userProfileView: 'chat',
+    }))
+      .toBe('/users/00000000-0000-4000-8000-000000000001/chat');
   });
 
-  it('parseShellRoute 가 /users/:uuid 및 /users/:uuid/posts 를 해석한다', () => {
+  it('parseShellRoute 가 사용자 프로필 하위 경로를 해석한다', () => {
     const uuid = '00000000-0000-4000-8000-000000000001';
     expect(parseShellRoute(`/users/${uuid}`)).toEqual({
       kind: 'userProfile',
       uuid,
+      view: 'profile',
     });
     expect(parseShellRoute(`/users/${uuid}/posts`)).toEqual({
       kind: 'userProfile',
       uuid,
+      view: 'posts',
+    });
+    expect(parseShellRoute(`/users/${uuid}/chat`)).toEqual({
+      kind: 'userProfile',
+      uuid,
+      view: 'chat',
     });
   });
 
@@ -120,6 +139,8 @@ describe('moabomShellRoutes', () => {
       { kind: 'board' as const, slug: 'free', postId: '9' },
       { kind: 'board' as const, slug: 'notice', boardMode: 'write' },
       { kind: 'board' as const, slug: 'free', postId: '9', boardMode: 'edit' },
+      { kind: 'userProfile' as const, uuid: '00000000-0000-4000-8000-000000000001', view: 'profile' as const },
+      { kind: 'userProfile' as const, uuid: '00000000-0000-4000-8000-000000000001', view: 'posts' as const },
     ] as const;
     for (const r of routes) {
       expect(parseShellPathname(formatShellPath(r))).toEqual(r);

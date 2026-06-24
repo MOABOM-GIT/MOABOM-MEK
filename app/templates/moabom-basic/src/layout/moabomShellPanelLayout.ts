@@ -3,3 +3,6 @@
  * `absolute` 서브탭과 겹치지 않도록 스크롤 영역 `padding-top`에 동일 값 사용.
  */
 export const MOABOM_SHELL_SUB_TAB_SLOT_PX = 70;
+
+/** 우측 패널 알림 탭 — 첫 페이지·더보기 기준 건수 */
+export const MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE = 6;

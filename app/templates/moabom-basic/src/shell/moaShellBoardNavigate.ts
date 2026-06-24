@@ -5,6 +5,7 @@ import {
   type ParsedShellRoute,
 } from '../utils/moabomShellRoutes';
 import type { MoaShellBoardBridge } from './moaShellBoardBridge';
+import { isMoabomShellHomeMounted } from './moaShellErrorBridge';
 
 const AUTH_MODES: readonly AuthWindowMode[] = ['login', 'register', 'forgot-password', 'reset-password'];
 
@@ -48,7 +49,7 @@ export function tryHandleBoardShellNavigate(
   bridge: MoaShellBoardBridge,
   options?: { replace?: boolean },
 ): boolean {
-  if (!bridge.isActive()) {
+  if (!isMoabomShellHomeMounted() && !bridge.isActive()) {
     return false;
   }
 
@@ -71,7 +72,11 @@ export function tryHandleBoardShellNavigate(
   }
 
   if (route.kind === 'userProfile' && bridge.openUserProfile) {
-    bridge.openUserProfile(route.uuid);
+    const shellPath = search ? `${pathname}${search}` : pathname;
+    bridge.openUserProfile(route.uuid, route.view, {
+      shellPath,
+      replace: options?.replace === true,
+    });
     return true;
   }
 

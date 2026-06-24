@@ -42,7 +42,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
   }, []);
 
   return (
-    <Div className="login-prompt-card glass-sm absolute inset-[7px] z-50 flex flex-col justify-center items-center p-8 rounded-[17px] text-center">
+    <Div className="login-prompt-card glass-sm absolute inset-0 z-50 flex flex-col justify-center items-center p-8 rounded-[17px] text-center">
       {/* 로켓 아이콘 */}
       <Div
         className="relative w-[84px] h-[84px] rounded-[26px] inline-flex items-center justify-center text-white mb-6 z-10"

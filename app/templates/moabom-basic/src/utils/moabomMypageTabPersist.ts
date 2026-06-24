@@ -1,5 +1,5 @@
 import type { MyPageTab } from '../components/composite/mypage/myPageTypes';
-import { MY_PAGE_TABS } from './moabomMypageTabIds';
+import { MY_PAGE_TABS } from '../components/composite/mypage/myPageConstants';
 
 const SESSION_KEY = 'moabom_mypage_active_tab';
 

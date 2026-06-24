@@ -11,8 +11,8 @@ import { SortableAppGrid } from './Moa_SortableAppGrid';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { resolveWindowTitle } from '../../i18n/resolveAppStrings';
 import type { App } from '../../data/Moa_apps';
-import type { BoardShellMode } from '../../utils/moabomShellRoutes';
-import type { ShellErrorCode } from '../../utils/moabomShellRoutes';
+import type { BoardShellMode, ShellErrorCode } from '../../utils/moabomShellRoutes';
+import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 
 const FOOTER_HIDE_SCROLL_DISTANCE = 24;
@@ -43,6 +43,8 @@ export interface WindowState {
   boardSlug?: string;
   /** moa-shell-user:{uuid} 윈도우 — 공개 프로필 사용자 UUID */
   userProfileUuid?: string;
+  /** 공개 프로필 윈도우 표시 모드 (프로필 / 작성글 목록 / 대화) */
+  userProfileView?: UserProfileWindowView;
   /** 게시판 상세 글 id (목록이면 생략) */
   boardPostId?: string;
   /** 게시판 작성/수정 전용 모드 */

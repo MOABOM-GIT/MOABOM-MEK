@@ -1,0 +1,21 @@
+{
+  "profile": {
+    "page_title": "ユーザープロフィール",
+    "posts_page_title": "投稿",
+    "user_not_found": "ユーザーが見つかりません。",
+    "joined_at": "登録日:",
+    "posts_count": "投稿",
+    "comments_count": "コメント",
+    "recent_posts": "最近の投稿",
+    "posts_suffix": "さんの投稿",
+    "total_posts": "合計 {{count}}件",
+    "no_posts": "投稿がありません。",
+    "view_all": "すべて見る",
+    "back_to_profile": "プロフィール",
+    "post_board": "掲示板",
+    "post_title": "タイトル",
+    "post_views": "閲覧",
+    "post_date": "投稿日",
+    "badge_blinded": "ブラインド"
+  }
+}

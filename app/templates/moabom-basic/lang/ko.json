@@ -20,8 +20,47 @@
   "userinfo": {
     "$partial": "partial/ko/userinfo.json"
   },
+  "user": {
+    "$partial": "partial/ko/user.json"
+  },
   "board": {
     "$partial": "partial/ko/board.json"
+  },
+  "moa_chat": {
+    "title": "대화",
+    "blocks": "대화거부 목록",
+    "blocks_empty": "대화거부한 사용자가 없습니다.",
+    "search_placeholder": "닉네임으로 대화 상대 검색",
+    "start_direct": "대화 시작",
+    "start_group": "그룹 대화 시작",
+    "add": "추가",
+    "rejected_short": "거부",
+    "loading": "대화 목록을 불러오는 중…",
+    "empty": "아직 대화가 없습니다. 닉네임을 검색해 대화를 시작하세요.",
+    "no_messages": "아직 메시지가 없습니다.",
+    "no_conversation": "대화를 선택하세요",
+    "messages_loading": "메시지를 불러오는 중…",
+    "messages_empty": "아직 메시지가 없습니다.",
+    "choose_conversation": "왼쪽에서 대화 상대를 선택하세요.",
+    "unknown_sender": "사용자",
+    "message_placeholder": "메시지를 입력하세요.",
+    "send": "전송",
+    "toast_request_rejected": "대화요청 수락을 거부한 사용자입니다.",
+    "toast_blocked_by_self": "대화거부한 사용자입니다. 대화거부 목록에서 해제할 수 있습니다.",
+    "toast_blocked_by_peer": "상대방이 대화를 거부한 상태입니다.",
+    "toast_login_required": "로그인 후 대화할 수 있습니다.",
+    "toast_failed": "대화 처리에 실패했습니다.",
+    "toast_conversation_ready": "대화방을 열었습니다.",
+    "unblock": "해제",
+    "remove_selected": "선택 제거"
+  },
+  "moa_profile_actions": {
+    "friend_add": "친구추가",
+    "chat": "대화하기",
+    "chat_block_on": "대화거부 중",
+    "chat_block_off": "대화거부",
+    "chat_blocked": "대화거부로 설정했습니다.",
+    "chat_unblocked": "대화거부를 해제했습니다."
   },
   "errors": {
     "404_title": "페이지를 찾을 수 없습니다",
@@ -164,14 +203,14 @@
       "availability_away": "자리 비움",
       "availability_busy": "바쁨",
       "availability_offline": "오프라인 표시",
-      "availability_hint_online": "접속자 목록에 표시되며 초록색 상태로 보입니다.",
-      "availability_hint_away": "접속자 목록에 표시되며 회색 상태로 보입니다.",
-      "availability_hint_busy": "접속자 목록에 표시되며 주황색 상태로 보입니다.",
-      "availability_hint_offline": "접속자 목록에는 숨겨지고, 친구 목록에서는 오프라인으로 보입니다.",
       "subtitle_title": "접속자에게 보이는 정보",
       "subtitle_profile_bio": "한줄 소개 표시",
       "subtitle_activity": "활동 정보 표시",
       "subtitle_hidden": "정보 숨김",
+      "show_avatar_in_connect_title": "접속자 목록 프로필 사진",
+      "show_avatar_in_connect_label": "접속자 목록에 프로필 사진 표시",
+      "show_avatar_in_connect_hint": "끄면 이니셜 아이콘으로 표시됩니다.",
+      "accept_chat_requests_label": "접속자 대화요청 수락",
       "activity_auto_hint": "현재 화면·앱에 따라 활동 메시지가 자동으로 표시됩니다."
     },
     "credit": {
@@ -350,7 +389,7 @@
       "rankings_apps_empty": "아직 집계된 앱 순위가 없습니다",
       "rankings_users_empty": "아직 집계된 유저 순위가 없습니다",
       "rankings_load_failed": "순위를 불러오지 못했습니다",
-      "rankings_activity_score": "{{score}} point",
+      "rankings_activity_score": "{score} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -364,6 +403,7 @@
       "tab_alarm": "알림",
       "online_summary": "접속자 집계를 불러오는 중…",
       "online_summary_live": "플랫폼 {platform}명 | 현재 {tenant}명 활동 중",
+      "presence_guest_fallback": "방문자",
       "friends_summary": "내 친구",
       "friends_summary_live": "내 친구 {count}명",
       "presence_view_profile": "프로필 보기",
@@ -396,7 +436,10 @@
       "notification_time_hours": "{count}시간 전",
       "notification_time_days": "{count}일 전",
       "admin_mode": "관리자 모드",
-      "avatar_alt": "{name} 프로필 사진"
+      "avatar_alt": "{name} 프로필 사진",
+      "ad_label": "광고",
+      "ad_badge": "AD",
+      "ad_placeholder_title": "광고 영역"
     },
     "center": {
       "edit_mode_title": "앱 편집 모드",
@@ -413,6 +456,9 @@
       "board_window": "게시판 · {slug}",
       "board_loading": "게시판을 불러오는 중…",
       "user_profile_window": "사용자 프로필",
+      "user_profile_tab_profile": "프로필",
+      "user_profile_tab_posts": "작성글",
+      "user_profile_tab_chat": "대화하기",
       "user_profile_loading": "프로필을 불러오는 중…",
       "user_profile_error": "프로필을 불러올 수 없습니다",
       "error_window": "오류 · {code}",

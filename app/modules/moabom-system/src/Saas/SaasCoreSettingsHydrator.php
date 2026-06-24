@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Config;
  * Cloud Run 다중 인스턴스에서는 config('app.name'), g7_settings.core.* 가 GCS SSOT 와 어긋난다.
  *
  * ResolveMoabomTenant 직후 1회 hydrate() 로 G7 부트스트랩과 동일한 config 주입을 재현한다.
- * cache/upload/debug·스토리지/세션/큐 드라이버는 Run 인프라(env)를 덮어쓰지 않는다.
- * drivers.websocket_* 만 hydrate 시 Laravel broadcasting·g7.websocket.client 에 반영한다.
+ * cache/upload/debug·세션/큐 드라이버는 Run 인프라(env)를 덮어쓰지 않는다.
+ * drivers.websocket_* · storage_driver 는 hydrate 시 DB snapshot 기준으로 반영한다.
  */
 final class SaasCoreSettingsHydrator
 {
@@ -60,6 +60,7 @@ final class SaasCoreSettingsHydrator
         $this->applyGeoIpRuntime($this->snapshot['geoip'] ?? []);
         $this->applyCoreUpdateRuntime($this->snapshot['core_update'] ?? []);
         $this->applyDriversWebsocketRuntime($this->snapshot['drivers'] ?? []);
+        $this->applyDriversStorageRuntime($this->snapshot['drivers'] ?? []);
     }
 
     /** 공개 HTML·부트 API 캐시 키 — general·seo 변경 시 자동 miss */
@@ -222,6 +223,19 @@ final class SaasCoreSettingsHydrator
         }
 
         HookManager::doAction('moabom.saas.drivers.apply_runtime', $drivers);
+    }
+
+    /**
+     * @param  array<string, mixed>  $drivers
+     */
+    private function applyDriversStorageRuntime(array $drivers): void
+    {
+        $storageDriver = (string) ($drivers['storage_driver'] ?? '');
+        if ($storageDriver === '') {
+            return;
+        }
+
+        MoabomStorageDriverConfigApplier::apply($storageDriver);
     }
 
     private function resolveScalarSetting(mixed $value): string

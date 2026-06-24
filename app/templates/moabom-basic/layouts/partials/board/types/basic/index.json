@@ -116,7 +116,7 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "glass-panel rounded-lg shadow overflow-x-auto"
+            "className": "glass-panel rounded-lg overflow-x-auto"
           },
           "children": [
             {

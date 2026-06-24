@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MoabomShellAuthExpiredError,
   MoabomShellAuthRequiredError,
+  MoabomShellModuleApiError,
   requestShellJson,
 } from './moabomShellHttp';
 import { clearShellAccessToken, setShellAccessToken } from './moabomShellAccess';
@@ -116,5 +117,23 @@ describe('moabomShellHttp', () => {
 
     clearShellAccessToken();
     expect(removeToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('모듈 API 실패 시 MoabomShellModuleApiError 와 reason 을 노출한다', async () => {
+    setShellAccessToken('token');
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      success: false,
+      message: 'Already friends',
+      errors: { reason: 'friendship_already_exists' },
+    }), { status: 422 }));
+
+    await expect(requestShellJson('/api/modules/moabom-presence/user/friends', 'required'))
+      .rejects
+      .toMatchObject({
+        name: 'MoabomShellModuleApiError',
+        status: 422,
+        reason: 'friendship_already_exists',
+      } satisfies Partial<MoabomShellModuleApiError>);
   });
 });

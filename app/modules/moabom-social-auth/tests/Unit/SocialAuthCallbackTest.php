@@ -3,6 +3,7 @@
 namespace Modules\Moabom\Social\Auth\Tests\Unit;
 
 use Modules\Moabom\Social\Auth\Support\SocialAuthCallback;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 use Modules\Moabom\Social\Auth\Tests\ModuleTestCase;
 
 require_once dirname(__DIR__).'/ModuleTestCase.php';
@@ -22,7 +23,7 @@ class SocialAuthCallbackTest extends ModuleTestCase
         $urls = SocialAuthCallback::allAbsoluteUrls();
 
         $this->assertCount(3, $urls);
-        foreach (['google', 'kakao', 'naver'] as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $this->assertArrayHasKey($provider, $urls);
             $this->assertStringEndsWith(
                 SocialAuthCallback::relativePath($provider),

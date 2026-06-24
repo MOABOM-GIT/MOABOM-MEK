@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 프로필·작성글 반복 게시글 행(`_user_post_row.json`)에서 `glass-panel` 제거
+- 프로필 윈도우 상단 탭 크롬: `background`·`px-3 pt-3 pb-2` 패딩 제거
+- 프로필 보기: 프로필 카드·게시글/댓글 통계·최근 게시글 섹션 간격 `space-y-6` → `space-y-3`(0.75rem)
+- 프로필·작성글 윈도우에서 페이지 헤더(아이콘·제목)·작성글 브레드크럼·총 개수 행 제거, 루트 `min-h-0`·portable `py-4` 래퍼 제거
+- 프로필·작성글·대화하기·공지(게시판 basic) 카드/패널을 `glass-panel` 로 통일, `bg-white dark:bg-gray-800`·`shadow-sm`·`shadow` 제거
+- 프로필 **최근 게시글**·**작성글 목록** 아이템을 공통 1행 partial(`_user_post_row.json`)·`moa-user-profile-post-row` 로 통일 (게시판 배지 · 제목 · 조회수 · 날짜 한 줄)
+- **대화하기** 탭 레이아웃 재구성 — 좌측 대화 목록 · 우측 대화창(메시지 스크롤) · 하단 입력 고정, 창 높이 flex 체인·`@container` 좁은 폭 스택 대응 502/503 transient 재시도, 2차 API 지연 큐(`deferShellSecondaryWork`), 게시판 layout·lang idle 선로드
+- **게시판 윈도우**: payload 페이지·auth 캐시 + 재조회 SWR 오버레이 (프로필 윈도우와 동일)
+- **공지 미리보기**: 공지 탭 활성 시에만 fetch, 45s in-flight 공유 캐시, transient 재시도
+- **Presence**: 로그인 직후 heartbeat·settings를 450ms 지연·summary 중복 호출 제거
+- **접속자·친구 탭**: 첫 목록 fetch 200ms 지연으로 게시판 오픈과 API 폭주 분리
+- 공개 프로필·작성글 셸 윈도우 SSOT를 G7 순정 `layouts/users/show` · `layouts/users/posts` 로 이전 (Pagination·전체보기·탈퇴 사용자·테이블 목록)
+- `user.profile.*` i18n partial 추가 (ko/en/ja/zh)
+- 프로필 페이징 URL `?page=` 동기화·페이지별 payload 캐시·재조회 시 `AppLoadingSpinner` 오버레이
+- 공개 프로필 윈도우: `users/show`·`users/posts` layout JSON을 셸 윈도우용 `components` 배열로 정렬 (`LayoutLoader` 검증 통과)
+- 프로필·작성글 윈도우 상단 슬라이딩 탭·병렬 payload 선로드·전역 캐시 (`userProfileWindowPrefetch` — 게시판 `boardWindowPrefetch` 와 동일 패턴)
+
+### Fixed
+
+- **공지·프로필·게시판 윈도우가 두 개씩 열리던 문제** — `pushShellPath` 직후 `applyShellRoute` 재진입 시 `windowsRef`가 `useEffect`보다 늦게 갱신되어 동일 `appId` 중복 생성. `commitShellWindows`로 state·ref 동시 반영 후 URL 동기화, 알림 네비게이션은 `pushShellPath` 단일 경로만 사용.
+- 우측 접속자 패널 … 메뉴에서 작성글 보기가 프로필과 동일 URL로 열리던 문제 — `openUserProfileWindow` sync/view 인자 순서 수정
+- 접속자 목록에서 회원 프로필 클릭 시 `Layout data field "components" must be an array` 오류 — `slots`-only 레이아웃을 셸 경로용 `components` 로 승격
+
+### Changed
+
+- 공개 프로필·작성글 윈도우 레이아웃 CSS(`38-user-profile-window.css`) 및 G7 layout JSON 로드 병렬화·선로드로 전환 체감 속도 개선
+- 프로필↔작성글 뷰 전환 시 캐시된 렌더 payload 재사용
+
 ### Fixed
 
 - 홈 메인 패널 앱 삭제 후 새로고침 시 병원소개·AI 생성 앱이 되살아나던 문제 — 빈 `mainAppOrder` 를 “기본 전체 그리드”와 “사용자가 비운 그리드”로 구분하는 `customized` SSOT 도입, `hospital-info` 강제 삽입 제거, 생성 앱은 order 에 고정된 id 만 표시.

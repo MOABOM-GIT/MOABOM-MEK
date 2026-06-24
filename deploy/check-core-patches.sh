@@ -49,7 +49,7 @@ check_overlay_manifest() {
     diff -u <(printf '%s\n' "${manifest_list}") <(printf '%s\n' "${patch_list}") || true
   fi
 
-  if grep -qE '^diff --git a/tests/' "${PATCH}"; then
+  if grep -qE '^diff --git a/(tests/|.*/__tests__/)' "${PATCH}"; then
     fail "moabom-core.patch 에 코어 tests/ 델타 금지 — deploy/module gate 로 이동"
   else
     ok "moabom-core.patch: 코어 tests/ 델타 없음"
@@ -174,7 +174,7 @@ info="$(g7_git_short_head 2>/dev/null || true)"
 
 if g7_git apply --check --reverse "${PATCH}" >/dev/null 2>&1; then
   ok "워킹 트리: 패치 적용 상태 (reverse-check)"
-  CORE_PATHS=(app config bootstrap routes database/migrations resources/js/core resources/views tests)
+  CORE_PATHS=(app config bootstrap routes database/migrations resources/js/core resources/views)
   mapfile -t CORE_TRACKED < <(g7_git diff --name-only HEAD -- "${CORE_PATHS[@]}")
   mapfile -t CORE_UNTRACKED < <(g7_git ls-files --others --exclude-standard -- "${CORE_PATHS[@]}")
 
@@ -182,7 +182,7 @@ if g7_git apply --check --reverse "${PATCH}" >/dev/null 2>&1; then
     {
       printf '%s\n' "${CORE_TRACKED[@]}"
       printf '%s\n' "${CORE_UNTRACKED[@]}"
-    } | sed '/^$/d' | sort -u
+    } | sed '/^$/d' | grep -Ev '^tests/|/__tests__/' | sort -u
   )"
   PATCH_CORE_FILES="$(patch_files_from_patch)"
 

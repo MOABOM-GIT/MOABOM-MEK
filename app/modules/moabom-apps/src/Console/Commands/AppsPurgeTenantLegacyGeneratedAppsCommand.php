@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\System\Saas\SaasMysqlPdoFactory;
+use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRecord;
 
 /**
@@ -36,8 +37,12 @@ class AppsPurgeTenantLegacyGeneratedAppsCommand extends Command
 
     private int $rowsDeleted = 0;
 
-    public function handle(): int
+    private TenantDatabaseConfigurator $databaseConfigurator;
+
+    public function handle(TenantDatabaseConfigurator $databaseConfigurator): int
     {
+        $this->databaseConfigurator = $databaseConfigurator;
+
         GeneratedAppsConnection::register();
 
         if ($this->laravel->environment('production') && ! $this->option('force')) {
@@ -82,7 +87,7 @@ class AppsPurgeTenantLegacyGeneratedAppsCommand extends Command
             return;
         }
 
-        $this->withDatabase($database, function (string $connection) use ($dryRun, $label): void {
+        $this->databaseConfigurator->runOnDatabase($database, function (string $connection) use ($dryRun, $label): void {
             $this->databasesScanned++;
 
             if (! Schema::connection($connection)->hasTable(self::APPS_TABLE)) {
@@ -147,40 +152,5 @@ class AppsPurgeTenantLegacyGeneratedAppsCommand extends Command
         $write = SaasMysqlPdoFactory::writeSlice();
 
         return (string) ($write['database'] ?? '');
-    }
-
-    /**
-     * @param  callable(string): void  $callback
-     */
-    private function withDatabase(string $database, callable $callback): void
-    {
-        $connection = (string) config('database.default', 'mysql');
-        $original = config("database.connections.{$connection}");
-        if (! is_array($original)) {
-            return;
-        }
-
-        $config = $original;
-        if (isset($config['write']) && is_array($config['write'])) {
-            $config['write']['database'] = $database;
-        }
-        if (isset($config['read']) && is_array($config['read'])) {
-            $config['read']['database'] = $database;
-        }
-        if (! isset($config['write'])) {
-            $config['database'] = $database;
-        }
-
-        config(["database.connections.{$connection}" => $config]);
-        DB::purge($connection);
-        DB::reconnect($connection);
-
-        try {
-            $callback($connection);
-        } finally {
-            config(["database.connections.{$connection}" => $original]);
-            DB::purge($connection);
-            DB::reconnect($connection);
-        }
     }
 }

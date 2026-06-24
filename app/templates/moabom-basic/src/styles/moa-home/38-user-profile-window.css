@@ -1,0 +1,630 @@
+/**
+ * 공개 프로필·작성글 윈도우 — 좌측 패널 공지사항과 일관된 glass 디자인.
+ * 탭 크롬은 SubTabBar(glass-sm-blur + moa-point-fill 인디케이터) 사용.
+ */
+
+.moa-user-profile-window-host {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* ── 탭 크롬 — 좌측 패널 SubTabBar 컨테이너와 동일한 glass 블러 레이어 ── */
+.moa-user-profile-window-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* ── 슬라이드 뷰포트·트랙 ── */
+.moa-user-profile-slide-viewport {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.moa-user-profile-slide-track {
+  display: flex;
+  width: 300%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.moa-user-profile-slide-track--posts {
+  transform: translateX(-33.3333%);
+}
+
+.moa-user-profile-slide-track--chat {
+  transform: translateX(-66.6667%);
+}
+
+.moa-user-profile-slide-pane {
+  width: 33.3333%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.moa-user-profile-slide-pane__inner {
+  flex: 1 1 auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.moa-user-profile-slide-pane__inner--chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.moa-user-profile-slide-pane__inner--chat > .moa-chat-panel {
+  flex: 1 1 auto;
+  width: 100%;
+  align-self: stretch;
+}
+
+/* ── 통계 카드 ── */
+.moa-user-profile-stat {
+  min-width: 0;
+  text-align: center;
+}
+
+.moa-user-profile-stat__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--moa-text-primary, #111827);
+}
+
+.moa-user-profile-stat__label {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--moa-text-muted, #6b7280);
+  white-space: nowrap;
+}
+
+.moa-user-profile-stat--clickable {
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+
+.moa-user-profile-stat--clickable:hover {
+  border-color: color-mix(in srgb, #3b82f6 45%, var(--moa-border, #e5e7eb));
+}
+
+/* ── 작성글 목록 — 공지사항 아이템 행과 동일한 간격·반경 ── */
+.moa-user-profile-post-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--moa-border, #e5e7eb) 45%, transparent);
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.moa-user-profile-post-row:hover {
+  background: color-mix(in srgb, var(--moa-surface-muted, #f9fafb) 75%, transparent);
+  border-color: color-mix(in srgb, var(--moa-border, #e5e7eb) 70%, transparent);
+}
+
+.moa-user-profile-post-badge {
+  flex-shrink: 0;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moa-user-profile-post-title {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--moa-text-primary, #111827);
+  transition: color 0.14s ease;
+}
+
+.moa-user-profile-post-title:hover {
+  color: var(--moa-point-color, #6366f1);
+}
+
+.moa-user-profile-post-date {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  color: var(--moa-text-muted, #6b7280);
+  white-space: nowrap;
+}
+
+.moa-user-profile-post-row__meta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-left: auto;
+  min-width: 0;
+}
+
+/* ── 작성글 카드형(레거시 — 행 레이아웃으로 대체됨) ── */
+.moa-user-profile-post-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.moa-user-profile-post-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.6875rem;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-user-profile-post-card__title {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--moa-text-primary, #111827);
+  transition: color 0.14s ease;
+}
+
+.moa-user-profile-post-card__title:hover {
+  color: var(--moa-point-color, #6366f1);
+}
+
+/* ── 온라인 상태 도트 테두리 ── */
+.moa-user-profile-status .moa-profile-status {
+  border-color: var(--moa-surface, #fff);
+}
+
+/* ── 대화하기 — 좌 목록 · 우 대화창 · 하단 입력 고정 ── */
+.moa-chat-panel {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--moa-text-primary, #111827);
+}
+
+.moa-chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 18rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border-right: 1px solid var(--moa-border, #e5e7eb);
+}
+
+:root[data-theme='dark'] .moa-chat-sidebar,
+.dark .moa-chat-sidebar {
+  border-right-color: rgb(55 65 81);
+}
+
+.moa-chat-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.moa-chat-sidebar__title {
+  font-weight: 600;
+  color: var(--moa-text-primary, #111827);
+}
+
+.moa-chat-sidebar__search {
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.moa-chat-sidebar__selection,
+.moa-chat-sidebar__search-results,
+.moa-chat-sidebar__blocks {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+.moa-chat-sidebar__search-results {
+  max-height: 10rem;
+  overflow-y: auto;
+  border-radius: 0.875rem;
+}
+
+.moa-chat-conversation-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.moa-chat-conversation-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    opacity 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.moa-chat-conversation-item:hover {
+  opacity: 0.92;
+}
+
+.moa-chat-conversation-item--active {
+  border-color: var(--moa-point-color, #6366f1);
+}
+
+.moa-chat-conversation-item__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.moa-chat-conversation-item__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.moa-chat-conversation-item__preview {
+  margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-chat-unread-badge {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.moa-chat-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.moa-chat-header {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--moa-border, #e5e7eb);
+}
+
+:root[data-theme='dark'] .moa-chat-header,
+.dark .moa-chat-header {
+  border-bottom-color: rgb(55 65 81);
+}
+
+.moa-chat-header__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.moa-chat-header__members {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-chat-messages {
+  flex: 1 1 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.moa-chat-messages__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  font-size: 0.875rem;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-chat-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: min-content;
+}
+
+.moa-chat-bubble {
+  max-width: 78%;
+  border-radius: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.moa-chat-bubble--own {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--moa-point-color, #6366f1) 35%, transparent);
+  background: color-mix(in srgb, var(--moa-point-color, #6366f1) 12%, var(--moa-glass-panel-surface, transparent));
+}
+
+.moa-chat-bubble--other {
+  align-self: flex-start;
+}
+
+.moa-chat-bubble__sender {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-chat-bubble__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.moa-chat-composer {
+  --moa-chat-composer-control-size: 2.75rem;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--moa-border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+:root[data-theme='dark'] .moa-chat-composer,
+.dark .moa-chat-composer {
+  border-top-color: rgb(55 65 81);
+}
+
+.moa-chat-composer__error {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+
+.moa-chat-composer__row {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.moa-chat-composer__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: var(--moa-chat-composer-control-size);
+  min-height: var(--moa-chat-composer-control-size);
+  max-height: var(--moa-chat-composer-control-size);
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+  line-height: 1.35;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.moa-chat-composer__row textarea.moa-chat-composer__input {
+  height: var(--moa-chat-composer-control-size);
+  min-height: var(--moa-chat-composer-control-size);
+  max-height: var(--moa-chat-composer-control-size);
+}
+
+.moa-chat-composer__row .moa-chat-composer__send.moa-btn {
+  flex: 0 0 var(--moa-chat-composer-control-size);
+  width: var(--moa-chat-composer-control-size);
+  min-width: var(--moa-chat-composer-control-size);
+  height: var(--moa-chat-composer-control-size);
+  min-height: var(--moa-chat-composer-control-size);
+  max-height: var(--moa-chat-composer-control-size);
+  padding: 0;
+  border-radius: 0.9rem;
+  font-size: 0.6875rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+@container moa-app-window (width < 640px) {
+  .moa-chat-panel {
+    flex-direction: column;
+  }
+
+  .moa-chat-sidebar {
+    width: 100%;
+    max-height: 42%;
+    border-right: 0;
+    border-bottom: 1px solid var(--moa-border, #e5e7eb);
+  }
+
+  :root[data-theme='dark'] .moa-chat-sidebar,
+  .dark .moa-chat-sidebar {
+    border-bottom-color: rgb(55 65 81);
+  }
+}
+
+/* ── 프로필 헤더 — 아바타(좌 50%) · 메타(우) ── */
+.moa-user-profile-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  min-width: 0;
+}
+
+.moa-user-profile-hero__avatar-wrap {
+  flex: 0 0 50%;
+  max-width: 6.5rem;
+  min-width: 4.5rem;
+}
+
+.moa-user-profile-hero__avatar {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+.moa-user-profile-hero__meta {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+.moa-user-profile-hero__name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.moa-user-profile-hero__name {
+  min-width: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--moa-text-primary, #111827);
+}
+
+.moa-user-profile-hero__name--withdrawn {
+  color: var(--moa-text-muted, #9ca3af);
+  text-decoration: line-through;
+}
+
+.moa-user-profile-hero__joined {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--moa-text-muted, #6b7280);
+}
+
+.moa-user-profile-hero__joined-icon {
+  flex-shrink: 0;
+}
+
+.moa-user-profile-hero__joined-value {
+  font-weight: 500;
+  color: var(--moa-text-secondary, #374151);
+}
+
+.moa-user-profile-hero__provider {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 0.125rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--moa-point-color, #6366f1);
+  background: color-mix(in srgb, var(--moa-point-color, #6366f1) 12%, transparent);
+}
+
+.moa-user-profile-hero__bio {
+  margin-top: 0.5rem;
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--moa-text-secondary, #4b5563);
+  white-space: pre-wrap;
+}
+
+.moa-user-profile-hero__actions {
+  flex-shrink: 0;
+}
+
+/* ── 프로필 액션 — 공지 패널 glass 행 스타일 ── */
+.moa-user-profile-actions .moa-btn {
+  border-radius: 0.875rem;
+}
+
+.moa-user-profile-actions-menu-item {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 0.875rem;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  transition: opacity 0.16s ease, background-color 0.16s ease;
+}
+
+.moa-user-profile-actions-menu-item:hover {
+  opacity: 0.92;
+  background: color-mix(in srgb, var(--moa-surface-muted, #f9fafb) 80%, transparent);
+}
+
+:root[data-theme='dark'] .moa-user-profile-status .moa-profile-status,
+.dark .moa-user-profile-status .moa-profile-status {
+  border-color: var(--moa-surface, #1f2937);
+}

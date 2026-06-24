@@ -163,7 +163,7 @@ final class ShellRankingService
             $user = DB::table('users')
                 ->where('id', $userId)
                 ->where('status', UserStatus::Active->value)
-                ->first(['id', 'nickname', 'name']);
+                ->first(['id', 'uuid', 'nickname', 'name']);
 
             if ($user === null) {
                 continue;
@@ -176,6 +176,7 @@ final class ShellRankingService
 
             $items[] = [
                 'user_id' => (int) $userId,
+                'user_uuid' => (string) $user->uuid,
                 'name' => $displayName,
                 'score' => (int) $scoreMap[$userId],
                 'rank' => $rank,

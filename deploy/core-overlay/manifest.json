@@ -45,8 +45,20 @@
         "reason": "Generic skip_request_patterns and skip_route_names hooks contain no Moabom hardcoding."
       },
       {
+        "path": "app/Listeners/BroadcastNotificationListener.php",
+        "reason": "WS notification payload should include stable id and click url for client navigation."
+      },
+      {
+        "path": "app/Notifications/NotificationDispatcher.php",
+        "reason": "Database channel should pass notification_id and click_url into broadcast context hooks."
+      },
+      {
         "path": "app/Services/SettingsService.php",
         "reason": "Generic config_clear_guards hook lets extensions suppress destructive clears safely."
+      },
+      {
+        "path": "app/Services/UserService.php",
+        "reason": "Public profile avatar must use getAvatarUrl(); upstream accessor mismatch breaks Moabom profile windows."
       },
       {
         "path": "config/core.php",
@@ -59,9 +71,37 @@
       {
         "path": "resources/js/core/template-engine/ActionDispatcher.ts",
         "reason": "Type contract cleanup for render/actionId/devtools debounce tracking; no Moabom-specific handler logic."
+      },
+      {
+        "path": "resources/js/core/template-engine/CHANGELOG.md",
+        "reason": "Documents template-engine overlay deltas for upstream review."
+      },
+      {
+        "path": "resources/js/core/template-engine/DataSourceManager.ts",
+        "reason": "Fetch cache mode override for admin menu active endpoint freshness."
+      },
+      {
+        "path": "resources/js/core/template-engine/DynamicRenderer.tsx",
+        "reason": "Shared deepMergeState extraction; upstream-hook for state merge safety."
+      },
+      {
+        "path": "resources/js/core/template-engine/G7CoreGlobals.ts",
+        "reason": "Shared stateMerge helpers for shell boot and computed state."
+      },
+      {
+        "path": "resources/js/core/template-engine/stateMerge.ts",
+        "reason": "Extracted deep merge utilities for template-engine state safety."
+      },
+      {
+        "path": "resources/js/core/websocket/WebSocketManager.ts",
+        "reason": "Broadcast channel auth must read Sanctum token per subscribe; static init headers cause post-login 403."
       }
     ],
     "overlay-required": [
+      {
+        "path": "app/Http/Controllers/Api/Admin/MenuController.php",
+        "reason": "Admin active menu API must send no-store headers for shell navigation freshness."
+      },
       {
         "path": "app/Http/Controllers/Api/Public/PublicTemplateController.php",
         "reason": "Cloud Run public boot cache version fallback is needed before a cleaner upstream cache hook exists."

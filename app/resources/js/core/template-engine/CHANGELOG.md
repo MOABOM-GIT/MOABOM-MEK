@@ -5,6 +5,12 @@
 >
 > 형식: [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)
 
+## [engine-v1.49.3] - 2026-06-23
+
+### Fixed
+
+- (engine-v1.49.3) Reverb private/presence 채널 인증이 Pusher 기본 `/pusher/auth` 로 되돌아가 405가 발생하던 문제 수정 — Pusher `channelAuthorization` 과 Echo `authorizer` 가 동일한 `/api/broadcasting/auth` Sanctum 인증기를 사용하도록 통합 (WebSocketManager)
+
 ## [engine-v1.49.2] - 2026-05-07
 
 ### Fixed

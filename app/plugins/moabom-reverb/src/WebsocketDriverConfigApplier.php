@@ -24,6 +24,12 @@ final class WebsocketDriverConfigApplier
             return;
         }
 
+        $broadcastDefault = (string) config('broadcasting.default', 'reverb');
+        if ($broadcastDefault === '' || $broadcastDefault === 'null') {
+            $broadcastDefault = 'reverb';
+        }
+        Config::set('broadcasting.default', $broadcastDefault);
+
         $appId = $driverSettings['websocket_app_id'] ?? '';
         $appKey = $driverSettings['websocket_app_key'] ?? '';
         $appSecret = $driverSettings['websocket_app_secret'] ?? '';

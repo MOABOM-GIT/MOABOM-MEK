@@ -1,4 +1,5 @@
 import { MOA_SHELL_NOTICE_BOARD_SLUG } from './moaShellNoticeBoard';
+import { fetchJsonWithTransientRetry } from './moaShellTransientRetry';
 
 export const NOTICE_BOARD_CATEGORIES = {
   notices: '공지사항',
@@ -33,7 +34,16 @@ export type ShellNoticePreviewItem = {
   badges: NoticeBadgeKind[];
 };
 
+export type ShellNoticePreviewPayload = {
+  notices: ShellNoticePreviewItem[];
+  updates: ShellNoticePreviewItem[];
+};
+
 const POPULAR_NOTICE_VIEW_THRESHOLD = 100;
+const NOTICE_PREVIEW_CACHE_TTL_MS = 45_000;
+
+let noticePreviewCache: { at: number; data: ShellNoticePreviewPayload } | null = null;
+let noticePreviewInFlight: Promise<ShellNoticePreviewPayload> | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -96,7 +106,7 @@ async function loadByCategory(
     per_page: '5',
     category,
   });
-  const response = await fetch(
+  const response = await fetchJsonWithTransientRetry(
     `/api/modules/sirsoft-board/boards/${encodeURIComponent(MOA_SHELL_NOTICE_BOARD_SLUG)}/posts?${params.toString()}`,
     {
       credentials: 'same-origin',
@@ -114,13 +124,60 @@ async function loadByCategory(
     .filter((item): item is ShellNoticePreviewItem => item !== null);
 }
 
-export async function fetchShellNoticeBoardPreview(
+async function fetchShellNoticeBoardPreviewUncached(
   signal?: AbortSignal,
-): Promise<{ notices: ShellNoticePreviewItem[]; updates: ShellNoticePreviewItem[] }> {
+): Promise<ShellNoticePreviewPayload> {
   const [notices, updates] = await Promise.all([
     loadByCategory(NOTICE_BOARD_CATEGORIES.notices, signal),
     loadByCategory(NOTICE_BOARD_CATEGORIES.updates, signal),
   ]);
 
   return { notices, updates };
+}
+
+export function clearShellNoticeBoardPreviewCacheForTest(): void {
+  noticePreviewCache = null;
+  noticePreviewInFlight = null;
+}
+
+export async function fetchShellNoticeBoardPreview(
+  signal?: AbortSignal,
+): Promise<ShellNoticePreviewPayload> {
+  const now = Date.now();
+  if (noticePreviewCache && now - noticePreviewCache.at < NOTICE_PREVIEW_CACHE_TTL_MS) {
+    return noticePreviewCache.data;
+  }
+
+  if (!noticePreviewInFlight) {
+    noticePreviewInFlight = fetchShellNoticeBoardPreviewUncached()
+      .then(data => {
+        noticePreviewCache = { at: Date.now(), data };
+        return data;
+      })
+      .finally(() => {
+        noticePreviewInFlight = null;
+      });
+  }
+
+  if (signal) {
+    if (signal.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    return new Promise((resolve, reject) => {
+      const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+      signal.addEventListener('abort', onAbort, { once: true });
+      void noticePreviewInFlight!.then(
+        data => {
+          signal.removeEventListener('abort', onAbort);
+          resolve(data);
+        },
+        err => {
+          signal.removeEventListener('abort', onAbort);
+          reject(err);
+        },
+      );
+    });
+  }
+
+  return noticePreviewInFlight;
 }

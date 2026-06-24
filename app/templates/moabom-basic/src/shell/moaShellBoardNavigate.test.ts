@@ -6,6 +6,7 @@ import {
   tryHandleBoardShellNavigate,
 } from '../moaShellBoardNavigate';
 import { formatBoardShellPath } from '../utils/moabomShellRoutes';
+import { markMoabomShellHomeMounted } from '../moaShellErrorBridge';
 
 describe('moaShellBoardNavigate', () => {
   it('resolveShellAuthModeFromPath 가 레거시·셸 경로를 인식한다', () => {
@@ -33,6 +34,7 @@ describe('moaShellBoardNavigate', () => {
   });
 
   it('tryHandleBoardShellNavigate 가 게시판·로그인 경로를 브릿지로 위임한다', () => {
+    markMoabomShellHomeMounted(true);
     const openBoard = vi.fn();
     const openAuth = vi.fn();
     const bridge: MoaShellBoardBridge = {
@@ -57,14 +59,43 @@ describe('moaShellBoardNavigate', () => {
     expect(openAuth).toHaveBeenCalledWith('login');
 
     expect(tryHandleBoardShellNavigate('/shop', bridge)).toBe(false);
+    markMoabomShellHomeMounted(false);
   });
 
   it('게시판 윈도우가 없으면 navigate 를 가로채지 않는다', () => {
+    markMoabomShellHomeMounted(false);
     const bridge: MoaShellBoardBridge = {
       isActive: () => false,
       openBoard: vi.fn(),
       openAuth: vi.fn(),
     };
     expect(tryHandleBoardShellNavigate('/board/notice', bridge)).toBe(false);
+  });
+
+  it('홈 셸이 마운트되면 게시판·프로필 경로를 가로챈다', () => {
+    markMoabomShellHomeMounted(true);
+    const openBoard = vi.fn();
+    const openUserProfile = vi.fn();
+    const bridge: MoaShellBoardBridge = {
+      isActive: () => false,
+      openBoard,
+      openAuth: vi.fn(),
+      openUserProfile,
+    };
+
+    expect(tryHandleBoardShellNavigate('/board/notice', bridge)).toBe(true);
+    expect(openBoard).toHaveBeenCalledWith('notice', undefined, expect.objectContaining({ shellPath: '/board/notice' }));
+
+    const uuid = 'a16ec193-bfef-4aa2-a7c4-4f35ebc39432';
+    expect(tryHandleBoardShellNavigate(`/users/${uuid}`, bridge)).toBe(true);
+    expect(openUserProfile).toHaveBeenCalledWith(uuid, 'profile', expect.objectContaining({ shellPath: `/users/${uuid}` }));
+
+    expect(tryHandleBoardShellNavigate(`/users/${uuid}/posts`, bridge)).toBe(true);
+    expect(openUserProfile).toHaveBeenCalledWith(uuid, 'posts', expect.objectContaining({ shellPath: `/users/${uuid}/posts` }));
+
+    expect(tryHandleBoardShellNavigate(`/users/${uuid}/posts?page=2`, bridge)).toBe(true);
+    expect(openUserProfile).toHaveBeenLastCalledWith(uuid, 'posts', expect.objectContaining({ shellPath: `/users/${uuid}/posts?page=2` }));
+
+    markMoabomShellHomeMounted(false);
   });
 });

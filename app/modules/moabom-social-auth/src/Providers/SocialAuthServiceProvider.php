@@ -107,7 +107,7 @@ class SocialAuthServiceProvider extends BaseModuleServiceProvider
             },
         );
 
-        HookManager::addFilter('core.user.filter_resource_data', function (array $data, $user): array {
+        $enrichUserSocialProvider = function (array $data, $user): array {
             if (! $user?->id || ! Schema::hasTable('social_accounts')) {
                 return $data;
             }
@@ -125,6 +125,9 @@ class SocialAuthServiceProvider extends BaseModuleServiceProvider
             }
 
             return $data;
-        });
+        };
+
+        HookManager::addFilter('core.user.filter_resource_data', $enrichUserSocialProvider);
+        HookManager::addFilter('core.user.filter_public_profile', $enrichUserSocialProvider);
     }
 }

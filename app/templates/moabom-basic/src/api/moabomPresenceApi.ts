@@ -1,3 +1,5 @@
+import { getShellAccessToken } from './moabomShellAccess';
+
 export type PresenceAvailability = 'online' | 'away' | 'busy' | 'offline';
 
 export type PresenceSubtitleMode = 'profile_bio' | 'activity' | 'hidden';
@@ -6,6 +8,8 @@ export type PresenceSettings = {
   availability: PresenceAvailability;
   subtitle_mode: PresenceSubtitleMode;
   activity_message?: string | null;
+  show_avatar_in_connect_list: boolean;
+  accept_chat_requests: boolean;
 };
 
 export type OwnPresenceState = {
@@ -53,6 +57,7 @@ export type PresenceSummary = {
 
 export type PresenceHeartbeatResult = {
   accepted: boolean;
+  reason?: 'bot' | 'tenant_storage_unavailable' | 'transient_failure' | string;
   session_key?: string;
   tenant_channel?: string;
   availability?: PresenceAvailability;
@@ -94,7 +99,7 @@ function presenceHeaders(): Record<string, string> {
 }
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('auth_token');
+  const token = getShellAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -153,15 +158,50 @@ export async function sendPresenceHeartbeat(
   return parseModuleJson<PresenceHeartbeatResult>(response);
 }
 
+const PRESENCE_SETTINGS_MEMORY_TTL_MS = 30_000;
+let presenceSettingsCache: { value: PresenceSettings; expiresAt: number } | null = null;
+let presenceSettingsPromise: Promise<PresenceSettings> | null = null;
+
+export function invalidatePresenceSettingsCache(): void {
+  presenceSettingsCache = null;
+}
+
+export function __resetPresenceSettingsCacheForTest(): void {
+  presenceSettingsCache = null;
+  presenceSettingsPromise = null;
+}
+
 export async function fetchPresenceSettings(): Promise<PresenceSettings> {
-  const response = await fetch(`${API_BASE}/user/presence/settings`, {
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...authHeaders(),
-    },
-  });
-  return parseModuleJson<PresenceSettings>(response);
+  const now = Date.now();
+  if (presenceSettingsCache && presenceSettingsCache.expiresAt > now) {
+    return presenceSettingsCache.value;
+  }
+
+  if (presenceSettingsPromise) {
+    return presenceSettingsPromise;
+  }
+
+  presenceSettingsPromise = (async () => {
+    const response = await fetch(`${API_BASE}/user/presence/settings`, {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...authHeaders(),
+      },
+    });
+    const data = await parseModuleJson<PresenceSettings>(response);
+    presenceSettingsCache = {
+      value: data,
+      expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
+    };
+    return data;
+  })();
+
+  try {
+    return await presenceSettingsPromise;
+  } finally {
+    presenceSettingsPromise = null;
+  }
 }
 
 export async function updatePresenceSettings(
@@ -177,7 +217,12 @@ export async function updatePresenceSettings(
     },
     body: JSON.stringify(payload),
   });
-  return parseModuleJson<PresenceSettings>(response);
+  const data = await parseModuleJson<PresenceSettings>(response);
+  presenceSettingsCache = {
+    value: data,
+    expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
+  };
+  return data;
 }
 
 export async function fetchPublicUserPresence(userUuid: string): Promise<PublicUserPresence> {
@@ -193,15 +238,14 @@ export async function fetchPublicUserPresence(userUuid: string): Promise<PublicU
 }
 
 export async function fetchPresenceFriends(): Promise<PresenceFriend[]> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+  if (!getShellAccessToken()) {
     return [];
   }
   const response = await fetch(`${API_BASE}/user/friends`, {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...authHeaders(),
     },
   });
   const data = await parseModuleJson<{ friends: PresenceFriend[] }>(response);
@@ -209,8 +253,7 @@ export async function fetchPresenceFriends(): Promise<PresenceFriend[]> {
 }
 
 export async function requestPresenceFriend(userUuid: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+  if (!getShellAccessToken()) {
     throw new Error('auth_required');
   }
   const response = await fetch(`${API_BASE}/user/friends`, {
@@ -219,7 +262,7 @@ export async function requestPresenceFriend(userUuid: string): Promise<void> {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...authHeaders(),
     },
     body: JSON.stringify({ user_uuid: userUuid }),
   });
@@ -227,8 +270,7 @@ export async function requestPresenceFriend(userUuid: string): Promise<void> {
 }
 
 export async function acceptPresenceFriend(userUuid: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+  if (!getShellAccessToken()) {
     throw new Error('auth_required');
   }
   const response = await fetch(`${API_BASE}/user/friends/accept`, {
@@ -237,7 +279,7 @@ export async function acceptPresenceFriend(userUuid: string): Promise<void> {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...authHeaders(),
     },
     body: JSON.stringify({ user_uuid: userUuid }),
   });
@@ -245,8 +287,7 @@ export async function acceptPresenceFriend(userUuid: string): Promise<void> {
 }
 
 export async function removePresenceFriend(userUuid: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+  if (!getShellAccessToken()) {
     throw new Error('auth_required');
   }
   const response = await fetch(`${API_BASE}/user/friends/${encodeURIComponent(userUuid)}`, {
@@ -254,7 +295,7 @@ export async function removePresenceFriend(userUuid: string): Promise<void> {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...authHeaders(),
     },
   });
   await parseModuleJson(response);

@@ -84,7 +84,7 @@
       }
     },
     {
-      "_comment": "공개 프로필 — 셸 윈도우 내 G7 user/public_profile JSON (작성글 목록 포함)",
+      "_comment": "공개 프로필 — 셸 윈도우 내 G7 users/show JSON",
       "path": "/users/:uuid",
       "layout": "home",
       "auth_required": false,
@@ -93,12 +93,21 @@
       }
     },
     {
-      "_comment": "작성글 보기 — 동일 프로필 윈도우 (public_profile JSON 내 작성글 섹션)",
+      "_comment": "작성글 보기 — 셸 윈도우 내 G7 users/posts JSON (Pagination)",
       "path": "/users/:uuid/posts",
       "layout": "home",
       "auth_required": false,
       "meta": {
         "title": "사용자 작성글"
+      }
+    },
+    {
+      "_comment": "대화하기 — 셸 윈도우 내 Moabom chat panel",
+      "path": "/users/:uuid/chat",
+      "layout": "home",
+      "auth_required": true,
+      "meta": {
+        "title": "대화하기"
       }
     },
     {

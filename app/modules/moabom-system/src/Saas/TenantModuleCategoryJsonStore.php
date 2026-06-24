@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
  * Tenant module settings — 카테고리 JSON 단일 writer (TenantSettingsPlane 전용).
  *
  * **storage backend** (`moabom-system.saas.module_settings_backend` config):
- *   - `db` (기본) — `TenantModuleSettingsRepository` (DB row) read/write
+ *   - `db` (기본) — `MoabomModuleCategoryDbStore` (DB row + GCS mirror) read/write
  *   - `gcs` — Flysystem `Storage::disk('modules')` read/write (진단/레거시)
  *
  * write 경로는 backend 단일 경로를 따른다.
@@ -25,13 +25,18 @@ use Illuminate\Support\Facades\Storage;
  */
 final class TenantModuleCategoryJsonStore
 {
+    private const MODULE_IDENTIFIER = 'moabom-system';
+
     /** @var array<string, true> */
     private static array $writtenCategoriesThisRequest = [];
 
+    private readonly MoabomModuleCategoryDbStore $moduleStore;
+
     public function __construct(
         private readonly TenantModuleStorageScope $storageScope,
-        private readonly TenantModuleSettingsRepository $repository,
-    ) {}
+    ) {
+        $this->moduleStore = new MoabomModuleCategoryDbStore(self::MODULE_IDENTIFIER);
+    }
 
     /**
      * Tenant module category 읽기 — config flag (`module_settings_backend`) 가 결정.
@@ -41,22 +46,7 @@ final class TenantModuleCategoryJsonStore
     public function read(string $category): array
     {
         if ($this->backend() === 'db') {
-            $payload = $this->repository->read($category);
-            if ($payload !== [] || $this->repository->exists($category)) {
-                return $payload;
-            }
-
-            $fallbackPayload = $this->readFromFilesystem($category);
-            if ($fallbackPayload === []) {
-                return [];
-            }
-
-            // DB row miss 시 GCS snapshot 을 1회 hydrate 하여 platform/tenant read path 를 단일화한다.
-            if ($this->repository->replace($category, $fallbackPayload)) {
-                return $fallbackPayload;
-            }
-
-            return [];
+            return $this->moduleStore->read($category);
         }
 
         return $this->readFromFilesystem($category);
@@ -68,7 +58,7 @@ final class TenantModuleCategoryJsonStore
     public function replace(string $category, array $settings): bool
     {
         $ok = $this->backend() === 'db'
-            ? $this->repository->replace($category, $settings)
+            ? $this->moduleStore->replace($category, $settings)
             : $this->replaceOnFilesystem($category, $settings);
 
         if ($ok) {
@@ -195,7 +185,7 @@ final class TenantModuleCategoryJsonStore
 
     private function snapshotPath(string $category): string
     {
-        return 'moabom-system/settings/_snapshots/'.$category.'/'.bin2hex(random_bytes(16)).'.json';
+        return self::MODULE_IDENTIFIER.'/settings/_snapshots/'.$category.'/'.bin2hex(random_bytes(16)).'.json';
     }
 
     private function payloadMatches(string $expectedJson, string $readBack): bool
@@ -224,7 +214,7 @@ final class TenantModuleCategoryJsonStore
 
     private function relativePath(string $category): string
     {
-        return 'moabom-system/settings/'.$category.'.json';
+        return self::MODULE_IDENTIFIER.'/settings/'.$category.'.json';
     }
 
     /**

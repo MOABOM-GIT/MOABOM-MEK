@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-chat",
+    "description": "Profile chat module for Gnuboard7 / Moabom",
+    "type": "library",
+    "version": "0.1.0",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Chat\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

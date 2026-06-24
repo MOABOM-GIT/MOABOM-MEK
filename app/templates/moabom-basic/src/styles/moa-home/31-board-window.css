@@ -1,6 +1,7 @@
 /**
  * 게시판 윈도우 본문 — G7 board partial을 Moa_Window 안에서 읽기 좋게 보정.
  * 반응형 컨테이너 SSOT: `.moa-g7-window-host` (`g7WindowContainerResponsive.ts`).
+ * 디자인 일관성: 좌측 패널 공지사항 패턴(glass 토큰, rounded-xl, 포인트 컬러) 적용.
  */
 .moa-g7-window-host {
   width: 100%;
@@ -13,6 +14,17 @@
   padding: 0;
   min-width: 0;
   overflow-x: hidden;
+}
+
+/* 게시글 상세 헤더 제목 크기 조정 */
+.moa-board-window-host h1 {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+.moa-board-window-host h2 {
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 /** 윈도우 안에서는 G7 board JSON의 max-w-* / mx-auto 를 풀어 100% 폭 사용 */
@@ -32,11 +44,6 @@
 .moa-board-window-host .mx-auto {
   margin-left: 0;
   margin-right: 0;
-}
-
-.moa-board-window-host .py-8 {
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 .moa-g7-window-host a,
@@ -70,10 +77,25 @@
 .moa-board-window-host [role='navigation'][aria-label] button:not([aria-current='page']) {
   background: var(--moa-glass-panel-surface);
   border-color: var(--moa-glass-panel-border);
+  border-radius: 0.625rem;
+  font-weight: 600;
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .moa-board-window-host [role='navigation'][aria-label] button:not([aria-current='page']):hover:not(:disabled) {
   opacity: 0.9;
+}
+
+/* 현재 페이지 버튼 — 포인트 컬러 강조 */
+.moa-board-window-host [role='navigation'][aria-label] button[aria-current='page'] {
+  background: var(--moa-point-color);
+  color: #fff;
+  border-color: transparent;
+  border-radius: 0.625rem;
+  font-weight: 700;
+  box-shadow: var(--moa-point-fill-shadow);
 }
 
 /* ── NEW 배지 (목록·상세 공통, 기존 대비 약 50%) ── */

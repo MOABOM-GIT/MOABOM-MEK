@@ -65,6 +65,12 @@ if ! "${ROOT}/scripts/check-extension-autoload.sh"; then
   fail "extension autoload 불일치 — scripts/check-extension-autoload.sh"
 fi
 
+echo "==> [v7-2d] moabom-chat 프로필·채팅 API SSOT (blocks/eligibility 404 방지)"
+chmod +x "${ROOT}/scripts/check-moabom-chat-api-ssot.sh" 2>/dev/null || true
+if ! "${ROOT}/scripts/check-moabom-chat-api-ssot.sh"; then
+  fail "moabom-chat API SSOT 불일치 — scripts/check-moabom-chat-api-ssot.sh"
+fi
+
 echo "==> [v7-3] ModuleRouteServiceProvider (500 방지)"
 grep -q 'ModuleManager::getActiveModuleIdentifiers' "${MRP}" \
   || fail "ModuleManager::getActiveModuleIdentifiers() 필요"

@@ -57,12 +57,16 @@ import {
 import { moaHomeShellCssVars } from './moaHomeShellCssVars';
 import { showAppEditToast } from '../../runtime/moaShellToasts';
 import type { MoaCurrentUser, AuthUserLike } from '../../shell/moaShellTypes';
-import type { MoabomSystemLanguage, MoabomSystemState } from '../../types/moabomSystem';
+import type { MoabomSystemDefaults, MoabomSystemLanguage, MoabomSystemState } from '../../types/moabomSystem';
+import type { Dispatch, SetStateAction } from 'react';
 
 export interface Moa_HomeShellViewProps {
   t: MoabomTranslateFn;
   language: MoabomSystemLanguage;
   systemState: MoabomSystemState;
+  systemDefaults: MoabomSystemDefaults | null;
+  setSystemState: Dispatch<SetStateAction<MoabomSystemState>>;
+  setSystemDefaults: Dispatch<SetStateAction<MoabomSystemDefaults | null>>;
   editMode: boolean;
   toasts: ToastItem[];
   weatherCanvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -109,7 +113,7 @@ export interface Moa_HomeShellViewProps {
   openMyPage: (tab?: import('../../components/composite/mypage/myPageTypes').MyPageTab) => void;
   openAuthWindow: (mode: import('../../components/composite/Moa_AuthWindowContent').AuthWindowMode) => void;
   openBoardWindow: (slug: string, postId?: string) => void;
-  openUserProfileWindow: (userUuid: string, displayName?: string) => void;
+  openUserProfileWindow: (userUuid: string, displayName?: string, view?: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
   openLegalPage: (slug: import('../../shell/moaShellLegalPageIds').MoaShellLegalPageSlug) => void;
   restoreTaskbarWindow: (id: string) => void;
   closeWindow: (win: WindowState) => void;
@@ -126,6 +130,7 @@ export interface Moa_HomeShellViewProps {
   updateLegalPageWindowTitle: (windowId: string, title: string) => void;
   updateBoardWindowTitle: (windowId: string, title: string) => void;
   updateUserProfileWindowTitle: (windowId: string, title: string) => void;
+  switchUserProfileWindowView: (windowId: string, view: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
   updateErrorWindowTitle: (windowId: string, title: string) => void;
 }
 
@@ -134,6 +139,9 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     t,
     language,
     systemState,
+    systemDefaults,
+    setSystemState,
+    setSystemDefaults,
     editMode,
     toasts,
     weatherCanvasRef,
@@ -197,6 +205,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     updateLegalPageWindowTitle,
     updateBoardWindowTitle,
     updateUserProfileWindowTitle,
+    switchUserProfileWindowView,
     updateErrorWindowTitle,
   } = props;
 
@@ -264,6 +273,12 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
       createdApps={createdApps}
       favoriteApps={favoriteApps}
       recentApps={recentApps}
+      shellSystem={{
+        systemState,
+        systemDefaults,
+        setSystemState,
+        setSystemDefaults,
+      }}
       resolveWinTitle={resolveWinTitle}
       onOpenApp={openApp}
       onEditGeneratedApp={openEditGeneratedApp}
@@ -277,6 +292,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
       onLegalPageTitleResolved={updateLegalPageWindowTitle}
       onBoardWindowTitleResolved={updateBoardWindowTitle}
       onUserProfileWindowTitleResolved={updateUserProfileWindowTitle}
+      onUserProfileViewChange={switchUserProfileWindowView}
       onErrorWindowTitleResolved={updateErrorWindowTitle}
     />
   );
@@ -303,7 +319,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
           editMode={editMode} onEnterEditMode={handleEnterEditMode} favoriteApps={favoriteApps}
           createdApps={leftPanelMyApps}
           sharedApps={sharedGeneratedApps}
-          onAddApp={handleAddAppToMain} onOpenBoard={openBoardWindow} isOverlay={isMobileOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
+          onAddApp={handleAddAppToMain} onOpenBoard={openBoardWindow} onOpenUserProfile={openUserProfileWindow} isOverlay={isMobileOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
             setLeftOpen(false);
             updateSystemState({ layout: { leftPanelOpen: false } });
           }} />

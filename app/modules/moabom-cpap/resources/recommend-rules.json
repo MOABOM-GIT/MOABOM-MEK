@@ -1,0 +1,80 @@
+{
+  "base_score": 50,
+  "missing_measurement_bucket": 3,
+  "score_order": ["nasal", "pillow", "full"],
+  "score_clamp": { "min": 0, "max": 100 },
+  "size_buckets": {
+    "nose_width": { "low": 37, "mid": 43 },
+    "face_length": { "low": 155, "mid": 165 },
+    "face_width": { "low": 145, "mid": 155 },
+    "mouth_width": { "low": 43, "mid": 49 }
+  },
+  "size_labels": {
+    "small_max_score": 6,
+    "medium_max_score": 10,
+    "small": "S",
+    "medium": "M",
+    "large": "L"
+  },
+  "age_bonus": {
+    "20s": { "nasal": 15, "pillow": 15, "full": 0 },
+    "30s": { "nasal": 15, "pillow": 10, "full": 5 },
+    "40s": { "nasal": 10, "pillow": 5, "full": 10 },
+    "50s": { "nasal": 5, "pillow": 0, "full": 15 },
+    "60s+": { "nasal": 0, "pillow": 0, "full": 20 }
+  },
+  "mouth_breathing": {
+    "true": {
+      "full_score": 30,
+      "full_reason": "구강호흡자에게 필수",
+      "nasal_warning": "구강호흡 시 비효율적",
+      "pillow_warning": "구강호흡 시 비효율적"
+    },
+    "false": {
+      "nasal_score": 10,
+      "pillow_score": 10
+    }
+  },
+  "pressure": {
+    "high": {
+      "pillow_score": -30,
+      "full_score": 10,
+      "full_reason": "고압력에 안정적"
+    },
+    "low": {
+      "pillow_score": 15,
+      "pillow_reason": "저압력에 최적화"
+    }
+  },
+  "tossing": {
+    "high": {
+      "pillow_score": 15,
+      "pillow_reason": "가볍고 움직임에 강함",
+      "full_score": -10
+    }
+  },
+  "measurement_adjustments": {
+    "nose_height_high": { "threshold": 18, "type": "nasal", "score": 10, "reason": "높은 코에 적합" },
+    "nose_height_low": { "threshold": 12, "type": "pillow", "score": 10, "reason": "낮은 코에 편안함", "compare": "lt" },
+    "philtrum_length": { "threshold": 15, "type": "pillow", "score": 5, "compare": "lt" },
+    "mouth_width": { "threshold": 70, "type": "full", "score": 10, "reason": "넓은 입에 안정적 밀착", "compare": "gt" },
+    "bridge_width": { "threshold": 30, "type": "pillow", "score": 5, "compare": "lt" }
+  },
+  "preferred_type": {
+    "score_bonus": 20,
+    "reason": "사용자 선호",
+    "max_count": 5
+  },
+  "mask_types": {
+    "nasal": { "api_type": "nasal", "display_name": "나잘 마스크" },
+    "pillow": { "api_type": "nasal-pillow", "display_name": "나잘 필로우 마스크" },
+    "full": { "api_type": "full-face", "display_name": "풀페이스 마스크" }
+  },
+  "defaults": {
+    "reason_template": "얼굴 측정 결과 {size} 사이즈가 적합합니다.",
+    "tips": [
+      "누운 자세에서 다시 누출 여부를 확인하세요.",
+      "첫 착용 후 2~3일 동안 압박 부위를 확인하세요."
+    ]
+  }
+}

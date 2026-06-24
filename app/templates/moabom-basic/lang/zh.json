@@ -20,6 +20,45 @@
   "userinfo": {
     "$partial": "partial/zh/userinfo.json"
   },
+  "user": {
+    "$partial": "partial/zh/user.json"
+  },
+  "moa_chat": {
+    "title": "聊天",
+    "blocks": "拒绝列表",
+    "blocks_empty": "没有拒绝的用户。",
+    "search_placeholder": "按昵称搜索",
+    "start_direct": "开始聊天",
+    "start_group": "开始群聊",
+    "add": "添加",
+    "rejected_short": "已拒绝",
+    "loading": "正在加载会话…",
+    "empty": "还没有会话。搜索昵称开始聊天。",
+    "no_messages": "还没有消息。",
+    "no_conversation": "请选择会话",
+    "messages_loading": "正在加载消息…",
+    "messages_empty": "还没有消息。",
+    "choose_conversation": "请在左侧选择会话。",
+    "unknown_sender": "用户",
+    "message_placeholder": "输入消息。Enter 发送，Shift+Enter 换行",
+    "send": "发送",
+    "toast_request_rejected": "该用户拒绝接收聊天请求。",
+    "toast_blocked_by_self": "您已拒绝与该用户聊天。可在拒绝列表中解除。",
+    "toast_blocked_by_peer": "对方已拒绝与您聊天。",
+    "toast_login_required": "登录后可以聊天。",
+    "toast_failed": "聊天处理失败。",
+    "toast_conversation_ready": "已打开会话。",
+    "unblock": "解除",
+    "remove_selected": "移除"
+  },
+  "moa_profile_actions": {
+    "friend_add": "添加好友",
+    "chat": "聊天",
+    "chat_block_on": "已拒绝",
+    "chat_block_off": "拒绝聊天",
+    "chat_blocked": "已拒绝聊天。",
+    "chat_unblocked": "已取消拒绝聊天。"
+  },
   "errors": {
     "404_title": "页面不存在",
     "404_message": "您访问的页面不存在。",
@@ -304,7 +343,7 @@
       "rankings_apps_empty": "暂无应用排行数据",
       "rankings_users_empty": "暂无用户排行数据",
       "rankings_load_failed": "无法加载排行",
-      "rankings_activity_score": "{{score}} point",
+      "rankings_activity_score": "{score} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -335,7 +374,10 @@
       "notification_time_hours": "{count} 小时前",
       "notification_time_days": "{count} 天前",
       "admin_mode": "管理模式",
-      "avatar_alt": "{name} 的头像"
+      "avatar_alt": "{name} 的头像",
+      "ad_label": "广告",
+      "ad_badge": "AD",
+      "ad_placeholder_title": "广告位"
     },
     "center": {
       "edit_mode_title": "应用编辑模式",
@@ -351,6 +393,12 @@
       "legal_page_retry": "重试",
       "board_window": "论坛 · {slug}",
       "board_loading": "正在加载论坛…",
+      "user_profile_window": "用户资料",
+      "user_profile_tab_profile": "资料",
+      "user_profile_tab_posts": "帖子",
+      "user_profile_tab_chat": "聊天",
+      "user_profile_loading": "正在加载资料…",
+      "user_profile_error": "无法加载资料",
       "error_window": "错误 · {code}",
       "error_page_loading": "正在加载错误提示…",
       "error_page_error": "无法加载错误提示。",

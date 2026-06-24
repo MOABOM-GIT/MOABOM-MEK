@@ -52,6 +52,7 @@ const SAFETY_STYLE = `
 export function stripPreviewIncompatibleMarkup(html: string): string {
   return html
     .replace(/<script\b[^>]*\bid=["']moabom-ai-preview-runtime["'][^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<script\b[^>]*\bid=["']moabom-app-runtime["'][^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<base\b[^>]*>/gi, '')
     .replace(/<link\b[^>]*\brel=["']manifest["'][^>]*>/gi, '');
 }

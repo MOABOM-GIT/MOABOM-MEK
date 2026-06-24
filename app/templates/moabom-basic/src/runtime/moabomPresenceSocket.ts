@@ -36,7 +36,21 @@ export function subscribeTenantPresenceChannel(
     onLeaving?: (member: PresenceMember) => void;
   },
 ): PresenceSocketSubscription | null {
-  const echo = getEcho();
+  const manager = (window as {
+    G7Core?: { websocket?: { manager?: { getEcho?: () => EchoLike | null; initialize?: () => void } } };
+  }).G7Core?.websocket?.manager;
+
+  if (!manager) {
+    return null;
+  }
+
+  const hasToken = typeof localStorage !== 'undefined' && !!localStorage.getItem('auth_token');
+  if (!hasToken) {
+    return null;
+  }
+
+  manager.initialize?.();
+  const echo = manager.getEcho?.() ?? null;
   if (!echo) {
     return null;
   }

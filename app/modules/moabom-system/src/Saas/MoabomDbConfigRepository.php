@@ -277,6 +277,12 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
             Cache::forget($this->cacheKey($category));
             Cache::forget(self::CACHE_KEY_PREFIX.$category);
 
+            if (! GcsCoreSettingsJsonSync::writeCategory($category, $payload)) {
+                Log::warning('MoabomDbConfigRepository: GCS settings JSON sync failed (DB saved)', [
+                    'category' => $category,
+                ]);
+            }
+
             return true;
         } catch (\Throwable) {
             return false;

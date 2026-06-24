@@ -6,6 +6,8 @@ import type React from 'react';
 import { resolveMoabomTemplateLangDictionary } from '../i18n/moabomTemplateLangJsonFetch';
 import { getMoaShellBoardBridge } from './moaShellBoardBridge';
 import { resolveShellAuthModeFromPath } from './moaShellBoardNavigate';
+import { parseQuery } from './moaShellLayoutQuery';
+import { withTransientRetry } from './moaShellTransientRetry';
 
 export interface BoardComponentDefinition {
   id?: string;
@@ -95,22 +97,6 @@ function getG7Core(): G7CoreLike | undefined {
 
 function getTemplateApp(): TemplateAppLike | undefined {
   return (window as { __templateApp?: TemplateAppLike }).__templateApp;
-}
-
-function parseQuery(search: string): Record<string, string | string[]> {
-  const raw = search.startsWith('?') ? search.slice(1) : search;
-  const params = new URLSearchParams(raw);
-  const query: Record<string, string | string[]> = {};
-  for (const key of params.keys()) {
-    if (key in query) continue;
-    const values = params.getAll(key);
-    if (values.length > 1) {
-      query[key] = values;
-    } else if (values.length === 1) {
-      query[key] = key.endsWith('[]') ? values : values[0];
-    }
-  }
-  return query;
 }
 
 function evalBindingValue(
@@ -288,7 +274,7 @@ async function boardApiGet(
   const attempt = () => api.get(normalized, { params });
 
   try {
-    return await attempt();
+    return await withTransientRetry(attempt);
   } catch (error) {
     const status = extractHttpStatus(error);
     const body = extractHttpBody(error);
@@ -570,6 +556,13 @@ async function ensureBoardWindowTranslations(locale: string): Promise<void> {
   await resolveMoabomTemplateLangDictionary(locale);
 }
 
+/** idle 선로드 — 게시판 윈도우 첫 오픈 시 lang 병목 완화 */
+export async function prefetchBoardWindowTranslations(): Promise<void> {
+  const config = getTemplateApp()?.getConfig?.();
+  const locale = config?.locale ?? 'ko';
+  await ensureBoardWindowTranslations(locale);
+}
+
 export interface BoardWindowRenderPayload {
   DynamicRenderer: React.ComponentType<Record<string, unknown>>;
   /** G7 TemplateApp 과 동일 — layout.components 를 각각 DynamicRenderer 로 렌더 (Fragment 래핑 금지) */
@@ -608,11 +601,13 @@ export async function loadBoardWindowRenderPayload(
   slug: string,
   postId: string | undefined,
   mode?: BoardWindowMode,
+  queryOverride?: Record<string, string | string[]>,
 ): Promise<BoardWindowRenderPayload> {
   const layoutPath = resolveBoardLayoutPath(slug, postId, mode);
   const route: Record<string, string> = { slug, ...(postId ? { id: postId } : {}) };
+  const query = queryOverride ?? parseQuery(typeof window !== 'undefined' ? window.location.search : '');
 
-  return loadG7LayoutWindowPayload(layoutPath, route);
+  return loadG7LayoutWindowPayload(layoutPath, route, query);
 }
 
 export async function loadG7LayoutWindowPayload(
@@ -632,19 +627,27 @@ export async function loadG7LayoutWindowPayload(
   const config = templateApp?.getConfig?.();
   const locale = config?.locale ?? 'ko';
 
-  await ensureBoardWindowTranslations(locale);
-
   const beforeLoad = (window as { __g7BeforeLayoutLoad?: (route: { path?: string; layout?: string }, lp: string, tid: string) => Promise<void> })
     .__g7BeforeLayoutLoad;
-  if (beforeLoad) {
-    await beforeLoad(
+
+  const layoutDataPromise = layoutLoader
+    .loadLayout(TEMPLATE_ID, layoutPath)
+    .then(layout => normalizeBoardLayout(layout));
+  const translationsPromise = ensureBoardWindowTranslations(locale);
+  const beforeLoadPromise = beforeLoad
+    ? beforeLoad(
       { path: Object.values(route).join('/'), layout: 'home' },
       layoutPath,
       TEMPLATE_ID,
-    );
-  }
+    )
+    : Promise.resolve();
 
-  const layoutData = normalizeBoardLayout(await layoutLoader.loadLayout(TEMPLATE_ID, layoutPath));
+  const [layoutData] = await Promise.all([
+    layoutDataPromise,
+    translationsPromise,
+    beforeLoadPromise,
+  ]);
+
   const query = queryOverride ?? parseQuery(typeof window !== 'undefined' ? window.location.search : '');
   const globalState = templateApp?.getGlobalState?.() ?? {};
 

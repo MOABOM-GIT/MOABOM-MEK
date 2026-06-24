@@ -21,7 +21,7 @@ final class PresenceUserPreferencesService
     }
 
     /**
-     * @param  array{availability?: string, subtitle_mode?: string, activity_message?: string|null}  $input
+     * @param  array{availability?: string, subtitle_mode?: string, activity_message?: string|null, show_avatar_in_connect_list?: bool, accept_chat_requests?: bool}  $input
      */
     public function updateForUser(User $user, array $input): PresenceUserPreference
     {
@@ -36,6 +36,12 @@ final class PresenceUserPreferencesService
         }
         if (array_key_exists('activity_message', $input)) {
             $attributes['activity_message'] = $input['activity_message'];
+        }
+        if (array_key_exists('show_avatar_in_connect_list', $input)) {
+            $attributes['show_avatar_in_connect_list'] = $input['show_avatar_in_connect_list'];
+        }
+        if (array_key_exists('accept_chat_requests', $input)) {
+            $attributes['accept_chat_requests'] = $input['accept_chat_requests'];
         }
 
         if ($attributes === []) {

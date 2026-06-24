@@ -7,6 +7,7 @@ use Modules\Moabom\Presence\Contracts\FriendshipRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\TenantPresenceSessionRepositoryInterface;
 use Modules\Moabom\Presence\Models\TenantPresenceSession;
+use Modules\Moabom\Presence\Support\PresenceConnectListNormalizer;
 
 final class TenantOnlineUsersService
 {
@@ -23,7 +24,10 @@ final class TenantOnlineUsersService
     public function listOnlineUsers(?User $viewer, int $limit = 50): array
     {
         $since = now()->subSeconds(PresenceHeartbeatService::ACTIVE_TTL_SECONDS);
-        $sessions = $this->tenantSessions->listConnectVisible($since, $limit);
+        $sessions = PresenceConnectListNormalizer::dedupe(
+            $this->tenantSessions->listConnectVisible($since, $limit * 3),
+            $limit,
+        );
 
         $userIds = $sessions
             ->pluck('user_id')
@@ -107,7 +111,7 @@ final class TenantOnlineUsersService
             'display_name' => $session->display_name,
             'status_text' => $subtitle,
             'presence_subtitle' => $subtitle,
-            'avatar' => $session->avatar,
+            'avatar' => $this->presentation->resolveConnectListAvatar($user, $preferences),
             'is_authenticated' => $session->is_authenticated,
             'availability' => $availability->value,
             'is_online' => $isReachable,

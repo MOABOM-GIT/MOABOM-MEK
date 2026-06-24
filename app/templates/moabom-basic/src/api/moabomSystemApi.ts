@@ -22,17 +22,32 @@ type PublicFrontendDefaultsResult = {
 };
 
 const FRONTEND_DEFAULTS_MEMORY_TTL_MS = 60_000;
+const USER_SYSTEM_SETTINGS_MEMORY_TTL_MS = 30_000;
 let publicFrontendDefaultsPromise: Promise<PublicFrontendDefaultsResult> | null = null;
 let publicFrontendDefaultsCache: { value: PublicFrontendDefaultsResult; expiresAt: number } | null = null;
 let userSystemSettingsPromise: Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> | null = null;
+let userSystemSettingsCache: {
+  value: MoabomApiResult<ApiSystemSettingsResponse['data']>;
+  expiresAt: number;
+} | null = null;
+
+export function invalidateMoabomSystemSettingsCache(): void {
+  userSystemSettingsCache = null;
+}
 
 export function __resetMoabomPublicFrontendDefaultsCacheForTest(): void {
   publicFrontendDefaultsPromise = null;
   publicFrontendDefaultsCache = null;
   userSystemSettingsPromise = null;
+  userSystemSettingsCache = null;
 }
 
 export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
+  const now = Date.now();
+  if (userSystemSettingsCache && userSystemSettingsCache.expiresAt > now) {
+    return userSystemSettingsCache.value;
+  }
+
   if (userSystemSettingsPromise) {
     return userSystemSettingsPromise;
   }
@@ -41,6 +56,12 @@ export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSy
     const result = await moabomApiGet<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings');
     if (result.data?.locale_catalog) {
       setMoabomLocaleCatalog(result.data.locale_catalog);
+    }
+    if (result.ok) {
+      userSystemSettingsCache = {
+        value: result,
+        expiresAt: Date.now() + USER_SYSTEM_SETTINGS_MEMORY_TTL_MS,
+      };
     }
     return result;
   })();
@@ -142,6 +163,14 @@ export async function saveMoabomSystemSettings(
   const result = await moabomApiPut<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings', settings);
   if (result.data?.locale_catalog) {
     setMoabomLocaleCatalog(result.data.locale_catalog);
+  }
+  if (result.ok) {
+    userSystemSettingsCache = {
+      value: result,
+      expiresAt: Date.now() + USER_SYSTEM_SETTINGS_MEMORY_TTL_MS,
+    };
+  } else {
+    invalidateMoabomSystemSettingsCache();
   }
   return result;
 }

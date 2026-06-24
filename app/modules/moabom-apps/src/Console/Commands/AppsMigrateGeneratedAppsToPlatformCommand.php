@@ -49,10 +49,14 @@ class AppsMigrateGeneratedAppsToPlatformCommand extends Command
 
     private int $rowsSkipped = 0;
 
+    private TenantDatabaseConfigurator $databaseConfigurator;
+
     public function handle(
         PlatformConnectionFactory $platformConnections,
         TenantDatabaseConfigurator $databaseConfigurator,
     ): int {
+        $this->databaseConfigurator = $databaseConfigurator;
+
         $platformConnections->registerConnection();
         GeneratedAppsConnection::register();
 
@@ -109,7 +113,7 @@ class AppsMigrateGeneratedAppsToPlatformCommand extends Command
 
         $this->line(sprintf('--- legacy main db (%s) → tenant_slug=platform ---', $mainDb));
 
-        $this->withDatabase($mainDb, function (string $connection) use ($dryRun): void {
+        $this->databaseConfigurator->runOnDatabase($mainDb, function (string $connection) use ($dryRun): void {
             $this->migrateConnectionDatabase($connection, 'platform', $dryRun);
         });
     }
@@ -329,40 +333,5 @@ class AppsMigrateGeneratedAppsToPlatformCommand extends Command
         $nickname = trim((string) ($source['nickname'] ?? ($source['name'] ?? '')));
 
         return $nickname !== '' ? $nickname : null;
-    }
-
-    /**
-     * @param  callable(string): void  $callback
-     */
-    private function withDatabase(string $database, callable $callback): void
-    {
-        $connection = (string) config('database.default', 'mysql');
-        $original = config("database.connections.{$connection}");
-        if (! is_array($original)) {
-            return;
-        }
-
-        $config = $original;
-        if (isset($config['write']) && is_array($config['write'])) {
-            $config['write']['database'] = $database;
-        }
-        if (isset($config['read']) && is_array($config['read'])) {
-            $config['read']['database'] = $database;
-        }
-        if (! isset($config['write'])) {
-            $config['database'] = $database;
-        }
-
-        config(["database.connections.{$connection}" => $config]);
-        DB::purge($connection);
-        DB::reconnect($connection);
-
-        try {
-            $callback($connection);
-        } finally {
-            config(["database.connections.{$connection}" => $original]);
-            DB::purge($connection);
-            DB::reconnect($connection);
-        }
     }
 }

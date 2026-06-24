@@ -58,6 +58,10 @@ class MoabomExtensionMenuSyncHelper extends ExtensionMenuSyncHelper
         string $extensionIdentifier,
         ?int $parentId = null,
     ): Menu {
+        if (! array_key_exists('description', $menuData)) {
+            $menuData['description'] = $menuData['name'] ?? $menuData['slug'] ?? '';
+        }
+
         $effectiveParentId = $parentId;
         if ($effectiveParentId === null && isset($menuData['parent_slug'])) {
             $parentSlug = $menuData['parent_slug'];

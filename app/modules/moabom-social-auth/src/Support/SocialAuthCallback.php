@@ -10,9 +10,6 @@ namespace Modules\Moabom\Social\Auth\Support;
  */
 final class SocialAuthCallback
 {
-    /** @var list<string> */
-    private const PROVIDERS = ['google', 'kakao', 'naver'];
-
     /**
      * 애플리케이션 루트 기준 콜백 경로(선행 슬래시 포함).
      */
@@ -42,7 +39,7 @@ final class SocialAuthCallback
     public static function allAbsoluteUrls(): array
     {
         $urls = [];
-        foreach (self::PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $urls[$provider] = self::absoluteUrl($provider);
         }
 

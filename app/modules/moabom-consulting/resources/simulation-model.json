@@ -1,0 +1,25 @@
+{
+  "defaults": {
+    "initial_patients": 0,
+    "monthly_new_patients": 15,
+    "staff_count": 1,
+    "staff_salary": 3000000,
+    "equipment_price": 900000,
+    "refurbish_cost": 80000,
+    "adherence_pass_rate": 0.85,
+    "annual_retention": 0.65,
+    "years": 5
+  },
+  "coefficients": {
+    "self": {
+      "rental_revenue_per_patient": 75000,
+      "consumable_cost_per_patient": 6000,
+      "monthly_rent": 1000000
+    },
+    "smart": {
+      "rental_revenue_per_patient": 95000,
+      "service_fee_per_patient": 38000,
+      "monthly_rent": 1000000
+    }
+  }
+}

@@ -60,14 +60,6 @@ final class PresencePublicController extends PublicBaseController
             $request->validated('client_form_factor'),
         );
 
-        if (! $result['accepted']) {
-            return ResponseHelper::moduleError(
-                'moabom-presence',
-                'messages.heartbeat_rejected',
-                422,
-            );
-        }
-
         return ResponseHelper::moduleSuccess(
             'moabom-presence',
             'messages.heartbeat_success',

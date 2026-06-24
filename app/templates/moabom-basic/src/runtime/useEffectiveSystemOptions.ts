@@ -6,7 +6,7 @@ import {
   MOABOM_SYSTEM_STATE_CHANGED_EVENT,
   MOABOM_SYSTEM_STORAGE_KEY,
 } from '../utils/moabomSystemStore';
-import { areMoabomSystemStatesEqual } from '../utils/moabomSystemStateEqual';
+import { areMoabomSystemStatesEqual } from '../utils/moabomSystemStore';
 import { computeEffectiveSystemOptions } from './effectiveSystemOptions';
 import { MOABOM_RUNTIME_OPTIONS_CHANGED_EVENT } from './events';
 import { MoabomRuntime } from './MoabomRuntime';

@@ -6,9 +6,11 @@ use App\Traits\NormalizesSettingsData;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Modules\Moabom\Credit\Contracts\CreditSettingsServiceInterface;
+use Modules\Moabom\System\Support\MoabomSaasPersistentModuleSettings;
 
 class CreditSettingsService implements CreditSettingsServiceInterface
 {
+    use MoabomSaasPersistentModuleSettings;
     use NormalizesSettingsData;
 
     private const MODULE_IDENTIFIER = 'moabom-credit';
@@ -184,13 +186,26 @@ class CreditSettingsService implements CreditSettingsServiceInterface
      */
     private function loadCategorySettings(string $category): array
     {
+        return $this->resolveCategorySettings(
+            $category,
+            fn (): array => $this->loadLegacyLocalCategorySettings($category),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function loadLegacyLocalCategorySettings(string $category): array
+    {
         $path = $this->getCategoryFilePath($category);
 
         if (! File::exists($path)) {
             return [];
         }
 
-        return json_decode(File::get($path), true) ?? [];
+        $decoded = json_decode(File::get($path), true);
+
+        return is_array($decoded) ? array_diff_key($decoded, ['_meta' => true]) : [];
     }
 
     /**
@@ -200,16 +215,22 @@ class CreditSettingsService implements CreditSettingsServiceInterface
      */
     private function saveCategorySettings(string $category, array $settings): bool
     {
-        $storagePath = $this->getStoragePath();
+        return $this->persistCategorySettings(
+            $category,
+            $settings,
+            function () use ($category, $settings): bool {
+                $storagePath = $this->getStoragePath();
 
-        if (! File::isDirectory($storagePath)) {
-            File::makeDirectory($storagePath, 0755, true);
-        }
+                if (! File::isDirectory($storagePath)) {
+                    File::makeDirectory($storagePath, 0755, true);
+                }
 
-        return File::put(
-            $this->getCategoryFilePath($category),
-            json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        ) !== false;
+                return File::put(
+                    $this->getCategoryFilePath($category),
+                    json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+                ) !== false;
+            },
+        );
     }
 
     /**
@@ -234,5 +255,10 @@ class CreditSettingsService implements CreditSettingsServiceInterface
     private function getStoragePath(): string
     {
         return storage_path('app/modules/'.self::MODULE_IDENTIFIER.'/settings');
+    }
+
+    protected function getPersistentModuleIdentifier(): string
+    {
+        return self::MODULE_IDENTIFIER;
     }
 }

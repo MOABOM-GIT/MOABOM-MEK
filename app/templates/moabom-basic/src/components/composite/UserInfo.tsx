@@ -45,9 +45,28 @@ import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
 import { Span } from '../basic/Span';
 import { Icon } from '../basic/Icon';
-
-// G7Core 참조
+import { getMoaShellBoardBridge } from '../../shell/moaShellBoardBridge';
+import { splitPathAndSearch } from '../../shell/moaShellBoardNavigate';
+import { parseShellRoute } from '../../utils/moabomShellRoutes';
 const getG7Core = () => (window as any).G7Core;
+
+function navigateUserShellPath(path: string): void {
+  const { pathname, search } = splitPathAndSearch(path);
+  const route = parseShellRoute(pathname, search);
+  if (route.kind === 'userProfile') {
+    const bridge = getMoaShellBoardBridge();
+    if (bridge?.openUserProfile) {
+      bridge.openUserProfile(route.uuid, route.view);
+      return;
+    }
+  }
+  const g7Core = getG7Core();
+  if (g7Core?.navigate) {
+    g7Core.navigate(path);
+  } else {
+    window.location.href = path;
+  }
+}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -393,13 +412,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({
     if (item.onClick) {
       void item.onClick();
     } else if (item.path) {
-      const path = item.path;
-      const g7Core = getG7Core();
-      if (g7Core?.navigate) {
-        g7Core.navigate(path);
-      } else {
-        window.location.href = path;
-      }
+      navigateUserShellPath(item.path);
     }
   }, []);
 
@@ -425,7 +438,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({
     }
     // 드롭다운이 비활성화되고 클릭 가능한 경우
     else if (clickable) {
-      getG7Core()?.navigate?.(actualProfilePath);
+      navigateUserShellPath(actualProfilePath);
     }
   }, [stopPropagation, actualIsGuest, actualUserUuid, showDropdown, showMenu, updateMenuPosition, clickable, actualProfilePath]);
 
@@ -482,15 +495,20 @@ export const UserInfo: React.FC<UserInfoProps> = ({
       {showDropdown && showMenu && finalMenuItems.length > 0 && createPortal(
         <Div
           ref={dropdownRef}
-          className="fixed w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-[9999]"
+          className="fixed flex w-40 flex-col gap-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800 z-[9999]"
           style={{ top: menuPosition.top, left: menuPosition.left }}
           data-testid="author-dropdown-menu"
         >
           {finalMenuItems.map((item) => (
             <Button
               key={item.key}
+              type="button"
+              variant={item.key === 'view_profile' ? 'primary-outline' : 'secondary'}
+              size="sm"
               onClick={(e) => handleMenuItemClick(item, e)}
-              className="flex items-center justify-start gap-2 w-full text-left px-3 py-2 text-sm text-secondary hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              className={`flex w-[calc(100%-0.5rem)] items-center justify-start gap-2 border-0 text-left mx-1 ${
+                item.key === 'view_profile' ? '' : 'px-3'
+              }`}
               data-testid={`menu-item-${item.key}`}
             >
               {item.icon && <Icon name={item.icon} className="w-4 h-4" />}

@@ -42,6 +42,21 @@ class TenantModuleCategoryJsonStoreTest extends ModuleTestCase
         $this->app->register(SystemServiceProvider::class);
     }
 
+    public function test_read_hydrates_from_modules_disk_when_db_row_missing(): void
+    {
+        Storage::disk('modules')->put(
+            'moabom-system/settings/appearance.json',
+            json_encode([
+                'point_color_presets' => ['#6366f1', '#a1b2c3'],
+                'themes' => [],
+            ], JSON_UNESCAPED_UNICODE),
+        );
+
+        $store = $this->app->make(TenantModuleCategoryJsonStore::class);
+
+        $this->assertSame(['#6366f1', '#a1b2c3'], $store->read('appearance')['point_color_presets']);
+    }
+
     public function test_read_returns_decoded_category_after_replace(): void
     {
         $store = $this->app->make(TenantModuleCategoryJsonStore::class);

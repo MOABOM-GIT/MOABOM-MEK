@@ -11,6 +11,9 @@ export const TAB_DEFINITIONS: TabDefinition[] = [
   { id: 'subscription', icon: 'check-circle' },
 ];
 
+/** 라우트·persist 검증용 탭 id 목록 SSOT */
+export const MY_PAGE_TABS: readonly MyPageTab[] = TAB_DEFINITIONS.map(tab => tab.id);
+
 /** @deprecated TAB_DEFINITIONS + 번역 사용 */
 export const TABS = TAB_DEFINITIONS;
 

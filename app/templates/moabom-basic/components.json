@@ -1089,6 +1089,42 @@
         }
       },
       {
+        "name": "UserProfileActions",
+        "type": "composite",
+        "description": "공개 프로필 헤더의 친구 추가, 대화하기, 대화거부 액션",
+        "path": "src/components/composite/Moa_UserProfileActions.tsx",
+        "props": {
+          "userUuid": {
+            "type": "string",
+            "required": false,
+            "description": "대상 사용자 UUID"
+          },
+          "className": {
+            "type": "string",
+            "required": false,
+            "description": "사용자 정의 클래스"
+          }
+        }
+      },
+      {
+        "name": "UserProfileHero",
+        "type": "composite",
+        "description": "공개 프로필 헤더 — 큰 아바타와 닉네임·가입일·SNS 가입 경로",
+        "path": "src/components/composite/Moa_UserProfileHero.tsx",
+        "props": {
+          "profile": {
+            "type": "object",
+            "required": false,
+            "description": "공개 프로필 API 응답 data 객체"
+          },
+          "className": {
+            "type": "string",
+            "required": false,
+            "description": "사용자 정의 클래스"
+          }
+        }
+      },
+      {
         "name": "HtmlContent",
         "type": "composite",
         "description": "HTML 또는 일반 텍스트 콘텐츠 표시 (DOMPurify XSS 보호)",

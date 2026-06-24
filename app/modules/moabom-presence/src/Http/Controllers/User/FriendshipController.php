@@ -63,6 +63,7 @@ final class FriendshipController extends AuthBaseController
                 'moabom-presence',
                 'messages.'.$e->getMessage(),
                 422,
+                ['reason' => $e->getMessage()],
             );
         }
     }
@@ -96,6 +97,7 @@ final class FriendshipController extends AuthBaseController
                 'moabom-presence',
                 'messages.'.$e->getMessage(),
                 422,
+                ['reason' => $e->getMessage()],
             );
         }
     }

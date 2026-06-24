@@ -282,38 +282,6 @@ class SocialAuthBrokerStateService
         return in_array($parsed['type'], ['tenant', 'platform'], true);
     }
 
-    private function isTenantHostRequest(): bool
-    {
-        if (app()->runningInConsole()) {
-            return false;
-        }
-
-        $host = strtolower((string) request()->getHost());
-        if ($host === '') {
-            return false;
-        }
-
-        $platformHosts = config('moabom-saas.platform_hosts');
-        if (! is_array($platformHosts)) {
-            $platformHosts = (array) config('moabom-system.saas.platform_hosts', []);
-        }
-        $platformHosts = array_map(
-            static fn ($value): string => strtolower((string) $value),
-            $platformHosts
-        );
-        if (in_array($host, $platformHosts, true)) {
-            return false;
-        }
-
-        $baseDomain = (string) (config('moabom-saas.base_domain') ?? config('moabom-system.saas.base_domain', ''));
-        $baseDomain = strtolower(trim($baseDomain));
-        if ($baseDomain === '') {
-            return false;
-        }
-
-        return str_ends_with($host, '.'.$baseDomain);
-    }
-
     public function isBrokerHostRequestContext(): bool
     {
         if (app()->runningInConsole()) {

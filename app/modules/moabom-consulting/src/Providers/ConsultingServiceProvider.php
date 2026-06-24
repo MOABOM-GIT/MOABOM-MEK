@@ -18,4 +18,14 @@ class ConsultingServiceProvider extends BaseModuleServiceProvider
     protected array $repositories = [
         ContractRepositoryInterface::class => ContractRepository::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->mergeConfigFrom(
+            dirname(__DIR__, 2).'/config/moabom-consulting.php',
+            'moabom-consulting',
+        );
+    }
 }

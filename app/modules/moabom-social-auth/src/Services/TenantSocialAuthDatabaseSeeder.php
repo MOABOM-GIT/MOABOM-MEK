@@ -6,6 +6,7 @@ namespace Modules\Moabom\Social\Auth\Services;
 
 use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\Social\Auth\Models\SocialAuthSetting;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 
 /**
  * 테넌트 DB에 SNS provider 기본 row를 idempotent seed.
@@ -14,9 +15,6 @@ use Modules\Moabom\Social\Auth\Models\SocialAuthSetting;
  */
 final class TenantSocialAuthDatabaseSeeder
 {
-    /** @var list<string> */
-    private const PROVIDERS = ['google', 'kakao', 'naver'];
-
     /**
      * @return array{seeded: bool, created: list<string>, source: string, reason?: string}
      */
@@ -33,7 +31,7 @@ final class TenantSocialAuthDatabaseSeeder
 
         $created = [];
 
-        foreach (self::PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             /** @var SocialAuthSetting|null $existing */
             $existing = SocialAuthSetting::query()->where('provider', $provider)->first();
 

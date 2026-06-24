@@ -1,8 +1,24 @@
 import { moabomApiPut } from '../api/moabomAuthenticatedApi';
 import { sanitizeMainAppOrderIds, saveLocalMainAppOrder } from '../shell/moaShellAppOrder';
+import {
+  loadMainUnpinnedGeneratedIds,
+  sanitizeMainUnpinnedGeneratedIds,
+} from '../shell/moaShellMainAppUnpinned';
+
+export interface ShellHomePersistInput {
+  order: string[];
+  customized: boolean;
+  unpinnedGeneratedIds?: string[];
+}
+
+interface PendingShellHome extends ShellHomePersistInput {
+  order: string[];
+  customized: boolean;
+  unpinnedGeneratedIds: string[];
+}
 
 let inflight: Promise<void> | null = null;
-let pendingOrder: string[] | null = null;
+let pendingShellHome: PendingShellHome | null = null;
 let lastResolveAt = 0;
 
 export function isSavingShellOrder(): boolean {
@@ -19,17 +35,28 @@ export function isRecentlySavedShellOrder(windowMs = 600): boolean {
   return Date.now() - lastResolveAt < windowMs;
 }
 
+function normalizeShellHomePayload(input: ShellHomePersistInput): PendingShellHome {
+  return {
+    order: sanitizeMainAppOrderIds(input.order),
+    customized: input.customized,
+    unpinnedGeneratedIds: sanitizeMainUnpinnedGeneratedIds(
+      input.unpinnedGeneratedIds ?? [...loadMainUnpinnedGeneratedIds()],
+    ),
+  };
+}
+
 async function drainQueue(): Promise<void> {
-  while (pendingOrder !== null) {
-    const next = pendingOrder;
-    pendingOrder = null;
+  while (pendingShellHome !== null) {
+    const next = pendingShellHome;
+    pendingShellHome = null;
 
     try {
       await moabomApiPut('/api/modules/moabom-system/user/settings', {
         shell: {
           home: {
-            mainAppOrder: next,
-            mainAppOrderCustomized: true,
+            mainAppOrder: next.order,
+            mainAppOrderCustomized: next.customized,
+            mainUnpinnedGeneratedIds: next.unpinnedGeneratedIds,
           },
         },
       });
@@ -41,12 +68,15 @@ async function drainQueue(): Promise<void> {
   }
 }
 
-export function queueSaveShellMainAppOrder(order: string[], isLoggedIn: boolean): Promise<void> {
+export function queueSaveShellHomeSettings(
+  input: ShellHomePersistInput,
+  isLoggedIn: boolean,
+): Promise<void> {
   if (!isLoggedIn) {
     return Promise.resolve();
   }
 
-  pendingOrder = sanitizeMainAppOrderIds(order);
+  pendingShellHome = normalizeShellHomePayload(input);
 
   if (inflight) {
     return inflight;
@@ -59,18 +89,38 @@ export function queueSaveShellMainAppOrder(order: string[], isLoggedIn: boolean)
   return inflight;
 }
 
-export function persistMainAppOrder(order: string[], input: { isLoggedIn: boolean }): void {
-  const sanitized = sanitizeMainAppOrderIds(order);
-  saveLocalMainAppOrder(sanitized);
+/** @deprecated `queueSaveShellHomeSettings` 사용 */
+export function queueSaveShellMainAppOrder(order: string[], isLoggedIn: boolean): Promise<void> {
+  return queueSaveShellHomeSettings({ order, customized: true }, isLoggedIn);
+}
 
-  if (input.isLoggedIn) {
-    void queueSaveShellMainAppOrder(sanitized, true);
+export function persistShellHomeSettings(
+  input: ShellHomePersistInput,
+  options: { isLoggedIn: boolean },
+): void {
+  const normalized = normalizeShellHomePayload(input);
+  if (normalized.customized) {
+    saveLocalMainAppOrder(normalized.order);
   }
+
+  if (options.isLoggedIn) {
+    void queueSaveShellHomeSettings(normalized, true);
+  }
+}
+
+export function persistMainAppOrder(
+  order: string[],
+  input: { isLoggedIn: boolean; customized?: boolean },
+): void {
+  persistShellHomeSettings(
+    { order, customized: input.customized ?? true },
+    input,
+  );
 }
 
 /** @internal */
 export function __resetMoabomShellOrderSaveQueueForTest(): void {
   inflight = null;
-  pendingOrder = null;
+  pendingShellHome = null;
   lastResolveAt = 0;
 }

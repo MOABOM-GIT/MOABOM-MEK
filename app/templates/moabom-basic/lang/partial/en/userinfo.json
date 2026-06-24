@@ -4,6 +4,8 @@
   "friend_request": "Add friend",
   "friend_request_sent": "Friend request sent.",
   "friend_request_failed": "Could not send friend request.",
+  "friend_request_pending": "Friend request pending.",
+  "friend_already": "Friends",
   "guest_badge": "Guest",
   "no_image": "No Image",
   "withdrawn_user": "Deleted User"

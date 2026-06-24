@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Social\Auth\Http\Controllers\Admin\SocialAuthSettingsController;
 use Modules\Moabom\Social\Auth\Http\Controllers\SocialAuthController;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,23 +22,23 @@ Route::post('complete-profile', [SocialAuthController::class, 'completeProfile']
 
 Route::middleware('web')->group(function () {
     Route::get('oauth/{provider}/start', [SocialAuthController::class, 'brokerStart'])
-        ->whereIn('provider', ['google', 'kakao', 'naver'])
+        ->whereIn('provider', SocialAuthProviders::ALL)
         ->name('broker-start');
 
     Route::get('oauth/{provider}/callback', [SocialAuthController::class, 'brokerCallback'])
-        ->whereIn('provider', ['google', 'kakao', 'naver'])
+        ->whereIn('provider', SocialAuthProviders::ALL)
         ->name('broker-callback');
 
     Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])
-        ->whereIn('provider', ['google', 'kakao', 'naver'])
+        ->whereIn('provider', SocialAuthProviders::ALL)
         ->name('web-redirect');
 
     Route::get('{provider}/callback', [SocialAuthController::class, 'callback'])
-        ->whereIn('provider', ['google', 'kakao', 'naver'])
+        ->whereIn('provider', SocialAuthProviders::ALL)
         ->name('web-callback');
 
     Route::get('{provider}/popup-complete', [SocialAuthController::class, 'popupComplete'])
-        ->whereIn('provider', ['google', 'kakao', 'naver'])
+        ->whereIn('provider', SocialAuthProviders::ALL)
         ->name('web-popup-complete');
 });
 

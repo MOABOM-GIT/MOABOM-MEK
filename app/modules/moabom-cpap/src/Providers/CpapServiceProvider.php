@@ -18,4 +18,14 @@ class CpapServiceProvider extends BaseModuleServiceProvider
     protected array $repositories = [
         CpapMeasurementRepositoryInterface::class => CpapMeasurementRepository::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->mergeConfigFrom(
+            dirname(__DIR__, 2).'/config/moabom-cpap.php',
+            'moabom-cpap',
+        );
+    }
 }

@@ -7,25 +7,18 @@ use Illuminate\Support\Str;
 use Modules\Moabom\Social\Auth\DataTransferObjects\SocialProviderUser;
 use Modules\Moabom\Social\Auth\Exceptions\SocialAuthException;
 use Modules\Moabom\Social\Auth\Support\SocialAuthCallback;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 
 class SocialProviderService
 {
-    /**
-     * 지원하는 SNS 제공자 목록입니다.
-     */
-    private const SUPPORTED_PROVIDERS = ['google', 'kakao', 'naver'];
-
     public function __construct(
         private readonly SocialAuthSettingsService $settingsService,
         private readonly ?SocialAuthBrokerStateService $brokerStateService = null,
     ) {}
 
-    /**
-     * 제공자가 지원되는지 확인합니다.
-     */
     public function supports(string $provider): bool
     {
-        return in_array($provider, self::SUPPORTED_PROVIDERS, true);
+        return SocialAuthProviders::isSupported($provider);
     }
 
     /**
@@ -36,7 +29,7 @@ class SocialProviderService
     public function enabledProviders(): array
     {
         return array_values(array_filter(
-            self::SUPPORTED_PROVIDERS,
+            SocialAuthProviders::all(),
             fn (string $provider) => $this->isEnabled($provider)
         ));
     }

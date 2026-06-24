@@ -15,7 +15,7 @@ import { LoginPrompt } from './Moa_LoginPrompt';
 import { useMoabomPresence } from '../../hooks/useMoabomPresence';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 import type { AuthWindowMode } from './Moa_AuthWindowContent';
-import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
+import { MOABOM_SHELL_SUB_TAB_SLOT_PX, MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../../layout/moabomShellPanelLayout';
 import { loadMoabomSystemState } from '../../utils/moabomSystemStore';
 import { useMoabomShellNotifications } from '../../hooks/useMoabomShellNotifications';
 import {
@@ -25,11 +25,12 @@ import {
 } from '../../utils/moabomNotificationPresentation';
 import { isShellNotificationUnread } from '../../utils/moabomShellNotificationUtils';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
-import type { MoabomTranslateFn } from '../../i18n/moabomT';
-import type { PresenceAvailability, ClientFormFactor } from '../../api/moabomPresenceApi';
-import { presenceStatusDotClass, resolvePresenceSubtitle } from '../../utils/presenceAvailability';
-import { pushShellPath } from '../../utils/moabomShellRoutes';
+import type { ClientFormFactor } from '../../api/moabomPresenceApi';
+import { presenceAvatarAwayClass, presenceStatusDotClass } from '../../utils/presenceAvailability';
+import { getShellAuthUserUuid, resolvePresenceListStatusLine, resolvePresenceListUserStatus } from '../../utils/presenceSettingsSync';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
+import { prefetchUserProfileWindowLayouts } from '../../shell/userProfileWindowPrefetch';
+import { Moa_RightPanelAdSlot } from './Moa_RightPanelAdSlot';
 
 export interface RightPanelProps {
   /** 패널 너비 */
@@ -45,7 +46,7 @@ export interface RightPanelProps {
   /** 인증 윈도우 열기 */
   onOpenAuth?: (mode: AuthWindowMode) => void;
   /** 공개 프로필 윈도우 열기 */
-  onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
+  onOpenUserProfile?: (userUuid: string, displayName?: string, view?: 'profile' | 'posts') => void;
   /** 좁은 화면 오버레이 모드 여부 */
   isOverlay?: boolean;
   /**
@@ -79,7 +80,7 @@ interface PresenceUserActionsMenuProps {
   displayName: string;
   friendship?: 'none' | 'outgoing_pending' | 'incoming_pending' | 'accepted';
   isLoggedIn: boolean;
-  onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
+  onOpenUserProfile?: (userUuid: string, displayName?: string, view?: 'profile' | 'posts') => void;
   onAddFriend: (userUuid: string) => void | Promise<void>;
   onAcceptFriend: (userUuid: string) => void | Promise<void>;
 }
@@ -159,7 +160,10 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
         aria-label={t('moa_shell.right.presence_menu')}
         aria-expanded={open}
         onClick={() => {
-          if (!open) updateMenuPosition();
+          if (!open) {
+            updateMenuPosition();
+            prefetchUserProfileWindowLayouts();
+          }
           setOpen(prev => !prev);
         }}
       >
@@ -168,17 +172,17 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
       {open && createPortal(
         <Div
           ref={menuRef}
-          className="fixed z-[9999] min-w-[9.5rem] rounded-xl glass-sm p-1 shadow-lg"
+          className="fixed z-[9999] flex min-w-[9.5rem] flex-col gap-1 rounded-2xl glass-sm-blur p-2 shadow-lg"
           style={{ top: menuPosition.top, left: menuPosition.left, width: PRESENCE_MENU_WIDTH_PX }}
         >
           <Button
             type="button"
-            variant="secondary"
+            variant="primary-outline"
             size="sm"
-            className="w-full justify-start border-0"
+            className="moa-user-profile-actions-menu-item w-full justify-start rounded-xl"
             onClick={() => {
               setOpen(false);
-              onOpenUserProfile?.(userUuid, displayName);
+              onOpenUserProfile?.(userUuid, displayName, 'profile');
             }}
           >
             {t('moa_shell.right.presence_view_profile')}
@@ -187,11 +191,10 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
             type="button"
             variant="secondary"
             size="sm"
-            className="w-full justify-start border-0"
+            className="moa-user-profile-actions-menu-item w-full justify-start rounded-xl border-0"
             onClick={() => {
               setOpen(false);
-              pushShellPath(`/users/${encodeURIComponent(userUuid)}/posts`);
-              onOpenUserProfile?.(userUuid, displayName);
+              onOpenUserProfile?.(userUuid, displayName, 'posts');
             }}
           >
             {t('userinfo.view_posts')}
@@ -229,34 +232,6 @@ function presenceClientFormFactorIcon(formFactor?: ClientFormFactor | null): str
   if (formFactor === 'mobile') return 'mobile-alt';
   if (formFactor === 'desktop') return 'desktop';
   return null;
-}
-
-function resolvePresenceStatusLine(
-  t: MoabomTranslateFn,
-  user: {
-    presence_subtitle?: string | null;
-    status_text?: string | null;
-    availability?: PresenceAvailability;
-    is_online: boolean;
-  },
-): string {
-  const subtitle = resolvePresenceSubtitle(user);
-  if (subtitle) {
-    return subtitle;
-  }
-  if (!user.is_online) {
-    return t('moa_shell.right.presence_offline');
-  }
-  switch (user.availability) {
-    case 'busy':
-      return t('moa_shell.right.presence_busy');
-    case 'away':
-      return t('moa_shell.right.presence_away');
-    case 'offline':
-      return t('moa_shell.right.presence_offline');
-    default:
-      return t('moa_shell.right.presence_active');
-  }
 }
 
 /**
@@ -314,7 +289,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     addFriend,
     acceptFriend,
   } = useMoabomPresence({
-    isLoggedIn,
     connectTabActive: rightTab === 'connect',
     friendTabActive: rightTab === 'friend',
   });
@@ -332,6 +306,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     ownPresence?.availability ?? 'online',
     ownPresence?.is_reachable ?? isLoggedIn,
   );
+  const ownAvatarAwayClass = presenceAvatarAwayClass(
+    ownPresence?.availability,
+    ownPresence?.is_reachable ?? isLoggedIn,
+  );
+  const viewerUuid = isLoggedIn ? getShellAuthUserUuid() : null;
 
   const rightTabsWithBadges = useMemo(
     () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
@@ -344,6 +323,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const canAccessAdmin = Boolean(currentUser?.is_admin);
   const panelScrollRef = useRef<HTMLDivElement>(null);
   const panelScrollHandlers = useMoaPanelScrollDrag(panelScrollRef);
+  const showNotificationLoadMore = notificationItems.length > MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE
+    || notificationsHasMore;
 
   /** 로그아웃 처리 */
   const handleLogout = () => {
@@ -409,11 +390,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <Img
                     src={currentUser.avatar}
                     alt={t('moa_shell.right.avatar_alt', { name: currentUser?.name || t('moa_shell.common.user_fallback') })}
-                    className="h-12 w-12 rounded-full object-cover shadow-lg"
+                    className={`h-12 w-12 rounded-full object-cover shadow-lg${ownAvatarAwayClass ? ` ${ownAvatarAwayClass}` : ''}`}
                   />
                 ) : (
                   <Div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg${ownAvatarAwayClass ? ` ${ownAvatarAwayClass}` : ''}`}
                     style={{ background: 'var(--moa-point-color)' }}
                   >
                     {(currentUser?.name || 'U').charAt(0).toUpperCase()}
@@ -491,6 +472,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     <Div className="mt-2 flex flex-col gap-1">
                       {onlineUsers.map(u => {
                         const deviceIcon = presenceClientFormFactorIcon(u.client_form_factor);
+                        const listStatus = resolvePresenceListUserStatus(u, ownPresence, viewerUuid);
+                        const avatarAwayClass = presenceAvatarAwayClass(listStatus.availability, listStatus.isReachable);
+                        const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
                         return (
                         <Div
                           key={u.session_key}
@@ -506,22 +490,22 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               <Img
                                 src={u.avatar}
                                 alt={u.display_name}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className={`w-10 h-10 rounded-full object-cover${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
                               />
                             ) : (
                               <Div
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
                                 style={{ background: 'var(--moa-point-color)' }}
                               >
                                 {(u.display_name || '?').charAt(0).toUpperCase()}
                               </Div>
                             )}
-                            <Div className={`moa-status-dot ${presenceStatusDotClass(u.availability, u.is_online)}`} />
+                            <Div className={`moa-status-dot ${statusDotClass}`} />
                           </Div>
                           <Div className="flex-1 min-w-0">
                             <Moa_OverflowMarqueeText text={u.display_name} className="text-sm font-bold text-primary" />
                             <Moa_OverflowMarqueeText
-                              text={resolvePresenceStatusLine(t, u)}
+                              text={resolvePresenceListStatusLine(t, u, ownPresence, viewerUuid, listStatus.isReachable)}
                               className="text-xs text-muted mt-0.5"
                             />
                           </Div>
@@ -574,34 +558,43 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       </Span>
                     )}
                     <Div className="mt-2 flex flex-col gap-1">
-                      {friends.map(u => (
+                      {friends.map(u => {
+                        const listStatus = resolvePresenceListUserStatus(u, ownPresence, viewerUuid);
+                        const avatarAwayClass = presenceAvatarAwayClass(listStatus.availability, listStatus.isReachable);
+                        const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
+                        return (
                         <Div
                           key={u.user_uuid}
-                          className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!u.is_online ? 'opacity-70' : ''}`}
+                          className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!listStatus.isReachable ? 'opacity-70' : ''}`}
                           onClick={() => onOpenUserProfile?.(u.user_uuid, u.display_name)}
                         >
                           <Div className="relative shrink-0">
                             {u.avatar ? (
-                              <Img src={u.avatar} alt={u.display_name} className="w-10 h-10 rounded-full object-cover" />
+                              <Img
+                                src={u.avatar}
+                                alt={u.display_name}
+                                className={`w-10 h-10 rounded-full object-cover${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
+                              />
                             ) : (
                               <Div
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
                                 style={{ background: 'var(--moa-point-color)' }}
                               >
                                 {(u.display_name || '?').charAt(0).toUpperCase()}
                               </Div>
                             )}
-                            <Div className={`moa-status-dot ${presenceStatusDotClass(u.availability, u.is_online)}`} />
+                            <Div className={`moa-status-dot ${statusDotClass}`} />
                           </Div>
                           <Div className="flex-1 min-w-0">
                             <Moa_OverflowMarqueeText text={u.display_name} className="text-sm font-bold text-primary" />
                             <Moa_OverflowMarqueeText
-                              text={resolvePresenceStatusLine(t, u)}
+                              text={resolvePresenceListStatusLine(t, u, ownPresence, viewerUuid, listStatus.isReachable)}
                               className="text-xs text-muted mt-0.5"
                             />
                           </Div>
                         </Div>
-                      ))}
+                        );
+                      })}
                     </Div>
                   </>
                 </Div>
@@ -650,26 +643,38 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         </Div>
                       );
                     })}
-                    {notificationsHasMore && (
+                    {showNotificationLoadMore ? (
+                      <Div className="grid grid-cols-2 gap-2 mt-2">
+                        <Button
+                          variant="dark-outline"
+                          size="medium"
+                          className="w-full"
+                          disabled={markingAll || unreadCount === 0}
+                          onClick={() => { void markAllRead(); }}
+                        >
+                          {t('moa_shell.right.mark_all_read')}
+                        </Button>
+                        <Button
+                          variant="dark-outline"
+                          size="medium"
+                          className="w-full"
+                          disabled={notificationsLoading || !notificationsHasMore}
+                          onClick={() => { void loadMoreNotifications(); }}
+                        >
+                          {t('moa_shell.right.notifications_load_more')}
+                        </Button>
+                      </Div>
+                    ) : (
                       <Button
                         variant="dark-outline"
                         size="medium"
-                        className="w-full mt-1"
-                        disabled={notificationsLoading}
-                        onClick={() => { void loadMoreNotifications(); }}
+                        className="w-full mt-2"
+                        disabled={markingAll || unreadCount === 0}
+                        onClick={() => { void markAllRead(); }}
                       >
-                        {t('moa_shell.right.notifications_load_more')}
+                        {t('moa_shell.right.mark_all_read')}
                       </Button>
                     )}
-                    <Button
-                      variant="dark-outline"
-                      size="medium"
-                      className="w-full mt-2"
-                      disabled={markingAll || unreadCount === 0}
-                      onClick={() => { void markAllRead(); }}
-                    >
-                      {t('moa_shell.right.mark_all_read')}
-                    </Button>
                   </Div>
                 </Div>
               )}
@@ -679,9 +684,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <SubTabBar tabs={rightTabsWithBadges} activeTab={rightTab} onTabChange={setRightTab} />
             </Div>
           </Div>
+
+          <Moa_RightPanelAdSlot />
         </>
       ) : (
-        <LoginPrompt onOpenAuth={onOpenAuth} />
+        <>
+          <Div className="relative min-h-0 flex-1 w-full">
+            <LoginPrompt onOpenAuth={onOpenAuth} />
+          </Div>
+          <Moa_RightPanelAdSlot />
+        </>
       )}
     </GlassPanel>
     {isOverlay && isOpen && (

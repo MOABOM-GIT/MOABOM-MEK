@@ -17,6 +17,8 @@ class PresenceUserPreference extends Model
         'availability',
         'subtitle_mode',
         'activity_message',
+        'show_avatar_in_connect_list',
+        'accept_chat_requests',
     ];
 
     protected function casts(): array
@@ -24,6 +26,8 @@ class PresenceUserPreference extends Model
         return [
             'availability' => PresenceAvailability::class,
             'subtitle_mode' => PresenceSubtitleMode::class,
+            'show_avatar_in_connect_list' => 'boolean',
+            'accept_chat_requests' => 'boolean',
         ];
     }
 

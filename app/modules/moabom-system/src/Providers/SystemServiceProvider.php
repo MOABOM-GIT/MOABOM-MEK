@@ -70,7 +70,6 @@ use Modules\Moabom\System\Saas\TenantPackageCatalog;
 use Modules\Moabom\System\Saas\TenantPackageDatabaseSeeder;
 use Modules\Moabom\System\Saas\TenantModuleCategoryJsonStore;
 use Modules\Moabom\System\Saas\MoabomDbConfigRepository;
-use Modules\Moabom\System\Saas\TenantModuleSettingsRepository;
 use Modules\Moabom\System\Saas\TenantModuleStorageScope;
 use Modules\Moabom\System\Saas\TenantProvisionArtisanRunner;
 use Modules\Moabom\System\Saas\TenantProvisionAppearanceDefaultsApplier;
@@ -213,7 +212,6 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         // scoped — singleton 이면 platform 요청 memo·tenant slug 가 tenant Host API 에 새어 나감 (DoD-7·401)
         $this->app->scoped(TenantContext::class);
         $this->app->scoped(TenantModuleStorageScope::class);
-        $this->app->scoped(TenantModuleSettingsRepository::class);
         $this->app->scoped(TenantModuleCategoryJsonStore::class);
         $this->app->singleton(PlatformConnectionFactory::class);
         $this->app->singleton(TenantRegistry::class);

@@ -2,6 +2,8 @@
 
 import type { App } from '../../../data/Moa_apps';
 import type { ShellUrlSync } from '../../../shell/moaShellTypes';
+import type { MoabomSystemDefaults, MoabomSystemState } from '../../../types/moabomSystem';
+import type { Dispatch, SetStateAction } from 'react';
 
 export type MyPageTab = 'profile' | 'settings' | 'credit' | 'library' | 'activity' | 'account' | 'subscription';
 
@@ -47,6 +49,13 @@ export interface MyPageWindowContentProps {
   onActiveTabChange?: (tab: MyPageTab) => void;
   /** 내 활동 항목 → 게시판 윈도우 (좌측 공지와 동일) */
   onOpenBoard?: (slug: string, postId?: string, sync?: ShellUrlSync) => void;
+  /** 홈 셸 system 상태 — 전달 시 마이페이지 중복 server pull 생략 */
+  shellSystem?: {
+    systemState: MoabomSystemState;
+    systemDefaults: MoabomSystemDefaults | null;
+    setSystemState: Dispatch<SetStateAction<MoabomSystemState>>;
+    setSystemDefaults: Dispatch<SetStateAction<MoabomSystemDefaults | null>>;
+  };
 }
 
 /** AuthManager.getUser() 등과 호환되는 최소 사용자 스냅샷 */

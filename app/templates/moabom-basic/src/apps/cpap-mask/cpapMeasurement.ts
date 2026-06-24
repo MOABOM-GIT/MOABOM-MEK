@@ -1,4 +1,13 @@
 import type { FaceLandmarker, FaceLandmarkerResult } from '@mediapipe/tasks-vision';
+import type { CpapUserProfile } from '../../api/moabomAppsApi';
+import type {
+  CpapFaceMeasurements,
+  CpapMeasurementResult,
+  CpapProfileMeasurements,
+} from './cpapMeasurementTypes';
+
+export type { CpapFaceMeasurements, CpapMeasurementResult, CpapProfileMeasurements } from './cpapMeasurementTypes';
+export { recommendMask } from './cpapRecommendMask';
 
 const MEDIAPIPE_WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
 const FACE_LANDMARKER_MODEL_URL =
@@ -11,31 +20,6 @@ async function loadVisionModule() {
     visionModulePromise = import('@mediapipe/tasks-vision');
   }
   return visionModulePromise;
-}
-import type { CpapRecommendation, CpapUserProfile } from '../../api/moabomAppsApi';
-
-export interface CpapFaceMeasurements {
-  ipdPixels: number;
-  scaleFactor: number;
-  faceWidth: number;
-  faceLength: number;
-  noseWidth: number;
-  philtrumLength: number;
-  mouthWidth: number;
-  bridgeWidth: number;
-  confidence: number;
-}
-
-export interface CpapProfileMeasurements {
-  noseHeight: number;
-  jawProjection: number;
-  chinLength: number;
-}
-
-export interface CpapMeasurementResult {
-  measurements: CpapFaceMeasurements;
-  profileMeasurements: CpapProfileMeasurements;
-  recommendation: CpapRecommendation;
 }
 
 const LANDMARKS = {
@@ -386,104 +370,6 @@ export function drawLandmarks(
     ctx.lineTo(end.x * width, end.y * height);
     ctx.stroke();
   });
-}
-
-export function recommendMask(
-  measurements: CpapFaceMeasurements,
-  profileMeasurements: CpapProfileMeasurements,
-  profile: CpapUserProfile,
-): CpapRecommendation {
-  const sizeScore = [
-    measurements.noseWidth < 37 ? 1 : measurements.noseWidth < 43 ? 2 : 3,
-    measurements.faceLength < 155 ? 1 : measurements.faceLength < 165 ? 2 : 3,
-    measurements.faceWidth < 145 ? 1 : measurements.faceWidth < 155 ? 2 : 3,
-    measurements.mouthWidth < 43 ? 1 : measurements.mouthWidth < 49 ? 2 : 3,
-  ].reduce((sum, score) => sum + score, 0);
-  const size = sizeScore <= 6 ? 'S' : sizeScore <= 10 ? 'M' : 'L';
-  const scores = {
-    nasal: { score: 50, reasons: [] as string[], warnings: [] as string[] },
-    pillow: { score: 50, reasons: [] as string[], warnings: [] as string[] },
-    full: { score: 50, reasons: [] as string[], warnings: [] as string[] },
-  };
-  const ageBonus: Record<CpapUserProfile['ageGroup'], { nasal: number; pillow: number; full: number }> = {
-    '20s': { nasal: 15, pillow: 15, full: 0 },
-    '30s': { nasal: 15, pillow: 10, full: 5 },
-    '40s': { nasal: 10, pillow: 5, full: 10 },
-    '50s': { nasal: 5, pillow: 0, full: 15 },
-    '60s+': { nasal: 0, pillow: 0, full: 20 },
-  };
-
-  Object.entries(ageBonus[profile.ageGroup]).forEach(([type, bonus]) => {
-    scores[type as keyof typeof scores].score += bonus;
-  });
-
-  if (profile.mouthBreathing) {
-    scores.full.score += 30;
-    scores.full.reasons.push('구강호흡자에게 필수');
-    scores.nasal.warnings.push('구강호흡 시 비효율적');
-    scores.pillow.warnings.push('구강호흡 시 비효율적');
-  } else {
-    scores.nasal.score += 10;
-    scores.pillow.score += 10;
-  }
-
-  if (profile.pressure === 'high') {
-    scores.pillow.score -= 30;
-    scores.full.score += 10;
-    scores.full.reasons.push('고압력에 안정적');
-  } else if (profile.pressure === 'low') {
-    scores.pillow.score += 15;
-    scores.pillow.reasons.push('저압력에 최적화');
-  }
-
-  if (profile.tossing === 'high') {
-    scores.pillow.score += 15;
-    scores.pillow.reasons.push('가볍고 움직임에 강함');
-    scores.full.score -= 10;
-  }
-
-  if (profileMeasurements.noseHeight > 18) {
-    scores.nasal.score += 10;
-    scores.nasal.reasons.push('높은 코에 적합');
-  } else if (profileMeasurements.noseHeight < 12) {
-    scores.pillow.score += 10;
-    scores.pillow.reasons.push('낮은 코에 편안함');
-  }
-
-  if (measurements.philtrumLength < 15) {
-    scores.pillow.score += 5;
-  }
-  if (measurements.mouthWidth > 70) {
-    scores.full.score += 10;
-    scores.full.reasons.push('넓은 입에 안정적 밀착');
-  }
-  if (measurements.bridgeWidth < 30) {
-    scores.pillow.score += 5;
-  }
-
-  profile.preferredTypes.forEach((type) => {
-    const key = type === 'full' ? 'full' : type === 'pillow' ? 'pillow' : 'nasal';
-    scores[key].score += 20;
-    scores[key].reasons.push('사용자 선호');
-  });
-
-  const best = Object.entries(scores)
-    .map(([type, data]) => ({
-      type,
-      score: Math.max(0, Math.min(100, data.score)),
-      reasons: data.reasons,
-      warnings: data.warnings,
-    }))
-    .sort((a, b) => b.score - a.score)[0];
-  const typeName = best.type === 'full' ? '풀페이스 마스크' : best.type === 'pillow' ? '나잘 필로우 마스크' : '나잘 마스크';
-
-  return {
-    type: best.type === 'full' ? 'full-face' : best.type === 'pillow' ? 'nasal-pillow' : 'nasal',
-    name: `${typeName} ${size}`,
-    confidence: best.score,
-    reasons: best.reasons.length ? best.reasons : [`얼굴 측정 결과 ${size} 사이즈가 적합합니다.`],
-    tips: best.warnings.length ? best.warnings : ['누운 자세에서 다시 누출 여부를 확인하세요.', '첫 착용 후 2~3일 동안 압박 부위를 확인하세요.'],
-  };
 }
 
 export function estimateMeasurementsFromVideo(video: HTMLVideoElement): Omit<CpapMeasurementResult, 'recommendation'> {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { updateCoreUserLanguage } from '../../../api/moabomSystemApi';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../../../types/moabomSystem';
 import {
@@ -16,7 +17,7 @@ import {
   coreSyncLanguageFromMoabomPref,
   isMoabomSystemStateLanguageOnlyChange,
 } from '../../../utils/moabomLanguageSync';
-import { areMoabomSystemStatesEqual } from '../../../utils/moabomSystemStateEqual';
+import { areMoabomSystemStatesEqual } from '../../../utils/moabomSystemStore';
 import { queueSaveMoabomSystemSettings } from '../../../utils/moabomSettingsSaveQueue';
 import { markMoabomUiLanguageDirty } from '../../../i18n/moabomSyncG7Locale';
 import {
@@ -30,22 +31,38 @@ import type { AuthManagerUserSnapshot, MyPageUser } from './myPageTypes';
 
 const MY_PAGE_SERVER_PULL_DEBOUNCE_MS = 180;
 
+export interface MyPageShellSystemBinding {
+  systemState: MoabomSystemState;
+  systemDefaults: MoabomSystemDefaults | null;
+  setSystemState: Dispatch<SetStateAction<MoabomSystemState>>;
+  setSystemDefaults: Dispatch<SetStateAction<MoabomSystemDefaults | null>>;
+}
+
 interface UseMyPageShellStateOptions {
   currentUser: MyPageUser | null;
   onProfileUpdated?: (user?: AuthManagerUserSnapshot | null) => void;
+  /** 홈 셸과 상태를 공유할 때 전달 — 중복 server pull 생략 */
+  shellSystem?: MyPageShellSystemBinding;
 }
 
 export function useMyPageShellState({
   currentUser,
   onProfileUpdated,
+  shellSystem,
 }: UseMyPageShellStateOptions) {
   const currentUserRef = useRef(currentUser);
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  const [systemDefaults, setSystemDefaults] = useState<MoabomSystemDefaults | null>(null);
-  const [systemState, setSystemState] = useState<MoabomSystemState>(() => loadMoabomSystemState());
+  const [localSystemDefaults, setLocalSystemDefaults] = useState<MoabomSystemDefaults | null>(null);
+  const [localSystemState, setLocalSystemState] = useState<MoabomSystemState>(() => loadMoabomSystemState());
+
+  const usesShellSystem = Boolean(shellSystem);
+  const systemDefaults = shellSystem?.systemDefaults ?? localSystemDefaults;
+  const systemState = shellSystem?.systemState ?? localSystemState;
+  const setSystemDefaults = shellSystem?.setSystemDefaults ?? setLocalSystemDefaults;
+  const setSystemState = shellSystem?.setSystemState ?? setLocalSystemState;
 
   const pullMyPageServerSnapshot = useCallback(async () => {
     const user = currentUserRef.current;
@@ -59,6 +76,10 @@ export function useMyPageShellState({
   }, []);
 
   useEffect(() => {
+    if (usesShellSystem) {
+      return;
+    }
+
     let cancelled = false;
 
     if (currentUser && !currentUser.memberKey) {
@@ -70,22 +91,22 @@ export function useMyPageShellState({
     void (async () => {
       const pulled = await pullMyPageServerSnapshot();
       if (cancelled || !pulled) return;
-      setSystemDefaults(pulled.defaults);
-      setSystemState(pulled.state);
+      setLocalSystemDefaults(pulled.defaults);
+      setLocalSystemState(pulled.state);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.memberKey, pullMyPageServerSnapshot]);
+  }, [currentUser?.memberKey, pullMyPageServerSnapshot, usesShellSystem]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (usesShellSystem || typeof window === 'undefined') {
       return;
     }
     const syncStateFromPersistence = () => {
       const disk = loadMoabomSystemState();
-      setSystemState(prev => {
+      setLocalSystemState(prev => {
         const merged = mergeMoabomSystemState(prev, {
           layout: disk.layout,
           appearance: disk.appearance,
@@ -96,20 +117,24 @@ export function useMyPageShellState({
     };
     window.addEventListener(MOABOM_SYSTEM_STATE_CHANGED_EVENT, syncStateFromPersistence);
     return () => window.removeEventListener(MOABOM_SYSTEM_STATE_CHANGED_EVENT, syncStateFromPersistence);
-  }, []);
+  }, [usesShellSystem]);
 
   useMoabomServerPullTriggers(
     async () => {
+      if (usesShellSystem) {
+        return;
+      }
       const pulled = await pullMyPageServerSnapshot();
       if (pulled) {
-        setSystemDefaults(pulled.defaults);
-        setSystemState(pulled.state);
+        setLocalSystemDefaults(pulled.defaults);
+        setLocalSystemState(pulled.state);
       }
     },
     {
       debounceMs: MY_PAGE_SERVER_PULL_DEBOUNCE_MS,
       onFocus: true,
       onVisible: true,
+      enabled: !usesShellSystem,
     },
   );
 
@@ -197,7 +222,7 @@ export function useMyPageShellState({
       const refreshed = auth?.getUser?.();
       onProfileUpdated?.(refreshed ?? undefined);
     })();
-  }, [currentUser, onProfileUpdated, systemDefaults, systemState]);
+  }, [currentUser, onProfileUpdated, setSystemState, systemDefaults, systemState]);
 
   return {
     systemDefaults,

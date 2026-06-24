@@ -51,6 +51,8 @@ export interface AuthorInfo {
   id?: string | number;
   /** 사용자 이름 */
   name?: string;
+  /** 닉네임 (표시명 우선) */
+  nickname?: string;
   /** 아바타 URL */
   avatar?: string;
   /** 사용자 상태 */
@@ -134,7 +136,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 }) => {
   // 명시적 props > author 추출값 순서로 결정
   const actualAvatar = avatar ?? author?.avatar;
-  const actualName = text ?? name ?? author?.name ?? '?';
+  const actualName = text ?? name ?? author?.nickname ?? author?.name ?? '?';
   const actualIsWithdrawn = isWithdrawn || author?.status === 'withdrawn';
   const actualIsGuest = isGuest || author?.is_guest || false;
 

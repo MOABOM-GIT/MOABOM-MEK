@@ -71,5 +71,38 @@ describe('g7WindowContainerResponsive', () => {
       expect(adapted[0]?.props?.className).toBe('hidden @lg:grid');
       expect(adapted[0]?.children?.[0]?.props?.className).toBe('w-full @sm:w-auto');
     });
+
+    it('Container py-8 단독 래퍼를 제거하고 자식을 올린다', () => {
+      const roots = [
+        {
+          type: 'layout',
+          name: 'Container',
+          if: '{{posts?.data?.board}}',
+          props: { className: 'py-8' },
+          children: [{ name: 'Grid', props: { className: 'grid-cols-1' } }],
+        },
+      ];
+
+      const adapted = adaptG7LayoutTreeForContainerWidth(roots, 800);
+      expect(adapted).toHaveLength(1);
+      expect(adapted[0]?.name).toBe('Grid');
+      expect(adapted[0]?.if).toBe('{{posts?.data?.board}}');
+    });
+
+    it('Container className 에서 py-8 만 제거하고 나머지 클래스는 유지한다', () => {
+      const roots = [
+        {
+          type: 'layout',
+          name: 'Container',
+          props: { className: 'py-8 max-w-4xl mx-auto' },
+          children: [{ name: 'Div', props: { className: 'p-4' } }],
+        },
+      ];
+
+      const adapted = adaptG7LayoutTreeForContainerWidth(roots, 800);
+      expect(adapted).toHaveLength(1);
+      expect(adapted[0]?.name).toBe('Container');
+      expect(adapted[0]?.props?.className).toBe('max-w-4xl mx-auto');
+    });
   });
 });

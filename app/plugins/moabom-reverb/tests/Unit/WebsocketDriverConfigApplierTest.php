@@ -21,6 +21,21 @@ class WebsocketDriverConfigApplierTest extends PluginTestCase
         $this->assertSame('null', config('broadcasting.default'));
     }
 
+    public function test_restores_reverb_broadcast_when_enabled_after_boot_disabled_null(): void
+    {
+        Config::set('broadcasting.default', 'null');
+
+        WebsocketDriverConfigApplier::apply([
+            'websocket_enabled' => true,
+            'websocket_app_key' => 'moabom-laravel-key',
+            'websocket_host' => 'mek360.com',
+            'websocket_port' => 443,
+            'websocket_scheme' => 'https',
+        ]);
+
+        $this->assertSame('reverb', config('broadcasting.default'));
+    }
+
     public function test_applies_client_and_server_endpoints_when_enabled(): void
     {
         Config::set('broadcasting.default', 'reverb');

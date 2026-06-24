@@ -26,6 +26,13 @@ describe('AI 앱 HTML 유틸', () => {
     expect(out).not.toContain('moabom-ai-preview-runtime');
   });
 
+  it('hosted 앱 runtime shim(moabom-app-runtime)도 제거한다', () => {
+    const html = '<html><head><script id="moabom-app-runtime">window.__MOABOM_APP_RUNTIME__={}</script></head><body></body></html>';
+    const out = injectAiPreviewSafety(html);
+
+    expect(out).not.toContain('moabom-app-runtime');
+  });
+
   it('<base> 태그와 PWA manifest 링크는 미리보기에서 제거한다', () => {
     const html = '<html><head><base href="https://mek360.com/app/generated-app-8"><link rel="manifest" href="/manifest.json"><title>x</title></head><body></body></html>';
     const out = injectAiPreviewSafety(html);

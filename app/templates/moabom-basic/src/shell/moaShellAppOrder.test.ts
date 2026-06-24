@@ -129,6 +129,11 @@ describe('moaShellAppOrder', () => {
     expect(resolveMainAppsFromOrder([], [owned], [], true)).toEqual([]);
   });
 
+  it('resolveMainAppsFromOrder omits stale generated-app order ids until library validates them', () => {
+    const main = resolveMainAppsFromOrder(['hospital-info', 'generated-app-99'], [], [], true);
+    expect(main.map(app => app.id)).toEqual(['hospital-info']);
+  });
+
   it('pruneStaleGeneratedAppOrderIds drops deleted generated-app ids', () => {
     const library = [{
       id: 'generated-app-1',

@@ -101,10 +101,13 @@
   width: 100%;
 }
 
+.moa-mypage-sidebar-nav {
+  --moa-mypage-nav-gutter: 0.5rem;
+  padding-inline: var(--moa-mypage-nav-gutter);
+}
+
 @container moa-app-window (width >= 640px) {
   .moa-mypage-sidebar-nav {
-    --moa-mypage-nav-gutter: 0.5rem;
-
     position: sticky;
     /** viewport `.moa-app-window-viewport` padding 과 맞춰 sticky 점프 방지 */
     top: var(--moa-app-window-body-padding);
@@ -113,7 +116,6 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding-inline: var(--moa-mypage-nav-gutter);
     scrollbar-gutter: stable both-edges;
   }
 }

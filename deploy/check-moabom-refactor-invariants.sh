@@ -63,6 +63,26 @@ grep -q "'storage_driver' => 'gcs'" "${SYS}/src/Saas/TenantSettingsSeeder.php" \
   || fail "tenant settings seeder must keep new tenant storage_driver default on gcs"
 grep -q 'MoabomJsonConfigRepository::class' "${SYS}/src/Providers/SystemServiceProvider.php" \
   || fail "moabom-system provider must bind the JSON config repository extension"
+grep -q 'GcsCoreSettingsJsonSync::writeCategory' "${SYS}/src/Saas/MoabomDbConfigRepository.php" \
+  || fail "MoabomDbConfigRepository must sync drivers/settings JSON to GCS on save"
+grep -q 'PlatformBootSettingsRepository' "${SYS}/src/Saas/PlatformBootSettingsRepository.php" \
+  || fail "PlatformBootSettingsRepository must exist for boot-time DB-first settings"
+grep -q 'resolveBootConfigRepository' "${APP}/app/Providers/SettingsServiceProvider.php" \
+  || fail "SettingsServiceProvider must resolve platform DB-first boot settings repository"
+grep -q 'MoabomStorageDriverConfigApplier::apply' "${SYS}/src/Saas/SaasCoreSettingsHydrator.php" \
+  || fail "SaasCoreSettingsHydrator must apply storage_driver from DB snapshot"
+require_file "${SYS}/src/Saas/GcsModuleSettingsJsonSync.php"
+require_file "${SYS}/src/Saas/MoabomModuleCategoryDbStore.php"
+grep -q 'GcsModuleSettingsJsonSync::write' "${SYS}/src/Saas/MoabomModuleCategoryDbStore.php" \
+  || fail "MoabomModuleCategoryDbStore must mirror module settings JSON to modules disk"
+grep -q 'shouldDelegateToDbRepository' "${SYS}/src/Repositories/MoabomJsonConfigRepository.php" \
+  || fail "MoabomJsonConfigRepository must delegate to DB repository when SaaS is enabled"
+grep -q 'MoabomSaasPersistentModuleSettings' "${ROOT}/app/modules/moabom-credit/src/Services/CreditSettingsService.php" \
+  || fail "CreditSettingsService must persist settings via MoabomSaasPersistentModuleSettings in SaaS"
+grep -q 'MoabomSaasPersistentModuleSettings' "${ROOT}/app/modules/sirsoft-board/src/Services/BoardSettingsService.php" \
+  || fail "BoardSettingsService must persist settings via MoabomSaasPersistentModuleSettings in SaaS"
+grep -q 'MoabomSaasPersistentModuleSettings' "${ROOT}/app/modules/sirsoft-ecommerce/src/Services/EcommerceSettingsService.php" \
+  || fail "EcommerceSettingsService must persist settings via MoabomSaasPersistentModuleSettings in SaaS"
 grep -q 'MoabomDbConfigRepository::class' "${SYS}/src/Providers/SystemServiceProvider.php" \
   || fail "moabom-system provider must bind the DB-backed G7 core settings repository"
 grep -q 'configureCoreRuntimeGuards()' "${SYS}/src/Providers/SystemServiceProvider.php" \

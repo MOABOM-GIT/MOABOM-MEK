@@ -40,6 +40,7 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
             'generator_content' => 'SmartCare',
         ]);
         $repo->saveCategory('drivers', [
+            'storage_driver' => 'gcs',
             'websocket_enabled' => true,
             'websocket_app_id' => 'moabom-laravel',
             'websocket_app_key' => 'test-key',
@@ -62,6 +63,7 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
         $this->assertSame('ko', config('app.locale'));
         $this->assertSame('tenant.mek360.com', config('g7.websocket.client.host'));
         $this->assertSame('test-key', config('broadcasting.connections.reverb.key'));
+        $this->assertSame('gcs', config('filesystems.default'));
     }
 
     public function test_settings_revision_token_changes_when_seo_changes(): void

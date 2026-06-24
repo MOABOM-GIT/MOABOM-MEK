@@ -10,7 +10,7 @@ import {
   mergeMoabomSystemState,
   saveMoabomSystemState,
 } from '../../utils/moabomSystemStore';
-import { areMoabomSystemStatesEqual } from '../../utils/moabomSystemStateEqual';
+import { areMoabomSystemStatesEqual } from '../../utils/moabomSystemStore';
 import { applyMoabomAnimationRuntime } from '../../runtime/applyAnimationRuntime';
 import { useEffectiveSystemOptions } from '../../runtime/useEffectiveSystemOptions';
 import { useWeatherEffectRuntime } from '../../runtime/weather/useWeatherEffectRuntime';

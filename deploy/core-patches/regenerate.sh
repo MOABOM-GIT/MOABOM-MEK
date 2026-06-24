@@ -8,8 +8,8 @@
 # 실행한다.
 #
 # 포함 경로: app/ config/ bootstrap/ routes/ database/migrations/
-#            resources/js/core/ resources/views/ tests/
-# 제외: 순수 파일 모드(권한) 변경, moabom 확장(modules/plugins/templates/lang-packs)
+#            resources/js/core/ resources/views/
+# 제외: tests/ (Moabom 회귀는 modules/deploy gate), 순수 파일 모드 변경, moabom 확장
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -22,12 +22,13 @@ source "${ROOT}/deploy/lib/g7-worktree.sh"
 
 g7_git_setup "${APP_DIR}"
 
-CORE_PATHS=(app config bootstrap routes database/migrations resources/js/core resources/views tests)
+CORE_PATHS=(app config bootstrap routes database/migrations resources/js/core resources/views)
 
 # 내용이 실제로 바뀐 tracked 파일만 (numstat added+deleted > 0 → 모드 전용 변경 제외)
-mapfile -t TRACKED < <(g7_git diff HEAD --numstat -- "${CORE_PATHS[@]}" | awk '($1+$2)>0 {print $3}')
+# tests/ 및 resources/js/core/**/__tests__/ 는 패치 capsule 에 넣지 않음
+mapfile -t TRACKED < <(g7_git diff HEAD --numstat -- "${CORE_PATHS[@]}" | awk '($1+$2)>0 {print $3}' | grep -Ev '^tests/|/__tests__/')
 # 신규(untracked) 코어 파일
-mapfile -t UNTRACKED < <(g7_git ls-files --others --exclude-standard -- "${CORE_PATHS[@]}")
+mapfile -t UNTRACKED < <(g7_git ls-files --others --exclude-standard -- "${CORE_PATHS[@]}" | grep -Ev '^tests/|/__tests__/' || true)
 
 if [[ ${#TRACKED[@]} -eq 0 && ${#UNTRACKED[@]} -eq 0 ]]; then
   echo "[regenerate] 코어 변경 없음 — 패치 미생성."

@@ -149,7 +149,7 @@ class PublicShellRankingApiTest extends ModuleTestCase
             ->assertJsonStructure([
                 'data' => [
                     'items' => [
-                        ['user_id', 'name', 'score', 'rank', 'change'],
+                        ['user_id', 'user_uuid', 'name', 'score', 'rank', 'change'],
                     ],
                 ],
             ]);
@@ -157,6 +157,7 @@ class PublicShellRankingApiTest extends ModuleTestCase
         $items = $response->json('data.items');
         $this->assertNotEmpty($items);
         $this->assertSame($leader->id, $items[0]['user_id']);
+        $this->assertSame($leader->uuid, $items[0]['user_uuid']);
         $this->assertSame(150, $items[0]['score']);
         $this->assertSame(1, $items[0]['rank']);
     }

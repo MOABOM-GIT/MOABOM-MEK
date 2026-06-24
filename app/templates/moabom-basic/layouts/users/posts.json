@@ -1,0 +1,184 @@
+{
+  "version": "1.0.0",
+  "layout_name": "users/posts",
+  "permissions": [],
+  "meta": {
+    "seo": {
+      "enabled": true,
+      "data_sources": [
+        "userProfile"
+      ],
+      "priority": 0.3,
+      "changefreq": "weekly",
+      "og": {
+        "type": "profile"
+      }
+    }
+  },
+  "data_sources": [
+    {
+      "id": "userProfile",
+      "type": "api",
+      "endpoint": "/api/users/{{route.userId}}/profile",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "refetchOnMount": true,
+      "loading_strategy": "progressive",
+      "errorHandling": {
+        "404": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content"
+          }
+        }
+      }
+    },
+    {
+      "id": "userPosts",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.userId}}/posts",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "loading_strategy": "progressive",
+      "params": {
+        "page": "{{query.page || 1}}",
+        "per_page": 20
+      }
+    }
+  ],
+  "components": [
+    {
+      "type": "layout",
+      "name": "Container",
+      "props": {
+        "className": "py-8"
+      },
+      "children": [
+            {
+              "comment": "로딩 상태",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{userPosts.loading && !userPosts.data}}",
+              "props": {
+                "className": "flex justify-center items-center py-20"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"
+                  }
+                }
+              ]
+            },
+            {
+              "comment": "게시글 목록",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{userPosts.data && !userPosts.error}}",
+              "props": {
+                "className": "space-y-6"
+              },
+              "children": [
+                {
+                  "comment": "게시글 테이블",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  },
+                  "children": [
+                    {
+                      "comment": "게시글 없음",
+                      "type": "basic",
+                      "name": "Div",
+                      "if": "{{!userPosts.data?.data?.length}}",
+                      "props": {
+                        "className": "text-center py-12"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Icon",
+                          "props": {
+                            "name": "file-circle-xmark",
+                            "size": "3x",
+                            "className": "text-gray-300 dark:text-gray-600 mb-4"
+                          }
+                        },
+                        {
+                          "type": "basic",
+                          "name": "P",
+                          "props": {
+                            "className": "text-gray-500 dark:text-gray-400"
+                          },
+                          "text": "$t:user.profile.no_posts"
+                        }
+                      ]
+                    },
+                    {
+                      "comment": "게시글 카드 목록",
+                      "type": "basic",
+                      "name": "Div",
+                      "if": "{{userPosts.data?.data?.length > 0}}",
+                      "props": {
+                        "className": "flex flex-col gap-2 p-3 min-w-0"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Div",
+                          "iteration": {
+                            "source": "{{userPosts.data?.data ?? []}}",
+                            "item_var": "post"
+                          },
+                          "children": [
+                            {
+                              "partial": "../partials/users/_user_post_row.json"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "comment": "페이지네이션 (항상 표시)",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "flex justify-center mt-6"
+                  },
+                  "children": [
+                    {
+                      "type": "composite",
+                      "name": "Pagination",
+                      "props": {
+                        "currentPage": "{{userPosts.data?.current_page ?? 1}}",
+                        "totalPages": "{{userPosts.data?.last_page ?? 1}}"
+                      },
+                      "actions": [
+                        {
+                          "event": "onPageChange",
+                          "handler": "navigate",
+                          "params": {
+                            "path": "/users/{{route.userId}}/posts",
+                            "mergeQuery": true,
+                            "query": {
+                              "page": "{{$args[0]}}"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+  ]
+}

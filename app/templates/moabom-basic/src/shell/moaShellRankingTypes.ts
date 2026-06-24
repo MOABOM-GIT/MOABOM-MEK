@@ -11,6 +11,7 @@ export type ShellAppRankingItem = {
 
 export type ShellUserRankingItem = {
   user_id: number;
+  user_uuid: string;
   name: string;
   score: number;
   rank: number;

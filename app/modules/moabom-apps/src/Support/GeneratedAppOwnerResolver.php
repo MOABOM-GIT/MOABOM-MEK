@@ -3,9 +3,9 @@
 namespace Modules\Moabom\Apps\Support;
 
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\System\Saas\SaasMysqlPdoFactory;
+use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRegistry;
 
 /**
@@ -15,6 +15,7 @@ final class GeneratedAppOwnerResolver
 {
     public function __construct(
         private readonly TenantRegistry $tenantRegistry,
+        private readonly TenantDatabaseConfigurator $databaseConfigurator,
     ) {}
 
     public function nickname(GeneratedApp $app): string
@@ -64,34 +65,10 @@ final class GeneratedAppOwnerResolver
             return null;
         }
 
-        $connection = (string) config('database.default', 'mysql');
-        $original = config("database.connections.{$connection}");
-        if (! is_array($original)) {
-            return null;
-        }
-
-        $config = $original;
-        if (isset($config['write']) && is_array($config['write'])) {
-            $config['write']['database'] = $database;
-        }
-        if (isset($config['read']) && is_array($config['read'])) {
-            $config['read']['database'] = $database;
-        }
-        if (! isset($config['write'])) {
-            $config['database'] = $database;
-        }
-
-        config(["database.connections.{$connection}" => $config]);
-        DB::purge($connection);
-        DB::reconnect($connection);
-
-        try {
-            return User::query()->whereKey($userId)->first();
-        } finally {
-            config(["database.connections.{$connection}" => $original]);
-            DB::purge($connection);
-            DB::reconnect($connection);
-        }
+        return $this->databaseConfigurator->runOnDatabase(
+            $database,
+            static fn (): ?User => User::query()->whereKey($userId)->first(),
+        );
     }
 
     private function mainWriteDatabase(): string

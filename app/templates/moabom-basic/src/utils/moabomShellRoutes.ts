@@ -9,10 +9,11 @@
  * - `/app/{appId}` — 등록된 앱 id (mypage 는 `/me/...` 로 정규화)
  * - `/app/create-app?edit={id}` — 저장 AI 앱 편집
  * - `/board/{slug}` · `/board/{slug}/{postId}` — 게시판 윈도우 (G7 board JSON)
- * - `/users/{uuid}` · `/users/{uuid}/posts` — 공개 프로필 윈도우 (G7 user/public_profile JSON)
+ * - `/users/{uuid}` · `/users/{uuid}/posts` · `/users/{uuid}/chat` — 공개 프로필 윈도우
  */
 import type { AuthWindowMode } from '../components/composite/Moa_AuthWindowContent';
 import type { MyPageTab } from '../components/composite/mypage/myPageTypes';
+import { MY_PAGE_TABS } from '../components/composite/mypage/myPageConstants';
 import { isEcommerceMypageSubpath } from './moabomLegacyMypagePaths';
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
 import { isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
@@ -25,6 +26,7 @@ import {
   isMoaShellUserProfileAppId,
   moaShellUserProfileUuidFromAppId,
 } from '../shell/moaShellUserProfileIds';
+import type { UserProfileWindowView } from '../shell/userProfileWindowLayoutRuntime';
 import {
   isMoaShellErrorAppId,
   parseShellErrorCodeFromPath,
@@ -33,16 +35,6 @@ import {
 
 const AUTH_MODES: readonly AuthWindowMode[] = ['login', 'register', 'forgot-password', 'reset-password'];
 export type BoardShellMode = 'write' | 'edit';
-
-const MY_PAGE_TABS: readonly MyPageTab[] = [
-  'profile',
-  'settings',
-  'credit',
-  'library',
-  'activity',
-  'account',
-  'subscription',
-];
 
 /** 셸 URL `/app/{id}` 로 열 수 있는 앱 id (`create-app` 포함, 저장 AI 앱 id 포함) */
 const APP_IDS = new Set([...APPS.map(a => a.id), createAppShellMetadata.id]);
@@ -55,7 +47,7 @@ export type ParsedShellRoute =
   | { kind: 'me'; tab: MyPageTab }
   | { kind: 'app'; appId: string; editGeneratedAppId?: number }
   | { kind: 'board'; slug: string; postId?: string; boardMode?: BoardShellMode }
-  | { kind: 'userProfile'; uuid: string }
+  | { kind: 'userProfile'; uuid: string; view: UserProfileWindowView; page?: number }
   | { kind: 'error'; code: ShellErrorCode }
   | { kind: 'router'; path: string; search?: string };
 
@@ -135,11 +127,18 @@ export function parseShellRoute(pathname: string, search = ''): ParsedShellRoute
   if (parts[0] === 'users' && parts[1]) {
     const uuid = decodeURIComponent(parts[1]);
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+      const rawSearch = search.startsWith('?') ? search.slice(1) : search;
+      const pageRaw = rawSearch ? new URLSearchParams(rawSearch).get('page') : null;
+      const page = pageRaw != null && pageRaw !== '' ? Number(pageRaw) : undefined;
+      const pageNum = page != null && Number.isInteger(page) && page > 0 ? page : undefined;
       if (parts[2] === 'posts') {
-        return { kind: 'userProfile', uuid };
+        return { kind: 'userProfile', uuid, view: 'posts', page: pageNum };
+      }
+      if (parts[2] === 'chat') {
+        return { kind: 'userProfile', uuid, view: 'chat' };
       }
       if (parts.length === 2) {
-        return { kind: 'userProfile', uuid };
+        return { kind: 'userProfile', uuid, view: 'profile' };
       }
     }
   }
@@ -214,13 +213,34 @@ export function formatShellPath(route: ParsedShellRoute): string {
       }
       return base;
     }
-    case 'userProfile':
-      return `/users/${encodeURIComponent(route.uuid)}`;
+    case 'userProfile': {
+      const base = route.view === 'posts'
+        ? `/users/${encodeURIComponent(route.uuid)}/posts`
+        : route.view === 'chat'
+          ? `/users/${encodeURIComponent(route.uuid)}/chat`
+          : `/users/${encodeURIComponent(route.uuid)}`;
+      if (route.view === 'posts' && route.page != null && route.page > 1) {
+        return `${base}?page=${route.page}`;
+      }
+      return base;
+    }
     case 'error':
       return route.code === 'maintenance' ? '/maintenance' : `/${route.code}`;
     default:
       return '/';
   }
+}
+
+/** 공개 프로필 윈도우 URL (페이징 쿼리 포함) */
+export function formatUserProfileShellPath(
+  uuid: string,
+  view: UserProfileWindowView = 'profile',
+  search = '',
+): string {
+  const base = formatShellPath({ kind: 'userProfile', uuid, view });
+  if (!search) return base;
+  const raw = search.startsWith('?') ? search : `?${search}`;
+  return `${base}${raw}`;
 }
 
 /** 게시판 윈도우 URL (쿼리·postId 포함) */
@@ -258,6 +278,7 @@ export interface ShellWindowPathInput {
   boardPostId?: string;
   boardMode?: BoardShellMode;
   userProfileUuid?: string;
+  userProfileView?: UserProfileWindowView;
   errorCode?: ShellErrorCode;
 }
 
@@ -291,7 +312,21 @@ export function formatShellPathForWindow(win: ShellWindowPathInput): string {
   if (isMoaShellUserProfileAppId(win.appId)) {
     const uuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
     if (uuid) {
-      return formatShellPath({ kind: 'userProfile', uuid });
+      const view = win.userProfileView ?? 'profile';
+      if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname.replace(/\/+$/, '');
+        const postsPath = `/users/${uuid}/posts`;
+        const chatPath = `/users/${uuid}/chat`;
+        const profilePath = `/users/${uuid}`;
+        if (
+          (view === 'posts' && pathname === postsPath)
+          || (view === 'chat' && pathname === chatPath)
+          || (view === 'profile' && pathname === profilePath)
+        ) {
+          return formatUserProfileShellPath(uuid, view, window.location.search);
+        }
+      }
+      return formatShellPath({ kind: 'userProfile', uuid, view });
     }
   }
   if (isMoaShellErrorAppId(win.appId) && win.errorCode != null) {

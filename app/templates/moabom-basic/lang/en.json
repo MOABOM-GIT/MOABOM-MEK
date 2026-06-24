@@ -20,8 +20,47 @@
   "userinfo": {
     "$partial": "partial/en/userinfo.json"
   },
+  "user": {
+    "$partial": "partial/en/user.json"
+  },
   "board": {
     "$partial": "partial/en/board.json"
+  },
+  "moa_chat": {
+    "title": "Chat",
+    "blocks": "Blocked users",
+    "blocks_empty": "No blocked users.",
+    "search_placeholder": "Search by nickname",
+    "start_direct": "Start chat",
+    "start_group": "Start group chat",
+    "add": "Add",
+    "rejected_short": "Rejected",
+    "loading": "Loading conversations…",
+    "empty": "No conversations yet. Search by nickname to start.",
+    "no_messages": "No messages yet.",
+    "no_conversation": "Select a conversation",
+    "messages_loading": "Loading messages…",
+    "messages_empty": "No messages yet.",
+    "choose_conversation": "Select a conversation on the left.",
+    "unknown_sender": "User",
+    "message_placeholder": "Type a message.",
+    "send": "Send",
+    "toast_request_rejected": "This user does not accept chat requests.",
+    "toast_blocked_by_self": "You blocked this user. Unblock them from the block list.",
+    "toast_blocked_by_peer": "This user blocked chat with you.",
+    "toast_login_required": "Please log in to chat.",
+    "toast_failed": "Could not process chat request.",
+    "toast_conversation_ready": "Conversation opened.",
+    "unblock": "Unblock",
+    "remove_selected": "Remove"
+  },
+  "moa_profile_actions": {
+    "friend_add": "Add friend",
+    "chat": "Chat",
+    "chat_block_on": "Blocked",
+    "chat_block_off": "Block chat",
+    "chat_blocked": "Chat blocked.",
+    "chat_unblocked": "Chat unblocked."
   },
   "errors": {
     "404_title": "Page Not Found",
@@ -164,14 +203,14 @@
       "availability_away": "Away",
       "availability_busy": "Busy",
       "availability_offline": "Appear offline",
-      "availability_hint_online": "Shown in the online list with a green status.",
-      "availability_hint_away": "Shown in the online list with a gray status.",
-      "availability_hint_busy": "Shown in the online list with an orange status.",
-      "availability_hint_offline": "Hidden from the online list; friends see you as offline.",
       "subtitle_title": "Info shown to others",
       "subtitle_profile_bio": "Show profile bio",
       "subtitle_activity": "Show activity info",
       "subtitle_hidden": "Hide info",
+      "show_avatar_in_connect_title": "Profile photo in online list",
+      "show_avatar_in_connect_label": "Show profile photo in the online list",
+      "show_avatar_in_connect_hint": "When off, others see your initial instead.",
+      "accept_chat_requests_label": "Accept chat requests from visitors",
       "activity_auto_hint": "Activity messages are generated automatically from your current screen or app."
     },
     "credit": {
@@ -350,7 +389,7 @@
       "rankings_apps_empty": "No app rankings yet",
       "rankings_users_empty": "No user rankings yet",
       "rankings_load_failed": "Could not load rankings",
-      "rankings_activity_score": "{{score}} point",
+      "rankings_activity_score": "{score} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -364,6 +403,7 @@
       "tab_alarm": "Alerts",
       "online_summary": "Loading presence summary…",
       "online_summary_live": "Platform {platform} | {tenant} active now",
+      "presence_guest_fallback": "Guest",
       "friends_summary": "My friends",
       "friends_summary_live": "{count} friends",
       "presence_view_profile": "View profile",
@@ -396,7 +436,10 @@
       "notification_time_hours": "{count}h ago",
       "notification_time_days": "{count}d ago",
       "admin_mode": "Admin mode",
-      "avatar_alt": "{name} profile photo"
+      "avatar_alt": "{name} profile photo",
+      "ad_label": "Advertisement",
+      "ad_badge": "AD",
+      "ad_placeholder_title": "Ad space"
     },
     "center": {
       "edit_mode_title": "App edit mode",
@@ -413,6 +456,9 @@
       "board_window": "Board · {slug}",
       "board_loading": "Loading board…",
       "user_profile_window": "User profile",
+      "user_profile_tab_profile": "Profile",
+      "user_profile_tab_posts": "Posts",
+      "user_profile_tab_chat": "Chat",
       "user_profile_loading": "Loading profile…",
       "user_profile_error": "Could not load profile",
       "error_window": "Error · {code}",

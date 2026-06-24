@@ -4,6 +4,8 @@
   "friend_request": "友達申請",
   "friend_request_sent": "友達申請を送信しました。",
   "friend_request_failed": "友達申請に失敗しました。",
+  "friend_request_pending": "友達申請を送信済みです。",
+  "friend_already": "友達",
   "guest_badge": "ゲスト",
   "no_image": "画像なし",
   "withdrawn_user": "退会したユーザー"

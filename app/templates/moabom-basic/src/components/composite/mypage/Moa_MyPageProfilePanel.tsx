@@ -36,6 +36,10 @@ export interface Moa_MyPageProfilePanelProps {
     setAvailability: (value: PresenceAvailability) => void;
     subtitleMode: PresenceSubtitleMode;
     setSubtitleMode: (value: PresenceSubtitleMode) => void;
+    showAvatarInConnectList: boolean;
+    setShowAvatarInConnectList: (value: boolean) => void;
+    acceptChatRequests: boolean;
+    setAcceptChatRequests: (value: boolean) => void;
     loading: boolean;
     saving: boolean;
     error: string | null;
@@ -112,7 +116,7 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
         <Span className="text-sm text-muted">{t('moa_mypage.profile.loading')}</Span>
       ) : (
         <>
-          <Div className="mb-1">
+          <Div>
             <Span className={`block ${MY_PAGE_BLOCK_TITLE_CLASS}`}>{t('moa_mypage.profile.nickname')}</Span>
             <Input
               value={nickname}
@@ -139,31 +143,39 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
             ) : null}
           </Div>
 
-          <Moa_MyPagePresenceSettingsSection
-            t={t}
-            availability={presence.availability}
-            setAvailability={presence.setAvailability}
-            subtitleMode={presence.subtitleMode}
-            setSubtitleMode={presence.setSubtitleMode}
-            loading={presence.loading}
-            saving={presence.saving}
-            error={presence.error}
-            disabled={profileBusy}
-          />
-
-          <Div className="flex justify-end pt-2">
-            <Button
-              variant={ACTION_BUTTON_VARIANT}
-              size="medium"
-              type="button"
-              disabled={profileBusy || profileLoading}
-              onClick={() => void onSaveProfile()}
-            >
-              {profileSaveSubmitting ? t('moa_mypage.profile.saving') : t('moa_mypage.profile.save')}
-            </Button>
-          </Div>
+          {!profileLoading ? (
+            <Div className="flex justify-end">
+              <Button
+                variant={ACTION_BUTTON_VARIANT}
+                size="medium"
+                type="button"
+                disabled={profileBusy || profileLoading}
+                onClick={() => void onSaveProfile()}
+              >
+                {profileSaveSubmitting ? t('moa_mypage.profile.saving') : t('moa_mypage.profile.save')}
+              </Button>
+            </Div>
+          ) : null}
         </>
       )}
+
+      {currentUser ? (
+        <Moa_MyPagePresenceSettingsSection
+          t={t}
+          availability={presence.availability}
+          setAvailability={presence.setAvailability}
+          subtitleMode={presence.subtitleMode}
+          setSubtitleMode={presence.setSubtitleMode}
+          showAvatarInConnectList={presence.showAvatarInConnectList}
+          setShowAvatarInConnectList={presence.setShowAvatarInConnectList}
+          acceptChatRequests={presence.acceptChatRequests}
+          setAcceptChatRequests={presence.setAcceptChatRequests}
+          loading={presence.loading}
+          saving={presence.saving}
+          error={presence.error}
+          disabled={profileBusy}
+        />
+      ) : null}
     </Div>
   </Div>
 );

@@ -23,6 +23,8 @@ final class UpdatePresenceSettingsRequest extends FormRequest
             'availability' => ['sometimes', 'string', Rule::enum(PresenceAvailability::class)],
             'subtitle_mode' => ['sometimes', 'string', Rule::enum(PresenceSubtitleMode::class)],
             'activity_message' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'show_avatar_in_connect_list' => ['sometimes', 'boolean'],
+            'accept_chat_requests' => ['sometimes', 'boolean'],
         ];
     }
 }

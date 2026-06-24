@@ -7,7 +7,14 @@ use Modules\Moabom\Presence\Models\TenantPresenceSession;
 
 interface TenantPresenceSessionRepositoryInterface
 {
+    public function isHeartbeatWritable(): bool;
+
     public function upsertHeartbeat(array $attributes): TenantPresenceSession;
+
+    /**
+     * @param  array<int, string>  $sessionKeys
+     */
+    public function deleteBySessionKeys(array $sessionKeys): int;
 
     public function pruneStale(\DateTimeInterface $before): int;
 

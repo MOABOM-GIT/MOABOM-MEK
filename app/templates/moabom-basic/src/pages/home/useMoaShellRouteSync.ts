@@ -17,12 +17,13 @@ import {
   type MoaShellErrorBridge,
 } from '../../shell/moaShellErrorBridge';
 import {
-  isAnyBoardShellWindowOpen,
+  isAnyShellNavigateWindowOpen,
   type MoaShellBoardBridge,
 } from '../../shell/moaShellBoardBridge';
 import { formatShellPath, parseShellRoute, replaceShellPath } from '../../utils/moabomShellRoutes';
 import type { ShellErrorCode } from '../../shell/moaShellErrorIds';
 import type { BoardShellMode } from '../../utils/moabomShellRoutes';
+import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import type { WindowState } from '../../components/composite/Moa_CenterPanel';
 import { isGuestOnlyAuthMode, type ShellUrlSync } from '../../shell/moaShellTypes';
 
@@ -38,7 +39,12 @@ type ShellWindowsApi = {
 export interface UseMoaShellRouteSyncOptions extends ShellWindowsApi {
   initialWindow?: AuthWindowMode;
   isLoggedIn: boolean;
-  openUserProfileWindow?: (userUuid: string, displayName?: string, sync?: ShellUrlSync) => void;
+  openUserProfileWindow?: (
+    userUuid: string,
+    displayName?: string,
+    sync?: ShellUrlSync,
+    view?: UserProfileWindowView,
+  ) => void;
 }
 
 export function useMoaShellRouteSync({
@@ -79,6 +85,14 @@ export function useMoaShellRouteSync({
       }
     }
   }, [applyShellRoute, openErrorWindow]);
+
+  useEffect(() => {
+    const onPathChanged = () => {
+      applyShellRoute(parseShellRoute(window.location.pathname, window.location.search));
+    };
+    window.addEventListener('moabom-shell-path-changed', onPathChanged);
+    return () => window.removeEventListener('moabom-shell-path-changed', onPathChanged);
+  }, [applyShellRoute]);
 
   useEffect(() => {
     const onPop = () => {
@@ -127,7 +141,7 @@ export function useMoaShellRouteSync({
 
   useEffect(() => {
     const bridge: MoaShellBoardBridge = {
-      isActive: () => isAnyBoardShellWindowOpen(windowsRef.current),
+      isActive: () => isAnyShellNavigateWindowOpen(windowsRef.current),
       openBoard: (slug, postId, options) => {
         openBoardWindowRef.current(slug, postId, {
           skipUrl: true,
@@ -139,9 +153,12 @@ export function useMoaShellRouteSync({
         openAuthWindowRef.current(mode, { skipUrl: true });
         replaceShellPath(formatShellPath({ kind: 'auth', mode }));
       },
-      openUserProfile: (userUuid) => {
-        openUserProfileWindowRef.current?.(userUuid, undefined, { skipUrl: true });
-        replaceShellPath(formatShellPath({ kind: 'userProfile', uuid: userUuid }));
+      openUserProfile: (userUuid, view = 'profile', options) => {
+        openUserProfileWindowRef.current?.(userUuid, undefined, {
+          skipUrl: true,
+          shellPath: options?.shellPath,
+          replace: options?.replace,
+        }, view);
       },
     };
 

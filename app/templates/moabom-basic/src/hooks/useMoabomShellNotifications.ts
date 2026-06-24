@@ -11,11 +11,19 @@ import {
   subscribeShellNotificationChannel,
   unsubscribeShellNotificationChannel,
 } from '../runtime/moabomShellNotificationSocket';
+import { MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT } from '../runtime/moabomWebSocketAuthSync';
 import { navigateMoabomNotificationUrl } from '../utils/moabomNotificationNavigateUrl';
+import { extractChatSenderUuidFromUrl } from '../utils/moabomChatNotificationNavigate';
+import { isMoabomShellActiveChatWithUser } from '../runtime/moabomShellActiveChat';
 import {
   isShellNotificationUnread,
   shellNotificationReadTimestamp,
 } from '../utils/moabomShellNotificationUtils';
+import { MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../layout/moabomShellPanelLayout';
+
+function extractChatSenderUuid(url?: string | null): string | null {
+  return extractChatSenderUuidFromUrl(url);
+}
 
 type AuthUserSnapshot = {
   uuid?: string;
@@ -48,6 +56,7 @@ export function useMoabomShellNotifications({
   const [hasMore, setHasMore] = useState(false);
   const pageRef = useRef(1);
   const wsKeyRef = useRef('');
+  const [wsAuthEpoch, setWsAuthEpoch] = useState(0);
   const toastTextRef = useRef(newNotificationToastText);
   const toastOpenTextRef = useRef(newNotificationOpenText);
   const alarmTabActiveRef = useRef(alarmTabActive);
@@ -82,7 +91,7 @@ export function useMoabomShellNotifications({
 
     setLoading(true);
     try {
-      const result = await fetchShellNotifications(page);
+      const result = await fetchShellNotifications(page, MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE);
       if (!result.ok || !result.page) {
         if (!append) {
           setItems([]);
@@ -141,7 +150,7 @@ export function useMoabomShellNotifications({
       }
     }
 
-    navigateMoabomNotificationUrl(item.url, item.type);
+    navigateMoabomNotificationUrl(item.url, item.type, item.data ?? null);
   }, []);
 
   useEffect(() => {
@@ -161,6 +170,16 @@ export function useMoabomShellNotifications({
     }
     void reloadList();
   }, [alarmTabActive, isLoggedIn, reloadList]);
+
+  useEffect(() => {
+    const onWsAuthSynced = () => {
+      setWsAuthEpoch(epoch => epoch + 1);
+    };
+    window.addEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
+    return () => {
+      window.removeEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -183,12 +202,18 @@ export function useMoabomShellNotifications({
         void reloadList();
       }
 
+      const notificationType = payload.type?.trim() ?? '';
+      const senderUuid = extractChatSenderUuid(payload.url);
+      if (notificationType === 'chat_message' && senderUuid && isMoabomShellActiveChatWithUser(senderUuid)) {
+        return;
+      }
+
       const message = subject || toastTextRef.current;
       const navigateUrl = payload.url?.trim();
       if (navigateUrl) {
         pushNotificationToast(message, 2800, {
           label: toastOpenTextRef.current,
-          onClick: () => navigateMoabomNotificationUrl(navigateUrl, payload.type),
+          onClick: () => navigateMoabomNotificationUrl(navigateUrl, payload.type, null),
         });
       } else {
         pushNotificationToast(message);
@@ -205,7 +230,7 @@ export function useMoabomShellNotifications({
         wsKeyRef.current = '';
       }
     };
-  }, [isLoggedIn, refreshUnreadCount, reloadList]);
+  }, [isLoggedIn, refreshUnreadCount, reloadList, wsAuthEpoch]);
 
   return {
     items,

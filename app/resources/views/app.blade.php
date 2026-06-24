@@ -76,7 +76,8 @@
                         appKey: '{{ config('broadcasting.connections.reverb.key') }}',
                         host: '{{ config('g7.websocket.client.host', config('broadcasting.connections.reverb.options.host', 'localhost')) }}',
                         port: {{ config('g7.websocket.client.port', config('broadcasting.connections.reverb.options.port', 80)) }},
-                        scheme: '{{ config('g7.websocket.client.scheme', config('broadcasting.connections.reverb.options.scheme', 'https')) }}'
+                        scheme: '{{ config('g7.websocket.client.scheme', config('broadcasting.connections.reverb.options.scheme', 'https')) }}',
+                        authEndpoint: '/api/broadcasting/auth'
                     }@endif
                 });
             } else {

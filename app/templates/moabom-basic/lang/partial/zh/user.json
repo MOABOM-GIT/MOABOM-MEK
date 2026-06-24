@@ -1,0 +1,21 @@
+{
+  "profile": {
+    "page_title": "用户资料",
+    "posts_page_title": "帖子",
+    "user_not_found": "找不到用户。",
+    "joined_at": "注册日期:",
+    "posts_count": "帖子",
+    "comments_count": "评论",
+    "recent_posts": "最近帖子",
+    "posts_suffix": "的帖子",
+    "total_posts": "共 {{count}} 篇",
+    "no_posts": "暂无帖子。",
+    "view_all": "查看全部",
+    "back_to_profile": "资料",
+    "post_board": "版块",
+    "post_title": "标题",
+    "post_views": "浏览",
+    "post_date": "发布日期",
+    "badge_blinded": "已屏蔽"
+  }
+}

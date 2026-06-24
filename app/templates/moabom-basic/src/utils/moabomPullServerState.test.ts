@@ -18,6 +18,12 @@ import {
   __resetMoabomSettingsSaveQueueForTest,
   queueSaveMoabomSystemSettings,
 } from './moabomSettingsSaveQueue';
+import { __resetMoabomShellOrderSaveQueueForTest } from './moabomShellOrderSaveQueue';
+import { STORAGE_KEY_ORDER } from '../shell/moaShellLayoutConstants';
+import {
+  addMainUnpinnedGeneratedId,
+  setActiveMainUnpinnedScopeKey,
+} from '../shell/moaShellMainAppUnpinned';
 
 const LOCAL_STATE: MoabomSystemState = {
   ...DEFAULT_MOABOM_SYSTEM,
@@ -70,9 +76,11 @@ describe('pull settings guard policy', () => {
 describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰기 방지', () => {
   beforeEach(() => {
     __resetMoabomSettingsSaveQueueForTest();
+    __resetMoabomShellOrderSaveQueueForTest();
     vi.mocked(loadMoabomSettingsPayloadForMerge).mockReset();
     localStorage.clear();
     localStorage.setItem(MOABOM_SYSTEM_STORAGE_KEY, JSON.stringify(LOCAL_STATE));
+    setActiveMainUnpinnedScopeKey('guest');
   });
 
   afterEach(() => {
@@ -168,5 +176,42 @@ describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰�
     expect(result).not.toBeNull();
     // 게스트는 로컬 appearance 유지 (저장된 사용자 설정이 없으므로)
     expect(result!.state.appearance.theme).toBe('flat-dark');
+  });
+
+  it('서버 mainAppOrder 가 stale 이어도 로컬 unpinned 로 생성 앱을 메인에서 숨긴다', async () => {
+    __resetMoabomSettingsSaveQueueForTest();
+    __resetMoabomShellOrderSaveQueueForTest();
+
+    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(['hospital-info']));
+    addMainUnpinnedGeneratedId('generated-app-7');
+
+    vi.mocked(loadMoabomSettingsPayloadForMerge).mockResolvedValue({
+      defaults: {
+        appearance: {
+          themes: [{ id: 'light' as const, label: 'Light', enabled: true }],
+          point_color_presets: ['#6366f1'],
+          home_background_items: [],
+        },
+      },
+      settings: {
+        shell: {
+          home: {
+            mainAppOrder: ['hospital-info', 'generated-app-7'],
+            mainAppOrderCustomized: true,
+          },
+        },
+      },
+      defaults_revision: 1,
+    });
+
+    const result = await pullMoabomServerState({
+      isLoggedIn: true,
+      coreUserLanguage: 'ko',
+      preserveShellPanelOpen: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.mainAppOrder.order).toEqual(['hospital-info']);
+    expect(result!.mainAppOrder.customized).toBe(true);
   });
 });

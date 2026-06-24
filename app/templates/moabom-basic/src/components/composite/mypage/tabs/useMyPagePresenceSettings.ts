@@ -1,39 +1,75 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
 import {
-  fetchPresenceSettings,
   updatePresenceSettings,
   type PresenceAvailability,
   type PresenceSettings,
   type PresenceSubtitleMode,
 } from '../../../../api/moabomPresenceApi';
+import { useMoabomPresenceContextOptional } from '../../../../hooks/MoabomPresenceProvider';
 import { showCoreToast } from '../myPageUtils';
 
 export const MOABOM_PRESENCE_SETTINGS_OPTIMISTIC_EVENT = 'moabom-presence-settings-optimistic';
 
 export type PresenceSettingsOptimisticDetail = {
-  availability: PresenceAvailability;
-  subtitle_mode: PresenceSubtitleMode;
+  availability?: PresenceAvailability;
+  subtitle_mode?: PresenceSubtitleMode;
+  show_avatar_in_connect_list?: boolean;
+  accept_chat_requests?: boolean;
+  /** profile_bio 모드 즉시 반영용(마이페이지 폼 bio 우선) */
+  profile_bio?: string | null;
+  /** true = 사용자 변경 직후(저장 대기). heartbeat 가 덮어쓰지 않도록 보호 */
+  pending?: boolean;
 };
 
 interface UseMyPagePresenceSettingsOptions {
   activeTab: string;
   isLoggedIn: boolean;
   t: MoabomTranslateFn;
+  profileBio?: string;
 }
 
 function dispatchPresenceOptimistic(detail: PresenceSettingsOptimisticDetail): void {
   window.dispatchEvent(new CustomEvent(MOABOM_PRESENCE_SETTINGS_OPTIMISTIC_EVENT, { detail }));
 }
 
+function applySettingsToLocalState(
+  settings: PresenceSettings,
+  setters: {
+    setAvailabilityState: (value: PresenceAvailability) => void;
+    setSubtitleModeState: (value: PresenceSubtitleMode) => void;
+    setShowAvatarInConnectListState: (value: boolean) => void;
+    setAcceptChatRequestsState: (value: boolean) => void;
+  },
+  profileBio: string,
+): void {
+  setters.setAvailabilityState(settings.availability);
+  setters.setSubtitleModeState(settings.subtitle_mode);
+  setters.setShowAvatarInConnectListState(settings.show_avatar_in_connect_list ?? true);
+  setters.setAcceptChatRequestsState(settings.accept_chat_requests ?? true);
+  dispatchPresenceOptimistic({
+    availability: settings.availability,
+    subtitle_mode: settings.subtitle_mode,
+    show_avatar_in_connect_list: settings.show_avatar_in_connect_list,
+    accept_chat_requests: settings.accept_chat_requests,
+    profile_bio: profileBio.trim() || null,
+  });
+}
+
 export function useMyPagePresenceSettings({
   activeTab,
   isLoggedIn,
   t,
+  profileBio = '',
 }: UseMyPagePresenceSettingsOptions) {
+  const presenceContext = useMoabomPresenceContextOptional();
+
   const [availability, setAvailabilityState] = useState<PresenceAvailability>('online');
-  const [subtitleMode, setSubtitleModeState] = useState<PresenceSubtitleMode>('profile_bio');
-  const [loading, setLoading] = useState(false);
+  const [subtitleMode, setSubtitleModeState] = useState<PresenceSubtitleMode>('activity');
+  const [showAvatarInConnectList, setShowAvatarInConnectListState] = useState(true);
+  const [acceptChatRequests, setAcceptChatRequestsState] = useState(true);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackError, setFallbackError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +78,12 @@ export function useMyPagePresenceSettings({
   const pendingSaveRef = useRef<Partial<PresenceSettings> | null>(null);
   const availabilityRef = useRef(availability);
   const subtitleModeRef = useRef(subtitleMode);
+  const showAvatarInConnectListRef = useRef(showAvatarInConnectList);
+  const profileBioRef = useRef(profileBio);
+
+  useEffect(() => {
+    profileBioRef.current = profileBio;
+  }, [profileBio]);
 
   useEffect(() => {
     availabilityRef.current = availability;
@@ -50,6 +92,10 @@ export function useMyPagePresenceSettings({
   useEffect(() => {
     subtitleModeRef.current = subtitleMode;
   }, [subtitleMode]);
+
+  useEffect(() => {
+    showAvatarInConnectListRef.current = showAvatarInConnectList;
+  }, [showAvatarInConnectList]);
 
   const flushPresenceSave = useCallback(async () => {
     const payload = pendingSaveRef.current;
@@ -63,9 +109,14 @@ export function useMyPagePresenceSettings({
       const saved = await updatePresenceSettings(payload);
       setAvailabilityState(saved.availability);
       setSubtitleModeState(saved.subtitle_mode);
+      setShowAvatarInConnectListState(saved.show_avatar_in_connect_list ?? true);
+      setAcceptChatRequestsState(saved.accept_chat_requests ?? true);
+      presenceContext?.applyPresenceSettingsSnapshot(saved);
       dispatchPresenceOptimistic({
         availability: saved.availability,
         subtitle_mode: saved.subtitle_mode,
+        show_avatar_in_connect_list: saved.show_avatar_in_connect_list,
+        accept_chat_requests: saved.accept_chat_requests,
       });
       window.dispatchEvent(new CustomEvent('moabom-presence-settings-changed'));
     } catch {
@@ -74,7 +125,7 @@ export function useMyPagePresenceSettings({
     } finally {
       setSaving(false);
     }
-  }, [t]);
+  }, [presenceContext, t]);
 
   const schedulePresenceSave = useCallback((patch: Partial<PresenceSettings>) => {
     pendingSaveRef.current = {
@@ -90,17 +141,24 @@ export function useMyPagePresenceSettings({
     }, 280);
   }, [flushPresenceSave]);
 
+  const presenceOptimisticBase = useCallback((): PresenceSettingsOptimisticDetail => ({
+    availability: availabilityRef.current,
+    subtitle_mode: subtitleModeRef.current,
+    profile_bio: profileBioRef.current.trim() || null,
+  }), []);
+
   const setAvailability = useCallback((value: PresenceAvailability) => {
     setAvailabilityState(value);
     if (!hydratedRef.current) {
       return;
     }
     dispatchPresenceOptimistic({
+      ...presenceOptimisticBase(),
       availability: value,
-      subtitle_mode: subtitleModeRef.current,
+      pending: true,
     });
     schedulePresenceSave({ availability: value });
-  }, [schedulePresenceSave]);
+  }, [presenceOptimisticBase, schedulePresenceSave]);
 
   const setSubtitleMode = useCallback((value: PresenceSubtitleMode) => {
     setSubtitleModeState(value);
@@ -108,14 +166,39 @@ export function useMyPagePresenceSettings({
       return;
     }
     dispatchPresenceOptimistic({
-      availability: availabilityRef.current,
+      ...presenceOptimisticBase(),
       subtitle_mode: value,
+      pending: true,
     });
     schedulePresenceSave({ subtitle_mode: value });
-    if (value === 'activity') {
-      window.dispatchEvent(new CustomEvent('moabom-presence-settings-changed'));
+  }, [presenceOptimisticBase, schedulePresenceSave]);
+
+  const setShowAvatarInConnectList = useCallback((value: boolean) => {
+    setShowAvatarInConnectListState(value);
+    if (!hydratedRef.current) {
+      return;
     }
-  }, [schedulePresenceSave]);
+    dispatchPresenceOptimistic({
+      ...presenceOptimisticBase(),
+      show_avatar_in_connect_list: value,
+      pending: true,
+    });
+    schedulePresenceSave({ show_avatar_in_connect_list: value });
+    window.dispatchEvent(new CustomEvent('moabom-presence-settings-changed'));
+  }, [presenceOptimisticBase, schedulePresenceSave]);
+
+  const setAcceptChatRequests = useCallback((value: boolean) => {
+    setAcceptChatRequestsState(value);
+    if (!hydratedRef.current) {
+      return;
+    }
+    dispatchPresenceOptimistic({
+      ...presenceOptimisticBase(),
+      accept_chat_requests: value,
+      pending: true,
+    });
+    schedulePresenceSave({ accept_chat_requests: value });
+  }, [presenceOptimisticBase, schedulePresenceSave]);
 
   useEffect(() => {
     if (activeTab !== 'profile' || !isLoggedIn) {
@@ -123,28 +206,59 @@ export function useMyPagePresenceSettings({
       return;
     }
 
+    setFallbackError(null);
+
+    if (presenceContext) {
+      if (presenceContext.presenceSettingsHydrated && presenceContext.presenceSettings) {
+        applySettingsToLocalState(
+          presenceContext.presenceSettings,
+          {
+            setAvailabilityState,
+            setSubtitleModeState,
+            setShowAvatarInConnectListState,
+            setAcceptChatRequestsState,
+          },
+          profileBioRef.current,
+        );
+        hydratedRef.current = true;
+        return;
+      }
+
+      if (presenceContext.presenceSettingsLoading) {
+        hydratedRef.current = false;
+        return;
+      }
+
+      hydratedRef.current = false;
+      return;
+    }
+
     let cancelled = false;
     hydratedRef.current = false;
-    setLoading(true);
-    setError(null);
+    setFallbackLoading(true);
 
     void (async () => {
       try {
+        const { fetchPresenceSettings } = await import('../../../../api/moabomPresenceApi');
         const settings = await fetchPresenceSettings();
         if (cancelled) return;
-        setAvailabilityState(settings.availability);
-        setSubtitleModeState(settings.subtitle_mode);
-        dispatchPresenceOptimistic({
-          availability: settings.availability,
-          subtitle_mode: settings.subtitle_mode,
-        });
+        applySettingsToLocalState(
+          settings,
+          {
+            setAvailabilityState,
+            setSubtitleModeState,
+            setShowAvatarInConnectListState,
+            setAcceptChatRequestsState,
+          },
+          profileBioRef.current,
+        );
       } catch {
         if (!cancelled) {
-          setError(t('moa_mypage.presence.load_failed'));
+          setFallbackError(t('moa_mypage.presence.load_failed'));
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setFallbackLoading(false);
           hydratedRef.current = true;
         }
       }
@@ -154,7 +268,25 @@ export function useMyPagePresenceSettings({
       cancelled = true;
       hydratedRef.current = false;
     };
-  }, [activeTab, isLoggedIn, t]);
+  }, [
+    activeTab,
+    isLoggedIn,
+    presenceContext,
+    presenceContext?.presenceSettings,
+    presenceContext?.presenceSettingsHydrated,
+    presenceContext?.presenceSettingsLoading,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!hydratedRef.current || subtitleModeRef.current !== 'profile_bio') {
+      return;
+    }
+    dispatchPresenceOptimistic({
+      ...presenceOptimisticBase(),
+      profile_bio: profileBio.trim() || null,
+    });
+  }, [presenceOptimisticBase, profileBio]);
 
   useEffect(() => {
     if (subtitleMode !== 'activity') {
@@ -181,13 +313,22 @@ export function useMyPagePresenceSettings({
     }
   }, []);
 
+  const loading = presenceContext
+    ? (presenceContext.presenceSettingsLoading && !presenceContext.presenceSettingsHydrated)
+    : fallbackLoading;
+  const resolvedError = error ?? fallbackError;
+
   return {
     availability,
     setAvailability,
     subtitleMode,
     setSubtitleMode,
+    showAvatarInConnectList,
+    setShowAvatarInConnectList,
+    acceptChatRequests,
+    setAcceptChatRequests,
     presenceLoading: loading,
     presenceSaving: saving,
-    presenceError: error,
+    presenceError: resolvedError,
   };
 }

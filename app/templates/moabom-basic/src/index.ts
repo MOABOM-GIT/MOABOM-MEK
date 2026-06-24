@@ -20,7 +20,10 @@ import { installMoabomGhostRoutesFetch } from './runtime/moabomGhostRoutesFetch'
 import { ensureMoaShellErrorPageHandlerPatched } from './shell/installMoaShellErrorNavigateBridge';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
+import { installMoabomWebSocketAuthSync } from './runtime/moabomWebSocketAuthSync';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
+import { schedulePrefetchUserProfileWindowLayouts } from './shell/userProfileWindowPrefetch';
+import { schedulePrefetchBoardWindowLayouts } from './shell/boardWindowPrefetch';
 
 // 지연 로드 셸 IIFE가 메인과 동일한 React Context를 쓰도록 싱글톤 모듈을 전역에 노출 (vite.shell-*.config.ts external)
 import * as MoabomShellI18n from './i18n/moabomShellI18nSingleton';
@@ -221,6 +224,7 @@ if (typeof window !== 'undefined') {
       });
     installMoabomTemplateLangFetchDedupe();
     bootstrapMoabomShellAuthConfig();
+    installMoabomWebSocketAuthSync();
     installMoabomShellBootFetch();
     prefetchMoabomShellBoot();
     installMoabomGhostRoutesFetch();
@@ -231,4 +235,6 @@ initTemplate();
 
 if (typeof window !== 'undefined') {
     registerSirsoftEcommerceLayoutPrefetch();
+    schedulePrefetchUserProfileWindowLayouts();
+    schedulePrefetchBoardWindowLayouts();
 }

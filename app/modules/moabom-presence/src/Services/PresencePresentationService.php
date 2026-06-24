@@ -51,6 +51,33 @@ final class PresencePresentationService
         };
     }
 
+    public function showAvatarInConnectList(?PresenceUserPreference $preferences): bool
+    {
+        if (! $preferences) {
+            return true;
+        }
+
+        return (bool) $preferences->show_avatar_in_connect_list;
+    }
+
+    public function acceptsChatRequests(?PresenceUserPreference $preferences): bool
+    {
+        if (! $preferences) {
+            return true;
+        }
+
+        return $preferences->getAttribute('accept_chat_requests') !== false;
+    }
+
+    public function resolveConnectListAvatar(?User $user, ?PresenceUserPreference $preferences): ?string
+    {
+        if (! $user || ! $this->showAvatarInConnectList($preferences)) {
+            return null;
+        }
+
+        return $this->trimOrNull($user->getAvatarUrl());
+    }
+
     /**
      * @return array{
      *   availability: string,
@@ -71,7 +98,7 @@ final class PresencePresentationService
 
         return [
             'availability' => $availability->value,
-            'subtitle_mode' => ($preferences?->subtitle_mode ?? PresenceSubtitleMode::ProfileBio)->value,
+            'subtitle_mode' => ($preferences?->subtitle_mode ?? PresenceSubtitleMode::Activity)->value,
             'activity_message' => $preferences?->activity_message,
             'presence_subtitle' => $this->resolveSubtitle($user, $preferences, $liveStatusText),
             'is_reachable' => $isReachable,
@@ -82,7 +109,9 @@ final class PresencePresentationService
      * @return array{
      *   availability: string,
      *   subtitle_mode: string,
-     *   activity_message: ?string
+     *   activity_message: ?string,
+     *   show_avatar_in_connect_list: bool,
+     *   accept_chat_requests: bool
      * }
      */
     public function serializeSettings(PresenceUserPreference $preferences): array
@@ -91,6 +120,8 @@ final class PresencePresentationService
             'availability' => $preferences->availability->value,
             'subtitle_mode' => $preferences->subtitle_mode->value,
             'activity_message' => $preferences->activity_message,
+            'show_avatar_in_connect_list' => $this->showAvatarInConnectList($preferences),
+            'accept_chat_requests' => $this->acceptsChatRequests($preferences),
         ];
     }
 

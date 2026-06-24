@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.0",
   "layout_name": "user/public_profile",
   "data_sources": [
     {
@@ -19,29 +19,30 @@
       "auth_required": false
     },
     {
-      "id": "user_posts",
-      "type": "api",
-      "endpoint": "/api/modules/sirsoft-board/users/{{route.uuid}}/posts",
-      "method": "GET",
-      "auto_fetch": true,
-      "auth_required": false,
-      "params": {
-        "per_page": 15,
-        "page": 1
-      }
-    },
-    {
       "id": "user_posts_stats",
       "type": "api",
       "endpoint": "/api/modules/sirsoft-board/users/{{route.uuid}}/posts/stats",
       "method": "GET",
       "auto_fetch": true,
       "auth_required": false
+    },
+    {
+      "id": "user_recent_posts",
+      "type": "api",
+      "endpoint": "/api/modules/sirsoft-board/users/{{route.uuid}}/posts",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "params": {
+        "per_page": 5,
+        "page": 1,
+        "sort": "latest"
+      }
     }
   ],
   "components": [
     {
-      "id": "user_profile_root",
+      "id": "user_public_profile_root",
       "type": "basic",
       "name": "Div",
       "props": {
@@ -49,204 +50,382 @@
       },
       "children": [
         {
-          "id": "user_profile_header",
+          "id": "user_profile_panel",
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "flex items-center gap-3"
+            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3"
           },
           "children": [
             {
-              "id": "user_profile_avatar_wrap",
+              "id": "user_profile_panel_title",
               "type": "basic",
-              "name": "Div",
+              "name": "H2",
               "props": {
-                "className": "relative shrink-0"
+                "className": "text-sm font-semibold text-muted"
               },
-              "children": [
-            {
-              "id": "user_profile_avatar",
-              "type": "basic",
-              "name": "Div",
-              "props": {
-                "className": "w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center text-lg font-bold"
-              },
-              "if": "{{!user_profile?.data?.avatar}}",
-              "text": "{{(user_profile?.data?.name ?? '?').charAt(0)}}"
+              "text": "$t:moabom-presence.user.profile_panel_title"
             },
             {
-              "id": "user_profile_avatar_img",
-              "type": "basic",
-              "name": "Img",
-              "props": {
-                "src": "{{user_profile?.data?.avatar}}",
-                "alt": "{{user_profile?.data?.name ?? ''}}",
-                "className": "w-14 h-14 rounded-full object-cover shrink-0"
-              },
-              "if": "{{user_profile?.data?.avatar}}"
-            },
-            {
-              "id": "user_profile_presence_dot",
+              "id": "user_profile_panel_body",
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "moa-profile-status moa-status-online"
-              },
-              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}"
-            },
-            {
-              "id": "user_profile_presence_dot_away",
-              "type": "basic",
-              "name": "Div",
-              "props": {
-                "className": "moa-profile-status moa-status-away"
-              },
-              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}"
-            },
-            {
-              "id": "user_profile_presence_dot_busy",
-              "type": "basic",
-              "name": "Div",
-              "props": {
-                "className": "moa-profile-status moa-status-busy"
-              },
-              "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}"
-            }
-              ]
-            },
-            {
-              "id": "user_profile_meta",
-              "type": "basic",
-              "name": "Div",
-              "props": {
-                "className": "min-w-0 flex-1"
+                "className": "flex items-start gap-3 min-w-0"
               },
               "children": [
                 {
-                  "id": "user_profile_name",
+                  "id": "user_profile_avatar_wrap",
                   "type": "basic",
-                  "name": "H2",
+                  "name": "Div",
                   "props": {
-                    "className": "text-lg font-bold truncate"
+                    "className": "moa-user-profile-status relative shrink-0"
                   },
-                  "text": "{{user_profile?.data?.name ?? ''}}"
+                  "children": [
+                    {
+                      "id": "user_profile_avatar",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center text-xl font-bold"
+                      },
+                      "if": "{{!user_profile?.data?.avatar}}",
+                      "text": "{{(user_profile?.data?.name ?? '?').charAt(0)}}"
+                    },
+                    {
+                      "id": "user_profile_avatar_img",
+                      "type": "basic",
+                      "name": "Img",
+                      "props": {
+                        "src": "{{user_profile?.data?.avatar}}",
+                        "alt": "{{user_profile?.data?.name ?? ''}}",
+                        "className": "w-16 h-16 rounded-full object-cover shrink-0"
+                      },
+                      "if": "{{user_profile?.data?.avatar}}"
+                    },
+                    {
+                      "id": "user_profile_presence_dot_online",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "moa-profile-status moa-status-online"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}"
+                    },
+                    {
+                      "id": "user_profile_presence_dot_away",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "moa-profile-status moa-status-away"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}"
+                    },
+                    {
+                      "id": "user_profile_presence_dot_busy",
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "moa-profile-status moa-status-busy"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}"
+                    }
+                  ]
                 },
                 {
-                  "id": "user_profile_presence_label",
+                  "id": "user_profile_meta",
                   "type": "basic",
-                  "name": "Span",
+                  "name": "Div",
                   "props": {
-                    "className": "text-xs text-muted mt-0.5 block"
+                    "className": "min-w-0 flex-1 flex flex-col gap-1"
                   },
-                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}",
-                  "text": "$t:moabom-presence.user.availability_online"
-                },
-                {
-                  "id": "user_profile_presence_label_away",
-                  "type": "basic",
-                  "name": "Span",
-                  "props": {
-                    "className": "text-xs text-muted mt-0.5 block"
-                  },
-                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}",
-                  "text": "$t:moabom-presence.user.availability_away"
-                },
-                {
-                  "id": "user_profile_presence_label_busy",
-                  "type": "basic",
-                  "name": "Span",
-                  "props": {
-                    "className": "text-xs text-muted mt-0.5 block"
-                  },
-                  "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}",
-                  "text": "$t:moabom-presence.user.availability_busy"
-                },
-                {
-                  "id": "user_profile_presence_subtitle",
-                  "type": "basic",
-                  "name": "P",
-                  "props": {
-                    "className": "text-sm text-muted mt-1"
-                  },
-                  "if": "{{user_presence?.data?.presence_subtitle}}",
-                  "text": "{{user_presence?.data?.presence_subtitle}}"
-                },
-                {
-                  "id": "user_profile_bio",
-                  "type": "basic",
-                  "name": "P",
-                  "props": {
-                    "className": "text-sm text-muted mt-1"
-                  },
-                  "if": "{{user_profile?.data?.bio && !user_presence?.data?.presence_subtitle}}",
-                  "text": "{{user_profile?.data?.bio}}"
-                },
-                {
-                  "id": "user_profile_stats",
-                  "type": "basic",
-                  "name": "Span",
-                  "props": {
-                    "className": "text-xs text-muted mt-1 block"
-                  },
-                  "text": "$t:moabom-presence.user.profile_posts_count|count={{user_posts_stats?.data?.posts_count ?? 0}}"
+                  "children": [
+                    {
+                      "id": "user_profile_name_row",
+                      "type": "composite",
+                      "name": "UserInfo",
+                      "props": {
+                        "author": "{{user_profile?.data}}",
+                        "showDropdown": true,
+                        "clickable": true,
+                        "layout": "horizontal"
+                      }
+                    },
+                    {
+                      "id": "user_profile_presence_label_online",
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "text-xs text-muted"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'online'}}",
+                      "text": "$t:moabom-presence.user.availability_online"
+                    },
+                    {
+                      "id": "user_profile_presence_label_away",
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "text-xs text-muted"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'away'}}",
+                      "text": "$t:moabom-presence.user.availability_away"
+                    },
+                    {
+                      "id": "user_profile_presence_label_busy",
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "text-xs text-muted"
+                      },
+                      "if": "{{user_presence?.data?.is_reachable && user_presence?.data?.availability === 'busy'}}",
+                      "text": "$t:moabom-presence.user.availability_busy"
+                    },
+                    {
+                      "id": "user_profile_presence_subtitle",
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "text-sm text-muted break-words"
+                      },
+                      "if": "{{user_presence?.data?.presence_subtitle}}",
+                      "text": "{{user_presence?.data?.presence_subtitle}}"
+                    },
+                    {
+                      "id": "user_profile_bio",
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "text-sm text-secondary break-words"
+                      },
+                      "if": "{{user_profile?.data?.bio && !user_presence?.data?.presence_subtitle}}",
+                      "text": "{{user_profile?.data?.bio}}"
+                    }
+                  ]
                 }
               ]
             }
           ]
         },
         {
-          "id": "user_profile_posts_title",
+          "id": "user_profile_view_tabs",
           "type": "basic",
-          "name": "H3",
+          "name": "Div",
           "props": {
-            "className": "text-sm font-semibold"
+            "className": "moa-user-profile-tabs"
           },
-          "text": "$t:moabom-presence.user.profile_posts_title"
-        },
-        {
-          "id": "user_profile_posts_empty",
-          "type": "basic",
-          "name": "P",
-          "props": {
-            "className": "text-sm text-muted"
-          },
-          "if": "{{!(user_posts?.data?.data?.length)}}",
-          "text": "$t:moabom-presence.user.profile_posts_empty"
-        },
-        {
-          "id": "user_profile_posts_list",
-          "type": "iteration",
-          "item_var": "post",
-          "index_var": "postIndex",
-          "items": "{{user_posts?.data?.data ?? []}}",
           "children": [
             {
-              "id": "user_profile_post_row",
+              "id": "user_profile_tab_profile",
+              "type": "basic",
+              "name": "Button",
+              "props": {
+                "className": "moa-user-profile-tab moa-user-profile-tab--active"
+              },
+              "text": "$t:moabom-presence.user.profile_panel_title"
+            },
+            {
+              "id": "user_profile_tab_posts",
+              "type": "basic",
+              "name": "Button",
+              "props": {
+                "className": "moa-user-profile-tab"
+              },
+              "actions": [
+                {
+                  "type": "click",
+                  "handler": "navigate",
+                  "params": {
+                    "path": "/users/{{route.uuid}}/posts"
+                  }
+                }
+              ],
+              "text": "$t:moabom-presence.user.posts_list_title"
+            }
+          ]
+        },
+        {
+          "id": "user_profile_stats_row",
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "grid grid-cols-2 gap-3"
+          },
+          "children": [
+            {
+              "id": "user_profile_posts_stat",
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "rounded-xl border border-gray-200 dark:border-gray-700 p-3"
+                "className": "moa-user-profile-stat moa-user-profile-stat--clickable glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
               },
+              "actions": [
+                {
+                  "type": "click",
+                  "handler": "navigate",
+                  "params": {
+                    "path": "/users/{{route.uuid}}/posts"
+                  }
+                }
+              ],
               "children": [
                 {
-                  "id": "user_profile_post_title",
+                  "id": "user_profile_posts_stat_value",
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "text-sm font-semibold"
+                    "className": "moa-user-profile-stat__value"
                   },
-                  "text": "{{post.title}}"
+                  "text": "{{user_posts_stats?.data?.posts_count ?? 0}}"
                 },
                 {
-                  "id": "user_profile_post_date",
+                  "id": "user_profile_posts_stat_label",
                   "type": "basic",
-                  "name": "Span",
+                  "name": "Div",
                   "props": {
-                    "className": "text-xs text-muted"
+                    "className": "moa-user-profile-stat__label"
                   },
-                  "text": "{{post.created_at}}"
+                  "text": "$t:moabom-presence.user.stat_posts_label"
                 }
               ]
+            },
+            {
+              "id": "user_profile_comments_stat",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-user-profile-stat glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
+              },
+              "children": [
+                {
+                  "id": "user_profile_comments_stat_value",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "moa-user-profile-stat__value"
+                  },
+                  "text": "{{user_posts_stats?.data?.comments_count ?? 0}}"
+                },
+                {
+                  "id": "user_profile_comments_stat_label",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "moa-user-profile-stat__label"
+                  },
+                  "text": "$t:moabom-presence.user.stat_comments_label"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "user_profile_recent_panel",
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3 min-w-0"
+          },
+          "children": [
+            {
+              "id": "user_profile_recent_title",
+              "type": "basic",
+              "name": "H3",
+              "props": {
+                "className": "text-sm font-semibold"
+              },
+              "text": "$t:moabom-presence.user.recent_posts_title"
+            },
+            {
+              "id": "user_profile_recent_empty",
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "text-sm text-muted"
+              },
+              "if": "{{!(user_recent_posts?.data?.data?.length)}}",
+              "text": "$t:moabom-presence.user.profile_posts_empty"
+            },
+            {
+              "id": "user_profile_recent_list",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "flex flex-col gap-2 min-w-0"
+              },
+              "iteration": {
+                "source": "{{user_recent_posts?.data?.data ?? []}}",
+                "item_var": "post",
+                "index_var": "postIndex"
+              },
+              "children": [
+                {
+                  "id": "user_profile_recent_row",
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "moa-user-profile-post-row"
+                  },
+                  "children": [
+                    {
+                      "id": "user_profile_recent_board",
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "moa-user-profile-post-badge text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                      },
+                      "text": "{{post.board_name ?? post.board_slug ?? ''}}"
+                    },
+                    {
+                      "id": "user_profile_recent_title_btn",
+                      "type": "basic",
+                      "name": "Button",
+                      "props": {
+                        "className": "moa-user-profile-post-title text-primary"
+                      },
+                      "actions": [
+                        {
+                          "type": "click",
+                          "handler": "navigate",
+                          "params": {
+                            "path": "/board/{{post.board_slug}}/{{post.id}}"
+                          }
+                        }
+                      ],
+                      "text": "{{post.title}}"
+                    },
+                    {
+                      "id": "user_profile_recent_meta",
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "moa-user-profile-post-date",
+                        "title": "{{post.created_at ?? ''}}"
+                      },
+                      "text": "{{post.created_at_formatted ?? post.created_at ?? ''}}"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "user_profile_recent_more",
+              "type": "basic",
+              "name": "Button",
+              "props": {
+                "className": "w-full text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mt-1"
+              },
+              "if": "{{(user_posts_stats?.data?.posts_count ?? 0) > 5}}",
+              "actions": [
+                {
+                  "type": "click",
+                  "handler": "navigate",
+                  "params": {
+                    "path": "/users/{{route.uuid}}/posts"
+                  }
+                }
+              ],
+              "text": "$t:moabom-presence.user.view_all_posts"
             }
           ]
         }

@@ -11,9 +11,20 @@
         "guest_display_name": "Guest",
         "cannot_friend_self": "You cannot send a friend request to yourself.",
         "friendship_already_exists": "A friendship or pending request already exists.",
-        "friendship_request_not_found": "Friend request not found."
+        "friendship_request_not_found": "Friend request not found.",
+        "user_presence_success": "Presence loaded.",
+        "user_presence_not_found": "Presence not found.",
+        "presence_settings_success": "Presence settings loaded.",
+        "presence_settings_updated": "Presence settings saved."
     },
     "user": {
+        "profile_panel_title": "Profile",
+        "stat_posts_label": "Posts",
+        "stat_comments_label": "Comments",
+        "recent_posts_title": "Recent posts",
+        "posts_list_title": "Posts",
+        "view_all_posts": "View all posts",
+        "post_views": "{{count}} views",
         "profile_posts_count": "{{count}} posts",
         "profile_posts_title": "Posts",
         "profile_posts_empty": "No posts yet.",

@@ -12,13 +12,15 @@ import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import {
   generatedAppLibraryId,
   isGeneratedLibraryAppId,
-  mapStoredGeneratedAppToLibraryApp,
 } from '../../apps/generatedAppLibrary';
 import {
-  loadCachedGeneratedLibraryApps,
-  removeGeneratedAppFromLibraryCache,
-  saveGeneratedAppLibraryCache,
-} from '../../apps/generatedAppLibraryCache';
+  clearValidatedGeneratedLibraryStorage,
+  commitSavedGeneratedAppToLibrary,
+  reconcileGeneratedLibraryFromServer,
+  resolveGeneratedLibraryScopeKey,
+  type GeneratedLibraryHydration,
+} from '../../apps/generatedAppLibraryAuthority';
+import { removeGeneratedAppFromLibraryCache } from '../../apps/generatedAppLibraryCache';
 import { subscribeGeneratedAppSaved } from '../../apps/generatedAppEvents';
 import { pullMoabomServerState } from '../../utils/moabomPullServerState';
 import { useMoabomServerPullTriggers } from '../../utils/useMoabomServerPullTriggers';
@@ -44,6 +46,8 @@ import {
   addMainUnpinnedGeneratedId,
   loadMainUnpinnedGeneratedIds,
   removeMainUnpinnedGeneratedId,
+  resolveMainUnpinnedScopeKey,
+  setActiveMainUnpinnedScopeKey,
 } from '../../shell/moaShellMainAppUnpinned';
 import {
   MAX_RECENT_APPS,
@@ -78,15 +82,13 @@ export function useMoaHomeAppCatalog({
   const initialOrderSnapshot = loadInitialMainOrderSnapshot();
   const orderRef = useRef<string[]>(initialOrderSnapshot.order);
   const orderCustomizedRef = useRef<boolean>(initialOrderSnapshot.customized);
-  const [mainApps, setMainApps] = useState<App[]>(() => {
-    const cached = loadCachedGeneratedLibraryApps();
-    return resolveMainAppsFromOrder(
-      orderRef.current,
-      cached.owned,
-      cached.shared,
-      orderCustomizedRef.current,
-    );
-  });
+  const [libraryHydration, setLibraryHydration] = useState<GeneratedLibraryHydration>('idle');
+  const [mainApps, setMainApps] = useState<App[]>(() => resolveMainAppsFromOrder(
+    orderRef.current,
+    [],
+    [],
+    orderCustomizedRef.current,
+  ));
   const mainAppsRef = useRef<App[]>(mainApps);
   const createdAppsRef = useRef<App[]>([]);
   const sharedGeneratedAppsRef = useRef<App[]>([]);
@@ -100,8 +102,8 @@ export function useMoaHomeAppCatalog({
     loadJsonSanitizedIds(STORAGE_KEY_RECENT_APPS, []).slice(0, MAX_RECENT_APPS),
   );
   const [recentApps, setRecentApps] = useState<App[]>(() => buildRecentApps(recentAppIdsRef.current));
-  const [createdApps, setCreatedApps] = useState<App[]>(() => loadCachedGeneratedLibraryApps().owned);
-  const [sharedGeneratedApps, setSharedGeneratedApps] = useState<App[]>(() => loadCachedGeneratedLibraryApps().shared);
+  const [createdApps, setCreatedApps] = useState<App[]>([]);
+  const [sharedGeneratedApps, setSharedGeneratedApps] = useState<App[]>([]);
 
   const libraryGeneratedApps = useMemo(
     () => dedupeAppsById([...createdApps, ...sharedGeneratedApps]),
@@ -128,6 +130,39 @@ export function useMoaHomeAppCatalog({
     return m;
   }, [libraryGeneratedApps, mainApps]);
 
+  const applyValidatedLibrary = useCallback((
+    owned: App[],
+    shared: App[],
+    options?: { persistPrunedOrder?: boolean },
+  ) => {
+    const library = dedupeAppsById([...owned, ...shared]);
+    const prunedOrder = pruneStaleGeneratedAppOrderIds(orderRef.current, library);
+    if (prunedOrder.length !== orderRef.current.length) {
+      orderRef.current = prunedOrder;
+      if (options?.persistPrunedOrder !== false && orderCustomizedRef.current) {
+        persistMainAppOrder(prunedOrder, {
+          isLoggedIn: isLoggedInRef.current,
+          customized: orderCustomizedRef.current,
+        });
+      }
+    }
+
+    createdAppsRef.current = owned;
+    sharedGeneratedAppsRef.current = shared;
+    libraryGeneratedAppsRef.current = library;
+    setCreatedApps(owned);
+    setSharedGeneratedApps(shared);
+
+    const merged = resolveMainAppsFromOrder(
+      orderRef.current,
+      owned,
+      shared,
+      orderCustomizedRef.current,
+    );
+    mainAppsRef.current = merged;
+    setMainApps(merged);
+  }, [isLoggedInRef]);
+
   const commitMainAppOrder = useCallback((
     nextOrder: string[],
     customized: boolean,
@@ -143,9 +178,21 @@ export function useMoaHomeAppCatalog({
     mainAppsRef.current = next;
     setMainApps(next);
     if (customized) {
-      persistMainAppOrder(nextOrder, { isLoggedIn: isLoggedInRef.current });
+      persistMainAppOrder(nextOrder, { isLoggedIn: isLoggedInRef.current, customized });
     }
   }, [isLoggedInRef]);
+
+  const currentUserRef = useRef<MoaCurrentUser | null>(null);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  useEffect(() => {
+    setActiveMainUnpinnedScopeKey(resolveMainUnpinnedScopeKey(
+      isLoggedIn,
+      currentUser?.memberKey,
+    ));
+  }, [isLoggedIn, currentUser?.memberKey]);
 
   const applyMainAppOrderSnapshot = useCallback((
     snapshot: MainAppOrderSnapshot,
@@ -163,11 +210,6 @@ export function useMoaHomeAppCatalog({
     mainAppsRef.current = next;
     setMainApps(next);
   }, []);
-
-  const currentUserRef = useRef<MoaCurrentUser | null>(null);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
 
   const pullShellServerSnapshot = useCallback(async () => {
     const loggedIn = isLoggedInRef.current;
@@ -309,10 +351,15 @@ export function useMoaHomeAppCatalog({
   }, [onGeneratedAppRemoved, pruneMainGeneratedApp]);
 
   useEffect(() => subscribeGeneratedAppSaved((item) => {
-    const app = mapStoredGeneratedAppToLibraryApp(item);
+    const scopeKey = resolveGeneratedLibraryScopeKey(
+      isLoggedInRef.current,
+      currentUserRef.current?.memberKey,
+    );
+    const app = commitSavedGeneratedAppToLibrary(item, scopeKey);
     removeMainUnpinnedGeneratedId(app.id);
     upsertCreatedApp(app, { pinToMain: true });
-  }), [upsertCreatedApp]);
+    setLibraryHydration('ready');
+  }), [isLoggedInRef, upsertCreatedApp]);
 
   useEffect(() => {
     setFavoriteApps(buildFavoriteApps(favoriteIdsRef.current, libraryGeneratedApps));
@@ -320,11 +367,20 @@ export function useMoaHomeAppCatalog({
   }, [libraryGeneratedApps]);
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      setCreatedApps([]);
+    if (isLoggedIn && !currentUser?.memberKey) {
+      return;
     }
 
+    const scopeKey = resolveGeneratedLibraryScopeKey(isLoggedIn, currentUser?.memberKey);
     let cancelled = false;
+
+    if (!isLoggedIn) {
+      setLibraryHydration('loading');
+      applyValidatedLibrary([], [], { persistPrunedOrder: false });
+    } else {
+      setLibraryHydration(prev => (prev === 'ready' ? prev : 'loading'));
+    }
+
     void (async () => {
       try {
         const [ownedItems, sharedItems] = isLoggedIn
@@ -336,44 +392,20 @@ export function useMoaHomeAppCatalog({
         if (cancelled) {
           return;
         }
-        const ownedApps = ownedItems.map(mapStoredGeneratedAppToLibraryApp);
-        const sharedApps = sharedItems.map(mapStoredGeneratedAppToLibraryApp);
-        saveGeneratedAppLibraryCache(ownedItems, sharedItems);
-        const libraryApps = dedupeAppsById([...ownedApps, ...sharedApps]);
-        const prunedOrder = pruneStaleGeneratedAppOrderIds(orderRef.current, libraryApps);
-        if (prunedOrder.length !== orderRef.current.length) {
-          orderRef.current = prunedOrder;
-          persistMainAppOrder(prunedOrder, { isLoggedIn: isLoggedInRef.current });
-        }
-        setCreatedApps(ownedApps);
-        setSharedGeneratedApps(sharedApps);
-        createdAppsRef.current = ownedApps;
-        sharedGeneratedAppsRef.current = sharedApps;
-        libraryGeneratedAppsRef.current = libraryApps;
-        setMainApps(() => {
-          const merged = resolveMainAppsFromOrder(
-            orderRef.current,
-            ownedApps,
-            sharedApps,
-            orderCustomizedRef.current,
-          );
-          mainAppsRef.current = merged;
-          return merged;
+        const reconciled = reconcileGeneratedLibraryFromServer({
+          ownedItems,
+          sharedItems,
+          scopeKey,
         });
+        applyValidatedLibrary(reconciled.owned, reconciled.shared);
+        if (!cancelled) {
+          setLibraryHydration('ready');
+        }
       } catch {
         if (!cancelled) {
-          setCreatedApps([]);
-          setSharedGeneratedApps([]);
-          setMainApps(() => {
-            const merged = resolveMainAppsFromOrder(
-              orderRef.current,
-              [],
-              [],
-              orderCustomizedRef.current,
-            );
-            mainAppsRef.current = merged;
-            return merged;
-          });
+          clearValidatedGeneratedLibraryStorage();
+          applyValidatedLibrary([], []);
+          setLibraryHydration('error');
         }
       }
     })();
@@ -381,7 +413,7 @@ export function useMoaHomeAppCatalog({
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, currentUser?.memberKey, isLoggedInRef]);
+  }, [applyValidatedLibrary, isLoggedIn, currentUser?.memberKey, isLoggedInRef]);
 
   const saveFavorites = useCallback((favoriteIds: string[]) => {
     favoriteIdsRef.current = favoriteIds;
@@ -468,7 +500,11 @@ export function useMoaHomeAppCatalog({
   const toggleGeneratedAppShare = useCallback(async (serverId: number, nextShared: boolean) => {
     try {
       const updated = await updateGeneratedAppShare(serverId, nextShared);
-      const app = mapStoredGeneratedAppToLibraryApp(updated);
+      const scopeKey = resolveGeneratedLibraryScopeKey(
+        isLoggedInRef.current,
+        currentUserRef.current?.memberKey,
+      );
+      const app = commitSavedGeneratedAppToLibrary(updated, scopeKey);
       upsertCreatedApp(app);
       showAppEditToast(
         'success',
@@ -478,7 +514,7 @@ export function useMoaHomeAppCatalog({
       pushWarningToast(t('moa_shell.home.toast_share_generated_failed'));
       throw new Error('share toggle failed');
     }
-  }, [t, upsertCreatedApp]);
+  }, [isLoggedInRef, t, upsertCreatedApp]);
 
   const reorderMainApps = useCallback((reordered: App[]) => {
     commitMainAppOrder(orderIdsFromApps(reordered), true);
@@ -487,6 +523,7 @@ export function useMoaHomeAppCatalog({
   return {
     mainApps,
     mainAppsRef,
+    libraryHydration,
     favoriteApps,
     favoriteIdsRef,
     recentApps,

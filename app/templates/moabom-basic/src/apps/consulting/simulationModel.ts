@@ -1,14 +1,11 @@
+import modelSnapshot from '@moabom-consulting/simulation-model.json';
+
 /**
  * 맞춤형 수익성 시뮬레이션 모델 (클라이언트 즉시 미리보기).
  *
- * 서버 권위 계산: modules/moabom-consulting/src/Services/ProfitabilitySimulationService.php 와
- * 1:1 동일한 로직. 의사가 태블릿에서 슬라이더를 움직이면 즉시 결과를 보여주되, 전자계약
- * 저장 시점에는 동일 입력으로 서버가 재계산한 값을 권위 데이터로 저장한다.
- *
- * 출처: 360 컨설팅.pptx(슬라이드 14~16) + 파트너십 서비스 계약 시나리오_v2.xlsx
- * 단위: 원(KRW), 비율(0~1).
+ * SSOT: modules/moabom-consulting/resources/simulation-model.json
+ * 서버 권위 계산: ProfitabilitySimulationService.php 와 1:1 동일한 로직.
  */
-
 export interface SimulationInput {
   initialPatients: number;      // 관리 환자 수(초기)
   monthlyNewPatients: number;   // 월 처방 수(신규/월)
@@ -41,29 +38,29 @@ export interface SimulationResult {
   smart: ScenarioResult;
 }
 
-/** PPT 슬라이드 14 기준 기본 가정값 (백엔드 config/moabom-consulting.php 와 동일). */
+/** PPT 슬라이드 14 기준 기본 가정값 (simulation-model.json SSOT). */
 export const SIMULATION_DEFAULTS: SimulationInput = {
-  initialPatients: 0,
-  monthlyNewPatients: 15,
-  staffCount: 1,
-  staffSalary: 3_000_000,
-  equipmentPrice: 900_000,
-  refurbishCost: 80_000,
-  adherencePassRate: 0.85,
-  annualRetention: 0.65,
-  years: 5,
+  initialPatients: modelSnapshot.defaults.initial_patients,
+  monthlyNewPatients: modelSnapshot.defaults.monthly_new_patients,
+  staffCount: modelSnapshot.defaults.staff_count,
+  staffSalary: modelSnapshot.defaults.staff_salary,
+  equipmentPrice: modelSnapshot.defaults.equipment_price,
+  refurbishCost: modelSnapshot.defaults.refurbish_cost,
+  adherencePassRate: modelSnapshot.defaults.adherence_pass_rate,
+  annualRetention: modelSnapshot.defaults.annual_retention,
+  years: modelSnapshot.defaults.years,
 };
 
 const COEFFICIENTS = {
   self: {
-    rentalRevenuePerPatient: 75_000, // 자체운영: 청구효율 낮음
-    consumableCostPerPatient: 6_000,
-    monthlyRent: 1_000_000,
+    rentalRevenuePerPatient: modelSnapshot.coefficients.self.rental_revenue_per_patient,
+    consumableCostPerPatient: modelSnapshot.coefficients.self.consumable_cost_per_patient,
+    monthlyRent: modelSnapshot.coefficients.self.monthly_rent,
   },
   smart: {
-    rentalRevenuePerPatient: 95_000, // 360: 전문 청구팀 → 청구효율 높음
-    serviceFeePerPatient: 38_000,    // MEK 통합 서비스비용
-    monthlyRent: 1_000_000,
+    rentalRevenuePerPatient: modelSnapshot.coefficients.smart.rental_revenue_per_patient,
+    serviceFeePerPatient: modelSnapshot.coefficients.smart.service_fee_per_patient,
+    monthlyRent: modelSnapshot.coefficients.smart.monthly_rent,
   },
 } as const;
 

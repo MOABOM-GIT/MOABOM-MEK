@@ -3,6 +3,7 @@
 namespace Modules\Moabom\Social\Auth\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 
 class StoreSocialAuthSettingsRequest extends FormRequest
 {
@@ -68,7 +69,7 @@ class StoreSocialAuthSettingsRequest extends FormRequest
             $defaultUseMasterDefaults = $isSubTenantHost;
 
             if ($isSubTenantHost) {
-                foreach (['google', 'kakao', 'naver'] as $provider) {
+                foreach (SocialAuthProviders::all() as $provider) {
                     if (! (bool) ($providers["{$provider}_use_master_defaults"] ?? true)) {
                         $validator->errors()->add(
                             "providers.{$provider}_use_master_defaults",
@@ -78,7 +79,7 @@ class StoreSocialAuthSettingsRequest extends FormRequest
                 }
             }
 
-            foreach (['google', 'kakao', 'naver'] as $provider) {
+            foreach (SocialAuthProviders::all() as $provider) {
                 if (! (bool) ($providers["{$provider}_enabled"] ?? false)) {
                     continue;
                 }

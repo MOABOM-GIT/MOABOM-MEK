@@ -44,6 +44,7 @@ flowchart LR
 | `build-and-deploy.sh` | 검증 → submit → deploy → smoke → layout sync |
 | `check-before-cloud-build.sh` | 제출 전 통합 게이트 (v7+v8) |
 | `DEPLOY-RECURRING-FAILURES.md` | RF 증상·원인·조치 카탈로그 |
+| `MOABOM-TECH-DEBT-AUDIT.md` | Moabom 기술 부채 감사·정리 진행 SSOT |
 
 ## lib/ · ssot/
 

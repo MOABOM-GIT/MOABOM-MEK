@@ -7,6 +7,7 @@ export interface ShellNotificationItem {
   subject: string | null;
   body: string | null;
   url: string | null;
+  data?: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string | null;
 }

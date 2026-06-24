@@ -110,38 +110,10 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
   };
 }
 
-/** URL·taskbar 복원용 최소 library App (제목은 뷰어 로드 후 갱신 가능) */
-export function hydrateGeneratedPlaceholdersForOrder(
-  order: string[],
-  library: App[],
-  customized = false,
-): App[] {
-  if (!customized) {
-    return library;
-  }
-
-  if (order.length === 0) {
-    return [];
-  }
-
-  const known = new Set(library.map(app => app.id));
-  const placeholders: App[] = [];
-
-  for (const id of order) {
-    if (!isGeneratedLibraryAppId(id) || known.has(id)) {
-      continue;
-    }
-    const synthetic = buildSyntheticGeneratedLibraryApp(id);
-    if (synthetic) {
-      placeholders.push(synthetic);
-      known.add(id);
-    }
-  }
-
-  return [...library, ...placeholders];
-}
-
-/** URL·taskbar 복원용 최소 library App (제목은 뷰어 로드 후 갱신 가능) */
+/**
+ * URL·딥링크 창 메타데이터용 최소 App.
+ * 메인 그리드·라이브러리 표시에는 사용하지 않음 — 서버 검증 라이브러리만 표시 SSOT.
+ */
 export function buildSyntheticGeneratedLibraryApp(appId: string): App | null {
   const serverId = parseGeneratedLibraryServerId(appId);
   if (serverId == null) {

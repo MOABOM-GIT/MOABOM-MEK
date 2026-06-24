@@ -27,6 +27,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   onProfileUpdated,
   onActiveTabChange,
   onOpenBoard,
+  shellSystem,
 }) => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const isGuest = !currentUser;
@@ -36,6 +37,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   const { systemDefaults, systemState, handleSystemStateChange } = useMyPageShellState({
     currentUser,
     onProfileUpdated,
+    shellSystem,
   });
 
   const menusFromDefaults = systemDefaults?.mypage?.menus;
@@ -60,6 +62,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     activeTab,
     isLoggedIn,
     t,
+    profileBio: profile.bio,
   });
 
   const credit = useMyPageCreditTab({
@@ -143,6 +146,10 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
                 setAvailability: presenceSettings.setAvailability,
                 subtitleMode: presenceSettings.subtitleMode,
                 setSubtitleMode: presenceSettings.setSubtitleMode,
+                showAvatarInConnectList: presenceSettings.showAvatarInConnectList,
+                setShowAvatarInConnectList: presenceSettings.setShowAvatarInConnectList,
+                acceptChatRequests: presenceSettings.acceptChatRequests,
+                setAcceptChatRequests: presenceSettings.setAcceptChatRequests,
                 loading: presenceSettings.presenceLoading,
                 saving: presenceSettings.presenceSaving,
                 error: presenceSettings.presenceError,

@@ -9,6 +9,7 @@ import { useMoaHomeAppCatalog } from './useMoaHomeAppCatalog';
 import { useMoaShellWindows } from './useMoaShellWindows';
 import { useMoaShellRouteSync } from './useMoaShellRouteSync';
 import { useMoaShellSocialAuth } from './useMoaShellSocialAuth';
+import { MoabomPresenceProvider } from '../../hooks/MoabomPresenceProvider';
 
 export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
   const { t, language } = useMoabomShellT();
@@ -76,10 +77,14 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
   useEffect(() => installShellAppUsageTracker(), []);
 
   return (
+    <MoabomPresenceProvider isLoggedIn={isLoggedIn}>
     <Moa_HomeShellView
       t={t}
       language={language}
       systemState={shell.systemState}
+      systemDefaults={shell.systemDefaults}
+      setSystemState={shell.setSystemState}
+      setSystemDefaults={shell.setSystemDefaults}
       editMode={shell.editMode}
       toasts={shell.toasts}
       weatherCanvasRef={shell.weatherCanvasRef}
@@ -143,7 +148,9 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       updateLegalPageWindowTitle={windows.updateLegalPageWindowTitle}
       updateBoardWindowTitle={windows.updateBoardWindowTitle}
       updateUserProfileWindowTitle={windows.updateUserProfileWindowTitle}
+      switchUserProfileWindowView={windows.switchUserProfileWindowView}
       updateErrorWindowTitle={windows.updateErrorWindowTitle}
     />
+    </MoabomPresenceProvider>
   );
 };

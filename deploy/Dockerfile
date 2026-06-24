@@ -41,6 +41,11 @@ RUN composer install \
     --no-scripts
 
 COPY app/ ./
+# moabom-chat SSOT — 부분 api.php 가 이미지에 들어가면 즉시 빌드 실패
+RUN grep -q "Route::delete('blocks/{userUuid}'" modules/moabom-chat/src/routes/api.php \
+ && grep -q '\[0-9a-f\]{8}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{12}' modules/moabom-chat/src/routes/api.php \
+ && grep -q registerMissingUserRoutes modules/moabom-chat/src/Providers/ChatServiceProvider.php \
+ || (echo "ERROR: moabom-chat SSOT routes/provider guard missing in image context" && exit 1)
 # 빌드 단계: .env·DB 없이 autoload + package discover (GCS 드라이버 등록)
 RUN rm -f .env .env.* 2>/dev/null || true \
     && mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views \

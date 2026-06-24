@@ -5,7 +5,7 @@
         "ko": "Moabom Basic",
         "en": "Moabom Basic"
     },
-    "version": "0.6.84",
+    "version": "0.6.91",
     "license": "MIT",
     "description": {
         "ko": "Moabom 기본 사용자 템플릿",
@@ -49,7 +49,7 @@
             "social-login-buttons", "file-uploader", "toast", "page-transition-indicator",
             "page-transition-blur", "page-skeleton", "page-loading", "theme-toggle",
             "pagination", "search-bar", "avatar", "user-info", "html-content",
-            "html-editor", "modal", "confirm-dialog", "avatar-uploader", "tab-navigation",
+            "user-profile-actions", "html-editor", "modal", "confirm-dialog", "avatar-uploader", "tab-navigation",
             "expandable-content", "app-card", "app-grid"
         ],
         "layout": [

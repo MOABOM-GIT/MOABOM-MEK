@@ -43,6 +43,7 @@ vi.mock('laravel-echo', () => ({
 // Mock Pusher 클래스 with connection
 const mockConnectionBind = vi.fn();
 const mockConnect = vi.fn();
+const mockPusherConstructor = vi.fn();
 
 vi.mock('pusher-js', () => ({
   default: class MockPusher {
@@ -52,6 +53,9 @@ vi.mock('pusher-js', () => ({
       socket_id: 'test-socket-id',
     };
     connect = mockConnect;
+    constructor(...args: unknown[]) {
+      mockPusherConstructor(...args);
+    }
   },
 }));
 
@@ -234,6 +238,96 @@ describe('WebSocketManager', () => {
   });
 
   describe('initialization', () => {
+    it('should configure Pusher channel authorization with the API auth endpoint', async () => {
+      const { webSocketManager } = await import('../WebSocketManager');
+      webSocketManager.configure({
+        appKey: 'test-key',
+        host: 'localhost',
+        port: 8080,
+        scheme: 'http',
+        authEndpoint: '/api/custom/broadcasting/auth',
+      });
+
+      webSocketManager.subscribe('presence.channel', 'test.event', vi.fn(), {
+        channelType: 'presence',
+      });
+
+      const pusherOptions = mockPusherConstructor.mock.calls[0]?.[1] as {
+        authEndpoint?: string;
+        channelAuthorization?: {
+          endpoint?: string;
+          customHandler?: unknown;
+        };
+      };
+
+      expect(pusherOptions).toBeDefined();
+      expect(pusherOptions.authEndpoint).toBe('/api/custom/broadcasting/auth');
+      expect(pusherOptions.channelAuthorization?.endpoint).toBe('/api/custom/broadcasting/auth');
+      expect(pusherOptions.channelAuthorization?.customHandler).toEqual(expect.any(Function));
+    });
+
+    it('should authorize private and presence channels through the configured endpoint', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ auth: 'signed-channel' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { webSocketManager } = await import('../WebSocketManager');
+      webSocketManager.configure({
+        appKey: 'test-key',
+        host: 'localhost',
+        port: 8080,
+        scheme: 'http',
+        authEndpoint: '/api/custom/broadcasting/auth',
+      });
+
+      webSocketManager.subscribe('presence.channel', 'test.event', vi.fn(), {
+        channelType: 'presence',
+      });
+
+      const pusherOptions = mockPusherConstructor.mock.calls[0]?.[1] as {
+        channelAuthorization?: {
+          customHandler?: (
+            params: { socketId: string; channelName: string },
+            callback: (error: Error | null, data: unknown) => void
+          ) => void;
+        };
+      };
+      expect(pusherOptions).toBeDefined();
+      if (!pusherOptions) {
+        throw new Error('Pusher options were not configured');
+      }
+      const customHandler = pusherOptions.channelAuthorization?.customHandler;
+
+      expect(customHandler).toEqual(expect.any(Function));
+      if (!customHandler) {
+        throw new Error('Pusher channelAuthorization customHandler was not configured');
+      }
+      await new Promise<void>((resolve, reject) => {
+        customHandler(
+          { socketId: '123.456', channelName: 'presence-test' },
+          (error, data) => {
+            try {
+              expect(error).toBeNull();
+              expect(data).toEqual({ auth: 'signed-channel' });
+              resolve();
+            } catch (assertionError) {
+              reject(assertionError);
+            }
+          }
+        );
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/custom/broadcasting/auth', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          socket_id: '123.456',
+          channel_name: 'presence-test',
+        }),
+      }));
+    });
+
     it('should not initialize without configuration', async () => {
       const { webSocketManager } = await import('../WebSocketManager');
       const callback = vi.fn();

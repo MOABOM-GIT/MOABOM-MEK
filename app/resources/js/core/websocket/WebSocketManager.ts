@@ -48,6 +48,8 @@ export interface WebSocketConfig {
  */
 const logger = createLogger('WebSocketManager');
 
+type BroadcastAuthCallback = (error: Error | null, data: unknown) => void;
+
 class WebSocketManager {
   private echo: Echo<'reverb'> | null = null;
   private subscriptions: Map<string, ReturnType<Echo<'reverb'>['channel']>> = new Map();
@@ -75,6 +77,73 @@ class WebSocketManager {
   }
 
   /**
+   * Sanctum 토큰을 매 요청 시점에 읽어 private/presence 채널 인증에 사용합니다.
+   * 초기화 시점 스냅샷만 쓰면 로그인 직후 /api/broadcasting/auth 403 이 발생합니다.
+   */
+  private getBroadcastAuthHeaders(): Record<string, string> {
+    if (typeof localStorage === 'undefined') {
+      return { Accept: 'application/json' };
+    }
+
+    const authToken = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Pusher client와 Echo authorizer가 동일한 Sanctum 인증 엔드포인트를 사용하도록 통합합니다.
+   */
+  private authorizeBroadcastChannel(
+    authEndpoint: string,
+    socketId: string,
+    channelName: string,
+    callback: BroadcastAuthCallback
+  ): void {
+    fetch(authEndpoint, {
+      method: 'POST',
+      headers: {
+        ...this.getBroadcastAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        socket_id: socketId,
+        channel_name: channelName,
+      }),
+      credentials: 'same-origin',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          callback(new Error(`Broadcast auth failed (${response.status})`), null);
+          return;
+        }
+        callback(null, await response.json());
+      })
+      .catch((error: unknown) => {
+        callback(error instanceof Error ? error : new Error('Broadcast auth failed'), null);
+      });
+  }
+
+  /**
+   * 로그인·로그아웃 후 private/presence 구독이 새 토큰으로 재인증되도록 연결을 재수립합니다.
+   */
+  reconnectForAuthChange(): void {
+    if (!this.initialized) {
+      this.initialize();
+      return;
+    }
+
+    this.disconnect();
+    this.initialize();
+  }
+
+  /**
    * Echo 인스턴스를 초기화합니다.
    */
   initialize(): void {
@@ -96,11 +165,6 @@ class WebSocketManager {
 
     window.Pusher = Pusher;
 
-    // Pusher 클라이언트를 직접 생성하여 전달
-    // Pusher 8.x에서는 enabledTransports/disabledTransports 설정 시 충돌 가능
-    // Sanctum 토큰 가져오기
-    const authToken = localStorage.getItem('auth_token');
-
     const pusherOptions = {
       wsHost: host,
       wsPort: numPort,
@@ -109,17 +173,29 @@ class WebSocketManager {
       disableStats: true,
       enabledTransports: ['ws', 'wss'] as const,
       cluster: 'mt1', // 필수 옵션이지만 Reverb에서는 무시됨
-      // Private 채널 인증 설정
-      authEndpoint: authEndpoint,
+      authEndpoint,
       auth: {
-        headers: {
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
-          'Accept': 'application/json',
+        headers: this.getBroadcastAuthHeaders(),
+      },
+      channelAuthorization: {
+        endpoint: authEndpoint,
+        transport: 'ajax',
+        headersProvider: () => this.getBroadcastAuthHeaders(),
+        customHandler: (
+          params: { socketId?: string; socket_id?: string; channelName?: string; channel_name?: string },
+          callback: BroadcastAuthCallback
+        ) => {
+          this.authorizeBroadcastChannel(
+            authEndpoint,
+            params.socketId ?? params.socket_id ?? '',
+            params.channelName ?? params.channel_name ?? '',
+            callback
+          );
         },
       },
     };
 
-    logger.log('[WebSocketManager] Pusher 옵션:', pusherOptions);
+    logger.log('[WebSocketManager] Pusher 옵션:', { ...pusherOptions, authEndpoint });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pusherClient = new Pusher(appKey, pusherOptions as any);
@@ -159,6 +235,11 @@ class WebSocketManager {
     this.echo = new Echo({
       broadcaster: 'reverb',
       client: pusherClient,
+      authorizer: (channel: { name: string }) => ({
+        authorize: (socketId: string, callback: (error: Error | null, data: unknown) => void) => {
+          this.authorizeBroadcastChannel(authEndpoint, socketId, channel.name, callback);
+        },
+      }),
     });
 
     // 명시적으로 연결 시작
@@ -193,6 +274,12 @@ class WebSocketManager {
     }
 
     const { channelType = 'private' } = options;
+
+    if (channelType !== 'public' && !this.getBroadcastAuthHeaders().Authorization) {
+      logger.warn(`[WebSocketManager] 인증 토큰 없음 — ${channelType} 채널 구독 생략: ${channel}`);
+      return '';
+    }
+
     const subscriptionKey = `${channel}:${event}`;
 
     if (this.subscriptions.has(subscriptionKey)) {

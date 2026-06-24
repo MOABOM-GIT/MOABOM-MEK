@@ -14,7 +14,6 @@ use Modules\Moabom\Presence\Repositories\PlatformPresenceSessionRepository;
 use Modules\Moabom\Presence\Repositories\PresenceUserPreferencesRepository;
 use Modules\Moabom\Presence\Repositories\TenantPresenceSessionRepository;
 use Modules\Moabom\Presence\Support\PresenceChannelNames;
-use Modules\Moabom\System\Saas\TenantContext;
 
 class PresenceServiceProvider extends BaseModuleServiceProvider
 {
@@ -46,15 +45,14 @@ class PresenceServiceProvider extends BaseModuleServiceProvider
     private function registerPresenceChannels(): void
     {
         Broadcast::channel('module.moabom-presence.tenant.{tenantSlug}.online', function ($user, string $tenantSlug) {
-            $context = app(TenantContext::class);
-            if ($context->tenantId() !== $tenantSlug) {
+            if (app(PresenceChannelNames::class)->tenantSlug() !== $tenantSlug) {
                 return false;
             }
 
             return [
                 'uuid' => $user->uuid,
                 'name' => (string) ($user->nickname ?: $user->name),
-                'avatar' => $user->avatar,
+                'avatar' => $user->getAvatarUrl(),
             ];
         });
     }

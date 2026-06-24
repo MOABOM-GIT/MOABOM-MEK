@@ -25,6 +25,7 @@ import {
   isMoaShellUserProfileAppId,
   moaShellUserProfileUuidFromAppId,
 } from '../../shell/moaShellUserProfileIds';
+import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import {
   MOA_SHELL_ERROR_APP_ID,
   isMoaShellErrorAppId,
@@ -34,6 +35,7 @@ import {
   formatShellPath,
   formatShellPathForWindow,
   formatBoardShellPath,
+  formatUserProfileShellPath,
   parseShellRoute,
   pushShellPath,
   replaceShellPath,
@@ -74,6 +76,12 @@ import { buildMoaCurrentUser, isGuestOnlyAuthMode } from '../../shell/moaShellTy
 import { resolveErrorShellWindowTitle } from '../../shell/moaShellErrorTitles';
 import { notifyBoardShellUrlChanged } from '../../shell/moaShellBoardBridge';
 import { publishShellPresenceForeground } from '../../shell/moaShellPresenceBridge';
+import { prefetchBoardWindowLayouts } from '../../shell/boardWindowPrefetch';
+import {
+  prefetchUserProfileWindowLayouts,
+  resolveUserProfileShellSearch,
+} from '../../shell/userProfileWindowPrefetch';
+import { commitShellWindows } from '../../shell/shellWindowsCommit';
 
 function resolveForegroundShellAppId(items: WindowState[]): string | null {
   const visible = items.filter(item => !item.isMinimized);
@@ -120,6 +128,44 @@ function countOpenWindows(windows: WindowState[]): number {
   return windows.filter(w => !w.isMinimized).length;
 }
 
+function resolveForegroundShellWindow(items: WindowState[]): WindowState | null {
+  const visible = items.filter(item => !item.isMinimized);
+  const pool = visible.length > 0 ? visible : items;
+  if (pool.length === 0) {
+    return null;
+  }
+  return [...pool].sort((a, b) => b.zIndex - a.zIndex)[0] ?? null;
+}
+
+function doesShellLocationMatchWindow(pathname: string, search: string, win: WindowState): boolean {
+  const current = `${pathname}${search}`;
+  const canonical = formatShellPathForWindow(win);
+  if (current === canonical) {
+    return true;
+  }
+
+  if (win.appId === 'mypage' && pathname.startsWith('/me')) {
+    return true;
+  }
+
+  const boardSlug = win.boardSlug ?? moaShellBoardSlugFromAppId(win.appId);
+  if (boardSlug != null && pathname.startsWith(`/board/${encodeURIComponent(boardSlug)}`)) {
+    return true;
+  }
+
+  const userProfileUuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
+  if (userProfileUuid != null && pathname.startsWith(`/users/${encodeURIComponent(userProfileUuid)}`)) {
+    return true;
+  }
+
+  if (isMoaShellErrorAppId(win.appId) && win.errorCode != null) {
+    const errorPath = formatShellPath({ kind: 'error', code: win.errorCode });
+    return pathname === errorPath;
+  }
+
+  return pathname === canonical.split(/[?#]/)[0];
+}
+
 export interface UseMoaShellWindowsOptions {
   t: MoabomTranslateFn;
   language: MoabomSystemLanguage;
@@ -149,6 +195,12 @@ export function useMoaShellWindows({
 
   const windowsRef = useRef<WindowState[]>([]);
   const taskbarItemsRef = useRef<WindowState[]>(taskbarItems);
+
+  const commitWindows = useCallback(
+    (updater: (prev: WindowState[]) => WindowState[]) =>
+      commitShellWindows(windowsRef, setWindows, updater),
+    [],
+  );
 
   useEffect(() => {
     windowsRef.current = windows;
@@ -219,9 +271,8 @@ export function useMoaShellWindows({
 
     const alreadyOpen = windowsRef.current.find(w => w.id === id || w.appId === item.appId);
     if (alreadyOpen) {
-      pushShellPath(formatShellPathForWindow(alreadyOpen));
       setTaskbarItems(prev => prev.filter(w => w.id !== id));
-      setWindows(prev => prev.map(w => (w.id === alreadyOpen.id
+      commitWindows(prev => prev.map(w => (w.id === alreadyOpen.id
         ? {
             ...w,
             zIndex: nextZIndex,
@@ -230,6 +281,7 @@ export function useMoaShellWindows({
           }
         : w)));
       setNextZIndex(z => z + 1);
+      pushShellPath(formatShellPathForWindow(alreadyOpen));
       return;
     }
 
@@ -238,20 +290,18 @@ export function useMoaShellWindows({
       return;
     }
 
-    pushShellPath(formatShellPathForWindow(item));
     setTaskbarItems(prev => prev.filter(w => w.id !== id));
-    setWindows(prev => [
-      ...prev,
-      {
-        ...item,
-        ...(item.appId === 'mypage' ? { gradient: MOA_SHELL_POINT_TITLE_GRADIENT } : {}),
-        zIndex: nextZIndex,
-        isMaximized: resolveShellWindowMaximized(),
-        isMinimized: false,
-      },
-    ]);
+    const restored = {
+      ...item,
+      ...(item.appId === 'mypage' ? { gradient: MOA_SHELL_POINT_TITLE_GRADIENT } : {}),
+      zIndex: nextZIndex,
+      isMaximized: resolveShellWindowMaximized(),
+      isMinimized: false,
+    };
+    commitWindows(prev => [...prev, restored]);
     setNextZIndex(z => z + 1);
-  }, [nextZIndex, t]);
+    pushShellPath(formatShellPathForWindow(restored));
+  }, [commitWindows, nextZIndex, t]);
 
   const openMyPage = useCallback((initialTab: MyPageTab = 'profile', sync: ShellUrlSync = {}) => {
     const myPageApp = APPS.find(app => app.id === 'mypage');
@@ -273,13 +323,39 @@ export function useMoaShellWindows({
     if (!sync.skipUrl) {
       const nextPath = formatShellPath({ kind: 'me', tab: initialTab });
       if (existing) {
+        commitWindows(prev => {
+          const ex = prev.find(w => w.appId === myPageApp.id);
+          if (!ex) return prev;
+          return prev.map(w => w.id === ex.id
+            ? {
+                ...w,
+                zIndex: nextZIndex,
+                isMinimized: false,
+                myPageInitialTab: initialTab,
+                gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+              }
+            : w);
+        });
+        setNextZIndex(z => z + 1);
         replaceShellPath(nextPath);
-      } else {
-        pushShellPath(nextPath);
+        return;
       }
     }
 
-    setWindows(prev => {
+    const position = getCenteredWindowPosition(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+    const newWindow: WindowState = {
+      id: `${myPageApp.id}-${Date.now()}`,
+      appId: myPageApp.id,
+      title: myPageApp.name,
+      icon: myPageApp.icon,
+      gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+      zIndex: nextZIndex,
+      ...position,
+      isMaximized: resolveShellWindowMaximized(),
+      isMinimized: false,
+      myPageInitialTab: initialTab,
+    };
+    commitWindows(prev => {
       const ex = prev.find(w => w.appId === myPageApp.id);
       if (ex) {
         return prev.map(w => w.id === ex.id
@@ -292,23 +368,14 @@ export function useMoaShellWindows({
             }
           : w);
       }
-
-      const position = getCenteredWindowPosition(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-      return [...prev, {
-        id: `${myPageApp.id}-${Date.now()}`,
-        appId: myPageApp.id,
-        title: myPageApp.name,
-        icon: myPageApp.icon,
-        gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
-        zIndex: nextZIndex,
-        ...position,
-        isMaximized: resolveShellWindowMaximized(),
-        isMinimized: false,
-        myPageInitialTab: initialTab,
-      }];
+      return [...prev, newWindow];
     });
     setNextZIndex(z => z + 1);
-  }, [nextZIndex, restoreTaskbarWindow, t]);
+
+    if (!sync.skipUrl) {
+      pushShellPath(formatShellPath({ kind: 'me', tab: initialTab }));
+    }
+  }, [commitWindows, nextZIndex, restoreTaskbarWindow, t]);
 
   const openAuthWindow = useCallback((mode: AuthWindowMode, sync: ShellUrlSync = {}) => {
     if (isLoggedIn && isGuestOnlyAuthMode(mode)) {
@@ -340,11 +407,40 @@ export function useMoaShellWindows({
     }
 
     if (!sync.skipUrl) {
-      pushShellPath(formatShellPath({ kind: 'auth', mode }));
+      const authPath = formatShellPath({ kind: 'auth', mode });
+      setNextZIndex(currentZIndex => {
+        commitWindows(prev => {
+          const authWindowsNormalized = prev.filter(w => !authWindowIds.has(w.appId) || w.appId === mode);
+          const existing = authWindowsNormalized.find(w => w.appId === mode);
+          if (existing) {
+            return authWindowsNormalized.map(w => w.id === existing.id
+              ? { ...w, zIndex: currentZIndex, isMinimized: false, gradient: MOA_SHELL_POINT_TITLE_GRADIENT }
+              : w);
+          }
+
+          const position = getCenteredWindowPosition(AUTH_WINDOW_WIDTH, AUTH_WINDOW_HEIGHT);
+          return [...authWindowsNormalized, {
+            id: `${mode}-${Date.now()}`,
+            appId: mode,
+            title: config.title,
+            icon: config.icon,
+            gradient: config.gradient,
+            zIndex: currentZIndex,
+            ...position,
+            isMaximized: resolveShellWindowMaximized(),
+            isMinimized: false,
+          }];
+        });
+        if (!sync.skipUrl) {
+          pushShellPath(authPath);
+        }
+        return currentZIndex + 1;
+      });
+      return;
     }
 
     setNextZIndex(currentZIndex => {
-      setWindows(prev => {
+      commitWindows(prev => {
         const authWindowsNormalized = prev.filter(w => !authWindowIds.has(w.appId) || w.appId === mode);
         const existing = authWindowsNormalized.find(w => w.appId === mode);
         if (existing) {
@@ -369,7 +465,7 @@ export function useMoaShellWindows({
 
       return currentZIndex + 1;
     });
-  }, [isLoggedIn, restoreTaskbarWindow, t]);
+  }, [commitWindows, isLoggedIn, restoreTaskbarWindow, t]);
 
   const openCreateAppShell = useCallback((
     sync: ShellUrlSync = {},
@@ -405,16 +501,8 @@ export function useMoaShellWindows({
     }
 
     setCreateAppEditServerId(editGeneratedAppId);
-    if (!sync.skipUrl) {
-      pushShellPath(formatShellPath({
-        kind: 'app',
-        appId: app.id,
-        editGeneratedAppId,
-      }));
-    }
-
     const { name: resolvedTitle } = resolveAppStrings(app, language);
-    setWindows(prev => {
+    commitWindows(prev => {
       const ex = prev.find(w => w.appId === app.id);
       if (ex) {
         return prev.map(w => w.id === ex.id
@@ -441,7 +529,14 @@ export function useMoaShellWindows({
       }];
     });
     setNextZIndex(z => z + 1);
-  }, [editMode, language, nextZIndex, restoreTaskbarWindow, t]);
+    if (!sync.skipUrl) {
+      pushShellPath(formatShellPath({
+        kind: 'app',
+        appId: app.id,
+        editGeneratedAppId,
+      }));
+    }
+  }, [commitWindows, editMode, language, nextZIndex, restoreTaskbarWindow, t]);
 
   const openEditGeneratedApp = useCallback((serverId: number) => {
     openCreateAppShell({}, serverId);
@@ -477,16 +572,13 @@ export function useMoaShellWindows({
     if (!existing) {
       recordShellAppOpen(app.id);
     }
-    if (!sync.skipUrl) {
-      pushShellPath(formatShellPath({ kind: 'app', appId: app.id }));
-    }
-    setWindows(prev => {
+    const { name: resolvedTitle } = resolveAppStrings(app, language);
+    commitWindows(prev => {
       const ex = prev.find(w => w.appId === app.id);
       if (ex) {
         return prev.map(w => w.id === ex.id ? { ...w, zIndex: nextZIndex, isMinimized: false } : w);
       }
       const position = getNewWindowPosition(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, countOpenWindows(prev));
-      const { name: resolvedTitle } = resolveAppStrings(app, language);
       return [...prev, {
         id: `${app.id}-${Date.now()}`, appId: app.id, title: resolvedTitle, icon: app.icon,
         gradient: app.gradient, zIndex: nextZIndex,
@@ -495,7 +587,10 @@ export function useMoaShellWindows({
       }];
     });
     setNextZIndex(z => z + 1);
-  }, [editMode, language, nextZIndex, openCreateAppShell, openMyPage, recordRecentApp, restoreTaskbarWindow, t]);
+    if (!sync.skipUrl) {
+      pushShellPath(formatShellPath({ kind: 'app', appId: app.id }));
+    }
+  }, [commitWindows, editMode, language, nextZIndex, openCreateAppShell, openMyPage, recordRecentApp, restoreTaskbarWindow, t]);
 
   const updateLegalPageWindowTitle = useCallback((windowId: string, title: string) => {
     setWindows(prev => prev.map(w => (w.id === windowId ? { ...w, title } : w)));
@@ -532,7 +627,7 @@ export function useMoaShellWindows({
 
       if (!existing && minimized) {
         restoreTaskbarWindow(minimized.id);
-        setWindows(prev => prev.map(w => (w.appId === appId
+        commitWindows(prev => prev.map(w => (w.appId === appId
           ? { ...w, errorCode: code, title: resolvedTitle }
           : w)));
         syncErrorShellUrl();
@@ -540,8 +635,7 @@ export function useMoaShellWindows({
       }
 
       if (existing) {
-        syncErrorShellUrl();
-        setWindows(prev => prev.map(w => (w.id === existing.id
+        commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
             errorCode: code,
@@ -551,6 +645,7 @@ export function useMoaShellWindows({
           }
           : w)));
         setNextZIndex(z => z + 1);
+        syncErrorShellUrl();
         return true;
       }
 
@@ -560,15 +655,13 @@ export function useMoaShellWindows({
         return false;
       }
 
-      syncErrorShellUrl();
-
       const position = getNewWindowPosition(
         ERROR_WINDOW_WIDTH,
         ERROR_WINDOW_HEIGHT,
         countOpenWindows(windowsRef.current),
       );
 
-      setWindows(prev => [...prev, {
+      commitWindows(prev => [...prev, {
         id: `${appId}-${Date.now()}`,
         appId,
         errorCode: code,
@@ -581,9 +674,10 @@ export function useMoaShellWindows({
         ...position,
       }]);
       setNextZIndex(z => z + 1);
+      syncErrorShellUrl();
       return true;
     },
-    [editMode, nextZIndex, restoreTaskbarWindow, t],
+    [commitWindows, editMode, nextZIndex, restoreTaskbarWindow, t],
   );
 
   const closeErrorWindow = useCallback(() => {
@@ -603,6 +697,8 @@ export function useMoaShellWindows({
 
       const normalizedSlug = slug.trim();
       if (!normalizedSlug) return;
+
+      prefetchBoardWindowLayouts(normalizedSlug, postId, boardMode);
 
       const appId = moaShellBoardAppId(normalizedSlug);
       const shellPath = sync.shellPath
@@ -629,7 +725,7 @@ export function useMoaShellWindows({
 
       if (!existing && minimized) {
         restoreTaskbarWindow(minimized.id);
-        setWindows(prev => prev.map(w => (w.appId === appId
+        commitWindows(prev => prev.map(w => (w.appId === appId
           ? { ...w, boardSlug: normalizedSlug, boardPostId: postId, boardMode }
           : w)));
         syncBoardShellUrl();
@@ -637,8 +733,7 @@ export function useMoaShellWindows({
       }
 
       if (existing) {
-        syncBoardShellUrl();
-        setWindows(prev => prev.map(w => (w.id === existing.id
+        commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
             boardSlug: normalizedSlug,
@@ -649,6 +744,7 @@ export function useMoaShellWindows({
           }
           : w)));
         setNextZIndex(z => z + 1);
+        syncBoardShellUrl();
         return;
       }
 
@@ -658,15 +754,13 @@ export function useMoaShellWindows({
         return;
       }
 
-      syncBoardShellUrl();
-
       const position = getNewWindowPosition(
         BOARD_WINDOW_WIDTH,
         BOARD_WINDOW_HEIGHT,
         countOpenWindows(windowsRef.current),
       );
 
-      setWindows(prev => [...prev, {
+      commitWindows(prev => [...prev, {
         id: `${appId}-${Date.now()}`,
         appId,
         boardSlug: normalizedSlug,
@@ -681,19 +775,32 @@ export function useMoaShellWindows({
         ...position,
       }]);
       setNextZIndex(z => z + 1);
+      syncBoardShellUrl();
     },
-    [editMode, nextZIndex, restoreTaskbarWindow, t],
+    [commitWindows, editMode, nextZIndex, restoreTaskbarWindow, t],
   );
 
   const openUserProfileWindow = useCallback(
-    (userUuid: string, displayName?: string, sync: ShellUrlSync = {}) => {
+    (
+      userUuid: string,
+      displayName?: string,
+      sync: ShellUrlSync = {},
+      view: UserProfileWindowView = 'profile',
+    ) => {
       if (editMode) return;
 
       const normalizedUuid = userUuid.trim();
       if (!normalizedUuid) return;
 
+      prefetchUserProfileWindowLayouts(view);
+
       const appId = moaShellUserProfileAppId(normalizedUuid);
-      const shellPath = sync.shellPath ?? formatShellPath({ kind: 'userProfile', uuid: normalizedUuid });
+      const shellPath = sync.shellPath
+        ?? formatUserProfileShellPath(
+          normalizedUuid,
+          view,
+          typeof window !== 'undefined' ? window.location.search : '',
+        );
 
       const syncUserProfileShellUrl = () => {
         if (sync.skipUrl && !sync.shellPath) return;
@@ -703,6 +810,7 @@ export function useMoaShellWindows({
         } else {
           pushShellPath(next);
         }
+        notifyBoardShellUrlChanged();
       };
 
       const existing = windowsRef.current.find(w => w.appId === appId);
@@ -710,24 +818,25 @@ export function useMoaShellWindows({
 
       if (!existing && minimized) {
         restoreTaskbarWindow(minimized.id);
-        setWindows(prev => prev.map(w => (w.appId === appId
-          ? { ...w, userProfileUuid: normalizedUuid }
+        commitWindows(prev => prev.map(w => (w.appId === appId
+          ? { ...w, userProfileUuid: normalizedUuid, userProfileView: view }
           : w)));
         syncUserProfileShellUrl();
         return;
       }
 
       if (existing) {
-        syncUserProfileShellUrl();
-        setWindows(prev => prev.map(w => (w.id === existing.id
+        commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
             userProfileUuid: normalizedUuid,
+            userProfileView: view,
             zIndex: nextZIndex,
             isMinimized: false,
           }
           : w)));
         setNextZIndex(z => z + 1);
+        syncUserProfileShellUrl();
         return;
       }
 
@@ -737,18 +846,17 @@ export function useMoaShellWindows({
         return;
       }
 
-      syncUserProfileShellUrl();
-
       const position = getNewWindowPosition(
         USER_PROFILE_WINDOW_WIDTH,
         USER_PROFILE_WINDOW_HEIGHT,
         countOpenWindows(windowsRef.current),
       );
 
-      setWindows(prev => [...prev, {
+      commitWindows(prev => [...prev, {
         id: `${appId}-${Date.now()}`,
         appId,
         userProfileUuid: normalizedUuid,
+        userProfileView: view,
         title: displayName?.trim() || t('moa_shell.center.user_profile_window'),
         icon: 'user',
         gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
@@ -758,8 +866,9 @@ export function useMoaShellWindows({
         ...position,
       }]);
       setNextZIndex(z => z + 1);
+      syncUserProfileShellUrl();
     },
-    [editMode, nextZIndex, restoreTaskbarWindow, t],
+    [commitWindows, editMode, nextZIndex, restoreTaskbarWindow, t],
   );
 
   const updateUserProfileWindowTitle = useCallback((windowId: string, title: string) => {
@@ -768,6 +877,32 @@ export function useMoaShellWindows({
     setWindows(prev => prev.map(w => (w.id === windowId ? { ...w, title: trimmed } : w)));
     setTaskbarItems(prev => prev.map(w => (w.id === windowId ? { ...w, title: trimmed } : w)));
   }, []);
+
+  const switchUserProfileWindowView = useCallback((
+    windowId: string,
+    view: UserProfileWindowView,
+  ) => {
+    const win = windowsRef.current.find(w => w.id === windowId);
+    if (!win) return;
+
+    const uuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
+    if (!uuid) return;
+
+    prefetchUserProfileWindowLayouts(view);
+
+    const search = resolveUserProfileShellSearch(
+      view,
+      typeof window !== 'undefined' ? window.location.search : '',
+    );
+    const shellPath = formatUserProfileShellPath(uuid, view, search);
+    replaceShellPath(shellPath);
+    notifyBoardShellUrlChanged();
+
+    setWindows(prev => prev.map(w => (w.id === windowId
+      ? { ...w, userProfileView: view, zIndex: nextZIndex, isMinimized: false }
+      : w)));
+    setNextZIndex(z => z + 1);
+  }, [nextZIndex]);
 
   const openLegalPage = useCallback(
     (slug: MoaShellLegalPageSlug) => {
@@ -832,10 +967,20 @@ export function useMoaShellWindows({
   const applyShellRoute = useCallback(
     (route: ReturnType<typeof parseShellRoute>) => {
       switch (route.kind) {
-        case 'home':
-          setWindows([]);
+        case 'home': {
+          const foreground = resolveForegroundShellWindow(windowsRef.current);
+          if (foreground) {
+            const target = formatShellPathForWindow(foreground);
+            const current = `${window.location.pathname}${window.location.search}`;
+            if (current !== target) {
+              replaceShellPath(target);
+            }
+            break;
+          }
+          commitWindows(() => []);
           setCreateAppEditServerId(null);
           break;
+        }
         case 'auth': {
           if (isLoggedIn && isGuestOnlyAuthMode(route.mode)) {
             replaceShellPath('/');
@@ -852,6 +997,7 @@ export function useMoaShellWindows({
             openCreateAppShell({ skipUrl: true }, route.editGeneratedAppId);
             break;
           }
+          // 딥링크: 창 메타만 합성. 표시·실행 검증은 GeneratedAppViewer(API)가 담당.
           const generated = isGeneratedLibraryAppId(route.appId)
             ? buildSyntheticGeneratedLibraryApp(route.appId)
             : null;
@@ -869,13 +1015,13 @@ export function useMoaShellWindows({
           openBoardWindow(route.slug, route.postId, { skipUrl: true }, route.boardMode);
           break;
         case 'userProfile':
-          openUserProfileWindow(route.uuid, undefined, { skipUrl: true });
+          openUserProfileWindow(route.uuid, undefined, { skipUrl: true }, route.view);
           break;
         case 'error':
           openErrorWindow(route.code as ShellErrorCode, { skipUrl: true });
           break;
         case 'router': {
-          setWindows([]);
+          commitWindows(() => []);
           setCreateAppEditServerId(null);
           const routerPath = route.search ? `${route.path}${route.search}` : route.path;
           void ensureMoabomFullTemplateRoutesMerged().finally(() => {
@@ -885,7 +1031,7 @@ export function useMoaShellWindows({
         }
       }
     },
-    [isLoggedIn, openApp, openAuthWindow, openBoardWindow, openCreateAppShell, openErrorWindow, openMyPage, openUserProfileWindow],
+    [commitWindows, isLoggedIn, openApp, openAuthWindow, openBoardWindow, openCreateAppShell, openErrorWindow, openMyPage, openUserProfileWindow],
   );
 
   const closeAuthWindows = useCallback(() => {
@@ -897,30 +1043,25 @@ export function useMoaShellWindows({
   }, []);
 
   const closeWindow = useCallback((win: WindowState) => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      const canonical = formatShellPathForWindow(win);
-      const isMypage = win.appId === 'mypage';
-      const boardSlug = win.boardSlug ?? moaShellBoardSlugFromAppId(win.appId);
-      const isBoard = boardSlug != null;
-      const userProfileUuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
-      const isUserProfile = userProfileUuid != null;
-      const isError = isMoaShellErrorAppId(win.appId);
-      const errorPath = win.errorCode != null
-        ? formatShellPath({ kind: 'error', code: win.errorCode })
-        : null;
-      if (
-        path === canonical
-        || (isMypage && path.startsWith('/me'))
-        || (isBoard && path.startsWith(`/board/${encodeURIComponent(boardSlug)}`))
-        || (isUserProfile && path.startsWith(`/users/${encodeURIComponent(userProfileUuid)}`))
-        || (isError && errorPath != null && path === errorPath)
-      ) {
-        replaceShellPath('/');
-      }
+    const remaining = commitWindows(prev => prev.filter(w => w.id !== win.id));
+
+    if (typeof window === 'undefined') {
+      return;
     }
-    setWindows(p => p.filter(w => w.id !== win.id));
-  }, []);
+
+    const { pathname, search } = window.location;
+    if (!doesShellLocationMatchWindow(pathname, search, win)) {
+      return;
+    }
+
+    const foreground = resolveForegroundShellWindow(remaining);
+    if (foreground) {
+      replaceShellPath(formatShellPathForWindow(foreground));
+      return;
+    }
+
+    replaceShellPath('/');
+  }, [commitWindows]);
 
   const minimizeWindow = useCallback((id: string) => {
     const target = windowsRef.current.find(w => w.id === id);
@@ -1010,6 +1151,7 @@ export function useMoaShellWindows({
     updateLegalPageWindowTitle,
     updateBoardWindowTitle,
     updateUserProfileWindowTitle,
+    switchUserProfileWindowView,
     updateErrorWindowTitle,
     removeWindowsByAppId,
   };

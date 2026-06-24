@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { bootstrapMoabomShellAuthConfig } from '../../runtime/moabomShellAuth';
+import { syncMoabomWebSocketAuth } from '../../runtime/moabomWebSocketAuthSync';
 import { clearShellAccessToken, getShellAccessToken } from '../../api/moabomShellAccess';
 import { buildMoaCurrentUser, type AuthUserLike, type MoaCurrentUser } from '../../shell/moaShellTypes';
 
@@ -34,10 +35,12 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
       if (authenticated && user) {
         setIsLoggedIn(true);
         setCurrentUser(buildMoaCurrentUser(user, nameFallback));
+        syncMoabomWebSocketAuth(true);
         return;
       }
       setIsLoggedIn(false);
       setCurrentUser(null);
+      syncMoabomWebSocketAuth(false);
     },
     [nameFallback],
   );

@@ -35,7 +35,7 @@ ENV_ONLY=0
 SKIP_CHECK=0
 SKIP_LAYOUT_SYNC=0
 STRICT_SMOKE=0
-POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence}"
+POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence,moabom-chat}"
 
 for arg in "$@"; do
   case "$arg" in

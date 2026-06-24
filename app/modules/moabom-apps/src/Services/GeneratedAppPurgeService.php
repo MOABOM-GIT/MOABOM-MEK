@@ -10,6 +10,7 @@ use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Support\GeneratedAppAdminScope;
 use Modules\Moabom\System\Saas\SaasMysqlPdoFactory;
+use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRegistry;
 
 /**
@@ -21,6 +22,7 @@ class GeneratedAppPurgeService
         private readonly GeneratedAppHostingService $hostingService,
         private readonly GeneratedAppRepository $appRepository,
         private readonly TenantRegistry $tenantRegistry,
+        private readonly TenantDatabaseConfigurator $databaseConfigurator,
     ) {}
 
     public function purge(GeneratedApp $app, GeneratedAppAdminScope $scope): void
@@ -70,7 +72,7 @@ class GeneratedAppPurgeService
             return;
         }
 
-        $this->withDatabase($database, function (string $connection) use ($generatedAppId): void {
+        $this->databaseConfigurator->runOnDatabase($database, function (string $connection) use ($generatedAppId): void {
             if (Schema::connection($connection)->hasTable('moabom_generated_app_rows')) {
                 DB::connection($connection)
                     ->table('moabom_generated_app_rows')
@@ -85,41 +87,6 @@ class GeneratedAppPurgeService
                     ->delete();
             }
         });
-    }
-
-    /**
-     * @param  callable(string): void  $callback
-     */
-    private function withDatabase(string $database, callable $callback): void
-    {
-        $connection = (string) config('database.default', 'mysql');
-        $original = config("database.connections.{$connection}");
-        if (! is_array($original)) {
-            return;
-        }
-
-        $config = $original;
-        if (isset($config['write']) && is_array($config['write'])) {
-            $config['write']['database'] = $database;
-        }
-        if (isset($config['read']) && is_array($config['read'])) {
-            $config['read']['database'] = $database;
-        }
-        if (! isset($config['write'])) {
-            $config['database'] = $database;
-        }
-
-        config(["database.connections.{$connection}" => $config]);
-        DB::purge($connection);
-        DB::reconnect($connection);
-
-        try {
-            $callback($connection);
-        } finally {
-            config(["database.connections.{$connection}" => $original]);
-            DB::purge($connection);
-            DB::reconnect($connection);
-        }
     }
 
     private function purgeTenantSessions(GeneratedApp $app): void
@@ -145,28 +112,7 @@ class GeneratedAppPurgeService
             return;
         }
 
-        $connection = (string) config('database.default', 'mysql');
-        $original = config("database.connections.{$connection}");
-        if (! is_array($original)) {
-            return;
-        }
-
-        $config = $original;
-        if (isset($config['write']) && is_array($config['write'])) {
-            $config['write']['database'] = $database;
-        }
-        if (isset($config['read']) && is_array($config['read'])) {
-            $config['read']['database'] = $database;
-        }
-        if (! isset($config['write'])) {
-            $config['database'] = $database;
-        }
-
-        config(["database.connections.{$connection}" => $config]);
-        DB::purge($connection);
-        DB::reconnect($connection);
-
-        try {
+        $this->databaseConfigurator->runOnDatabase($database, function (string $connection) use ($generatedAppId): void {
             if (! Schema::connection($connection)->hasTable('moabom_ai_generation_sessions')) {
                 return;
             }
@@ -175,11 +121,7 @@ class GeneratedAppPurgeService
                 ->table('moabom_ai_generation_sessions')
                 ->where('generated_app_id', $generatedAppId)
                 ->delete();
-        } finally {
-            config(["database.connections.{$connection}" => $original]);
-            DB::purge($connection);
-            DB::reconnect($connection);
-        }
+        });
     }
 
     private function mainWriteDatabaseName(): string

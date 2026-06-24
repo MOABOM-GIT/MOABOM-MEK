@@ -1,7 +1,7 @@
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
 import type { App } from '../data/Moa_apps';
 import { buildMainApps, mainPanelGeneratedExtras } from './moaShellAppLists';
-import { hydrateGeneratedPlaceholdersForOrder, isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
+import { isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
 import { filterOrderExcludingUnpinned, loadMainUnpinnedGeneratedIds } from './moaShellMainAppUnpinned';
 import {
   STORAGE_KEY_CREATE_APP_ORDER_MIGRATED,
@@ -212,16 +212,12 @@ export function resolveMainAppsFromOrder(
   unpinnedGeneratedIds: ReadonlySet<string> = loadMainUnpinnedGeneratedIds(),
 ): App[] {
   const effectiveOrder = filterOrderExcludingUnpinned(order, unpinnedGeneratedIds);
-  const extras = hydrateGeneratedPlaceholdersForOrder(
+  const extras = mainPanelGeneratedExtras(
     effectiveOrder,
-    mainPanelGeneratedExtras(
-      effectiveOrder,
-      ownedGeneratedApps,
-      catalogGeneratedApps,
-      customized,
-      unpinnedGeneratedIds,
-    ),
+    ownedGeneratedApps,
+    catalogGeneratedApps,
     customized,
+    unpinnedGeneratedIds,
   );
 
   return buildMainApps(effectiveOrder, extras, { customized });

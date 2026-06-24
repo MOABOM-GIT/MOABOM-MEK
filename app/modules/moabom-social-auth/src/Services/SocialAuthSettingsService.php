@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\Social\Auth\Contracts\SocialSettingsServiceInterface;
 use Modules\Moabom\Social\Auth\Models\SocialAuthSetting;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 use Modules\Moabom\System\Saas\SaasMysqlPdoFactory;
 
 class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettingsServiceInterface
@@ -17,9 +18,6 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
     use NormalizesSettingsData;
 
     private const MODULE_IDENTIFIER = 'moabom-social-auth';
-
-    /** @var list<string> */
-    private const SUPPORTED_PROVIDERS = ['google', 'kakao', 'naver'];
 
     private const BROKER_PROVIDER_KEY = '__broker';
 
@@ -155,7 +153,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
 
     public function getPlatformMasterCredential(string $provider, string $key): ?string
     {
-        if (! in_array($provider, self::SUPPORTED_PROVIDERS, true)) {
+        if (! in_array($provider, SocialAuthProviders::all(), true)) {
             return null;
         }
 
@@ -207,14 +205,14 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
         $isSubTenantHost = $this->isSubTenantHost();
 
         $rows = SocialAuthSetting::query()
-            ->whereIn('provider', array_merge(self::SUPPORTED_PROVIDERS, [self::BROKER_PROVIDER_KEY]))
+            ->whereIn('provider', array_merge(SocialAuthProviders::all(), [self::BROKER_PROVIDER_KEY]))
             ->get()
             ->keyBy('provider');
 
         $platformMaster = $isSubTenantHost ? $this->loadPlatformMasterProviders(true) : [];
 
         $settings = [];
-        foreach (self::SUPPORTED_PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             /** @var SocialAuthSetting|null $row */
             $row = $rows->get($provider);
             $settings["{$provider}_enabled"] = (bool) ($row?->enabled ?? false);
@@ -236,7 +234,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
         $settings['broker_state_ttl_seconds'] = (int) ($broker['broker_state_ttl_seconds'] ?? 300);
 
         if ($isSubTenantHost && $platformMaster !== []) {
-            foreach (self::SUPPORTED_PROVIDERS as $provider) {
+            foreach (SocialAuthProviders::all() as $provider) {
                 $settings["{$provider}_use_master_defaults"] = true;
                 $settings["{$provider}_client_id"] = (string) ($platformMaster["{$provider}_client_id"] ?? '');
                 $settings["{$provider}_client_secret"] = (string) ($platformMaster["{$provider}_client_secret"] ?? '');
@@ -278,7 +276,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
      */
     private function stripBlankProviderRedirectUris(array $settings): array
     {
-        foreach (['google', 'kakao', 'naver'] as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $key = "{$provider}_redirect_uri";
             if (! array_key_exists($key, $settings)) {
                 continue;
@@ -310,7 +308,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
             return $settings;
         }
 
-        foreach (self::SUPPORTED_PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $useMasterKey = "{$provider}_use_master_defaults";
             if (! (bool) ($settings[$useMasterKey] ?? true)) {
                 continue;
@@ -336,7 +334,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
             $isSubTenantHost = $this->isSubTenantHost();
 
             DB::transaction(function () use ($settings, $isSubTenantHost): void {
-                foreach (self::SUPPORTED_PROVIDERS as $provider) {
+                foreach (SocialAuthProviders::all() as $provider) {
                     if ($isSubTenantHost) {
                         /** @var SocialAuthSetting $row */
                         $row = SocialAuthSetting::query()->firstOrCreate(
@@ -498,7 +496,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
             return [];
         }
 
-        $providers = array_merge(self::SUPPORTED_PROVIDERS, [self::BROKER_PROVIDER_KEY]);
+        $providers = array_merge(SocialAuthProviders::all(), [self::BROKER_PROVIDER_KEY]);
         $placeholders = implode(',', array_fill(0, count($providers), '?'));
 
         try {
@@ -519,7 +517,7 @@ class SocialAuthSettingsService implements ModuleSettingsInterface, SocialSettin
         }
 
         $settings = [];
-        foreach (self::SUPPORTED_PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $row = $rows->get($provider);
             $settings["{$provider}_enabled"] = (bool) ($row?->enabled ?? false);
             $settings["{$provider}_use_master_defaults"] = true;

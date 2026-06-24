@@ -615,7 +615,7 @@ class UserService
 
         // 탈퇴한 사용자는 익명화된 정보 반환
         if ($status === UserStatus::Withdrawn) {
-            return [
+            $data = [
                 'uuid' => $user->uuid,
                 'name' => __('user.withdrawn_user'),
                 'status' => $user->status,
@@ -625,6 +625,8 @@ class UserService
                 'created_at' => null,
                 'is_withdrawn' => true,
             ];
+
+            return HookManager::applyFilters('core.user.filter_public_profile', $data, $user);
         }
 
         // 상태별 표시 필드 결정
@@ -634,15 +636,20 @@ class UserService
             default => [false, false, false], // blocked 등
         };
 
-        return [
+        $nickname = trim((string) ($user->nickname ?? ''));
+
+        $data = [
             'uuid' => $user->uuid,
             'name' => $user->name,
+            'nickname' => $nickname !== '' ? $nickname : null,
             'status' => $user->status,
             'status_label' => $status?->label() ?? $user->status,
-            'avatar' => $showAvatar ? $user->avatar_url : null,
+            'avatar' => $showAvatar ? $user->getAvatarUrl() : null,
             'bio' => $showBio ? $user->bio : null,
             'created_at' => $showCreatedAt ? TimezoneHelper::toUserDateString($user->created_at) : null,
             'is_withdrawn' => false,
         ];
+
+        return HookManager::applyFilters('core.user.filter_public_profile', $data, $user);
     }
 }

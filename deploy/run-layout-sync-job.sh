@@ -38,6 +38,9 @@ moabom_run_artisan_job moabom-module-layout-sync "${TIMEOUT}" \
 moabom_run_artisan_job moabom-module-sync-decl "${TIMEOUT}" \
   moabom:module-sync-declarations moabom-system --no-interaction
 
+moabom_run_artisan_job moabom-module-sync-decl-presence "${TIMEOUT}" \
+  moabom:module-sync-declarations moabom-presence --no-interaction
+
 echo "[run-layout-sync-job] tenant admin menu hygiene (all active tenants)"
 moabom_run_artisan_job moabom-tenant-admin-menu-sync "${TIMEOUT}" \
   moabom:saas:sync-tenant-admin-menus --no-interaction

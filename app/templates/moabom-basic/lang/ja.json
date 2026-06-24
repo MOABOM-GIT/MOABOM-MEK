@@ -20,6 +20,45 @@
   "userinfo": {
     "$partial": "partial/ja/userinfo.json"
   },
+  "user": {
+    "$partial": "partial/ja/user.json"
+  },
+  "moa_chat": {
+    "title": "チャット",
+    "blocks": "拒否リスト",
+    "blocks_empty": "拒否したユーザーはいません。",
+    "search_placeholder": "ニックネームで検索",
+    "start_direct": "会話を開始",
+    "start_group": "グループ会話を開始",
+    "add": "追加",
+    "rejected_short": "拒否",
+    "loading": "会話を読み込み中…",
+    "empty": "まだ会話がありません。ニックネームを検索して開始してください。",
+    "no_messages": "まだメッセージがありません。",
+    "no_conversation": "会話を選択してください",
+    "messages_loading": "メッセージを読み込み中…",
+    "messages_empty": "まだメッセージがありません。",
+    "choose_conversation": "左側で会話相手を選択してください。",
+    "unknown_sender": "ユーザー",
+    "message_placeholder": "メッセージを入力。Enterで送信、Shift+Enterで改行",
+    "send": "送信",
+    "toast_request_rejected": "このユーザーは会話リクエストを受け付けていません。",
+    "toast_blocked_by_self": "会話拒否したユーザーです。拒否リストから解除できます。",
+    "toast_blocked_by_peer": "相手が会話を拒否しています。",
+    "toast_login_required": "ログイン後に会話できます。",
+    "toast_failed": "会話処理に失敗しました。",
+    "toast_conversation_ready": "会話を開きました。",
+    "unblock": "解除",
+    "remove_selected": "削除"
+  },
+  "moa_profile_actions": {
+    "friend_add": "友だち追加",
+    "chat": "チャット",
+    "chat_block_on": "拒否中",
+    "chat_block_off": "会話拒否",
+    "chat_blocked": "会話を拒否しました。",
+    "chat_unblocked": "会話拒否を解除しました。"
+  },
   "errors": {
     "404_title": "ページが見つかりません",
     "404_message": "お探しのページは存在しません。",
@@ -304,7 +343,7 @@
       "rankings_apps_empty": "集計されたアプリ順位はまだありません",
       "rankings_users_empty": "集計されたユーザーランキングはまだありません",
       "rankings_load_failed": "ランキングを読み込めませんでした",
-      "rankings_activity_score": "{{score}} point",
+      "rankings_activity_score": "{score} point",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -335,7 +374,10 @@
       "notification_time_hours": "{count}時間前",
       "notification_time_days": "{count}日前",
       "admin_mode": "管理者モード",
-      "avatar_alt": "{name}のプロフィール写真"
+      "avatar_alt": "{name}のプロフィール写真",
+      "ad_label": "広告",
+      "ad_badge": "AD",
+      "ad_placeholder_title": "広告エリア"
     },
     "center": {
       "edit_mode_title": "アプリ編集モード",
@@ -351,6 +393,12 @@
       "legal_page_retry": "再試行",
       "board_window": "掲示板 · {slug}",
       "board_loading": "掲示板を読み込み中…",
+      "user_profile_window": "ユーザープロフィール",
+      "user_profile_tab_profile": "プロフィール",
+      "user_profile_tab_posts": "投稿",
+      "user_profile_tab_chat": "チャット",
+      "user_profile_loading": "プロフィールを読み込み中…",
+      "user_profile_error": "プロフィールを読み込めません",
       "error_window": "エラー · {code}",
       "error_page_loading": "エラー案内を読み込み中…",
       "error_page_error": "エラー案内を読み込めませんでした。",

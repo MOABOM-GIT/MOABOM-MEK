@@ -1,0 +1,30 @@
+/* ─── 우측 패널 하단 광고 슬롯 ─── */
+
+.moa-right-panel-ad {
+  padding-top: 0.5rem;
+}
+
+.moa-right-panel-ad__inner {
+  border-radius: 1rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 7.25rem;
+  padding: 0.5rem 0.625rem;
+  display: flex;
+}
+
+.moa-right-panel-ad__badge {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--moa-point-color);
+}
+
+.moa-right-panel-ad__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--moa-text-primary, inherit);
+}

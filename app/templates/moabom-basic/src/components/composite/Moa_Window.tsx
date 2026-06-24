@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
 import { Icon } from '../basic/Icon';
 import { Span } from '../basic/Span';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
+import { truncateShellWindowTitle } from '../../utils/truncateShellWindowTitle';
 
 /** 뷰포트 안에 창 위치 클램프 */
 function clampWindowPosition(x: number, y: number, w: number, h: number): { x: number; y: number } {
@@ -130,6 +131,24 @@ export const Window: React.FC<WindowProps> = ({
   const compactRef = useRef(compact);
   const positionViewportRef = useRef(initialFrame.position);
   const sizeViewportRef = useRef(initialFrame.size);
+  const [titleBarWidth, setTitleBarWidth] = useState(initialFrame.size.width);
+
+  useLayoutEffect(() => {
+    const node = titleBarRef.current;
+    if (!node) {
+      return undefined;
+    }
+    const update = () => setTitleBarWidth(node.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isMaximized, compact, size.width]);
+
+  const displayTitle = useMemo(
+    () => truncateShellWindowTitle(title, titleBarWidth),
+    [title, titleBarWidth],
+  );
 
   useEffect(() => {
     fitContentRef.current = fitContent;
@@ -417,8 +436,8 @@ export const Window: React.FC<WindowProps> = ({
             >
               <Div className="flex min-w-0 flex-1 items-center gap-2">
                 {icon ? <Icon name={icon} className="shrink-0 text-base text-white drop-shadow-sm" /> : null}
-                <Span className="truncate text-base font-bold text-white drop-shadow-sm">
-                  {title}
+                <Span className="min-w-0 truncate text-base font-bold text-white drop-shadow-sm" title={title}>
+                  {displayTitle}
                 </Span>
               </Div>
               <Div className="flex shrink-0 items-center gap-1.5" onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => e.stopPropagation()}>
@@ -454,9 +473,11 @@ export const Window: React.FC<WindowProps> = ({
             style={{ background: gradient ?? 'var(--moa-point-color)' }}
             onPointerDown={handlePointerDownDrag}
           >
-            <Div className="flex items-center gap-2">
-              {icon && <Icon name={icon} className="text-base text-white" />}
-              <Span className="text-base font-bold text-white">{title}</Span>
+            <Div className="flex min-w-0 flex-1 items-center gap-2">
+              {icon && <Icon name={icon} className="shrink-0 text-base text-white" />}
+              <Span className="min-w-0 truncate text-base font-bold text-white" title={title}>
+                {displayTitle}
+              </Span>
               {onToggleFavorite && (
                 <Button
                   type="button"

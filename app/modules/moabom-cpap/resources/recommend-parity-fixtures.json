@@ -1,0 +1,79 @@
+[
+  {
+    "id": "default_30s_nasal_m",
+    "profile": {
+      "gender": "male",
+      "ageGroup": "30s",
+      "tossing": "medium",
+      "mouthBreathing": false,
+      "pressure": "medium",
+      "preferredTypes": []
+    },
+    "measurements": {
+      "faceWidth": 140,
+      "noseWidth": 38
+    },
+    "profile_measurements": {},
+    "expected": {
+      "type": "nasal",
+      "name": "나잘 마스크 M",
+      "confidence": 75
+    }
+  },
+  {
+    "id": "mouth_breathing_high_pressure_full_m",
+    "profile": {
+      "gender": "male",
+      "ageGroup": "20s",
+      "tossing": "low",
+      "mouthBreathing": true,
+      "pressure": "high",
+      "preferredTypes": []
+    },
+    "measurements": {
+      "noseWidth": 40,
+      "faceLength": 160,
+      "faceWidth": 150,
+      "mouthWidth": 46,
+      "philtrumLength": 16,
+      "bridgeWidth": 32
+    },
+    "profile_measurements": {
+      "noseHeight": 20
+    },
+    "expected": {
+      "type": "full-face",
+      "name": "풀페이스 마스크 M",
+      "confidence": 90,
+      "reasons_contains": ["구강호흡자에게 필수"]
+    }
+  },
+  {
+    "id": "high_tossing_low_pressure_nasal_pillow",
+    "profile": {
+      "gender": "female",
+      "ageGroup": "40s",
+      "tossing": "high",
+      "mouthBreathing": false,
+      "pressure": "low",
+      "preferredTypes": []
+    },
+    "measurements": {
+      "noseWidth": 30,
+      "faceLength": 160,
+      "faceWidth": 140,
+      "mouthWidth": 58,
+      "philtrumLength": 14,
+      "bridgeWidth": 32
+    },
+    "profile_measurements": {
+      "noseHeight": 18,
+      "jawProjection": 22,
+      "chinLength": 24
+    },
+    "expected": {
+      "type": "nasal-pillow",
+      "confidence": 100
+    }
+  }
+]

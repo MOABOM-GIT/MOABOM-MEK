@@ -1,0 +1,23 @@
+<?php
+
+return [
+    'conversations_success' => '대화 목록을 불러왔습니다.',
+    'conversation_ready' => '대화방이 준비되었습니다.',
+    'conversation_read' => '대화를 읽음 처리했습니다.',
+    'messages_success' => '메시지를 불러왔습니다.',
+    'message_sent' => '메시지를 보냈습니다.',
+    'blocks_success' => '대화거부 목록을 불러왔습니다.',
+    'block_saved' => '대화거부로 설정했습니다.',
+    'block_removed' => '대화거부를 해제했습니다.',
+    'users_success' => '사용자 검색 결과를 불러왔습니다.',
+    'eligibility_success' => '대화 가능 상태를 확인했습니다.',
+    'user_not_found' => '사용자를 찾을 수 없습니다.',
+    'cannot_chat_self' => '본인에게는 대화할 수 없습니다.',
+    'cannot_block_self' => '본인은 대화거부할 수 없습니다.',
+    'chat_request_rejected' => '대화요청 수락을 거부한 사용자입니다.',
+    'blocked_by_self' => '대화거부한 사용자입니다.',
+    'blocked_by_peer' => '상대방이 대화를 거부한 상태입니다.',
+    'conversation_not_found' => '대화방을 찾을 수 없습니다.',
+    'message_not_found' => '메시지를 찾을 수 없습니다.',
+    'message_body_required' => '메시지를 입력해주세요.',
+];

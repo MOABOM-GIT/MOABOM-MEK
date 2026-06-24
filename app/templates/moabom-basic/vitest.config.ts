@@ -44,6 +44,18 @@ export default defineConfig({
             '@': path.resolve(rootDir, 'resources/js'),
             'moabom-shell-i18n': path.resolve(__dirname, 'src/i18n/moabomShellI18nSingleton.ts'),
             'moabom-create-app-edit': path.resolve(__dirname, 'src/apps/ai-generator/moabomCreateAppEditSession.ts'),
+            '@moabom-consulting/simulation-model.json': path.resolve(
+                __dirname,
+                '../../modules/moabom-consulting/resources/simulation-model.json',
+            ),
+            '@moabom-cpap/recommend-rules.json': path.resolve(
+                __dirname,
+                '../../modules/moabom-cpap/resources/recommend-rules.json',
+            ),
+            '@moabom-cpap/recommend-parity-fixtures.json': path.resolve(
+                __dirname,
+                '../../modules/moabom-cpap/resources/recommend-parity-fixtures.json',
+            ),
         },
     },
 });

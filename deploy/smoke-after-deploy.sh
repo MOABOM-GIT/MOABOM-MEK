@@ -80,6 +80,22 @@ check_auth_or_ok "/api/modules/moabom-apps/apps/generated" "moabom-apps generate
 check_auth_or_ok "/api/modules/moabom-apps/apps/generated/shared" "moabom-apps shared generated list" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-cpap/apps/cpap-mask/measurements/latest" "cpap latest" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-personalization/user/activities?type=all&limit=1" "personalization activities" || FAIL=1
+# moabom-chat — 프로필 대화·차단·eligibility 라우트 등록 (404 = 미배포·api.php 누락)
+check_auth_or_ok "/api/modules/moabom-chat/user/blocks" "moabom-chat blocks index" || FAIL=1
+check_auth_or_ok "/api/modules/moabom-chat/user/users/a20eac3b-22e5-48fb-bcf2-50cf646baeb6/eligibility" "moabom-chat eligibility" || FAIL=1
+check_delete_auth_or_ok() {
+  local path="$1"
+  local label="$2"
+  local code
+  code="$(curl -sS -o /dev/null -w "%{http_code}" -H "Accept: application/json" -X DELETE "${URL}${path}" 2>/dev/null || echo "000")"
+  if [[ "${code}" == "401" || "${code}" == "200" ]]; then
+    echo "OK   ${label} HTTP ${code} (route registered)"
+    return 0
+  fi
+  echo "FAIL ${label} HTTP ${code} (expected 401 or 200 — route missing if 404)"
+  return 1
+}
+check_delete_auth_or_ok "/api/modules/moabom-chat/user/blocks/a20eac3b-22e5-48fb-bcf2-50cf646baeb6" "moabom-chat blocks destroy" || FAIL=1
 # 전환기 compat — dist 가 구 URL 이면 401/200 (404 금지)
 check_auth_or_ok "/api/modules/moabom-system/user/activities?type=all&limit=1" "legacy activities compat" || FAIL=1
 

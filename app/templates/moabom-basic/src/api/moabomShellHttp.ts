@@ -34,6 +34,19 @@ export class MoabomShellAuthExpiredError extends Error {
   }
 }
 
+/** 모듈 API 비즈니스·HTTP 실패 — status·reason 으로 UI 분기 SSOT */
+export class MoabomShellModuleApiError extends Error {
+  readonly status: number;
+  readonly reason?: string;
+
+  constructor(status: number, message: string, payload: ShellJsonEnvelope) {
+    super(message);
+    this.name = 'MoabomShellModuleApiError';
+    this.status = status;
+    this.reason = extractShellModuleErrorReason(payload);
+  }
+}
+
 export interface ShellJsonEnvelope<T = unknown> {
   success?: boolean;
   message?: string;
@@ -111,6 +124,15 @@ function httpErrorMessage(payload: ShellJsonEnvelope, fallback: string): string 
   return payload.message?.trim() || fallback;
 }
 
+export function extractShellModuleErrorReason(payload: ShellJsonEnvelope): string | undefined {
+  const errors = payload.errors;
+  if (!errors || typeof errors !== 'object' || Array.isArray(errors)) {
+    return undefined;
+  }
+  const reason = (errors as Record<string, unknown>).reason;
+  return typeof reason === 'string' && reason.trim() ? reason.trim() : undefined;
+}
+
 /**
  * 셸 모듈 API JSON 요청 SSOT.
  */
@@ -158,7 +180,11 @@ export async function requestShellJson<T>(
   const payload = await parseJsonResponse<T>(response);
 
   if (!response.ok || !payload.success) {
-    throw new Error(httpErrorMessage(payload, '요청 처리에 실패했습니다.'));
+    throw new MoabomShellModuleApiError(
+      response.status,
+      httpErrorMessage(payload, '요청 처리에 실패했습니다.'),
+      payload,
+    );
   }
 
   return payload.data as T;

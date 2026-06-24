@@ -68,6 +68,8 @@ export interface Moa_MyPageTabPanelsProps {
       setAvailability: (value: PresenceAvailability) => void;
       subtitleMode: PresenceSubtitleMode;
       setSubtitleMode: (value: PresenceSubtitleMode) => void;
+      showAvatarInConnectList: boolean;
+      setShowAvatarInConnectList: (value: boolean) => void;
       loading: boolean;
       saving: boolean;
       error: string | null;

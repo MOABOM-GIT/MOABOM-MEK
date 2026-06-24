@@ -4,6 +4,8 @@
   "friend_request": "添加好友",
   "friend_request_sent": "好友请求已发送。",
   "friend_request_failed": "好友请求失败。",
+  "friend_request_pending": "好友请求等待中。",
+  "friend_already": "已是好友",
   "withdrawn_user": "已注销用户",
   "guest_badge": "访客",
   "no_image": "无图片"

@@ -22,12 +22,15 @@ import {
 import type { ShellAppRankingItem, ShellUserRankingItem } from '../../shell/moaShellRankingTypes';
 import {
   openShellNoticeBoard,
+  MOA_SHELL_NOTICE_BOARD_SLUG,
 } from '../../shell/moaShellNoticeBoard';
 import { fetchShellNoticeBoardPreview } from '../../shell/moaShellNoticeBoardPreview';
 import {
   subscribeShellNoticeBoardChanged,
   type ShellNoticeBoardChangedDetail,
 } from '../../shell/moaShellNoticeBoardEvents';
+import { deferShellSecondaryWork } from '../../shell/moaShellDeferredWork';
+import { prefetchBoardWindowLayouts } from '../../shell/boardWindowPrefetch';
 import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShellNoticeBoardPreview';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
@@ -88,6 +91,8 @@ export interface LeftPanelProps {
   onClose?: () => void;
   /** 게시판 윈도우 열기 (좌측 공지·업데이트 더미 → notice 보드) */
   onOpenBoard?: (slug: string, postId?: string) => void;
+  /** 공개 프로필 윈도우 열기 */
+  onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
 }
 
 /** 랭킹 행 — 앱 이름·설명(좁은 패널·마퀴 높이 이슈 없이 말줄임으로 항상 표시) */
@@ -191,6 +196,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   overlayFlushEdges = false,
   onClose,
   onOpenBoard,
+  onOpenUserProfile,
 }) => {
   const isDark = useMoabomDarkMode();
   const { t } = useMoabomShellT();
@@ -269,6 +275,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   }, [activeNav]);
 
   useEffect(() => {
+    if (activeNav !== 'notice') {
+      return;
+    }
+
+    prefetchBoardWindowLayouts(MOA_SHELL_NOTICE_BOARD_SLUG);
+
     let controller = new AbortController();
     let requestId = 0;
 
@@ -295,7 +307,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     const reload = (_detail?: ShellNoticeBoardChangedDetail) => {
       controller.abort();
       controller = new AbortController();
-      void loadNoticeBoardItems(controller.signal);
+      const signal = controller.signal;
+      deferShellSecondaryWork(() => loadNoticeBoardItems(signal), 120);
     };
 
     reload();
@@ -306,7 +319,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       controller.abort();
       unsubscribe();
     };
-  }, []);
+  }, [activeNav]);
 
   const noticeItems = noticeSubTab === 'updates' ? noticeBoardItems.updates : noticeBoardItems.notices;
 
@@ -483,7 +496,15 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                 ) : userRankings.length > 0 ? (
                   <Div className="flex flex-col gap-1">
                     {userRankings.map(user => (
-                      <Div key={`rank-user-${user.user_id}`} className="flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer">
+                      <Div
+                        key={`rank-user-${user.user_id}`}
+                        className="flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
+                        onClick={() => {
+                          if (user.user_uuid) {
+                            onOpenUserProfile?.(user.user_uuid, user.name);
+                          }
+                        }}
+                      >
                         <Span className={`w-6 text-center font-bold ${
                           user.rank <= 3
                             ? user.rank === 1 ? 'text-yellow-500 text-lg' : user.rank === 2 ? 'text-gray-400 text-lg' : 'text-amber-600 text-lg'

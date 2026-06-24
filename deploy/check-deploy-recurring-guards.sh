@@ -130,8 +130,8 @@ grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
   && {
     grep -q 'Post-deploy allowlist module migrations' "${BUILD_DEPLOY}" \
       || fail "RF-21: build-and-deploy.sh 에 allowlist module migrations Job 단계 없음"
-    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence}"' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps,moabom-system,moabom-presence 가 아님"
+    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence,moabom-chat}"' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps,moabom-system,moabom-presence,moabom-chat 가 아님"
     grep -q 'post_deploy_migration_modules()' "${BUILD_DEPLOY}" \
       || fail "RF-21: post-deploy migration allowlist parser 없음"
     grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \

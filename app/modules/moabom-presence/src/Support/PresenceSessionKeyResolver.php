@@ -13,11 +13,19 @@ final class PresenceSessionKeyResolver
     {
         $header = trim((string) $request->header('X-Moabom-Presence-Key', ''));
         if ($header !== '' && strlen($header) <= 128) {
-            return hash('sha256', 'presence:'.$header);
+            return $this->hashClientKey($header);
         }
 
-        $sessionId = (string) $request->session()->getId();
+        return $this->resolveFromLaravelSession($request);
+    }
 
-        return hash('sha256', 'presence:session:'.$sessionId);
+    public function resolveFromLaravelSession(Request $request): string
+    {
+        return hash('sha256', 'presence:session:'.(string) $request->session()->getId());
+    }
+
+    public function hashClientKey(string $clientKey): string
+    {
+        return hash('sha256', 'presence:'.$clientKey);
     }
 }

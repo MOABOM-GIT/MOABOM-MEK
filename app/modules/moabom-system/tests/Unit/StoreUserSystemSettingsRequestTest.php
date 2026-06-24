@@ -127,4 +127,34 @@ class StoreUserSystemSettingsRequestTest extends ModuleTestCase
 
         $this->assertTrue($passes);
     }
+
+    public function test_shell_home_main_unpinned_generated_ids_accepts_generated_app_ids(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $passes = Validator::make([
+            'shell' => [
+                'home' => [
+                    'mainUnpinnedGeneratedIds' => ['generated-app-42', 'generated-app-7'],
+                ],
+            ],
+        ], $rules)->passes();
+
+        $this->assertTrue($passes);
+    }
+
+    public function test_shell_home_main_unpinned_generated_ids_rejects_static_app_ids(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $passes = Validator::make([
+            'shell' => [
+                'home' => [
+                    'mainUnpinnedGeneratedIds' => ['cpap-mask'],
+                ],
+            ],
+        ], $rules)->passes();
+
+        $this->assertFalse($passes);
+    }
 }

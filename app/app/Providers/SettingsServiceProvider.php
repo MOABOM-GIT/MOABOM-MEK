@@ -65,7 +65,7 @@ class SettingsServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $configRepository = new JsonConfigRepository;
+        $configRepository = $this->resolveBootConfigRepository();
 
         $this->applyMailConfig($configRepository);
         $this->applyAppConfig($configRepository);
@@ -76,6 +76,18 @@ class SettingsServiceProvider extends ServiceProvider
         $this->applyCoreUpdateConfig($configRepository);
         $this->applyGeoIpConfig($configRepository);
         $this->loadCoreSettingsToConfig($configRepository);
+    }
+
+    /**
+     * 부팅 시 설정 저장소 — Moabom SaaS 는 platform DB 가 GCS JSON 보다 우선.
+     */
+    private function resolveBootConfigRepository(): JsonConfigRepository
+    {
+        if (class_exists(\Modules\Moabom\System\Saas\PlatformBootSettingsRepository::class)) {
+            return new \Modules\Moabom\System\Saas\PlatformBootSettingsRepository;
+        }
+
+        return new JsonConfigRepository;
     }
 
     /**
@@ -437,6 +449,12 @@ class SettingsServiceProvider extends ServiceProvider
 
             return;
         }
+
+        $broadcastDefault = (string) config('broadcasting.default', 'reverb');
+        if ($broadcastDefault === '' || $broadcastDefault === 'null') {
+            $broadcastDefault = 'reverb';
+        }
+        Config::set('broadcasting.default', $broadcastDefault);
 
         $appId = $driverSettings['websocket_app_id'] ?? '';
         $appKey = $driverSettings['websocket_app_key'] ?? '';

@@ -6,6 +6,7 @@ namespace Modules\Moabom\Social\Auth\Services;
 
 use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\Social\Auth\Models\SocialAuthSetting;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
 
 /**
@@ -15,9 +16,6 @@ use Modules\Moabom\System\Saas\PlatformRuntimeConfigurator;
  */
 final class PlatformSocialAuthMasterSeeder
 {
-    /** @var list<string> */
-    private const PROVIDERS = ['google', 'kakao', 'naver'];
-
     private const BROKER_PROVIDER_KEY = '__broker';
 
     public function __construct(
@@ -43,7 +41,7 @@ final class PlatformSocialAuthMasterSeeder
         $skipped = [];
         $errors = [];
 
-        foreach (self::PROVIDERS as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $clientId = $this->resolveCredential($provider, 'CLIENT_ID');
             $clientSecret = $this->resolveCredential($provider, 'CLIENT_SECRET');
 

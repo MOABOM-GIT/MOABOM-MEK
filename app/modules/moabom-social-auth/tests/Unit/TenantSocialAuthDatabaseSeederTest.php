@@ -6,6 +6,7 @@ namespace Modules\Moabom\Social\Auth\Tests\Unit;
 
 use Modules\Moabom\Social\Auth\Models\SocialAuthSetting;
 use Modules\Moabom\Social\Auth\Services\TenantSocialAuthDatabaseSeeder;
+use Modules\Moabom\Social\Auth\Support\SocialAuthProviders;
 use Modules\Moabom\Social\Auth\Tests\ModuleTestCase;
 
 require_once dirname(__DIR__).'/ModuleTestCase.php';
@@ -19,9 +20,9 @@ class TenantSocialAuthDatabaseSeederTest extends ModuleTestCase
         $result = app(TenantSocialAuthDatabaseSeeder::class)->seedDefaults();
 
         $this->assertTrue($result['seeded']);
-        $this->assertSame(['google', 'kakao', 'naver'], $result['created']);
+        $this->assertSame(SocialAuthProviders::all(), $result['created']);
 
-        foreach (['google', 'kakao', 'naver'] as $provider) {
+        foreach (SocialAuthProviders::all() as $provider) {
             $this->assertDatabaseHas('social_auth_settings', [
                 'provider' => $provider,
                 'enabled' => true,

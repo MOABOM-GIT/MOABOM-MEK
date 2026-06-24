@@ -6,7 +6,7 @@
   "type": "basic",
   "name": "Div",
   "props": {
-    "className": "glass-panel rounded-lg shadow p-6"
+    "className": "glass-panel rounded-lg p-6"
   },
   "children": [
     {

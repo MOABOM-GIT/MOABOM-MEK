@@ -8,6 +8,7 @@ use App\Services\NotificationDefinitionService;
 use App\Traits\NormalizesSettingsData;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
+use Modules\Moabom\System\Support\MoabomSaasPersistentModuleSettings;
 
 /**
  * 게시판 모듈 환경설정 서비스
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\File;
  */
 class BoardSettingsService implements ModuleSettingsInterface
 {
+    use MoabomSaasPersistentModuleSettings;
     use NormalizesSettingsData;
 
     /**
@@ -346,15 +348,26 @@ class BoardSettingsService implements ModuleSettingsInterface
      */
     private function loadCategorySettings(string $category): array
     {
+        return $this->resolveCategorySettings(
+            $category,
+            fn (): array => $this->loadLegacyLocalCategorySettings($category),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function loadLegacyLocalCategorySettings(string $category): array
+    {
         $path = $this->getCategoryFilePath($category);
 
         if (! File::exists($path)) {
             return [];
         }
 
-        $content = File::get($path);
+        $decoded = json_decode(File::get($path), true);
 
-        return json_decode($content, true) ?? [];
+        return is_array($decoded) ? array_diff_key($decoded, ['_meta' => true]) : [];
     }
 
     /**
@@ -366,17 +379,22 @@ class BoardSettingsService implements ModuleSettingsInterface
      */
     private function saveCategorySettings(string $category, array $settings): bool
     {
-        $storagePath = $this->getStoragePath();
+        return $this->persistCategorySettings(
+            $category,
+            $settings,
+            function () use ($category, $settings): bool {
+                $storagePath = $this->getStoragePath();
 
-        // 디렉토리 생성
-        if (! File::isDirectory($storagePath)) {
-            File::makeDirectory($storagePath, 0755, true);
-        }
+                if (! File::isDirectory($storagePath)) {
+                    File::makeDirectory($storagePath, 0755, true);
+                }
 
-        $path = $this->getCategoryFilePath($category);
-        $content = json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                $path = $this->getCategoryFilePath($category);
+                $content = json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        return File::put($path, $content) !== false;
+                return File::put($path, $content) !== false;
+            },
+        );
     }
 
     /**
@@ -397,5 +415,10 @@ class BoardSettingsService implements ModuleSettingsInterface
     private function getStoragePath(): string
     {
         return storage_path('app/modules/'.self::MODULE_IDENTIFIER.'/settings');
+    }
+
+    protected function getPersistentModuleIdentifier(): string
+    {
+        return self::MODULE_IDENTIFIER;
     }
 }

@@ -3,6 +3,8 @@ import {
   normalizePathname,
   pathNeedsLegacyG7RouterPath,
 } from './moabomLegacyMypagePaths';
+import { navigateMoabomChatNotification } from './moabomChatNotificationNavigate';
+import { parseShellRoute, pushShellPath } from './moabomShellRoutes';
 
 const MY_PAGE_TABS = [
   'profile',
@@ -127,6 +129,7 @@ export function resolveNotificationNavigatePath(
     pathname.startsWith('/board/') ||
     pathname.startsWith('/app/') ||
     pathname.startsWith('/auth/') ||
+    pathname.startsWith('/users/') ||
     pathNeedsLegacyG7RouterPath(pathname)
   ) {
     return `${pathname}${suffix}`;
@@ -142,7 +145,18 @@ export function resolveNotificationNavigatePath(
 export function navigateMoabomNotificationUrl(
   url: string | null | undefined,
   notificationType?: string | null,
+  notificationData?: Record<string, unknown> | null,
 ): void {
+  if (
+    navigateMoabomChatNotification({
+      type: notificationType ?? '',
+      url,
+      data: notificationData,
+    })
+  ) {
+    return;
+  }
+
   const target = resolveNotificationNavigatePath(url, notificationType);
   if (!target) {
     return;
@@ -155,6 +169,15 @@ export function navigateMoabomNotificationUrl(
 
   if (target.startsWith('/admin')) {
     window.location.href = target;
+    return;
+  }
+
+  const pathname = normalizePathname(target.split(/[?#]/)[0] ?? target);
+  const search = target.includes('?') ? target.slice(target.indexOf('?')) : '';
+  const shellRoute = parseShellRoute(pathname, search);
+  if (shellRoute.kind === 'userProfile' || shellRoute.kind === 'me' || shellRoute.kind === 'board') {
+    // URL만 갱신 — useMoaShellRouteSync.applyShellRoute 가 창을 단일 경로로 연다.
+    pushShellPath(target);
     return;
   }
 
