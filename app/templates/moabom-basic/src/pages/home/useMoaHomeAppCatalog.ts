@@ -3,25 +3,24 @@ import { APPS, type App } from '../../data/Moa_apps';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../../types/moabomSystem';
 import { MY_APPS_DATA } from '../../data/Moa_mockData';
 import {
-  deleteGeneratedApp,
-  fetchGeneratedApps,
-  fetchSharedGeneratedApps,
-  updateGeneratedAppShare,
-} from '../../api/moabomAppsApi';
-import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
-import {
-  generatedAppLibraryId,
-  isGeneratedLibraryAppId,
-} from '../../apps/generatedAppLibrary';
-import {
   clearValidatedGeneratedLibraryStorage,
   commitSavedGeneratedAppToLibrary,
   reconcileGeneratedLibraryFromServer,
   resolveGeneratedLibraryScopeKey,
   type GeneratedLibraryHydration,
 } from '../../apps/generatedAppLibraryAuthority';
+import {
+  invalidateMoabomGeneratedAppLibraryCache,
+  loadMoabomGeneratedAppLibrary,
+} from '../../runtime/moabomGeneratedAppLibraryLoad';
 import { removeGeneratedAppFromLibraryCache } from '../../apps/generatedAppLibraryCache';
 import { subscribeGeneratedAppSaved } from '../../apps/generatedAppEvents';
+import { deleteGeneratedApp, updateGeneratedAppShare } from '../../api/moabomAppsApi';
+import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
+import {
+  generatedAppLibraryId,
+  isGeneratedLibraryAppId,
+} from '../../apps/generatedAppLibrary';
 import { pullMoabomServerState } from '../../utils/moabomPullServerState';
 import { useMoabomServerPullTriggers } from '../../utils/useMoabomServerPullTriggers';
 import { persistMainAppOrder } from '../../utils/moabomShellOrderSaveQueue';
@@ -93,6 +92,7 @@ export function useMoaHomeAppCatalog({
   const createdAppsRef = useRef<App[]>([]);
   const sharedGeneratedAppsRef = useRef<App[]>([]);
   const libraryGeneratedAppsRef = useRef<App[]>([]);
+  const libraryScopeRef = useRef<string | null>(null);
 
   const favoriteIdsRef = useRef<string[]>(
     loadJsonSanitizedIds(STORAGE_KEY_FAVORITES, MY_APPS_DATA.favorites.map(app => app.id)),
@@ -372,6 +372,10 @@ export function useMoaHomeAppCatalog({
     }
 
     const scopeKey = resolveGeneratedLibraryScopeKey(isLoggedIn, currentUser?.memberKey);
+    if (libraryScopeRef.current !== scopeKey) {
+      libraryScopeRef.current = scopeKey;
+      invalidateMoabomGeneratedAppLibraryCache();
+    }
     let cancelled = false;
 
     if (!isLoggedIn) {
@@ -383,12 +387,7 @@ export function useMoaHomeAppCatalog({
 
     void (async () => {
       try {
-        const [ownedItems, sharedItems] = isLoggedIn
-          ? await Promise.all([
-              fetchGeneratedApps(),
-              fetchSharedGeneratedApps(),
-            ])
-          : [[], await fetchSharedGeneratedApps()];
+        const { owned: ownedItems, shared: sharedItems } = await loadMoabomGeneratedAppLibrary(isLoggedIn);
         if (cancelled) {
           return;
         }
@@ -491,6 +490,7 @@ export function useMoaHomeAppCatalog({
     try {
       await deleteGeneratedApp(serverId);
       removeGeneratedAppFromLibraryCache(serverId);
+      invalidateMoabomGeneratedAppLibraryCache();
       removeGeneratedAppFromShell(appId);
     } catch {
       pushWarningToast(t('moa_shell.home.toast_delete_generated_failed'));

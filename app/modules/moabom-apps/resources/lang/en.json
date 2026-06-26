@@ -37,6 +37,7 @@
       "app_type_3d": "3D",
       "app_type_game": "Interaction",
       "app_type_dataviz": "Chart",
+      "app_type_website_link": "Website link",
       "fork_badge": "Fork",
       "visibility_private": "Private",
       "visibility_tenant": "Hospital",

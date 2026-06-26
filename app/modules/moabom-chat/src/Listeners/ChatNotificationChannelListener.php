@@ -39,6 +39,13 @@ final class ChatNotificationChannelListener implements HookListenerInterface
         }
 
         $conversationUuid = $this->chat->getPendingNotificationConversationUuid();
+        if ($conversationUuid && $this->chat->isConversationMutedForUser($notifiable, $conversationUuid)) {
+            return array_values(array_filter(
+                $channels,
+                static fn (string $channel) => $channel !== 'database',
+            ));
+        }
+
         if (! $conversationUuid || ! $this->chat->isFocusedOnConversation($notifiable, $conversationUuid)) {
             return $channels;
         }

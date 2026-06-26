@@ -21,6 +21,7 @@ class GeneratedAppPurgeService
     public function __construct(
         private readonly GeneratedAppHostingService $hostingService,
         private readonly GeneratedAppRepository $appRepository,
+        private readonly WebsiteLinkIconStorageService $websiteLinkIconStorage,
         private readonly TenantRegistry $tenantRegistry,
         private readonly TenantDatabaseConfigurator $databaseConfigurator,
     ) {}
@@ -38,6 +39,7 @@ class GeneratedAppPurgeService
      */
     public function purgeDatastore(GeneratedApp $app): void
     {
+        $this->websiteLinkIconStorage->purgeForApp($app);
         $this->hostingService->teardownHosted($app);
         $this->purgeTenantSessions($app);
         $this->purgeTenantLegacyStore($app);

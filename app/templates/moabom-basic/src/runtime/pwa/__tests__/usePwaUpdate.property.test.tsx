@@ -16,6 +16,7 @@ vi.mock('../../../i18n/moabomT', () => ({
     const translations: Record<string, string> = {
       'moa_shell.pwa.update.message': '플랫폼이 업데이트 되었습니다.',
       'moa_shell.pwa.update.cta': '다시 불러오기',
+      'moa_shell.pwa.update.loading': '다시 불러오는 중…',
     };
     return translations[key] ?? key;
   },
@@ -97,7 +98,7 @@ describe('P4 P-UpdateLifecycle', () => {
       configurable: true,
     });
 
-    const { unmount } = renderHook(() => useMoabomPwaUpdate());
+    const { result, unmount } = renderHook(() => useMoabomPwaUpdate());
 
     await act(async () => {
       window.dispatchEvent(new CustomEvent('moabom-pwa-update-available', { detail: { wb: { messageSkipWaiting } } }));
@@ -109,6 +110,8 @@ describe('P4 P-UpdateLifecycle', () => {
     const promise = action.onClick();
 
     expect(messageSkipWaiting).toHaveBeenCalledTimes(1);
+    expect(result.current.isApplyingUpdate).toBe(true);
+    expect(result.current.applyingLabel).toBe('다시 불러오는 중…');
     listeners.get('controllerchange')?.(new Event('controllerchange'));
     await promise;
 

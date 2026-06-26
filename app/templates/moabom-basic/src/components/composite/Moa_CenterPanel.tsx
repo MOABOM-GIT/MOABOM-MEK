@@ -10,6 +10,7 @@ import { ModeSelector } from './Moa_ModeSelector';
 import { SortableAppGrid } from './Moa_SortableAppGrid';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { resolveWindowTitle } from '../../i18n/resolveAppStrings';
+import { isLightShellGradient } from '../../utils/shellGradientContrast';
 import type { App } from '../../data/Moa_apps';
 import type { BoardShellMode, ShellErrorCode } from '../../utils/moabomShellRoutes';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
@@ -360,7 +361,9 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               data-taskbar-window-id={w.id}
               variant="taskbar"
               size={compactControls ? 'xs' : 'sm'}
-              className="shrink-0 whitespace-nowrap"
+              className={`shrink-0 whitespace-nowrap${
+                isLightShellGradient(w.gradient) ? ' moa-btn-taskbar--light' : ''
+              }`}
               style={{ background: w.gradient }}
             >
               <Div className="moa-taskbar-btn">

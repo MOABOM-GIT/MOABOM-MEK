@@ -68,19 +68,24 @@ class ShellAppUsageRepository implements ShellAppUsageRepositoryInterface
         }
     }
 
-    public function aggregateAppScores(CarbonInterface $since, int $openHitWeight): array
+    public function aggregateAppScores(?CarbonInterface $since, int $openHitWeight): array
     {
         if (! Schema::hasTable('moabom_shell_app_usage_buckets')) {
             return [];
         }
 
-        $rows = DB::table('moabom_shell_app_usage_buckets')
+        $query = DB::table('moabom_shell_app_usage_buckets')
             ->selectRaw(
                 'app_id, SUM(open_hits) AS open_hits, SUM(active_seconds) AS active_seconds, '
                 .'((SUM(open_hits) * ?) + SUM(active_seconds)) AS score',
                 [$openHitWeight],
-            )
-            ->where('bucket_hour', '>=', $since->copy()->utc())
+            );
+
+        if ($since !== null) {
+            $query->where('bucket_hour', '>=', $since->copy()->utc());
+        }
+
+        $rows = $query
             ->groupBy('app_id')
             ->orderByDesc('score')
             ->orderBy('app_id')

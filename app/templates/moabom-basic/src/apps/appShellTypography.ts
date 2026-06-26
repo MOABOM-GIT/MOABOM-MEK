@@ -34,8 +34,11 @@ export const MOA_APP_PANEL_ICON_CLASS = 'moa-app-panel-icon';
 /** 섹션 제목 (하단 여백 포함) */
 export const APP_SHELL_SECTION_TITLE_CLASS = 'text-base font-bold text-primary mb-3';
 
+/** `moa-group` 패널 공통 테두리 — 프로필 보기·마이페이지·앱 창 SSOT */
+export const MOA_GROUP_BORDER_CLASS = 'border border-gray-200 dark:border-gray-700';
+
 /** 앱 창 내부 섹션 패널 — 마이페이지와 동일한 심플 표면 SSOT */
-export const APP_SHELL_PANEL_CLASS = 'moa-group moa-app-panel';
+export const APP_SHELL_PANEL_CLASS = `moa-group moa-app-panel ${MOA_GROUP_BORDER_CLASS}`;
 
 /** 기본 패딩(p-5) 포함 — 대부분의 앱·마이페이지 섹션 루트 */
 export const APP_SHELL_PANEL_BODY_CLASS = `${APP_SHELL_PANEL_CLASS} p-5`;

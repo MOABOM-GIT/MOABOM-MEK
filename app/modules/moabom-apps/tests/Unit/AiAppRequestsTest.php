@@ -53,4 +53,16 @@ class AiAppRequestsTest extends ModuleTestCase
 
         $this->assertTrue($passes);
     }
+
+    public function test_store_generated_app_request_accepts_website_link_type(): void
+    {
+        $passes = Validator::make([
+            'title' => '네이버',
+            'app_type' => 'website_link',
+            'prompt' => '포털 사이트',
+            'html' => '<!DOCTYPE html><html><head></head><body><iframe src="https://www.naver.com"></iframe></body></html>',
+        ], (new StoreGeneratedAppRequest)->rules())->passes();
+
+        $this->assertTrue($passes);
+    }
 }

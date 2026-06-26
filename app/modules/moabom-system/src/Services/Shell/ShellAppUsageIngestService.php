@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Moabom\System\Services\Shell;
 
+use App\Extension\HookManager;
 use Carbon\CarbonInterface;
 use Modules\Moabom\System\Contracts\ShellAppUsageRepositoryInterface;
 
@@ -28,6 +29,10 @@ final class ShellAppUsageIngestService
         foreach (array_slice($events, 0, $maxEvents) as $event) {
             $appId = trim((string) ($event['app_id'] ?? ''));
             if (! $this->isValidAppId($appId)) {
+                continue;
+            }
+
+            if (! (bool) HookManager::applyFilters('moabom.shell_rankings.allow_app_usage_ingest', true, $appId)) {
                 continue;
             }
 

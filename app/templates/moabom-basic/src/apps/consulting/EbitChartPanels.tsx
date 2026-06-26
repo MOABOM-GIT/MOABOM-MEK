@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Div } from '../../components/basic/Div';
+import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 import { CONSULTING_COLORS } from './consultingTheme';
 import { ensureChartJsLoaded, type ChartConstructor } from './loadChartJs';
 import { formatKrwManwon, type ScenarioResult } from './simulationModel';
@@ -171,7 +172,9 @@ export function EbitChartPanels({ self, smart }: EbitChartPanelsProps) {
         <Div className="moa-consult-chart-canvas-wrap" aria-busy={status === 'loading'}>
           <canvas ref={barRef} aria-label="직접 운영과 스마트케어360 연도별 EBIT 막대 차트" />
           {status === 'loading' && (
-            <Div className="moa-consult-chart-status">차트 로딩 중…</Div>
+            <Div className="moa-consult-chart-status absolute inset-0 flex items-center justify-center bg-background/40">
+              <AppLoadingSpinner label="차트 로딩 중…" compact />
+            </Div>
           )}
         </Div>
       </Div>
@@ -180,7 +183,9 @@ export function EbitChartPanels({ self, smart }: EbitChartPanelsProps) {
         <Div className="moa-consult-chart-canvas-wrap" aria-busy={status === 'loading'}>
           <canvas ref={lineRef} aria-label="직접 운영과 스마트케어360 EBIT 연도별 라인 차트" />
           {status === 'loading' && (
-            <Div className="moa-consult-chart-status">차트 로딩 중…</Div>
+            <Div className="moa-consult-chart-status absolute inset-0 flex items-center justify-center bg-background/40">
+              <AppLoadingSpinner label="차트 로딩 중…" compact />
+            </Div>
           )}
         </Div>
       </Div>

@@ -26,4 +26,10 @@ return [
         'adjust' => '조정',
         'expire' => '만료',
     ],
+    'rewards' => [
+        'login_description' => '로그인 적립',
+        'post_write_description' => '글 작성 적립',
+        'comment_write_description' => '댓글 작성 적립',
+        'like_received_description' => '게시글 좋아요 적립',
+    ],
 ];

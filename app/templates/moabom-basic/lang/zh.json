@@ -39,6 +39,9 @@
     "messages_loading": "正在加载消息…",
     "messages_empty": "还没有消息。",
     "choose_conversation": "请在左侧选择会话。",
+    "choose_conversation_mobile": "请从顶部列表选择会话。",
+    "conversation_list": "列表",
+    "back_to_chat": "返回聊天",
     "unknown_sender": "用户",
     "message_placeholder": "输入消息。Enter 发送，Shift+Enter 换行",
     "send": "发送",
@@ -53,6 +56,10 @@
   },
   "moa_profile_actions": {
     "friend_add": "添加好友",
+    "friend_remove_confirm": "确定解除好友关系吗？",
+    "friend_request_cancel_confirm": "确定取消向 {name} 发送的好友请求吗？",
+    "friend_request_cancelled": "已取消向 {name} 发送的好友请求。",
+    "toast_confirm_yes": "是",
     "chat": "聊天",
     "chat_block_on": "已拒绝",
     "chat_block_off": "拒绝聊天",
@@ -333,6 +340,7 @@
       "tabs_updates": "更新",
       "empty_favorites": "暂无收藏应用",
       "empty_myapps": "暂无已注册应用",
+      "myapps_loading": "正在加载应用列表…",
       "empty_basic_apps": "暂无基础应用",
       "empty_user_apps": "暂无用户应用",
       "notice_view_all": "查看全部公告",
@@ -366,6 +374,7 @@
       "notifications_empty": "暂无通知",
       "notifications_loading": "正在加载通知…",
       "notifications_load_more": "加载更多",
+      "notifications_delete_all": "删除全部通知",
       "new_notification_received": "您有一条新通知",
       "notification_open": "打开",
       "notification_fallback_title": "通知",
@@ -468,7 +477,8 @@
     "pwa": {
       "update": {
         "message": "平台已更新。",
-        "cta": "重新载入"
+        "cta": "重新载入",
+        "loading": "正在重新载入…"
       }
     }
   },
@@ -488,6 +498,10 @@
     "consulting": {
       "name": "智能咨询",
       "description": "医院盈利能力模拟与电子合同"
+    },
+    "global-search": {
+      "name": "全局搜索",
+      "description": "搜索公告板与应用"
     },
     "hospital-info": {
       "name": "医院",
@@ -522,6 +536,21 @@
     "coming_soon_title": "即将上线",
     "coming_soon_description": "服务内容即将提供。"
   },
+  "moa_apps_search": {
+    "placeholder": "搜索应用与公告板",
+    "submit": "搜索",
+    "searching": "搜索中…",
+    "clear": "清除",
+    "hint": "可按应用名称或帖子标题搜索。",
+    "min_length": "请至少输入2个字符。",
+    "result_count": "“{query}” 的搜索结果 {count} 条",
+    "section_system_apps": "全部应用",
+    "section_generated_apps": "创作应用",
+    "section_boards": "公告板",
+    "empty_system_apps": "没有匹配的应用。",
+    "empty_generated_apps": "没有匹配的创作应用。",
+    "empty_boards": "没有匹配的帖子。"
+  },
   "moa_apps_ai": {
     "title": "AI 创建应用",
     "description": "描述想要的应用，即可生成 HTML Web 应用预览。",
@@ -537,7 +566,8 @@
       "general": "通用 Web 应用 (html)",
       "3d": "3D 画布 (three.js)",
       "game": "交互 (phaser.js)",
-      "dataviz": "图表生成 (chart.js)"
+      "dataviz": "图表生成 (chart.js)",
+      "website_link": "网站连接 (URL)"
     },
     "tiers": {
       "standard": "保存在本机",

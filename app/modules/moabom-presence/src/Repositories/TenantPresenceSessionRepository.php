@@ -13,12 +13,14 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
     /** @var list<string> */
     private const HEARTBEAT_COLUMNS = [
         'session_key',
+        'visitor_id',
         'user_id',
         'display_name',
         'status_text',
         'avatar',
         'is_authenticated',
         'client_form_factor',
+        'client_ip_masked',
         'last_seen_at',
     ];
 
@@ -47,10 +49,66 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
             throw new \InvalidArgumentException('heartbeat payload is missing session_key');
         }
 
+        $uniqueKey = isset($payload['visitor_id'])
+            && $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'visitor_id')
+            ? ['visitor_id' => $payload['visitor_id']]
+            : ['session_key' => $payload['session_key']];
+
+        $existing = TenantPresenceSession::query()->where($uniqueKey)->first();
+
+        if ($existing && $existing->user_id && empty($payload['user_id'])) {
+            return $existing;
+        }
+
         return TenantPresenceSession::query()->updateOrCreate(
-            ['session_key' => $payload['session_key']],
+            $uniqueKey,
             $payload,
         );
+    }
+
+    public function releaseAuthenticatedSessionForVisitor(string $visitorId, array $attributes): bool
+    {
+        if (! $this->isHeartbeatWritable()
+            || ! $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'visitor_id')) {
+            return false;
+        }
+
+        $trimmedVisitorId = trim($visitorId);
+        if ($trimmedVisitorId === '') {
+            return false;
+        }
+
+        $existing = TenantPresenceSession::query()->where('visitor_id', $trimmedVisitorId)->first();
+        if (! $existing || ! $existing->user_id) {
+            return false;
+        }
+
+        $payload = $this->tenantSchema->pickWritableColumns(
+            PresenceTenantSchema::TABLE_TENANT_SESSIONS,
+            array_merge($attributes, [
+                'user_id' => null,
+                'is_authenticated' => false,
+                'avatar' => null,
+            ]),
+            self::HEARTBEAT_COLUMNS,
+        );
+
+        $existing->update($payload);
+
+        return true;
+    }
+
+    public function deleteOtherSessionsForUser(int $userId, string $visitorId): int
+    {
+        if (! $this->tenantSchema->isTenantSessionsReady()
+            || ! $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'visitor_id')) {
+            return 0;
+        }
+
+        return TenantPresenceSession::query()
+            ->where('user_id', $userId)
+            ->where('visitor_id', '!=', $visitorId)
+            ->delete();
     }
 
     public function deleteBySessionKeys(array $sessionKeys): int
@@ -66,6 +124,35 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
 
         return TenantPresenceSession::query()
             ->whereIn('session_key', $keys)
+            ->delete();
+    }
+
+    public function purgeGuestShadowsForVisitor(string $visitorId, array $legacySessionKeys): int
+    {
+        if (! $this->tenantSchema->isTenantSessionsReady()
+            || ! $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'visitor_id')) {
+            return 0;
+        }
+
+        $trimmedVisitorId = trim($visitorId);
+        if ($trimmedVisitorId === '' && $legacySessionKeys === []) {
+            return 0;
+        }
+
+        $legacyKeys = array_values(array_unique(array_filter($legacySessionKeys)));
+
+        return TenantPresenceSession::query()
+            ->whereNull('user_id')
+            ->where(function ($query) use ($trimmedVisitorId, $legacyKeys): void {
+                if ($trimmedVisitorId !== '') {
+                    $query->where('visitor_id', $trimmedVisitorId);
+                }
+
+                if ($legacyKeys !== []) {
+                    $method = $trimmedVisitorId !== '' ? 'orWhereIn' : 'whereIn';
+                    $query->{$method}('session_key', $legacyKeys);
+                }
+            })
             ->delete();
     }
 

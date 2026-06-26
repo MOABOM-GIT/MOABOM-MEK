@@ -54,6 +54,9 @@ class WebSocketManager {
   private echo: Echo<'reverb'> | null = null;
   private subscriptions: Map<string, ReturnType<Echo<'reverb'>['channel']>> = new Map();
   private initialized = false;
+  private initializing = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastAuthFingerprint = '';
   private config: WebSocketConfig | null = null;
 
   /**
@@ -130,10 +133,45 @@ class WebSocketManager {
       });
   }
 
+  private getAuthFingerprint(): string {
+    return this.getBroadcastAuthHeaders().Authorization ?? '';
+  }
+
+  private getConnectionState(): string | null {
+    const pusher = (this.echo as { connector?: { pusher?: { connection?: { state?: string } } } } | null)
+      ?.connector?.pusher;
+    return pusher?.connection?.state ?? null;
+  }
+
   /**
    * 로그인·로그아웃 후 private/presence 구독이 새 토큰으로 재인증되도록 연결을 재수립합니다.
+   * 부트 시 authStateChange·subscribe 가 연속 호출되면 in-flight 연결을 끊지 않도록 debounce 합니다.
    */
   reconnectForAuthChange(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.performReconnectForAuthChange();
+    }, 120);
+  }
+
+  private performReconnectForAuthChange(): void {
+    const fingerprint = this.getAuthFingerprint();
+    const connectionState = this.getConnectionState();
+
+    if (
+      this.initialized
+      && fingerprint === this.lastAuthFingerprint
+      && (connectionState === 'connected' || connectionState === 'connecting')
+    ) {
+      return;
+    }
+
+    this.lastAuthFingerprint = fingerprint;
+
     if (!this.initialized) {
       this.initialize();
       return;
@@ -147,17 +185,19 @@ class WebSocketManager {
    * Echo 인스턴스를 초기화합니다.
    */
   initialize(): void {
-    if (this.initialized) {
+    if (this.initialized || this.initializing) {
       return;
     }
 
-    // 설정 확인
-    if (!this.config || !this.config.appKey) {
-      logger.warn('[WebSocketManager] WebSocket 설정이 없습니다. initTemplateApp에서 websocket 옵션을 전달해주세요.');
-      return;
-    }
+    this.initializing = true;
 
-    const { appKey, host = 'localhost', port = 80, scheme = 'https', authEndpoint = '/api/broadcasting/auth' } = this.config;
+    try {
+      if (!this.config || !this.config.appKey) {
+        logger.warn('[WebSocketManager] WebSocket 설정이 없습니다. initTemplateApp에서 websocket 옵션을 전달해주세요.');
+        return;
+      }
+
+      const { appKey, host = 'localhost', port = 80, scheme = 'https', authEndpoint = '/api/broadcasting/auth' } = this.config;
     const numPort = Number(port) || 80;
     const useTLS = scheme === 'https';
 
@@ -248,7 +288,11 @@ class WebSocketManager {
 
     window.Echo = this.echo;
     this.initialized = true;
+    this.lastAuthFingerprint = this.getAuthFingerprint();
     logger.log('[WebSocketManager] Echo 초기화 완료');
+    } finally {
+      this.initializing = false;
+    }
   }
 
   /**
@@ -369,6 +413,11 @@ class WebSocketManager {
    * 모든 구독을 해제하고 연결을 종료합니다.
    */
   disconnect(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     if (this.echo) {
       this.echo.disconnect();
       this.subscriptions.clear();

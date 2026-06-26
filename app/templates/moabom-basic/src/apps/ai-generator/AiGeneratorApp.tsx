@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   fetchVisibleGeneratedApp,
+  resolveWebsiteLink,
   storeGeneratedApp,
   updateGeneratedApp,
   type AiAppType,
@@ -13,6 +14,7 @@ import {
   subscribeCreateAppEditServerId,
 } from 'moabom-create-app-edit';
 import { notifyGeneratedAppSaved } from '../generatedAppEvents';
+import { generatedAppFrameSandbox } from '../generated/generatedAppPreviewUrl';
 import { Button } from '../../components/basic/Button';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 import { Div } from '../../components/basic/Div';
@@ -36,6 +38,15 @@ import { buildGenerationDraftView, resolveGenerationSource } from './aiGeneratio
 import { AiGenerationQueuePanel } from './AiGenerationQueuePanel';
 import { AiGenerationRecoveryBanner } from './AiGenerationRecoveryBanner';
 import { useAiAppStream } from './useAiAppStream';
+import {
+  buildWebsiteLinkStoredHtml,
+  isWebsiteLinkAppType,
+  normalizeWebsiteUrl,
+  readWebsiteIconFromMetadata,
+  readWebsitePointColorFromMetadata,
+  isWebsiteTitleIconFromMetadata,
+  readWebsiteUrlFromMetadata,
+} from './websiteLinkApp';
 
 const appTierOptions: Array<{ value: AppTier; labelKey: string }> = [
   { value: 'standard', labelKey: 'moa_apps_ai.tiers.standard' },
@@ -47,6 +58,7 @@ const appTypeOptions: Array<{ value: AiAppType; labelKey: string }> = [
   { value: '3d', labelKey: 'moa_apps_ai.types.3d' },
   { value: 'game', labelKey: 'moa_apps_ai.types.game' },
   { value: 'dataviz', labelKey: 'moa_apps_ai.types.dataviz' },
+  { value: 'website_link', labelKey: 'moa_apps_ai.types.website_link' },
 ];
 
 const modelOptions = [
@@ -78,7 +90,13 @@ export function AiGeneratorApp() {
   const [remixSourceId, setRemixSourceId] = useState<number | null>(null);
   const [loadedSourceApp, setLoadedSourceApp] = useState<StoredGeneratedApp | null>(null);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [resolvedIconUrl, setResolvedIconUrl] = useState('');
+  const [resolvedThemeColor, setResolvedThemeColor] = useState('');
+  const [resolvedIconFromTitle, setResolvedIconFromTitle] = useState(false);
+  const [isResolvingWebsite, setIsResolvingWebsite] = useState(false);
   const codePanelRef = useRef<HTMLDivElement>(null);
+  const isWebsiteLink = isWebsiteLinkAppType(appType);
 
   const {
     streamedRaw,
@@ -158,7 +176,11 @@ export function AiGeneratorApp() {
         setAppType(app.app_type ?? 'general');
         setAppTier(app.tier ?? 'standard');
         setModelId(app.model_id ?? 'claude-sonnet');
-        setDraftHtml(injectAiPreviewSafety(app.html ?? ''));
+        setWebsiteUrl(readWebsiteUrlFromMetadata(app.metadata));
+        setResolvedIconUrl(readWebsiteIconFromMetadata(app.metadata));
+        setResolvedThemeColor(readWebsitePointColorFromMetadata(app.metadata));
+        setResolvedIconFromTitle(isWebsiteTitleIconFromMetadata(app.metadata));
+        setDraftHtml(isWebsiteLinkAppType(app.app_type) ? '' : injectAiPreviewSafety(app.html ?? ''));
         setLoadedEditId(editingOwnApp ? app.id : null);
         setRemixSourceId(editingOwnApp ? null : app.id);
         setLoadedSourceApp(app);
@@ -194,9 +216,47 @@ export function AiGeneratorApp() {
   const codePreview = draftSource;
   const isEditingExisting = loadedEditId != null;
   const isRemixingExisting = remixSourceId != null;
-  const needsRecovery = !isStreaming && draftView.canContinue;
+  const needsRecovery = !isWebsiteLink && !isStreaming && draftView.canContinue;
+  const websitePreviewUrl = isWebsiteLink ? normalizeWebsiteUrl(websiteUrl) : '';
+  const canSaveWebsiteLink = Boolean(title.trim() && websiteUrl.trim() && prompt.trim());
+
+  const handleWebsiteLinkGenerate = async () => {
+    setError('');
+    setSavedMessage('');
+    setNotice('');
+
+    if (!websiteUrl.trim()) {
+      setError(t('moa_apps_ai.validation.url_required'));
+      return;
+    }
+
+    if (!prompt.trim()) {
+      setError(t('moa_apps_ai.validation.site_description_required'));
+      return;
+    }
+
+    setIsResolvingWebsite(true);
+    try {
+      const resolved = await resolveWebsiteLink(websiteUrl);
+      setWebsiteUrl(resolved.url);
+      setResolvedIconUrl(resolved.icon_url ?? '');
+      setResolvedThemeColor(resolved.theme_color ?? '');
+      setResolvedIconFromTitle(resolved.icon_from_title);
+      setDraftHtml('');
+      clearStreamedBuffer();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('moa_apps_ai.error_website_resolve'));
+    } finally {
+      setIsResolvingWebsite(false);
+    }
+  };
 
   const handleGenerate = async (continueGeneration = false) => {
+    if (isWebsiteLink) {
+      await handleWebsiteLinkGenerate();
+      return;
+    }
+
     setError('');
     setSavedMessage('');
     if (!continueGeneration) {
@@ -236,24 +296,65 @@ export function AiGeneratorApp() {
       return;
     }
 
-    const saveHtml = draftView.saveHtml;
-    if (!saveHtml) {
+    let resolvedSaveHtml = draftView.saveHtml;
+    let nextWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
+    let nextIconUrl = resolvedIconUrl;
+    let nextThemeColor = resolvedThemeColor;
+    let nextIconFromTitle = resolvedIconFromTitle;
+
+    if (!resolvedSaveHtml && isWebsiteLink) {
+      if (!websiteUrl.trim()) {
+        setError(t('moa_apps_ai.validation.url_required'));
+        return;
+      }
+      if (!prompt.trim()) {
+        setError(t('moa_apps_ai.validation.site_description_required'));
+        return;
+      }
+
+      setIsResolvingWebsite(true);
+      try {
+        const resolved = await resolveWebsiteLink(websiteUrl);
+        nextWebsiteUrl = resolved.url;
+        nextIconUrl = resolved.icon_url ?? '';
+        nextThemeColor = resolved.theme_color ?? '';
+        nextIconFromTitle = resolved.icon_from_title;
+        resolvedSaveHtml = buildWebsiteLinkStoredHtml(title.trim() || new URL(resolved.url).hostname);
+        setWebsiteUrl(resolved.url);
+        setResolvedIconUrl(resolved.icon_url ?? '');
+        setResolvedThemeColor(resolved.theme_color ?? '');
+        setResolvedIconFromTitle(resolved.icon_from_title);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('moa_apps_ai.error_website_resolve'));
+        return;
+      } finally {
+        setIsResolvingWebsite(false);
+      }
+    }
+
+    if (!resolvedSaveHtml) {
       setError(t('moa_apps_ai.validation.html_required'));
       return;
     }
 
-    const isDraftSave = draftView.completeness === 'partial';
+    const isDraftSave = !isWebsiteLink && draftView.completeness === 'partial';
     const payload = {
       title: title.trim(),
       app_type: appType,
-      tier: appTier,
-      model_id: modelId,
+      tier: isWebsiteLink ? 'standard' : appTier,
+      model_id: isWebsiteLink ? null : modelId,
       prompt: prompt.trim(),
-      html: saveHtml,
+      html: resolvedSaveHtml,
       metadata: {
         source: 'moabom-shell',
-        generation_status: draftView.completeness,
-        generation_complete: draftView.completeness === 'complete',
+        generation_status: isWebsiteLink ? 'complete' : draftView.completeness,
+        generation_complete: isWebsiteLink ? true : draftView.completeness === 'complete',
+        ...(isWebsiteLink ? {
+          website_url: nextWebsiteUrl,
+          icon_url: nextIconUrl || undefined,
+          theme_color: nextThemeColor || undefined,
+          icon_from_title: nextIconFromTitle || undefined,
+        } : {}),
         ...(sessionId ? { ai_generation_session_id: sessionId } : {}),
         ...(isEditingExisting ? { updated: true } : {}),
         ...(isRemixingExisting ? { remix_source_id: remixSourceId } : {}),
@@ -274,7 +375,7 @@ export function AiGeneratorApp() {
         notifyGeneratedAppSaved(saved);
         setSavedMessage(isDraftSave ? t('moa_apps_ai.recovery.save_draft_success') : t('moa_apps_ai.save_success'));
       }
-      setDraftHtml(saveHtml);
+      setDraftHtml(resolvedSaveHtml);
       clearStreamedBuffer();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('moa_apps_ai.error_save'));
@@ -299,7 +400,7 @@ export function AiGeneratorApp() {
         </Div>
       ) : null}
 
-      {appTier === 'hosted' && !isEditingExisting ? (
+      {appTier === 'hosted' && !isEditingExisting && !isWebsiteLink ? (
         <Div className={`rounded-2xl bg-indigo-500/10 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200 ${APP_SHELL_DESC_CLASS}`}>
           {t('moa_apps_ai.tier_hosted_provision_hint')}
         </Div>
@@ -330,16 +431,18 @@ export function AiGeneratorApp() {
         </Div>
       ) : null}
 
-      <AiGenerationRecoveryBanner
-        phase={generationPhase}
-        completeness={draftView.completeness}
-        appTier={appTier}
-        t={t}
-        onContinue={() => void handleGenerate(true)}
-        onSaveDraft={() => void handleSave()}
-        isSaving={isSaving}
-        isStreaming={isStreaming}
-      />
+      {!isWebsiteLink ? (
+        <AiGenerationRecoveryBanner
+          phase={generationPhase}
+          completeness={draftView.completeness}
+          appTier={appTier}
+          t={t}
+          onContinue={() => void handleGenerate(true)}
+          onSaveDraft={() => void handleSave()}
+          isSaving={isSaving}
+          isStreaming={isStreaming}
+        />
+      ) : null}
 
       <Div className={`${APP_STACK_GRID_CLASS} grid min-h-[420px] flex-1 grid-cols-1 @xl:grid-cols-[380px_minmax(0,1fr)]`}>
         <Div className={`${APP_SHELL_PANEL_STACK_CLASS} h-full min-h-0`}>
@@ -360,37 +463,64 @@ export function AiGeneratorApp() {
                 className={APP_SHELL_SELECT_TRIGGER_CLASS}
                 value={appType}
                 options={appTypeOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
-                onChange={(event) => setAppType(event.target.value as AiAppType)}
+                onChange={(event) => {
+                  const nextType = event.target.value as AiAppType;
+                  setAppType(nextType);
+                  if (isWebsiteLinkAppType(nextType)) {
+                    setAppTier('standard');
+                  }
+                }}
               />
             </Label>
-            <Label className="block">
-              <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_tier')}</Div>
-              <Select
-                className={APP_SHELL_SELECT_TRIGGER_CLASS}
-                value={appTier}
-                options={appTierOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
-                onChange={(event) => setAppTier(event.target.value as AppTier)}
-                disabled={isEditingExisting}
-              />
-            </Label>
-            <Label className="block">
-              <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_model')}</Div>
-              <Select
-                className={APP_SHELL_SELECT_TRIGGER_CLASS}
-                value={modelId}
-                options={modelOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
-                onChange={(event) => setModelId(String(event.target.value))}
-              />
-            </Label>
+            {isWebsiteLink ? (
+              <Label className="block">
+                <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_url')}</Div>
+                <Input
+                  className={inputClassName}
+                  value={websiteUrl}
+                  onChange={(event) => setWebsiteUrl(event.target.value)}
+                  placeholder={t('moa_apps_ai.field_url_placeholder')}
+                  inputMode="url"
+                />
+              </Label>
+            ) : (
+              <>
+                <Label className="block">
+                  <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_tier')}</Div>
+                  <Select
+                    className={APP_SHELL_SELECT_TRIGGER_CLASS}
+                    value={appTier}
+                    options={appTierOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
+                    onChange={(event) => setAppTier(event.target.value as AppTier)}
+                    disabled={isEditingExisting}
+                  />
+                </Label>
+                <Label className="block">
+                  <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_model')}</Div>
+                  <Select
+                    className={APP_SHELL_SELECT_TRIGGER_CLASS}
+                    value={modelId}
+                    options={modelOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
+                    onChange={(event) => setModelId(String(event.target.value))}
+                  />
+                </Label>
+              </>
+            )}
           </Div>
 
           <Label className="flex min-h-[180px] flex-1 flex-col">
-            <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_prompt')}</Div>
+            <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>
+              {isWebsiteLink ? t('moa_apps_ai.field_site_description') : t('moa_apps_ai.field_prompt')}
+            </Div>
             <Textarea
               className={`${APP_SHELL_TEXTAREA_CLASS} min-h-[180px] flex-1`}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder={previewHtml ? t('moa_apps_ai.field_modify_placeholder') : t('moa_apps_ai.field_prompt_placeholder')}
+              placeholder={
+                isWebsiteLink
+                  ? t('moa_apps_ai.field_site_description_placeholder')
+                  : (previewHtml ? t('moa_apps_ai.field_modify_placeholder') : t('moa_apps_ai.field_prompt_placeholder'))
+              }
             />
           </Label>
 
@@ -407,18 +537,20 @@ export function AiGeneratorApp() {
           <Div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant={previewHtml ? 'secondary' : 'primary'}
+              variant={previewHtml || websitePreviewUrl ? 'secondary' : 'primary'}
               onClick={() => void handleGenerate(false)}
-              disabled={isStreaming}
+              disabled={isStreaming || isResolvingWebsite}
             >
-              {isQueued ? t('moa_apps_ai.queue.waiting_button') : isStreaming ? t('moa_apps_ai.generating') : previewHtml ? t('moa_apps_ai.modify') : t('moa_apps_ai.generate')}
+              {isWebsiteLink
+                ? (isResolvingWebsite ? t('moa_apps_ai.website_resolving') : t('moa_apps_ai.generate'))
+                : (isQueued ? t('moa_apps_ai.queue.waiting_button') : isStreaming ? t('moa_apps_ai.generating') : previewHtml ? t('moa_apps_ai.modify') : t('moa_apps_ai.generate'))}
             </Button>
-            {isStreaming ? (
+            {!isWebsiteLink && isStreaming ? (
               <Button type="button" variant="secondary" onClick={() => void stopGeneration()}>
                 {isQueued ? t('moa_apps_ai.queue.cancel') : t('moa_apps_ai.stop_generate')}
               </Button>
             ) : null}
-            {needsRecovery ? (
+            {!isWebsiteLink && needsRecovery ? (
               <Button type="button" variant="secondary" onClick={() => void handleGenerate(true)} disabled={isStreaming}>
                 {t('moa_apps_ai.continue_generate')}
               </Button>
@@ -427,9 +559,9 @@ export function AiGeneratorApp() {
               type="button"
               variant="primary"
               onClick={() => void handleSave()}
-              disabled={isSaving || !draftView.canSave || isStreaming}
+              disabled={isSaving || isResolvingWebsite || (isWebsiteLink ? !canSaveWebsiteLink : !draftView.canSave) || isStreaming}
             >
-              {isSaving
+              {isSaving || isResolvingWebsite
                 ? t('moa_apps_ai.saving')
                 : draftView.completeness === 'partial'
                   ? t('moa_apps_ai.recovery.save_draft')
@@ -443,7 +575,7 @@ export function AiGeneratorApp() {
         </Div>
 
         <Div className={`${APP_SHELL_PANEL_STACK_CLASS} min-h-0 overflow-hidden relative`}>
-          {queueState ? (
+          {!isWebsiteLink && queueState ? (
             <AiGenerationQueuePanel
               queue={queueState}
               t={t}
@@ -451,7 +583,7 @@ export function AiGeneratorApp() {
             />
           ) : null}
 
-          {(isStreaming || codePreview) ? (
+          {!isWebsiteLink && (isStreaming || codePreview) ? (
             <Div className="min-h-0 shrink-0">
               <Div className={`mb-2 flex items-center gap-2 ${APP_SHELL_BODY_CLASS}`}>
                 <Icon name={isStreaming ? 'spinner' : 'code-branch'} className={isStreaming ? 'animate-spin text-faint' : 'text-faint'} />
@@ -475,7 +607,14 @@ export function AiGeneratorApp() {
             </Div>
           ) : null}
 
-          {previewHtml ? (
+          {isWebsiteLink && websitePreviewUrl ? (
+            <iframe
+              title={title.trim() || t('moa_apps_ai.preview_title')}
+              className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
+              src={websitePreviewUrl}
+              sandbox={generatedAppFrameSandbox(websitePreviewUrl, 'website_link')}
+            />
+          ) : previewHtml ? (
             <iframe
               title={t('moa_apps_ai.preview_title')}
               className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
@@ -486,7 +625,11 @@ export function AiGeneratorApp() {
             <Div className="flex h-full min-h-[280px] flex-1 flex-col items-center justify-center gap-3 text-center">
               <Icon name="file-alt" className="text-4xl text-faint" />
               <Div className={APP_SHELL_BODY_CLASS}>{t('moa_apps_ai.preview_empty_title')}</Div>
-              <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>{t('moa_apps_ai.preview_empty_description')}</Div>
+              <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>
+                {isWebsiteLink
+                  ? t('moa_apps_ai.preview_empty_description_website')
+                  : t('moa_apps_ai.preview_empty_description')}
+              </Div>
             </Div>
           )}
         </Div>

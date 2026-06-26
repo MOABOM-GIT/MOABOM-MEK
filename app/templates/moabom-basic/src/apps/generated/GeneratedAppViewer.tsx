@@ -7,7 +7,7 @@ import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
 import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
-import { resolveGeneratedAppPreviewUrl, generatedAppPreviewSandbox } from './generatedAppPreviewUrl';
+import { resolveGeneratedAppFrameUrl, generatedAppFrameSandbox } from './generatedAppPreviewUrl';
 
 export interface GeneratedAppViewerProps {
   serverId: number;
@@ -24,7 +24,7 @@ export function GeneratedAppViewer({
 }: GeneratedAppViewerProps) {
   const { t } = useMoabomShellT();
   const [app, setApp] = useState<StoredGeneratedApp | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [frameUrl, setFrameUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +56,7 @@ export function GeneratedAppViewer({
     setError('');
     setIsMenuOpen(false);
     setApp(null);
-    setPreviewUrl(null);
+    setFrameUrl(null);
     setTitle('');
 
     void (async () => {
@@ -67,7 +67,7 @@ export function GeneratedAppViewer({
         }
         setApp(loaded);
         setTitle(loaded.title?.trim() || `App #${loaded.id}`);
-        setPreviewUrl(resolveGeneratedAppPreviewUrl(loaded));
+        setFrameUrl(resolveGeneratedAppFrameUrl(loaded));
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t('moa_apps_ai.viewer_error'));
@@ -130,7 +130,7 @@ export function GeneratedAppViewer({
     );
   }
 
-  if (!previewUrl) {
+  if (!frameUrl) {
     return (
       <Div className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} flex min-h-[320px] items-center justify-center`}>
         <Div className={`${APP_SHELL_PANEL_BODY_CLASS} max-w-md text-center`}>
@@ -222,8 +222,8 @@ export function GeneratedAppViewer({
       <iframe
         title={title || t('moa_apps_ai.preview_title')}
         className="generated-app-preview-frame"
-        src={previewUrl}
-        sandbox={generatedAppPreviewSandbox(previewUrl)}
+        src={frameUrl}
+        sandbox={generatedAppFrameSandbox(frameUrl, app?.app_type)}
       />
     </Div>
   );

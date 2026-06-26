@@ -91,6 +91,49 @@ function writeShellBootData(data: MoabomShellBootData | null): void {
     }
 }
 
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
+}
+
+const COLD_START_RETRY_STATUSES = new Set([502, 503, 504]);
+const COLD_START_MAX_ATTEMPTS = 5;
+
+async function fetchShellBootWithColdStartRetry(
+    fetchImpl: typeof fetch,
+): Promise<Response> {
+    let lastResponse: Response | null = null;
+
+    for (let attempt = 1; attempt <= COLD_START_MAX_ATTEMPTS; attempt++) {
+        try {
+            const response = await fetchImpl(buildShellBootUrl(), {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            lastResponse = response;
+
+            if (response.ok || !COLD_START_RETRY_STATUSES.has(response.status)) {
+                return response;
+            }
+        } catch {
+            if (attempt >= COLD_START_MAX_ATTEMPTS) {
+                throw new Error('shell-boot fetch failed after retries');
+            }
+        }
+
+        if (attempt < COLD_START_MAX_ATTEMPTS) {
+            await delay(Math.min(1000 * 2 ** (attempt - 1), 8000));
+        }
+    }
+
+    if (lastResponse) {
+        return lastResponse;
+    }
+
+    throw new Error('shell-boot fetch failed');
+}
+
 function buildShellBootUrl(): string {
     const url = new URL(SHELL_BOOT_API, typeof location !== 'undefined' ? location.href : 'http://localhost');
     url.searchParams.set('template', TEMPLATE_ID);
@@ -177,10 +220,7 @@ export async function ensureMoabomShellBootLoaded(
 
     shellBootLoadPromise = (async () => {
         try {
-            const response = await fetchImpl(buildShellBootUrl(), {
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            });
+            const response = await fetchShellBootWithColdStartRetry(fetchImpl);
             const payload = (await response.json()) as ShellBootApiResponse;
             if (!response.ok || !payload.success) {
                 return null;

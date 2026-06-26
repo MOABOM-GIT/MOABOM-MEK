@@ -5,7 +5,7 @@
         "ko": "Moabom 시스템",
         "en": "Moabom System"
     },
-    "version": "0.8.5",
+    "version": "0.8.10",
     "license": "MIT",
     "description": {
         "ko": "Moabom SaaS 플랫폼 코어. Host별 DB·GCS 격리, 병원 생성·관리, 병원·마이페이지 설정, 홈 배경, shell-boot 등 공개 부트 API.",

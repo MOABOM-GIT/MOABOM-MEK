@@ -53,8 +53,14 @@ flowchart LR
 | `lib/gcp-env.sh` | GCP project·region·Run·SQL·시크릿 매핑 SSOT |
 | `lib/image-tag.sh` | `cloudbuild-v3.yaml` `_IMAGE_TAG` 읽기 |
 | `lib/cloud-run-artisan-job.sh` | Cloud Run Job 래퍼 (`*` 인자 거부 RF-12) |
+| `lib/layout-sync-hash.sh` | layout JSON·lang-pack 지문 → 조건부 layout sync |
 | `ssot/moabom-system.config.php` | → `modules/moabom-system/config/` 복사 원본 |
 | `ssot/decomposition-api-compat.json` | 분리 모듈 API compat 계약 |
+| `lib/post-deploy-migration-hash.sh` | migration·platform schema 지문 → auto migrate |
+| `lib/content-manifest-hash.sh` | manifest 해시 공용 |
+| `ssot/layout-sync-manifest.sha256` | 마지막 layout sync 입력 지문 |
+| `ssot/post-deploy-manifest.sha256` | 마지막 post-deploy migration·Phase E 지문 |
+| `seed-post-deploy-manifests.sh` | manifest 시드 (배포 후 성공 시 자동 갱신) |
 
 ## 검증 게이트 (`check-before-cloud-build.sh` 가 호출)
 
@@ -64,7 +70,7 @@ flowchart LR
 | `check-g7-core-guard-regression.sh` | 코어 가드 주입 회귀 |
 | `check-bundled-detach-regression.sh` | 활성 경로 `_bundled` 참조 0 |
 | `check-bundle-budget.sh` | moabom-basic 번들 크기 (repo dist 있을 때) |
-| `check-deploy-recurring-guards.sh` | RF-01~17 정적 가드 |
+| `check-deploy-recurring-guards.sh` | RF-01~23 정적 가드 |
 | `check-saas-runtime-invariants.sh` | SaaS·분리 모듈·entrypoint 배선 (대형) |
 | `saas-hospitals-admin-gate.sh` | 병원 admin 레이아웃·i18n |
 | `check-moabom-admin-basic-ssot.sh` | admin 템플릿 SSOT |
@@ -78,6 +84,29 @@ flowchart LR
 | `smoke-after-deploy.sh` | HTTP 스모크 (shell-boot, weather, 분리 모듈) |
 | `run-layout-sync-job.sh` | template·module layout DB sync Job |
 | `run-saas-phase-e-post-deploy.sh` | Phase E (platform-migrate·permissions) |
+
+## 배포 속도 (RF-23)
+
+| 항목 | 동작 |
+|------|------|
+| migrate | 기본 `auto` — migration 파일 변경 모듈만 Job |
+| layout sync | manifest 해시 변경 시에만 ~9 Job |
+| Phase E | platform migration·normalize 소스 변경 시에만 |
+| Cloud Build check | 로컬 check 통과 시 inner step 생략 |
+| Job boot | `MOABOM_CRJ_BOOT_SLEEP` 기본 10s |
+| env-only 스모크 | `MOABOM_SMOKE_PROFILE=light` |
+
+강제: `MOABOM_FORCE_POST_DEPLOY_MIGRATE=1` · `MOABOM_FORCE_LAYOUT_SYNC=1` · `MOABOM_FORCE_PHASE_E=1`
+
+## min=0 콜드스타트 (RF-24)
+
+| 항목 | 역할 |
+|------|------|
+| `MOABOM_ENTRYPOINT_DEFERRED_SYNC=false` | 운영 — 무거운 sync 는 배포 Job 만 |
+| `cloudrun-deferred-sync.sh` | 로컬/docker — supervisord 백그라운드 sync |
+| `/public/ready` | startup probe (DB ping) |
+| `moabomShellBoot.ts` | 502/503 shell-boot 자동 재시도 |
+| `setup-cloud-scheduler-warmup.sh` | 5분마다 `/ready` 워밍 |
 
 ## 이미지에 COPY되는 SaaS 헬퍼 (`Dockerfile`)
 

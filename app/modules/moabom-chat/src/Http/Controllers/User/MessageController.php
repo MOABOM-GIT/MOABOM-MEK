@@ -67,6 +67,38 @@ final class MessageController extends AuthBaseController
         }
     }
 
+    public function destroy(string $messageUuid): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return ResponseHelper::unauthorized('auth.unauthenticated');
+        }
+
+        $this->logApiUsage('moabom-chat.user.messages.destroy');
+
+        try {
+            return ResponseHelper::moduleSuccess(
+                'moabom-chat',
+                'messages.message_deleted',
+                $this->chat->deleteMessage($user, $messageUuid),
+            );
+        } catch (\InvalidArgumentException $e) {
+            $reason = $e->getMessage();
+            $status = match ($reason) {
+                'message_not_found', 'conversation_not_found' => 404,
+                'message_delete_forbidden' => 403,
+                default => 422,
+            };
+
+            return ResponseHelper::moduleError(
+                'moabom-chat',
+                'messages.'.$reason,
+                $status,
+                ['reason' => $reason],
+            );
+        }
+    }
+
     private function domainError(\InvalidArgumentException $e): JsonResponse
     {
         $reason = $e->getMessage();

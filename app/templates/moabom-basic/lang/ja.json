@@ -39,6 +39,9 @@
     "messages_loading": "メッセージを読み込み中…",
     "messages_empty": "まだメッセージがありません。",
     "choose_conversation": "左側で会話相手を選択してください。",
+    "choose_conversation_mobile": "上部の一覧から会話相手を選択してください。",
+    "conversation_list": "一覧",
+    "back_to_chat": "会話へ",
     "unknown_sender": "ユーザー",
     "message_placeholder": "メッセージを入力。Enterで送信、Shift+Enterで改行",
     "send": "送信",
@@ -53,6 +56,10 @@
   },
   "moa_profile_actions": {
     "friend_add": "友だち追加",
+    "friend_remove_confirm": "友だちを解除しますか？",
+    "friend_request_cancel_confirm": "{name}への友だちリクエストを取り消しますか？",
+    "friend_request_cancelled": "{name}への友だちリクエストを取り消しました。",
+    "toast_confirm_yes": "はい",
     "chat": "チャット",
     "chat_block_on": "拒否中",
     "chat_block_off": "会話拒否",
@@ -333,6 +340,7 @@
       "tabs_updates": "アップデート",
       "empty_favorites": "お気に入りのアプリがありません",
       "empty_myapps": "登録されたアプリがありません",
+      "myapps_loading": "アプリ一覧を読み込み中…",
       "empty_basic_apps": "基本アプリがありません",
       "empty_user_apps": "ユーザーアプリがありません",
       "notice_view_all": "お知らせをすべて見る",
@@ -366,6 +374,7 @@
       "notifications_empty": "通知はありません",
       "notifications_loading": "通知を読み込み中…",
       "notifications_load_more": "もっと見る",
+      "notifications_delete_all": "通知をすべて削除",
       "new_notification_received": "新しい通知が届きました",
       "notification_open": "開く",
       "notification_fallback_title": "通知",
@@ -468,7 +477,8 @@
     "pwa": {
       "update": {
         "message": "プラットフォームが更新されました。",
-        "cta": "再読み込み"
+        "cta": "再読み込み",
+        "loading": "再読み込み中…"
       }
     }
   },
@@ -488,6 +498,10 @@
     "consulting": {
       "name": "スマートコンサルティング",
       "description": "病院収益性シミュレーション・電子契約"
+    },
+    "global-search": {
+      "name": "全体検索",
+      "description": "掲示板とアプリ検索"
     },
     "hospital-info": {
       "name": "病院",
@@ -522,6 +536,21 @@
     "coming_soon_title": "準備中です",
     "coming_soon_description": "サービスコンテンツは近日公開予定です。"
   },
+  "moa_apps_search": {
+    "placeholder": "アプリ・掲示板を検索",
+    "submit": "検索",
+    "searching": "検索中…",
+    "clear": "クリア",
+    "hint": "アプリ名や投稿タイトルで検索できます。",
+    "min_length": "検索語は2文字以上入力してください。",
+    "result_count": "「{query}」の検索結果 {count}件",
+    "section_system_apps": "全体アプリ",
+    "section_generated_apps": "制作アプリ",
+    "section_boards": "掲示板",
+    "empty_system_apps": "一致するアプリがありません。",
+    "empty_generated_apps": "一致する制作アプリがありません。",
+    "empty_boards": "一致する投稿がありません。"
+  },
   "moa_apps_ai": {
     "title": "AIでアプリを作る",
     "description": "作りたいアプリを説明するとHTML Webアプリのプレビューを生成します。",
@@ -537,7 +566,8 @@
       "general": "一般Webアプリ (html)",
       "3d": "3Dキャンバス (three.js)",
       "game": "インタラクション (phaser.js)",
-      "dataviz": "チャート作成 (chart.js)"
+      "dataviz": "チャート作成 (chart.js)",
+      "website_link": "ウェブサイト連携 (URL)"
     },
     "tiers": {
       "standard": "端末に保存",

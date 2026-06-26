@@ -62,9 +62,14 @@ final class EligibilityController extends AuthBaseController
             ->limit(20)
             ->get()
             ->map(function (User $target) use ($user): array {
+                $nickname = trim((string) $target->nickname);
+                $realName = trim((string) $target->name);
+
                 return [
                     'user_uuid' => $target->uuid,
-                    'display_name' => (string) ($target->nickname ?: $target->name),
+                    'display_name' => $nickname !== '' ? $nickname : $realName,
+                    'nickname' => $nickname !== '' ? $nickname : $realName,
+                    'real_name' => $realName,
                     'avatar' => $target->getAvatarUrl(),
                     'eligibility' => $this->chat->eligibility($user, $target),
                 ];

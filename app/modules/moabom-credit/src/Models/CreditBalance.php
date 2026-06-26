@@ -16,12 +16,14 @@ class CreditBalance extends Model
     protected $fillable = [
         'user_id',
         'balance',
+        'ranking_points',
     ];
 
     protected function casts(): array
     {
         return [
             'balance' => 'integer',
+            'ranking_points' => 'integer',
         ];
     }
 

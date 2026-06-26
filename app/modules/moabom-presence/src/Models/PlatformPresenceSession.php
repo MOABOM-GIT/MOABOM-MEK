@@ -12,6 +12,7 @@ class PlatformPresenceSession extends Model
 
     protected $fillable = [
         'session_key',
+        'visitor_id',
         'tenant_slug',
         'user_uuid',
         'display_name',

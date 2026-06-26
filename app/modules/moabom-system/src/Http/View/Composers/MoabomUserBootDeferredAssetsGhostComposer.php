@@ -7,12 +7,16 @@ namespace Modules\Moabom\System\Http\View\Composers;
 use App\Extension\ModuleManager;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Modules\Moabom\System\Support\MoabomExtensionDeferredRegistrySupport;
 
 /**
  * moabom-basic 홈(등 설정 경로) 최초 페인트에서 지연 확장 에셋 맵을 최소화합니다.
  *
  * `MoabomUserTemplateComposer` 등 서비스 바인딩으로 정제된 `deferred*` 맵을 기준으로 동작한다.
  * `deferredModuleAssets` / `deferredPluginAssets` 만 덮어씁니다.
+ *
+ * 코어 Blade가 deferred 맵을 G7Config에 주입하지 않으므로, **모든 moabom-basic 요청**에서
+ * `extensionDeferredRegistry`를 appConfig에 병합해 직접 진입(/shop 등)·Ghost 복원이 동일하게 동작한다.
  */
 final class MoabomUserBootDeferredAssetsGhostComposer
 {
@@ -29,30 +33,32 @@ final class MoabomUserBootDeferredAssetsGhostComposer
             return;
         }
 
-        $request = request();
-        if (! $request instanceof Request) {
-            return;
-        }
-
-        $paths = config('moabom-system.boot_asset_ghost.strip_deferred_on_request_paths', ['']);
-        if (! is_array($paths) || $paths === []) {
-            return;
-        }
-
-        if (! $this->requestMatchesGhostPaths($request, $paths)) {
-            $this->mergeExtensionEpochOnly($view);
-
-            return;
-        }
-
         $deferredModules = $view->offsetGet('deferredModuleAssets');
         $deferredPlugins = $view->offsetGet('deferredPluginAssets');
         $fullModules = is_array($deferredModules) ? $deferredModules : [];
         $fullPlugins = is_array($deferredPlugins) ? $deferredPlugins : [];
 
-        // Ghost 표면은 비우되, 라우트 전환 후 G7 순정 reload 액션이 URL을 찾을 수 있도록
-        // 전체 맵을 appConfig.moabom.extensionDeferredRegistry 에 보존한다(코어 Blade 변경 없음).
-        $this->mergeExtensionRegistryIntoAppConfig($view, $fullModules, $fullPlugins);
+        MoabomExtensionDeferredRegistrySupport::mergeRegistryIntoAppConfig($view, $fullModules, $fullPlugins);
+
+        $request = request();
+        if (! $request instanceof Request) {
+            MoabomExtensionDeferredRegistrySupport::mergeExtensionEpochIntoAppConfig($view);
+
+            return;
+        }
+
+        $paths = config('moabom-system.boot_asset_ghost.strip_deferred_on_request_paths', ['']);
+        if (! is_array($paths) || $paths === []) {
+            MoabomExtensionDeferredRegistrySupport::mergeExtensionEpochIntoAppConfig($view);
+
+            return;
+        }
+
+        if (! $this->requestMatchesGhostPaths($request, $paths)) {
+            MoabomExtensionDeferredRegistrySupport::mergeExtensionEpochIntoAppConfig($view);
+
+            return;
+        }
 
         if ($fullModules !== []) {
             $allowModules = config('moabom-system.boot_asset_ghost.home_shell_deferred_module_allowlist', []);
@@ -66,36 +72,7 @@ final class MoabomUserBootDeferredAssetsGhostComposer
             $view->with('deferredPluginAssets', $this->filterDeferredMap($fullPlugins, $allowPlugins));
         }
 
-        $this->mergeExtensionEpochOnly($view);
-    }
-
-    /**
-     * @param  array<string, mixed>  $fullModules
-     * @param  array<string, mixed>  $fullPlugins
-     */
-    private function mergeExtensionRegistryIntoAppConfig(View $view, array $fullModules, array $fullPlugins): void
-    {
-        $appConfig = $view->offsetGet('appConfig');
-        $appConfig = is_array($appConfig) ? $appConfig : [];
-        $moabom = isset($appConfig['moabom']) && is_array($appConfig['moabom']) ? $appConfig['moabom'] : [];
-
-        $moabom['extensionDeferredRegistry'] = [
-            'modules' => $fullModules,
-            'plugins' => $fullPlugins,
-        ];
-
-        $appConfig['moabom'] = $moabom;
-        $view->with('appConfig', $appConfig);
-    }
-
-    private function mergeExtensionEpochOnly(View $view): void
-    {
-        $appConfig = $view->offsetGet('appConfig');
-        $appConfig = is_array($appConfig) ? $appConfig : [];
-        $moabom = isset($appConfig['moabom']) && is_array($appConfig['moabom']) ? $appConfig['moabom'] : [];
-        $moabom['extension_epoch'] = ModuleManager::getExtensionCacheVersion();
-        $appConfig['moabom'] = $moabom;
-        $view->with('appConfig', $appConfig);
+        MoabomExtensionDeferredRegistrySupport::mergeExtensionEpochIntoAppConfig($view);
     }
 
     /**

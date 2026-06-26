@@ -1,4 +1,5 @@
 import { hasShellAccessToken } from '../api/moabomShellAccess';
+import { isMoabomWebSocketConnected } from './moabomWebSocketConnection';
 
 export const MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT = 'moabom-websocket-auth-synced';
 
@@ -26,31 +27,73 @@ function getAuthManager(): {
   }).G7Core?.AuthManager?.getInstance?.() ?? null;
 }
 
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSyncedAuth: boolean | null = null;
+
+function dispatchAuthSyncedEvent(): void {
+  window.dispatchEvent(new CustomEvent(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT));
+}
+
+function dispatchAuthSyncedWhenReady(shouldConnect: boolean): void {
+  if (!shouldConnect) {
+    dispatchAuthSyncedEvent();
+    return;
+  }
+
+  const waitForConnected = (attempt = 0) => {
+    if (isMoabomWebSocketConnected()) {
+      dispatchAuthSyncedEvent();
+      return;
+    }
+    if (attempt >= 50) {
+      return;
+    }
+    window.setTimeout(() => waitForConnected(attempt + 1), 100);
+  };
+
+  waitForConnected();
+}
+
 /**
  * 로그인·로그아웃 시 Echo/Pusher가 최신 Sanctum 토큰으로 재인증하도록 동기화합니다.
  * presence·알림 private 채널 403 방지 SSOT.
  */
 export function syncMoabomWebSocketAuth(isAuthenticated?: boolean): void {
-  const manager = getWebSocketManager();
-  if (!manager) {
-    return;
-  }
-
   const shouldConnect = isAuthenticated ?? hasShellAccessToken();
-  if (!shouldConnect) {
-    manager.disconnect?.();
-    window.dispatchEvent(new CustomEvent(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT));
-    return;
+
+  if (syncTimer !== null) {
+    clearTimeout(syncTimer);
   }
 
-  if (typeof manager.reconnectForAuthChange === 'function') {
-    manager.reconnectForAuthChange();
-  } else {
-    manager.disconnect?.();
-    manager.initialize?.();
-  }
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
 
-  window.dispatchEvent(new CustomEvent(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT));
+    if (lastSyncedAuth === shouldConnect) {
+      return;
+    }
+    lastSyncedAuth = shouldConnect;
+
+    const manager = getWebSocketManager();
+    if (!manager) {
+      dispatchAuthSyncedWhenReady(shouldConnect);
+      return;
+    }
+
+    if (!shouldConnect) {
+      manager.disconnect?.();
+      dispatchAuthSyncedWhenReady(false);
+      return;
+    }
+
+    if (typeof manager.reconnectForAuthChange === 'function') {
+      manager.reconnectForAuthChange();
+    } else {
+      manager.disconnect?.();
+      manager.initialize?.();
+    }
+
+    dispatchAuthSyncedWhenReady(true);
+  }, 80);
 }
 
 /**

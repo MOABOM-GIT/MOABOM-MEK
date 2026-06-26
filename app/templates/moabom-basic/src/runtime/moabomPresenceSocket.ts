@@ -1,77 +1,85 @@
-type PresenceMember = {
+import { handleShellPresenceRevisionEvent } from '../shell/ShellRealtimeStore';
+
+export type PresenceRevisionPayload = {
+  tenant_slug: string;
+  revision: number;
+  reason?: string;
+};
+
+type G7WebSocketApi = {
+  subscribe?: (
+    channel: string,
+    event: string,
+    callback: (data: unknown) => void,
+    options?: { channelType?: 'public' | 'private' | 'presence' },
+  ) => string;
+  unsubscribe?: (subscriptionKey: string) => void;
+};
+
+function getWebSocketApi(): G7WebSocketApi | null {
+  return (window as { G7Core?: { websocket?: G7WebSocketApi } }).G7Core?.websocket ?? null;
+}
+
+/**
+ * 테넌트 접속자 revision public 채널 — here/joining/leaving 대신 단일 이벤트로 refetch.
+ */
+export function subscribePresenceRevisionChannel(
+  channel: string,
+  onRevision?: (payload: PresenceRevisionPayload) => void,
+): string | null {
+  const ws = getWebSocketApi();
+  if (!ws?.subscribe) {
+    return null;
+  }
+
+  const subscriptionKey = ws.subscribe(
+    channel,
+    'presence.revision',
+    (raw: unknown) => {
+      handleShellPresenceRevisionEvent(raw);
+      if (onRevision && raw && typeof raw === 'object') {
+        const payload = raw as Partial<PresenceRevisionPayload>;
+        if (typeof payload.revision === 'number' && typeof payload.tenant_slug === 'string') {
+          onRevision({
+            tenant_slug: payload.tenant_slug,
+            revision: payload.revision,
+            reason: payload.reason,
+          });
+        }
+      }
+    },
+    { channelType: 'public' },
+  );
+
+  return subscriptionKey || null;
+}
+
+export function unsubscribePresenceRevisionChannel(subscriptionKey: string): void {
+  if (!subscriptionKey) {
+    return;
+  }
+  getWebSocketApi()?.unsubscribe?.(subscriptionKey);
+}
+
+/** @deprecated presence.revision public 채널 사용 */
+export type PresenceMember = {
   uuid?: string;
   name?: string;
   avatar?: string | null;
 };
 
-type EchoPresenceChannel = {
-  here: (callback: (members: PresenceMember[]) => void) => EchoPresenceChannel;
-  joining: (callback: (member: PresenceMember) => void) => EchoPresenceChannel;
-  leaving: (callback: (member: PresenceMember) => void) => EchoPresenceChannel;
-  listen: (event: string, callback: (data: unknown) => void) => EchoPresenceChannel;
-};
-
-type EchoLike = {
-  join: (channel: string) => EchoPresenceChannel;
-  leave: (channel: string) => void;
-};
-
-function getEcho(): EchoLike | null {
-  const manager = (window as {
-    G7Core?: { websocket?: { manager?: { getEcho?: () => EchoLike | null } } };
-  }).G7Core?.websocket?.manager;
-  return manager?.getEcho?.() ?? null;
-}
-
+/** @deprecated presence.revision public 채널 사용 */
 export type PresenceSocketSubscription = {
   channel: string;
   leave: () => void;
 };
 
-export function subscribeTenantPresenceChannel(
-  channel: string,
-  handlers: {
-    onHere?: (members: PresenceMember[]) => void;
-    onJoining?: (member: PresenceMember) => void;
-    onLeaving?: (member: PresenceMember) => void;
-  },
-): PresenceSocketSubscription | null {
-  const manager = (window as {
-    G7Core?: { websocket?: { manager?: { getEcho?: () => EchoLike | null; initialize?: () => void } } };
-  }).G7Core?.websocket?.manager;
-
-  if (!manager) {
-    return null;
-  }
-
-  const hasToken = typeof localStorage !== 'undefined' && !!localStorage.getItem('auth_token');
-  if (!hasToken) {
-    return null;
-  }
-
-  manager.initialize?.();
-  const echo = manager.getEcho?.() ?? null;
-  if (!echo) {
-    return null;
-  }
-
-  const presence = echo.join(channel);
-  if (handlers.onHere) {
-    presence.here(handlers.onHere);
-  }
-  if (handlers.onJoining) {
-    presence.joining(handlers.onJoining);
-  }
-  if (handlers.onLeaving) {
-    presence.leaving(handlers.onLeaving);
-  }
-
-  return {
-    channel,
-    leave: () => echo.leave(channel),
-  };
+/** @deprecated subscribePresenceRevisionChannel 사용 */
+export function subscribeTenantPresenceChannel(): PresenceSocketSubscription | null {
+  return null;
 }
 
-export function leaveTenantPresenceChannel(channel: string): void {
-  getEcho()?.leave(channel);
+/** @deprecated */
+export function leaveTenantPresenceChannel(): void {
+  // no-op — legacy presence channel 제거
 }

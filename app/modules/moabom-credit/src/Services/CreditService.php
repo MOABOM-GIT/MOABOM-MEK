@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Modules\Moabom\Credit\Contracts\CreditRepositoryInterface;
+use Modules\Moabom\Credit\Enums\CreditRewardSourceType;
 use Modules\Moabom\Credit\Enums\CreditTransactionType;
 use Modules\Moabom\Credit\Models\CreditAttendance;
 use Modules\Moabom\Credit\Models\CreditTransaction;
@@ -86,6 +87,14 @@ class CreditService
             HookManager::doAction('moabom-credit.before_record', $user, $type, $signedAmount);
 
             $this->creditRepository->updateBalance($balance, $nextBalance);
+            if (
+                $type === CreditTransactionType::Earn
+                && $signedAmount > 0
+                && is_string($sourceType)
+                && in_array($sourceType, CreditRewardSourceType::rankingValues(), true)
+            ) {
+                $this->creditRepository->incrementRankingPoints($balance, $signedAmount);
+            }
             $transaction = $this->creditRepository->createTransaction([
                 'user_id' => $user->id,
                 'type' => $type,

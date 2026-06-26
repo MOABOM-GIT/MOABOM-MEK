@@ -87,40 +87,38 @@ final class MoabomPublicApiCacheKeys
         return 'moabom.public.social_providers:'.self::socialProvidersSettingsToken();
     }
 
-    public static function shellAppRankings(int $periodHours, int $limit): string
+    public static function shellAppRankings(int $limit): string
     {
         return sprintf(
-            'moabom.public.shell_rankings.apps:%s:%d:%d',
+            'moabom.public.shell_rankings.apps:%s:cumulative:%d',
             self::tenantScopeToken(),
-            $periodHours,
             $limit,
         );
     }
 
-    public static function shellUserRankings(int $periodHours, int $limit): string
+    public static function shellUserRankings(int $limit): string
     {
         return sprintf(
-            'moabom.public.shell_rankings.users:%s:%d:%d',
+            'moabom.public.shell_rankings.users:%s:cumulative:%d',
             self::tenantScopeToken(),
-            $periodHours,
             $limit,
         );
     }
 
     public static function forgetShellRankings(): void
     {
-        $periodHours = max(1, (int) config('moabom-system.shell_rankings.period_hours', 24));
         $limits = array_unique([
             min(30, max(1, (int) config('moabom-system.shell_rankings.limit', 30))),
             30,
         ]);
 
         foreach ($limits as $limit) {
-            Cache::forget(self::shellAppRankings($periodHours, $limit));
-            Cache::forget(self::shellUserRankings($periodHours, $limit));
+            Cache::forget(self::shellAppRankings($limit));
+            Cache::forget(self::shellUserRankings($limit));
         }
     }
 
+    /** @deprecated 등락 비교는 기간별 rank map으로 계산 — 하위 호환 캐시 정리용 */
     public static function shellRankingsPreviousRanks(string $scope): string
     {
         return sprintf(

@@ -18,6 +18,8 @@ final class WebsocketDriverConfigApplier
      */
     public static function apply(array $driverSettings): void
     {
+        $driverSettings = ReverbCredentialSync::mergeEnvSecretIntoDrivers($driverSettings);
+
         if (empty($driverSettings['websocket_enabled'])) {
             Config::set('broadcasting.default', 'null');
 

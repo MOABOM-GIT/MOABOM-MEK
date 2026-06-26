@@ -1,4 +1,5 @@
 import { enqueueMoabomToast } from './moabomToastEnqueue';
+import type { MoabomToastActionButton } from './moabomToastEnqueue';
 
 export function showAppEditToast(type: 'success' | 'warning', message: string): void {
   const G7Core = (window as { G7Core?: { toast?: { success?: (msg: string, ms: number) => void; warning?: (msg: string, ms: number) => void }; dispatch?: (action: { handler: string; params: Record<string, unknown> }) => void } }).G7Core;
@@ -31,16 +32,21 @@ export function pushWarningToast(message: string, duration = 3000): void {
 export function pushNotificationToast(
   message: string,
   duration = 2800,
-  action?: { label: string; onClick: () => void | Promise<void> },
+  action?: { label: string; onClick: () => void | Promise<void>; variant?: 'primary' | 'secondary' },
+  actions?: MoabomToastActionButton[],
 ): void {
+  const resolvedActions = actions?.length
+    ? actions
+    : (action ? [action] : undefined);
+
   if (
     enqueueMoabomToast({
       type: 'info',
       severity: 'content',
       duration,
       message,
-      ...(action ? { action } : {}),
-    })
+      ...(resolvedActions?.length ? { actions: resolvedActions } : {}),
+    }) !== null
   ) {
     return;
   }

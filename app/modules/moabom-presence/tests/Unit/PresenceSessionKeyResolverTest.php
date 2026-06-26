@@ -10,15 +10,30 @@ use PHPUnit\Framework\TestCase;
 
 class PresenceSessionKeyResolverTest extends TestCase
 {
-    public function test_resolves_client_header_key(): void
+    public function test_resolves_visitor_header_key(): void
+    {
+        $resolver = new PresenceSessionKeyResolver;
+        $request = Request::create('/heartbeat', 'POST', server: [
+            'HTTP_X_MOABOM_VISITOR_ID' => 'visitor-uuid-1',
+        ]);
+
+        $this->assertSame('visitor-uuid-1', $resolver->resolveVisitorId($request));
+        $this->assertSame(
+            $resolver->resolveSessionKeyFromVisitorId('visitor-uuid-1'),
+            $resolver->resolve($request),
+        );
+    }
+
+    public function test_resolves_legacy_client_header_key(): void
     {
         $resolver = new PresenceSessionKeyResolver;
         $request = Request::create('/heartbeat', 'POST', server: [
             'HTTP_X_MOABOM_PRESENCE_KEY' => 'client-uuid-1',
         ]);
 
+        $this->assertSame('client-uuid-1', $resolver->resolveVisitorId($request));
         $this->assertSame(
-            $resolver->hashClientKey('client-uuid-1'),
+            $resolver->resolveSessionKeyFromVisitorId('client-uuid-1'),
             $resolver->resolve($request),
         );
     }
@@ -29,8 +44,9 @@ class PresenceSessionKeyResolverTest extends TestCase
         $request = Request::create('/heartbeat', 'POST');
         $request->setLaravelSession($this->makeSession('session-abc'));
 
+        $this->assertSame('session:session-abc', $resolver->resolveVisitorId($request));
         $this->assertSame(
-            hash('sha256', 'presence:session:session-abc'),
+            hash('sha256', 'presence:visitor:session:session-abc'),
             $resolver->resolve($request),
         );
         $this->assertSame(

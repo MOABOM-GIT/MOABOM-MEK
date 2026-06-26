@@ -5,7 +5,7 @@
         "ko": "크레딧",
         "en": "Credit"
     },
-    "version": "0.1.7",
+    "version": "0.1.9",
     "license": "MIT",
     "description": {
         "ko": "마이페이지 크레딧 잔액과 내역을 제공하는 모듈",

@@ -1,4 +1,7 @@
 import { getShellAccessToken } from './moabomShellAccess';
+import { getOrCreateShellVisitorId } from '../shell/ShellContextBridge';
+
+export type PresenceHeartbeatTouch = 'login' | 'logout' | 'touch';
 
 export type PresenceAvailability = 'online' | 'away' | 'busy' | 'offline';
 
@@ -23,7 +26,9 @@ export type ClientFormFactor = 'desktop' | 'mobile';
 
 export type PresenceOnlineUser = {
   session_key: string;
+  visitor_id?: string | null;
   user_uuid?: string | null;
+  client_ip_masked?: string | null;
   display_name: string;
   status_text?: string | null;
   presence_subtitle?: string | null;
@@ -51,14 +56,26 @@ export type PresenceFriend = {
 export type PresenceSummary = {
   platform_total: number;
   tenant_active: number;
+  mirror_ok?: boolean;
+  revision?: number;
+  revision_channel?: string;
+  platform_revision_channel?: string;
   presence_channel: string;
   heartbeat_interval_sec: number;
+};
+
+export type PresenceOnlinePayload = {
+  users: PresenceOnlineUser[];
+  revision?: number;
 };
 
 export type PresenceHeartbeatResult = {
   accepted: boolean;
   reason?: 'bot' | 'tenant_storage_unavailable' | 'transient_failure' | string;
   session_key?: string;
+  visitor_id?: string;
+  mirror_ok?: boolean;
+  revision?: number;
   tenant_channel?: string;
   availability?: PresenceAvailability;
   subtitle_mode?: PresenceSubtitleMode;
@@ -77,24 +94,11 @@ export type PublicUserPresence = {
 
 const API_BASE = '/api/modules/moabom-presence';
 
-function getPresenceClientKey(): string {
-  const storageKey = 'moabom_presence_client_key';
-  try {
-    const existing = localStorage.getItem(storageKey);
-    if (existing) {
-      return existing;
-    }
-    const created = crypto.randomUUID();
-    localStorage.setItem(storageKey, created);
-    return created;
-  } catch {
-    return `guest-${Date.now()}`;
-  }
-}
-
 function presenceHeaders(): Record<string, string> {
+  const visitorId = getOrCreateShellVisitorId();
   return {
-    'X-Moabom-Presence-Key': getPresenceClientKey(),
+    'X-Moabom-Visitor-Id': visitorId,
+    'X-Moabom-Presence-Key': visitorId,
   };
 }
 
@@ -119,7 +123,7 @@ export async function fetchPresenceSummary(): Promise<PresenceSummary> {
   return parseModuleJson<PresenceSummary>(response);
 }
 
-export async function fetchPresenceOnlineUsers(): Promise<PresenceOnlineUser[]> {
+export async function fetchPresenceOnlineUsers(): Promise<PresenceOnlinePayload> {
   const response = await fetch(`${API_BASE}/public/online`, {
     credentials: 'include',
     headers: {
@@ -128,21 +132,32 @@ export async function fetchPresenceOnlineUsers(): Promise<PresenceOnlineUser[]> 
       ...authHeaders(),
     },
   });
-  const data = await parseModuleJson<{ users: PresenceOnlineUser[] }>(response);
-  return data.users ?? [];
+  const data = await parseModuleJson<PresenceOnlinePayload>(response);
+  return {
+    users: data.users ?? [],
+    revision: data.revision,
+  };
 }
 
 export async function sendPresenceHeartbeat(
   statusText?: string | null,
   clientFormFactor?: ClientFormFactor | null,
+  touch?: PresenceHeartbeatTouch,
 ): Promise<PresenceHeartbeatResult> {
-  const body: { status_text?: string; client_form_factor?: ClientFormFactor } = {};
+  const body: {
+    status_text?: string;
+    client_form_factor?: ClientFormFactor;
+    touch?: PresenceHeartbeatTouch;
+  } = {};
   const trimmed = statusText?.trim();
   if (trimmed) {
     body.status_text = trimmed.slice(0, 255);
   }
   if (clientFormFactor) {
     body.client_form_factor = clientFormFactor;
+  }
+  if (touch) {
+    body.touch = touch;
   }
   const response = await fetch(`${API_BASE}/public/heartbeat`, {
     method: 'POST',

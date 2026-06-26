@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **홈 셸 부트**: `extensionDeferredRegistry` → G7Config `deferred*` 클라이언트 복원(`installMoabomExtensionDeferredBootstrap`), shell-boot 완료 후 `frontend-defaults` 중복 fetch 제거.
+- **지연 확장 manifest**: sirsoft-ecommerce·daum_postcode·ckeditor5·tosspayments를 `loading.strategy: lazy`로 전환 — 홈 선로드 제거, `sirsoftEcommerceLayoutPrefetch`·Ghost registry와 정합.
+- 확장 IIFE Vite 빌드에 React `external` 적용(코어 `template-engine` 전역 React SSOT).
+- 로그인 직후 presence summary·online·friends·settings를 병렬 초기화.
 - 프로필·작성글 반복 게시글 행(`_user_post_row.json`)에서 `glass-panel` 제거
 - 프로필 윈도우 상단 탭 크롬: `background`·`px-3 pt-3 pb-2` 패딩 제거
 - 프로필 보기: 프로필 카드·게시글/댓글 통계·최근 게시글 섹션 간격 `space-y-6` → `space-y-3`(0.75rem)
@@ -23,6 +27,9 @@
 
 ### Fixed
 
+- **앱 창 본문 높이**: `.moa-app-window-viewport` flex column·`.moa-app-window-body` `flex: 1` 로 창 높이 채움 체인 복구 — AI 앱 만들기·저장 AI 앱 뷰어 등 콘텐츠 영역이 창 대비 작게 보이던 문제.
+- **웹사이트 연결 앱**: 이중 iframe(래퍼 HTML) 제거 — `GeneratedAppViewer`가 `metadata.website_url`을 직접 로드, 저장 HTML은 API min 길이용 플레이스홀더만 유지.
+- **웹사이트 연결 iframe**: sandbox에 `allow-same-origin` 추가·셸 CSP `frame-src https:` — 외부 사이트 cookie·위젯 동작 (Moabom 셸 cross-origin 격리 유지).
 - **공지·프로필·게시판 윈도우가 두 개씩 열리던 문제** — `pushShellPath` 직후 `applyShellRoute` 재진입 시 `windowsRef`가 `useEffect`보다 늦게 갱신되어 동일 `appId` 중복 생성. `commitShellWindows`로 state·ref 동시 반영 후 URL 동기화, 알림 네비게이션은 `pushShellPath` 단일 경로만 사용.
 - 우측 접속자 패널 … 메뉴에서 작성글 보기가 프로필과 동일 URL로 열리던 문제 — `openUserProfileWindow` sync/view 인자 순서 수정
 - 접속자 목록에서 회원 프로필 클릭 시 `Layout data field "components" must be an array` 오류 — `slots`-only 레이아웃을 셸 경로용 `components` 로 승격

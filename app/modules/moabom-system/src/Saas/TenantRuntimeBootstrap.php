@@ -49,11 +49,13 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
         $this->resetSettingsRepositoryMemo();
         $this->tenantContext()->setTenant($tenant, $parsed['host']);
         $this->databaseConfigurator->apply($tenant);
-        $this->filesystemConfigurator->apply($tenant);
 
         $appUrl = $tenant->appUrl ?: $request->getScheme().'://'.$parsed['host'];
         $this->applyAppUrl($appUrl);
         $this->settingsHydrator()->hydrate();
+        // hydrate() 내 storage_driver 적용이 GCS path_prefix 를 플랫폼(attachments/)로 리셋하므로
+        // 테넌트 prefix(tenants/{slug}/attachments) 는 hydrate 이후에 다시 적용한다.
+        $this->filesystemConfigurator->apply($tenant);
 
         HookManager::doAction('moabom.saas.tenant_resolved', $tenant, $parsed['host']);
     }
@@ -88,11 +90,17 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
             $tenant = $context->tenant();
             if ($tenant !== null) {
                 $this->databaseConfigurator->apply($tenant);
-                $this->filesystemConfigurator->apply($tenant);
             }
         }
 
         $this->settingsHydrator()->hydrate();
+
+        if (! $context->isPlatformRequest()) {
+            $tenant = $context->tenant();
+            if ($tenant !== null) {
+                $this->filesystemConfigurator->apply($tenant);
+            }
+        }
     }
 
     /**
@@ -114,9 +122,9 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
         $this->resetSettingsRepositoryMemo();
         $this->tenantContext()->setTenant($tenant, $tenant->host);
         $this->databaseConfigurator->apply($tenant);
-        $this->filesystemConfigurator->apply($tenant);
         $this->applyAppUrl($tenant->appUrl ?: 'https://'.$tenant->host);
         $this->settingsHydrator()->hydrate();
+        $this->filesystemConfigurator->apply($tenant);
 
         HookManager::doAction('moabom.saas.tenant_resolved', $tenant, $tenant->host);
 

@@ -39,6 +39,8 @@ export interface MyPageWindowContentProps {
   onToggleGeneratedAppShare?: (serverId: number, nextShared: boolean) => void;
   /** 서버에 저장된 AI 생성 앱 목록(홈/좌측 패널과 동기화) */
   createdApps?: App[];
+  /** 홈 셸 생성앱 라이브러리 API 동기화 중 */
+  createdAppsLoading?: boolean;
   /** 좌측 패널과 공유되는 즐겨찾기 앱 목록 */
   favoriteApps?: App[];
   /** 최근 실행 앱 목록 */

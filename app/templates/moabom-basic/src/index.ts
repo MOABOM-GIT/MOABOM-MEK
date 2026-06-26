@@ -17,8 +17,10 @@ import './styles/main.css';
 import './components/composite/imageGalleryLightboxStyles';
 import { installMoabomTemplateLangFetchDedupe } from './i18n/moabomTemplateLangJsonFetch';
 import { installMoabomGhostRoutesFetch } from './runtime/moabomGhostRoutesFetch';
+import { installMoabomExtensionDeferredBootstrap } from './runtime/moabomExtensionDeferredBootstrap';
 import { ensureMoaShellErrorPageHandlerPatched } from './shell/installMoaShellErrorNavigateBridge';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
+import { prefetchMoabomGeneratedAppLibrary } from './runtime/moabomGeneratedAppLibraryLoad';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
 import { installMoabomWebSocketAuthSync } from './runtime/moabomWebSocketAuthSync';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
@@ -227,7 +229,9 @@ if (typeof window !== 'undefined') {
     installMoabomWebSocketAuthSync();
     installMoabomShellBootFetch();
     prefetchMoabomShellBoot();
+    installMoabomExtensionDeferredBootstrap();
     installMoabomGhostRoutesFetch();
+    prefetchMoabomGeneratedAppLibrary();
     ensureMoaShellErrorPageHandlerPatched();
 }
 

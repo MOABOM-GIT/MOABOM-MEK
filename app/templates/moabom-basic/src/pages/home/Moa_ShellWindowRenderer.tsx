@@ -65,6 +65,7 @@ export interface Moa_ShellWindowRendererProps {
   compactWindow: boolean;
   currentUser: MoaCurrentUser | null;
   createdApps: App[];
+  createdAppsLoading?: boolean;
   favoriteApps: App[];
   recentApps: App[];
   shellSystem?: {
@@ -96,6 +97,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   compactWindow,
   currentUser,
   createdApps,
+  createdAppsLoading = false,
   favoriteApps,
   recentApps,
   shellSystem,
@@ -147,6 +149,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           onDeleteGeneratedApp={onDeleteGeneratedApp}
           onToggleGeneratedAppShare={onToggleGeneratedAppShare}
           createdApps={createdApps}
+          createdAppsLoading={createdAppsLoading}
           favoriteApps={favoriteApps}
           recentApps={recentApps}
           onProfileUpdated={onProfileUpdated}
@@ -205,6 +208,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
         )}
       >
         <UserProfileWindowHostLazy
+          key={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? win.id}
           appId={win.appId}
           userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
           userProfileView={win.userProfileView ?? 'profile'}

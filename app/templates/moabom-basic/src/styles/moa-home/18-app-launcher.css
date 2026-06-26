@@ -31,6 +31,17 @@
   touch-action: pan-y;
 }
 
+/** 웹사이트 연결 등 외부 아이콘 URL — 타일 안에서 비율 유지(늘리지 않음) */
+.moa-app-shell-icon-image {
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
 /* ─── 앱 만들기 버튼 ─── */
 
 @property --angle {

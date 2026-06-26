@@ -46,7 +46,7 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-2 min-w-0"
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-2 min-w-0"
           },
           "children": [
             {
@@ -113,7 +113,7 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-6 text-center"
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-6 text-center"
           },
           "if": "{{!(user_posts?.data?.data?.length)}}",
           "children": [
@@ -133,99 +133,25 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "flex flex-col gap-2 min-w-0"
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0"
           },
           "if": "{{user_posts?.data?.data?.length > 0}}",
-          "iteration": {
-            "source": "{{user_posts?.data?.data ?? []}}",
-            "item_var": "post",
-            "index_var": "postIndex"
-          },
           "children": [
             {
-              "id": "user_posts_row",
+              "id": "user_posts_list_body",
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "moa-user-profile-post-card glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                "className": "moa-user-profile-post-list min-w-0"
+              },
+              "iteration": {
+                "source": "{{user_posts?.data?.data ?? []}}",
+                "item_var": "post",
+                "index_var": "postIndex"
               },
               "children": [
                 {
-                  "id": "user_posts_row_top",
-                  "type": "basic",
-                  "name": "Div",
-                  "props": {
-                    "className": "flex items-center gap-2 min-w-0 flex-nowrap"
-                  },
-                  "children": [
-                    {
-                      "id": "user_posts_board_badge",
-                      "type": "basic",
-                      "name": "Span",
-                      "props": {
-                        "className": "moa-user-profile-post-badge text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium"
-                      },
-                      "text": "{{post.board_name ?? post.board_slug ?? ''}}"
-                    },
-                    {
-                      "id": "user_posts_row_new",
-                      "type": "basic",
-                      "name": "Span",
-                      "if": "{{post.is_new}}",
-                      "props": {
-                        "className": "moa-board-badge-new shrink-0"
-                      },
-                      "text": "N"
-                    }
-                  ]
-                },
-                {
-                  "id": "user_posts_row_title",
-                  "type": "basic",
-                  "name": "Button",
-                  "props": {
-                    "className": "moa-user-profile-post-card__title text-primary"
-                  },
-                  "actions": [
-                    {
-                      "type": "click",
-                      "handler": "navigate",
-                      "params": {
-                        "path": "/board/{{post.board_slug}}/{{post.id}}"
-                      }
-                    }
-                  ],
-                  "text": "{{post.title}}"
-                },
-                {
-                  "id": "user_posts_row_meta",
-                  "type": "basic",
-                  "name": "Div",
-                  "props": {
-                    "className": "moa-user-profile-post-card__meta"
-                  },
-                  "children": [
-                    {
-                      "id": "user_posts_row_date",
-                      "type": "basic",
-                      "name": "Span",
-                      "props": {
-                        "className": "whitespace-nowrap",
-                        "title": "{{post.created_at ?? ''}}"
-                      },
-                      "text": "{{post.created_at_formatted ?? post.created_at ?? ''}}"
-                    },
-                    {
-                      "id": "user_posts_row_views",
-                      "type": "basic",
-                      "name": "Span",
-                      "props": {
-                        "className": "whitespace-nowrap shrink-0"
-                      },
-                      "if": "{{post.view_count != null}}",
-                      "text": "$t:moabom-presence.user.post_views|count={{post.view_count ?? 0}}"
-                    }
-                  ]
+                  "partial": "../partials/user/_user_post_row.json"
                 }
               ]
             }

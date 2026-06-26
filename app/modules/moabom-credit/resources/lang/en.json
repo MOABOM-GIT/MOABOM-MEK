@@ -8,7 +8,7 @@
       "validation_error": "Please check the entered values.",
       "sections": {
         "rewards": "Reward Events",
-        "rewards_description": "Configure rewards for login, posting, likes, and attendance checks.",
+        "rewards_description": "Configure rewards for login, posting, comments, likes, and attendance checks.",
         "limits": "Daily Limits",
         "limits_description": "Daily limits to prevent excessive credit farming.",
         "ads": "Ad Integration Preparation",
@@ -19,11 +19,13 @@
         "login_amount": "Login reward",
         "post_write_amount": "Post write reward",
         "like_received_amount": "Received like reward",
+        "comment_write_amount": "Comment write reward",
         "attendance_amount": "Attendance reward",
         "daily_earn_limit": "Daily total earn limit per user",
         "attendance_daily_limit": "Attendance checks per day",
         "max_post_write_rewards_per_day": "Post write rewards per day",
         "max_like_received_rewards_per_day": "Like rewards per day",
+        "max_comment_write_rewards_per_day": "Comment write rewards per day",
         "attendance_requires_ad": "Require ad before attendance reward",
         "attendance_ad_provider": "Ad provider",
         "attendance_ad_reward_multiplier": "Ad reward multiplier"

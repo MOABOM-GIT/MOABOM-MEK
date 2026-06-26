@@ -3,7 +3,9 @@
 namespace Modules\Moabom\Apps\Tests\Unit;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Modules\Moabom\Apps\Services\AiAppService;
+use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
 use Modules\Moabom\Apps\Tests\ModuleTestCase;
 
 class AiAppServiceTest extends ModuleTestCase
@@ -330,6 +332,46 @@ PATCH;
         $this->assertSame('none', $guestPayload['permissions']['edit_mode']);
     }
 
+    public function test_serialize_for_library_list_omits_preview_url(): void
+    {
+        $owner = User::factory()->create([
+            'nickname' => '목록유저',
+        ]);
+        $service = $this->app->make(AiAppService::class);
+
+        $app = $service->store($owner->id, [
+            'title' => '목록',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>list</body></html>',
+            'metadata' => ['owner_nickname' => '목록유저'],
+        ]);
+
+        $listPayload = $service->serializeForLibraryList($app->fresh(['user']), $owner->id);
+        $detailPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $owner->id);
+
+        $this->assertArrayNotHasKey('preview_url', $listPayload);
+        $this->assertArrayHasKey('preview_url', $detailPayload);
+        $this->assertSame('목록유저', $listPayload['owner']['nickname']);
+        $this->assertSame($app->id, $listPayload['id']);
+    }
+
+    public function test_list_for_user_uses_library_list_serialization(): void
+    {
+        $owner = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $service->store($owner->id, [
+            'title' => '내 앱',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body>mine</body></html>',
+        ]);
+
+        $items = $service->listForUser($owner->id);
+        $this->assertCount(1, $items);
+        $this->assertArrayNotHasKey('preview_url', $items[0]);
+        $this->assertSame('내 앱', $items[0]['title']);
+    }
+
     public function test_store_allows_shared_app_as_remix_parent_for_other_user(): void
     {
         $owner = User::factory()->create();
@@ -381,5 +423,41 @@ PATCH;
             'app_type' => 'general',
             'html' => '<!DOCTYPE html><html><head></head><body>x</body></html>',
         ]));
+    }
+
+    public function test_store_website_link_persists_favicon_to_internal_storage(): void
+    {
+        Http::fake([
+            'https://example.com/icon.png' => Http::response(
+                'png-bytes',
+                200,
+                ['Content-Type' => 'image/png'],
+            ),
+        ]);
+
+        $user = User::factory()->create();
+        $service = $this->app->make(AiAppService::class);
+
+        $app = $service->store($user->id, [
+            'title' => 'Example Site',
+            'app_type' => 'website_link',
+            'html' => '<!DOCTYPE html><html><head></head><body data-moabom-website-link="1"></body></html>',
+            'metadata' => [
+                'website_url' => 'https://example.com',
+                'icon_url' => 'https://example.com/icon.png',
+                'icon_from_title' => false,
+            ],
+        ]);
+
+        $fresh = $app->fresh();
+        $metadata = is_array($fresh->metadata) ? $fresh->metadata : [];
+        $this->assertStringContainsString('/apps/generated/'.$fresh->id.'/website-icon', (string) ($metadata['icon_url'] ?? ''));
+        $this->assertSame('https://example.com/icon.png', $metadata['icon_source_url'] ?? null);
+
+        $iconStorage = $this->app->make(WebsiteLinkIconStorageService::class);
+        $this->assertNotNull($iconStorage->storedIconPath((int) $fresh->id));
+
+        $this->assertTrue($service->deleteForUser($user->id, $fresh->id));
+        $this->assertNull($iconStorage->storedIconPath((int) $fresh->id));
     }
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Div } from '../basic/Div';
+import { Span } from '../basic/Span';
 import { Button } from '../basic/Button';
 import { Icon } from '../basic/Icon';
 import { useLongPress } from '../../hooks/Moa_useLongPress';
@@ -11,7 +12,10 @@ import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
 import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
-import { Moa_GeneratedAppUserBadge } from './Moa_GeneratedAppUserBadge';
+import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
+
+/** 서브타이틀 마퀴 허용 최대 글자 수 — 초과 시 말줄임만 */
+const APP_ICON_SUBTITLE_MAX_MARQUEE_CHARS = 28;
 
 export interface DraggableAppIconProps {
   /** 앱 데이터 */
@@ -126,21 +130,25 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
           ...(isCreateApp ? getCreateAppShellCssVars() : {}),
         }}
       >
-        <Div
-          className={`${isCreateApp ? 'create-app-icon' : ''} moa-main-app-icon relative rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow`}
-          style={isCreateApp ? undefined : { background: app.gradient }}
-        >
-          <Icon name={app.icon} className={`moa-main-app-symbol text-white drop-shadow ${isCreateApp ? 'relative z-[1]' : ''}`} />
-          {isGeneratedApp ? <Moa_GeneratedAppUserBadge size="lg" /> : null}
-        </Div>
+        <Moa_GeneratedAppIconShell
+          app={app}
+          isCreateApp={isCreateApp}
+          showUserBadge={isGeneratedApp}
+          badgeSize="lg"
+          iconClassName={`${isCreateApp ? 'create-app-icon' : ''} moa-main-app-icon rounded-3xl shadow-lg group-hover:shadow-xl transition-shadow`}
+          symbolClassName={`moa-main-app-symbol text-white drop-shadow ${isCreateApp ? 'relative z-[1]' : ''}`}
+        />
         <Div className="text-center w-full min-w-0">
-          <Moa_OverflowMarqueeText
-            text={displayName}
-            className={`${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-main-app-title font-bold leading-tight text-center`}
-          />
+          <Span
+            className={`moa-app-icon-label ${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-main-app-title font-bold leading-tight`}
+            title={displayName}
+          >
+            {displayName}
+          </Span>
           {displayDescription ? (
             <Moa_OverflowMarqueeText
               text={displayDescription}
+              maxMarqueeChars={APP_ICON_SUBTITLE_MAX_MARQUEE_CHARS}
               className="moa-main-app-desc text-muted leading-tight mt-0.5 text-center"
             />
           ) : null}

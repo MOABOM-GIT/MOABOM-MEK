@@ -49,6 +49,7 @@ function extractFetchedData(payload: BoardWindowRenderPayload): Record<string, u
 function renderPayloadPane(
   payload: BoardWindowRenderPayload,
   view: UserProfileWindowView,
+  subjectUuid: string,
   paneClassName: string,
 ): React.ReactNode {
   const {
@@ -76,8 +77,8 @@ function renderPayloadPane(
               <DynamicRenderer
                 key={
                   componentDef.id
-                    ? `${componentDef.id}_${layoutName}_${view}`
-                    : `user-profile-window-${index}_${layoutName}_${view}`
+                    ? `${subjectUuid}_${componentDef.id}_${layoutName}_${view}`
+                    : `user-profile-window-${subjectUuid}-${index}_${layoutName}_${view}`
                 }
                 componentDef={componentDef}
                 dataContext={dataContext}
@@ -116,6 +117,18 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
   const [urlEpoch, setUrlEpoch] = useState(0);
   const viewPayloadsRef = useRef(viewPayloads);
   viewPayloadsRef.current = viewPayloads;
+  const prevUserUuidRef = useRef(userUuid);
+
+  useEffect(() => {
+    if (prevUserUuidRef.current === userUuid) {
+      return;
+    }
+    prevUserUuidRef.current = userUuid;
+    setViewPayloads({ profile: null, posts: null });
+    setError(null);
+    setLoading(true);
+    setRefetching(false);
+  }, [userUuid]);
 
   useEffect(() => {
     const onUrl = () => setUrlEpoch(v => v + 1);
@@ -180,8 +193,15 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
       if (active) {
         applyResolvedTitle(active, userProfileView);
       }
-      setLoading(false);
-      setRefetching(false);
+      const viewNeedsFetch = (userProfileView === 'posts' && !cachedPosts)
+        || (userProfileView === 'profile' && !cachedProfile);
+      if (viewNeedsFetch) {
+        setRefetching(true);
+        setLoading(false);
+      } else {
+        setLoading(false);
+        setRefetching(false);
+      }
       setError(null);
     } else if (!hasCurrent) {
       setLoading(true);
@@ -277,12 +297,17 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
     );
   }
 
-  if (!activePayload) {
+  if (!activePayload && !loading && !refetching) {
     return null;
   }
 
   const profileReady = viewPayloads.profile != null;
   const postsReady = viewPayloads.posts != null;
+  const showChrome = Boolean(activePayload) || loading || refetching;
+
+  if (!showChrome) {
+    return null;
+  }
 
   const profileTabs = [
     { id: 'profile' as const, label: t('moa_shell.center.user_profile_tab_profile') },
@@ -324,7 +349,7 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
         <Div className={trackClassName}>
           <Div className="moa-user-profile-slide-pane" aria-hidden={userProfileView !== 'profile'}>
             {profileReady && viewPayloads.profile
-              ? renderPayloadPane(viewPayloads.profile, 'profile', 'moa-user-profile-slide-pane__inner')
+              ? renderPayloadPane(viewPayloads.profile, 'profile', userUuid, 'moa-user-profile-slide-pane__inner')
               : (
                 <Div className="moa-user-profile-slide-pane__inner flex min-h-[12rem] items-center justify-center">
                   <AppLoadingSpinner label={t('moa_shell.center.user_profile_loading')} />
@@ -333,7 +358,7 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
           </Div>
           <Div className="moa-user-profile-slide-pane" aria-hidden={userProfileView !== 'posts'}>
             {postsReady && viewPayloads.posts
-              ? renderPayloadPane(viewPayloads.posts, 'posts', 'moa-user-profile-slide-pane__inner')
+              ? renderPayloadPane(viewPayloads.posts, 'posts', userUuid, 'moa-user-profile-slide-pane__inner')
               : (
                 <Div className="moa-user-profile-slide-pane__inner flex min-h-[12rem] items-center justify-center">
                   <AppLoadingSpinner label={t('moa_shell.center.user_profile_loading')} />

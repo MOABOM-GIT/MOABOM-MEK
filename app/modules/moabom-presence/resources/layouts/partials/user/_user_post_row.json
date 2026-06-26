@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "공개 프로필·작성글 목록 공통 1행 (게시판 배지 · 제목 · 조회수 · 날짜 — 번호·작성자 없음)"
+  },
+  "type": "basic",
+  "name": "Button",
+  "props": {
+    "className": "moa-user-profile-post-row w-full min-w-0 cursor-pointer text-left"
+  },
+  "actions": [
+    {
+      "type": "click",
+      "handler": "navigate",
+      "params": {
+        "path": "/board/{{post.board_slug}}/{{post.id}}"
+      }
+    }
+  ],
+  "children": [
+    {
+      "type": "basic",
+      "name": "Span",
+      "props": {
+        "className": "moa-user-profile-post-badge text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium"
+      },
+      "text": "{{post.board_name ?? post.board_slug ?? ''}}"
+    },
+    {
+      "type": "basic",
+      "name": "Span",
+      "if": "{{post.category}}",
+      "props": {
+        "className": "moa-user-profile-post-badge text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+      },
+      "text": "{{post.category}}"
+    },
+    {
+      "type": "basic",
+      "name": "Icon",
+      "if": "{{post.is_secret}}",
+      "props": {
+        "name": "lock",
+        "size": "xs",
+        "className": "flex-shrink-0 text-yellow-500 dark:text-yellow-400"
+      }
+    },
+    {
+      "type": "basic",
+      "name": "Icon",
+      "if": "{{post.status === 'blinded'}}",
+      "props": {
+        "name": "eye-slash",
+        "size": "xs",
+        "className": "flex-shrink-0 text-orange-500 dark:text-orange-400"
+      }
+    },
+    {
+      "type": "basic",
+      "name": "Span",
+      "props": {
+        "className": "moa-user-profile-post-title min-w-0"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Span",
+          "props": {
+            "className": "truncate"
+          },
+          "text": "{{post.title}}"
+        },
+        {
+          "type": "basic",
+          "name": "Span",
+          "if": "{{post.comment_count > 0}}",
+          "props": {
+            "className": "flex-shrink-0 text-xs text-blue-600 dark:text-blue-400 font-medium ml-1"
+          },
+          "text": "[{{post.comment_count}}]"
+        },
+        {
+          "type": "basic",
+          "name": "Span",
+          "if": "{{post.is_new}}",
+          "props": {
+            "className": "moa-board-badge-new ml-1"
+          },
+          "text": "N"
+        }
+      ]
+    },
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "moa-user-profile-post-row__meta"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Span",
+          "props": {
+            "className": "inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Icon",
+              "props": {
+                "name": "eye",
+                "size": "xs"
+              }
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "text": "{{post.view_count ?? 0}}"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Span",
+          "props": {
+            "className": "moa-user-profile-post-date",
+            "title": "{{post.created_at ?? ''}}"
+          },
+          "text": "{{post.created_at_formatted ?? post.created_at ?? ''}}"
+        }
+      ]
+    }
+  ]
+}

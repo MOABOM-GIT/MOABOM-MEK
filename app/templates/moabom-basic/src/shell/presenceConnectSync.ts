@@ -1,17 +1,6 @@
-import type {
-  OwnPresenceState,
-  PresenceHeartbeatResult,
-  PresenceOnlineUser,
-} from '../api/moabomPresenceApi';
+import type { PresenceOnlineUser } from '../api/moabomPresenceApi';
 
 const SESSION_KEY_STORAGE = 'moabom_presence_last_session_key';
-
-type AuthUserSnapshot = {
-  uuid?: string;
-  name?: string;
-  nickname?: string;
-  avatar?: string | null;
-};
 
 export function rememberPresenceSessionKey(sessionKey: string | undefined | null): void {
   if (!sessionKey || typeof window === 'undefined') {
@@ -35,75 +24,103 @@ export function getRememberedPresenceSessionKey(): string | null {
   }
 }
 
-function getAuthUserSnapshot(): AuthUserSnapshot | null {
-  return (window as {
-    G7Core?: { AuthManager?: { getInstance: () => { getUser: () => AuthUserSnapshot | null } } };
-  }).G7Core?.AuthManager?.getInstance?.()?.getUser?.() ?? null;
-}
-
-export function getShellAuthUserDisplayName(fallback: string): string {
-  const user = getAuthUserSnapshot();
-  const nickname = typeof user?.nickname === 'string' ? user.nickname.trim() : '';
-  const name = typeof user?.name === 'string' ? user.name.trim() : '';
-  return nickname || name || fallback;
-}
-
-export function getShellAuthUserAvatar(): string | null {
-  const avatar = getAuthUserSnapshot()?.avatar;
-  return typeof avatar === 'string' && avatar !== '' ? avatar : null;
-}
-
-export function buildOptimisticSelfOnlineRow(
-  guestDisplayName: string,
-  ownPresence: OwnPresenceState | null,
-  sessionKey?: string | null,
-): PresenceOnlineUser | null {
-  const userUuid = (window as {
-    G7Core?: { AuthManager?: { getInstance: () => { getUser: () => AuthUserSnapshot | null } } };
-  }).G7Core?.AuthManager?.getInstance?.()?.getUser?.()?.uuid;
-
-  if (typeof userUuid !== 'string' || userUuid === '') {
-    return null;
-  }
-
-  const availability = ownPresence?.availability ?? 'online';
-  const subtitle = ownPresence?.presence_subtitle ?? null;
-
-  return {
-    session_key: sessionKey ?? `optimistic-${userUuid}`,
-    user_uuid: userUuid,
-    display_name: getShellAuthUserDisplayName(guestDisplayName),
-    status_text: subtitle,
-    presence_subtitle: subtitle,
-    avatar: getShellAuthUserAvatar(),
-    is_authenticated: true,
-    availability,
-    is_online: ownPresence?.is_reachable ?? availability !== 'offline',
-    friendship: 'none',
-  };
+export function shouldRefreshConnectListAfterHeartbeat(result: {
+  accepted?: boolean;
+  session_key?: string;
+}): boolean {
+  return result.accepted !== false && !!result.session_key;
 }
 
 /**
- * 로그인 직후 — 이 브라우저의 guest 행을 제거하고 본인 회원 행을 즉시 삽입합니다.
+ * 접속자 API·revision 이벤트 후 최종 방어 — guest는 visitor_id(없으면 session_key), 회원은 user_uuid 기준 1행.
  */
-export function promoteGuestToSelfOnConnectList(
+export function normalizePresenceConnectList(users: PresenceOnlineUser[]): PresenceOnlineUser[] {
+  const guests = new Map<string, PresenceOnlineUser>();
+  const authenticated = new Map<string, PresenceOnlineUser>();
+
+  for (const user of users) {
+    if (user.user_uuid) {
+      const existing = authenticated.get(user.user_uuid);
+      if (!existing || comparePresenceRecency(user, existing) > 0) {
+        authenticated.set(user.user_uuid, user);
+      }
+    }
+  }
+
+  const authenticatedVisitorIds = new Set(
+    [...authenticated.values()]
+      .map(user => user.visitor_id?.trim() ?? '')
+      .filter(visitorId => visitorId !== ''),
+  );
+
+  for (const user of users) {
+    if (user.user_uuid) {
+      continue;
+    }
+
+    const guestVisitorId = user.visitor_id?.trim() ?? '';
+    if (guestVisitorId !== '' && authenticatedVisitorIds.has(guestVisitorId)) {
+      continue;
+    }
+
+    const guestKey = guestVisitorId || user.session_key;
+    const existing = guests.get(guestKey);
+    if (!existing || comparePresenceRecency(user, existing) > 0) {
+      guests.set(guestKey, user);
+    }
+  }
+
+  return [...guests.values(), ...authenticated.values()]
+    .sort((a, b) => comparePresenceRecency(b, a));
+}
+
+/**
+ * 로그인 직후 — 내 visitor_id guest 행 제거 후 member 1행으로 승격(낙관적).
+ */
+export function optimisticPromoteSelfInConnectList(
   users: PresenceOnlineUser[],
+  visitorId: string,
   selfRow: PresenceOnlineUser,
-  guestSessionKey: string | null,
 ): PresenceOnlineUser[] {
-  const filtered = users.filter(user => {
-    if (user.user_uuid === selfRow.user_uuid) {
+  const trimmedVisitorId = visitorId.trim();
+  const selfUuid = selfRow.user_uuid?.trim() ?? '';
+
+  const withoutShadows = users.filter(user => {
+    if (selfUuid !== '' && user.user_uuid === selfUuid) {
       return false;
     }
-    if (guestSessionKey && user.session_key === guestSessionKey) {
-      return false;
+    if (!user.user_uuid && trimmedVisitorId !== '') {
+      const guestVisitorId = user.visitor_id?.trim() ?? '';
+      if (guestVisitorId === trimmedVisitorId) {
+        return false;
+      }
     }
     return true;
   });
 
-  return [selfRow, ...filtered];
+  return normalizePresenceConnectList([selfRow, ...withoutShadows]);
 }
 
-export function shouldRefreshConnectListAfterHeartbeat(result: PresenceHeartbeatResult): boolean {
-  return result.accepted !== false && !!result.session_key;
+/**
+ * 로그아웃 직후 — 내 member 행만 제거(낙관적). guest 행은 heartbeat 확정까지 유지.
+ */
+export function optimisticDemoteSelfFromConnectList(
+  users: PresenceOnlineUser[],
+  userUuid: string,
+): PresenceOnlineUser[] {
+  const trimmedUuid = userUuid.trim();
+  if (trimmedUuid === '') {
+    return users;
+  }
+
+  return users.filter(user => user.user_uuid !== trimmedUuid);
+}
+
+function comparePresenceRecency(a: PresenceOnlineUser, b: PresenceOnlineUser): number {
+  const aSeen = a.last_seen_at ?? '';
+  const bSeen = b.last_seen_at ?? '';
+  if (aSeen !== bSeen) {
+    return aSeen.localeCompare(bSeen);
+  }
+  return a.session_key.localeCompare(b.session_key);
 }

@@ -23,7 +23,13 @@ export default defineConfig({
         sourcemap: true,
 
         rollupOptions: {
+            external: ['react', 'react-dom', 'react/jsx-runtime'],
             output: {
+                globals: {
+                    react: 'React',
+                    'react-dom': 'ReactDOM',
+                    'react/jsx-runtime': 'ReactJSXRuntime',
+                },
                 entryFileNames: 'js/plugin.iife.js',
                 chunkFileNames: 'js/[name]-[hash].js',
             },

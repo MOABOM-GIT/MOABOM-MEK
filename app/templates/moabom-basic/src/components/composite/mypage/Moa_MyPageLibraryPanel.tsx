@@ -29,9 +29,7 @@ export const Moa_MyPageLibraryPanel: React.FC<Moa_MyPageLibraryPanelProps> = ({
   recentApps,
 }) => {
   const appInfoFallback = t('moa_mypage.library.app_info_fallback');
-  const createdEmptyText = createdAppsLoading
-    ? t('moa_mypage.library.created_loading')
-    : t('moa_mypage.library.created_empty');
+  const createdEmptyText = t('moa_mypage.library.created_empty');
 
   return (
     <Div className={APP_STACK_CLASS}>
@@ -42,6 +40,8 @@ export const Moa_MyPageLibraryPanel: React.FC<Moa_MyPageLibraryPanelProps> = ({
           title={t('moa_mypage.library.created_title')}
           locale={locale}
           apps={createdApps}
+          loading={createdAppsLoading}
+          loadingLabel={t('moa_mypage.library.created_loading')}
           emptyText={createdEmptyText}
           appInfoFallback={appInfoFallback}
           onOpenApp={onOpenApp}

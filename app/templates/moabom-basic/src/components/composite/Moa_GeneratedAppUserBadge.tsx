@@ -19,7 +19,7 @@ export function Moa_GeneratedAppUserBadge({
 
   return (
     <Div
-      className={`moa-generated-app-user-badge absolute bottom-0 right-0 flex items-center justify-center rounded-full border border-white/80 bg-white/95 text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/95 dark:text-slate-200 ${classes.shell}`}
+      className={`moa-generated-app-user-badge absolute z-[2] flex items-center justify-center rounded-full border-2 border-white/90 bg-white text-slate-700 shadow-md dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 ${classes.shell}`}
       aria-hidden
     >
       <Icon name="user" className={classes.icon} />

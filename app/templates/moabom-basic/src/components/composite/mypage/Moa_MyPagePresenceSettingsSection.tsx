@@ -5,6 +5,7 @@ import { Button } from '../../basic/Button';
 import { Div } from '../../basic/Div';
 import { Span } from '../../basic/Span';
 import { MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 
 const ToggleIndicator: React.FC<{ active: boolean }> = ({ active }) => (
   <Span
@@ -50,7 +51,7 @@ export const Moa_MyPagePresenceSettingsSection: React.FC<Moa_MyPagePresenceSetti
   disabled,
 }) => {
   if (loading) {
-    return <Span className="text-sm text-muted">{t('moa_mypage.presence.loading')}</Span>;
+    return <AppLoadingSpinner label={t('moa_mypage.presence.loading')} />;
   }
 
   return (

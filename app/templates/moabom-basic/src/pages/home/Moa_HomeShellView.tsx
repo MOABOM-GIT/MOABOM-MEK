@@ -56,6 +56,7 @@ import {
 } from '../../shell/moaShellLayoutConstants';
 import { moaHomeShellCssVars } from './moaHomeShellCssVars';
 import { showAppEditToast } from '../../runtime/moaShellToasts';
+import type { GeneratedLibraryHydration } from '../../apps/generatedAppLibraryAuthority';
 import type { MoaCurrentUser, AuthUserLike } from '../../shell/moaShellTypes';
 import type { MoabomSystemDefaults, MoabomSystemLanguage, MoabomSystemState } from '../../types/moabomSystem';
 import type { Dispatch, SetStateAction } from 'react';
@@ -89,6 +90,7 @@ export interface Moa_HomeShellViewProps {
   favoriteApps: App[];
   favoriteIdsRef: React.MutableRefObject<string[]>;
   createdApps: App[];
+  libraryHydration: GeneratedLibraryHydration;
   sharedGeneratedApps: App[];
   leftPanelMyApps: App[];
   recentApps: App[];
@@ -114,6 +116,7 @@ export interface Moa_HomeShellViewProps {
   openAuthWindow: (mode: import('../../components/composite/Moa_AuthWindowContent').AuthWindowMode) => void;
   openBoardWindow: (slug: string, postId?: string) => void;
   openUserProfileWindow: (userUuid: string, displayName?: string, view?: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
+  openShellSurface: (action: import('../../shell/shellSurfaceTypes').ShellSurfaceOpenAction, sync?: import('../../shell/shellSurfaceTypes').ShellUrlSyncOptions) => void;
   openLegalPage: (slug: import('../../shell/moaShellLegalPageIds').MoaShellLegalPageSlug) => void;
   restoreTaskbarWindow: (id: string) => void;
   closeWindow: (win: WindowState) => void;
@@ -164,6 +167,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     favoriteApps,
     favoriteIdsRef,
     createdApps,
+    libraryHydration,
     sharedGeneratedApps,
     leftPanelMyApps,
     recentApps,
@@ -189,6 +193,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     openAuthWindow,
     openBoardWindow,
     openUserProfileWindow,
+    openShellSurface,
     openLegalPage,
     restoreTaskbarWindow,
     closeWindow,
@@ -271,6 +276,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
       compactWindow={compactWindow}
       currentUser={currentUser}
       createdApps={createdApps}
+      createdAppsLoading={libraryHydration === 'loading' && isLoggedIn}
       favoriteApps={favoriteApps}
       recentApps={recentApps}
       shellSystem={{
@@ -318,6 +324,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
         <LeftPanel width={overlayPanelWidth} leftOffset={leftOffset} onOpenApp={openApp} activeTab={activeTab} onTabChange={setActiveTab}
           editMode={editMode} onEnterEditMode={handleEnterEditMode} favoriteApps={favoriteApps}
           createdApps={leftPanelMyApps}
+          ownedGeneratedAppsLoading={libraryHydration === 'loading' && isLoggedIn}
           sharedApps={sharedGeneratedApps}
           onAddApp={handleAddAppToMain} onOpenBoard={openBoardWindow} onOpenUserProfile={openUserProfileWindow} isOverlay={isMobileOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
             setLeftOpen(false);
@@ -394,7 +401,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
 
       <RightPanel width={overlayPanelWidth} rightOffset={rightOffset} isLoggedIn={isLoggedIn} currentUser={currentUser} onOpenMyPage={openMyPage}
         onOpenAuth={openAuthWindow}
-        onOpenUserProfile={openUserProfileWindow}
+        onOpenShellSurface={openShellSurface}
         isOverlay={isRightOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
           setRightOpen(false);
           updateSystemState({ layout: { rightPanelOpen: false } });

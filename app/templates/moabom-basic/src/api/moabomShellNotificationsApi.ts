@@ -1,4 +1,4 @@
-import { moabomApiGet, moabomApiPost } from './moabomAuthenticatedApi';
+import { moabomApiDelete, moabomApiGet, moabomApiPost } from './moabomAuthenticatedApi';
 
 export interface ShellNotificationItem {
   id: string;
@@ -68,5 +68,10 @@ export async function markShellNotificationRead(id: string): Promise<boolean> {
 
 export async function markAllShellNotificationsRead(): Promise<boolean> {
   const result = await moabomApiPost('/api/user/notifications/read-all');
+  return result.ok;
+}
+
+export async function deleteAllShellNotifications(): Promise<boolean> {
+  const result = await moabomApiDelete('/api/user/notifications/all');
   return result.ok;
 }

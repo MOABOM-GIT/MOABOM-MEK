@@ -221,6 +221,7 @@ export function resolvePresenceListStatusLine(
   t: MoabomTranslateFn,
   user: {
     user_uuid?: string | null;
+    client_ip_masked?: string | null;
     presence_subtitle?: string | null;
     status_text?: string | null;
     is_online: boolean;
@@ -238,6 +239,11 @@ export function resolvePresenceListStatusLine(
       return t('moa_shell.right.presence_offline');
     }
     return t('moa_shell.right.presence_active');
+  }
+
+  const maskedIp = user.client_ip_masked?.trim();
+  if (!user.user_uuid && maskedIp) {
+    return maskedIp;
   }
 
   const subtitle = resolvePresenceSubtitle(user);

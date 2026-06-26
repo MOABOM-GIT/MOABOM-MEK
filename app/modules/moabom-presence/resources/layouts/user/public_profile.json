@@ -54,7 +54,7 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3"
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3"
           },
           "children": [
             {
@@ -257,7 +257,7 @@
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "moa-user-profile-stat moa-user-profile-stat--clickable glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
+                "className": "moa-user-profile-stat moa-user-profile-stat--clickable moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
               },
               "actions": [
                 {
@@ -294,7 +294,7 @@
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "moa-user-profile-stat glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
+                "className": "moa-user-profile-stat moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
               },
               "children": [
                 {
@@ -324,7 +324,7 @@
           "type": "basic",
           "name": "Div",
           "props": {
-            "className": "glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3 min-w-0"
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3 min-w-0"
           },
           "children": [
             {
@@ -351,7 +351,7 @@
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "flex flex-col gap-2 min-w-0"
+                "className": "moa-user-profile-post-list min-w-0"
               },
               "iteration": {
                 "source": "{{user_recent_posts?.data?.data ?? []}}",
@@ -360,51 +360,7 @@
               },
               "children": [
                 {
-                  "id": "user_profile_recent_row",
-                  "type": "basic",
-                  "name": "Div",
-                  "props": {
-                    "className": "moa-user-profile-post-row"
-                  },
-                  "children": [
-                    {
-                      "id": "user_profile_recent_board",
-                      "type": "basic",
-                      "name": "Span",
-                      "props": {
-                        "className": "moa-user-profile-post-badge text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                      },
-                      "text": "{{post.board_name ?? post.board_slug ?? ''}}"
-                    },
-                    {
-                      "id": "user_profile_recent_title_btn",
-                      "type": "basic",
-                      "name": "Button",
-                      "props": {
-                        "className": "moa-user-profile-post-title text-primary"
-                      },
-                      "actions": [
-                        {
-                          "type": "click",
-                          "handler": "navigate",
-                          "params": {
-                            "path": "/board/{{post.board_slug}}/{{post.id}}"
-                          }
-                        }
-                      ],
-                      "text": "{{post.title}}"
-                    },
-                    {
-                      "id": "user_profile_recent_meta",
-                      "type": "basic",
-                      "name": "Span",
-                      "props": {
-                        "className": "moa-user-profile-post-date",
-                        "title": "{{post.created_at ?? ''}}"
-                      },
-                      "text": "{{post.created_at_formatted ?? post.created_at ?? ''}}"
-                    }
-                  ]
+                  "partial": "../partials/user/_user_post_row.json"
                 }
               ]
             },

@@ -44,6 +44,16 @@ interface ChatRepositoryInterface
 
     public function countUnread(int $conversationId, int $userId, ?int $lastReadMessageId): int;
 
+    public function setMemberMutedUntil(int $conversationId, int $userId, ?\DateTimeInterface $mutedUntil): ?ChatConversationMember;
+
+    public function removeMember(int $conversationId, int $userId): bool;
+
+    public function restoreMemberIfTrashed(int $conversationId, int $userId): bool;
+
+    public function findMessageByUuid(string $messageUuid): ?ChatMessage;
+
+    public function softDeleteMessage(int $messageId, int $senderId): bool;
+
     public function findBlock(int $blockerId, int $blockedId): ?ChatUserBlock;
 
     public function upsertBlock(int $blockerId, int $blockedId, ?string $reason = null): ChatUserBlock;

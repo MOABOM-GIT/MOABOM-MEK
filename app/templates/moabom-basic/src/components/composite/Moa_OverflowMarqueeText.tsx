@@ -11,6 +11,11 @@ export interface Moa_OverflowMarqueeTextProps {
   wrapperClassName?: string;
   /** 네이티브 툴팁(기본: text) */
   title?: string;
+  /**
+   * 이 글자 수를 초과하면 마퀴 대신 말줄임만 사용.
+   * (초장문 설명의 무한 스크롤 방지)
+   */
+  maxMarqueeChars?: number;
 }
 
 /** 오버플로 진입/이탈 시 깜빡임으로 ResizeObserver ↔ setState 루프 방지 */
@@ -25,7 +30,10 @@ export const Moa_OverflowMarqueeText: React.FC<Moa_OverflowMarqueeTextProps> = (
   className = '',
   wrapperClassName = '',
   title,
+  maxMarqueeChars,
 }) => {
+  const marqueeEligible =
+    maxMarqueeChars == null || text.length <= maxMarqueeChars;
   const outerRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLSpanElement | null>(null);
   const seg1Ref = useRef<HTMLSpanElement | null>(null);
@@ -55,7 +63,9 @@ export const Moa_OverflowMarqueeText: React.FC<Moa_OverflowMarqueeTextProps> = (
 
       const wText = measureEl.scrollWidth;
       let nextOverflow: boolean;
-      if (!overflowsRef.current) {
+      if (!marqueeEligible) {
+        nextOverflow = false;
+      } else if (!overflowsRef.current) {
         nextOverflow = wText > wOuter + OVERFLOW_HYSTERESIS_PX;
       } else {
         nextOverflow = wText > wOuter - OVERFLOW_HYSTERESIS_PX;
@@ -112,7 +122,7 @@ export const Moa_OverflowMarqueeText: React.FC<Moa_OverflowMarqueeTextProps> = (
       }
       ro.disconnect();
     };
-  }, [text]);
+  }, [text, marqueeEligible]);
 
   if (!text) {
     return null;

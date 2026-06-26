@@ -164,4 +164,19 @@ describe('Moa_OverflowMarqueeText', () => {
     const root = container.querySelector('.moa-overflow-marquee');
     expect(root?.className).toContain('moa-overflow-marquee--active');
   });
+
+  it('maxMarqueeChars 를 초과하면 오버플로여도 마퀴 트랙을 사용하지 않는다', () => {
+    mockLayoutWidths({ clientWidth: 100, scrollWidth: 400, offsetWidth: 400 });
+
+    const longText = '가'.repeat(40);
+    const { container } = render(
+      <Moa_OverflowMarqueeText text={longText} maxMarqueeChars={28} />,
+    );
+
+    expect(container.querySelector('.moa-overflow-marquee__track')).toBeNull();
+    expect(container.querySelector('.moa-overflow-marquee__inner--ellipsis')).not.toBeNull();
+    expect(container.querySelector('.moa-overflow-marquee')?.className).not.toContain(
+      'moa-overflow-marquee--active',
+    );
+  });
 });

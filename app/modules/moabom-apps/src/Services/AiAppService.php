@@ -22,6 +22,7 @@ class AiAppService
         private readonly GeneratedAppHostingService $hostingService,
         private readonly GeneratedAppOwnerResolver $ownerResolver,
         private readonly GeneratedAppPurgeService $purgeService,
+        private readonly WebsiteLinkIconStorageService $websiteLinkIconStorage,
     ) {
     }
 
@@ -330,7 +331,7 @@ PROMPT;
             $app = $this->hostingService->provisionHosted($app);
         }
 
-        return $app;
+        return $this->syncWebsiteLinkIcon($app, is_array($data['metadata'] ?? null) ? $data['metadata'] : []);
     }
 
     private function visibleParentAppId(int $userId, mixed $parentAppId): ?int
@@ -344,6 +345,25 @@ PROMPT;
     }
 
     /**
+     * @param  array<string, mixed>|null  $metadata
+     */
+    private function syncWebsiteLinkIcon(GeneratedApp $app, ?array $metadata = null): GeneratedApp
+    {
+        if ($app->app_type !== 'website_link') {
+            return $app;
+        }
+
+        $metadata = $metadata ?? (is_array($app->metadata) ? $app->metadata : []);
+        $normalized = $this->websiteLinkIconStorage->persistForApp($app, $metadata);
+
+        if ($normalized == $metadata) {
+            return $app->fresh(['user']) ?? $app;
+        }
+
+        return $this->appRepository->update($app, ['metadata' => $normalized]);
+    }
+
+    /**
      * 최근 생성 앱 목록을 조회합니다.
      *
      * @return array<int, array<string, mixed>>
@@ -351,7 +371,7 @@ PROMPT;
     public function listForUser(int $userId, int $limit = 20): array
     {
         return $this->appRepository->getForUser($userId, $limit)
-            ->map(fn (GeneratedApp $app): array => $this->serialize($app, includeHtml: false, viewerUserId: $userId))
+            ->map(fn (GeneratedApp $app): array => $this->serializeForLibraryList($app, $userId))
             ->all();
     }
 
@@ -361,7 +381,7 @@ PROMPT;
     public function listPublished(int $limit = 50, ?int $viewerUserId = null): array
     {
         return $this->appRepository->getPublished($limit)
-            ->map(fn (GeneratedApp $app): array => $this->serialize($app, includeHtml: false, viewerUserId: $viewerUserId))
+            ->map(fn (GeneratedApp $app): array => $this->serializeForLibraryList($app, $viewerUserId))
             ->all();
     }
 
@@ -369,6 +389,19 @@ PROMPT;
     public function listShared(int $limit = 50, ?int $viewerUserId = null): array
     {
         return $this->listPublished($limit, $viewerUserId);
+    }
+
+    /**
+     * 홈 셸 라이브러리 1회 조회용 — owned·published 목록을 함께 반환합니다.
+     *
+     * @return array{owned: array<int, array<string, mixed>>, shared: array<int, array<string, mixed>>}
+     */
+    public function libraryForUser(int $userId, int $ownedLimit = 20, int $sharedLimit = 50): array
+    {
+        return [
+            'owned' => $this->listForUser($userId, $ownedLimit),
+            'shared' => $this->listPublished($sharedLimit, $userId),
+        ];
     }
 
     public function findForUser(int $userId, int $id): ?GeneratedApp
@@ -428,10 +461,13 @@ PROMPT;
             AppTier::tryFrom((string) ($updated->tier ?? AppTier::Standard->value)) === AppTier::Hosted
             && $updated->hosted_subdomain === null
         ) {
-            return $this->hostingService->provisionHosted($updated);
+            $updated = $this->hostingService->provisionHosted($updated);
         }
 
-        return $updated;
+        return $this->syncWebsiteLinkIcon(
+            $updated,
+            array_key_exists('metadata', $data) && is_array($data['metadata']) ? $data['metadata'] : null,
+        );
     }
 
     public function setVisibilityForUser(int $userId, int $id, GeneratedAppVisibility $visibility): ?GeneratedApp
@@ -469,6 +505,19 @@ PROMPT;
     }
 
     /**
+     * 라이브러리·목록 API용 직렬화. preview_url(토큰·URL 생성) 생략.
+     *
+     * @return array<string, mixed>
+     */
+    public function serializeForLibraryList(GeneratedApp $app, ?int $viewerUserId = null): array
+    {
+        $payload = $this->serialize($app, includeHtml: false, viewerUserId: $viewerUserId);
+        unset($payload['preview_url']);
+
+        return $payload;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function serialize(GeneratedApp $app, bool $includeHtml = true, ?int $viewerUserId = null): array
@@ -497,7 +546,10 @@ PROMPT;
             'is_shared' => $visibility->isPublished(),
             'parent_app_id' => $app->parent_app_id,
             'version' => $app->version ?? 1,
-            'metadata' => $app->metadata ?? [],
+            'metadata' => $this->websiteLinkIconStorage->normalizeMetadataForResponse(
+                $app,
+                is_array($app->metadata) ? $app->metadata : [],
+            ),
             'owner' => [
                 'id' => $app->user_id,
                 'nickname' => $ownerName,

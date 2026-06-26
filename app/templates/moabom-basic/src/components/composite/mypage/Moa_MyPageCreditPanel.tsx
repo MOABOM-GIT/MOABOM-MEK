@@ -75,7 +75,6 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
     <Div className={`${GROUP_PANEL} p-5`}>
       <Div className="mb-3 flex items-center justify-between gap-2">
         <Div className={MY_PAGE_BLOCK_TITLE_TEXT_CLASS}>{t('moa_mypage.credit.recent_title')}</Div>
-        {creditLoading ? <Span className="text-xs text-muted shrink-0">{t('moa_mypage.credit.loading_short')}</Span> : null}
       </Div>
       <Div className="flex flex-col gap-2">
         {creditError ? (

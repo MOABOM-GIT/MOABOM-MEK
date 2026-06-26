@@ -32,6 +32,15 @@
   transform: scale(0.93);
 }
 
+.moa-btn-taskbar--light {
+  --moa-btn-color: #0f172a;
+  --moa-btn-hover-color: #0f172a;
+  --moa-btn-shadow: rgba(15, 23, 42, 0.08) 0px 4px 10px,
+    rgba(15, 23, 42, 0.04) 0px 2px 5px;
+  --moa-btn-hover-shadow: rgba(15, 23, 42, 0.12) 0px 6px 14px,
+    rgba(15, 23, 42, 0.06) 0px 3px 7px;
+}
+
 /** 그라데이션·유색 카드 위 CTA — `moa-btn` + 사이즈만 조합해 쓰는 글래스 필(밝은 테두리·화이트 라벨) */
 .moa-btn-neutral {
   --moa-btn-color: #ffffff;

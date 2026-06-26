@@ -6,6 +6,11 @@ import {
   fetchChatMessages,
   focusChatConversation,
   markChatConversationRead,
+  muteChatConversation,
+  deleteChatMessage,
+  deleteChatConversation,
+  signalChatTyping,
+  unmuteChatConversation,
   MoabomChatApiError,
   searchChatUsers,
   sendChatMessage,
@@ -15,9 +20,10 @@ import {
   type ChatBlock,
   type ChatConversation,
   type ChatMessage,
+  type ChatPeerRead,
   type ChatUserSearchResult,
 } from '../api/moabomChatApi';
-import { subscribeChatConversation } from '../runtime/moabomChatSocket';
+import { subscribeChatConversation, subscribeChatConversations } from '../runtime/moabomChatSocket';
 import { pushInfoToast, pushWarningToast } from '../runtime/moaShellToasts';
 import {
   notifyMoabomShellChatBlockChanged,
@@ -30,6 +36,21 @@ import {
 } from '../runtime/moabomShellPendingChatNavigation';
 import { getShellAuthUserUuid } from '../utils/presenceSettingsSync';
 import { resolveChatReasonToastKey } from '../shell/moabomShellSocialActionToasts';
+import { MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT } from '../runtime/moabomWebSocketAuthSync';
+import {
+  registerShellChatInboxHandler,
+} from '../shell/ShellRealtimeStore';
+import {
+  registerShellChatInboxCacheListener,
+  getShellChatInboxCache,
+  setShellChatInboxCache,
+} from '../shell/moabomShellChatInboxCache';
+import {
+  isMoabomWebSocketConnected,
+  subscribeMoabomWebSocketConnectionChange,
+} from '../runtime/moabomWebSocketConnection';
+import { requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
+import type { ChatMessageCreatedPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
 
 function chatErrorMessage(error: unknown, t: MoabomTranslateFn): string {
   if (error instanceof MoabomChatApiError) {
@@ -81,6 +102,16 @@ function appendMessage(list: ChatMessage[], message: ChatMessage): ChatMessage[]
   return [...list, message];
 }
 
+function peerReadMapFromList(peerRead: ChatPeerRead[] | undefined): Record<string, number> {
+  const map: Record<string, number> = {};
+  (peerRead ?? []).forEach(row => {
+    if (row.user_uuid && row.last_read_message_id != null) {
+      map[row.user_uuid] = row.last_read_message_id;
+    }
+  });
+  return map;
+}
+
 export function useMoabomChat(
   targetUserUuid: string | undefined,
   t: MoabomTranslateFn,
@@ -98,17 +129,68 @@ export function useMoabomChat(
   const selectSeqRef = useRef(0);
   const pendingNavigationRef = useRef<ReturnType<typeof consumeMoabomShellPendingChatNavigation>>(null);
   const lastConversationTargetRef = useRef<string | null>(null);
+  const submitInFlightRef = useRef(false);
+  const [wsAuthEpoch, setWsAuthEpoch] = useState(0);
+  const [submittingMessage, setSubmittingMessage] = useState(false);
+  const [peerReadMap, setPeerReadMap] = useState<Record<string, number>>({});
+  const [typingPeerUuids, setTypingPeerUuids] = useState<string[]>([]);
+  const typingClearTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastTypingSignalRef = useRef(0);
+
+  const applyIncomingChatMessage = useCallback((payload: ChatMessageCreatedPayload) => {
+    const conversationUuid = payload.conversation_uuid
+      ?? payload.message?.conversation_uuid
+      ?? payload.conversation?.uuid;
+    if (!conversationUuid) {
+      return;
+    }
+
+    const incomingMessage = payload.message
+      ?? (payload.conversation?.latest_message as ChatMessage | undefined);
+    const active = activeConversationRef.current;
+    const isActiveConversation = active?.uuid === conversationUuid;
+
+    if (incomingMessage && isActiveConversation) {
+      setMessages(prev => appendMessage(prev, incomingMessage));
+      void markChatConversationRead(conversationUuid, incomingMessage.id);
+    }
+
+    if (payload.conversation) {
+      setConversations(prev => upsertConversation(prev, payload.conversation as ChatConversation));
+      setActiveConversation(prev => (
+        prev?.uuid === payload.conversation?.uuid ? payload.conversation as ChatConversation : prev
+      ));
+      return;
+    }
+
+    if (incomingMessage) {
+      setConversations(prev => prev.map(item => (
+        item.uuid === conversationUuid
+          ? {
+            ...item,
+            latest_message: incomingMessage,
+            last_message_at: payload.last_message_at ?? incomingMessage.created_at ?? item.last_message_at,
+            unread_count: isActiveConversation ? 0 : item.unread_count + 1,
+          }
+          : item
+      )));
+    }
+  }, []);
 
   useEffect(() => {
     activeConversationRef.current = activeConversation;
   }, [activeConversation]);
 
-  const loadConversations = useCallback(async (search?: string) => {
-    setLoading(true);
+  const loadConversations = useCallback(async (search?: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const rows = await fetchChatConversations(search);
       setConversations(rows);
+      setShellChatInboxCache(rows);
       if (
         !activeConversationRef.current
         && rows[0]
@@ -120,12 +202,33 @@ export function useMoabomChat(
       return rows;
     } catch (e) {
       const message = chatErrorMessage(e, t);
-      setError(message);
+      if (!silent) {
+        setError(message);
+      }
       return [];
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [initialConversationUuid, t]);
+
+  const refreshActiveMessagesSilent = useCallback(async () => {
+    const active = activeConversationRef.current;
+    if (!active) {
+      return;
+    }
+    try {
+      const result = await fetchChatMessages(active.uuid);
+      if (activeConversationRef.current?.uuid !== active.uuid) {
+        return;
+      }
+      setMessages(result.messages ?? []);
+      setPeerReadMap(peerReadMapFromList(result.peer_read));
+    } catch {
+      // 폴링·포커스 보조 동기화 — UI 에러는 생략
+    }
+  }, []);
 
   const loadBlocks = useCallback(async () => {
     try {
@@ -149,6 +252,7 @@ export function useMoabomChat(
         return;
       }
       setMessages(result.messages ?? []);
+      setPeerReadMap(peerReadMapFromList(result.peer_read ?? conversation.peer_read));
       const last = result.messages?.[result.messages.length - 1];
       await Promise.all([
         markChatConversationRead(conversation.uuid, last?.id),
@@ -210,18 +314,46 @@ export function useMoabomChat(
 
   const submitMessage = useCallback(async (body: string) => {
     const trimmed = body.trim();
-    if (!trimmed || !activeConversation) {
+    if (!trimmed || !activeConversation || submitInFlightRef.current) {
       return false;
     }
+
+    submitInFlightRef.current = true;
+    setSubmittingMessage(true);
+
+    const clientMessageId = crypto.randomUUID();
+    const selfUuid = getShellAuthUserUuid();
+    const selfMember = activeConversation.members.find(member => member.user_uuid === selfUuid);
+    const optimisticMessage: ChatMessage = {
+      id: -Date.now(),
+      uuid: `pending-${clientMessageId}`,
+      conversation_uuid: activeConversation.uuid,
+      sender: selfMember ?? (selfUuid ? { user_uuid: selfUuid, display_name: '' } : null),
+      body: trimmed,
+      type: 'text',
+      client_message_id: clientMessageId,
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
+
+    setMessages(prev => appendMessage(prev, optimisticMessage));
+
     try {
-      const result = await sendChatMessage(activeConversation.uuid, trimmed);
-      setMessages(prev => appendMessage(prev, result.message));
+      const result = await sendChatMessage(activeConversation.uuid, trimmed, clientMessageId);
+      setMessages(prev => appendMessage(
+        prev.filter(item => item.client_message_id !== clientMessageId),
+        result.message,
+      ));
       setConversations(prev => upsertConversation(prev, result.conversation));
       setActiveConversation(result.conversation);
       return true;
     } catch (e) {
+      setMessages(prev => prev.filter(item => item.client_message_id !== clientMessageId));
       pushWarningToast(chatErrorMessage(e, t), 3500);
       return false;
+    } finally {
+      submitInFlightRef.current = false;
+      setSubmittingMessage(false);
     }
   }, [activeConversation, t]);
 
@@ -254,18 +386,177 @@ export function useMoabomChat(
     }
   }, [t]);
 
+  const applyPeerReadPayload = useCallback((payload: ChatReadPayload) => {
+    const readerUuid = payload.user_uuid?.trim();
+    if (!readerUuid || payload.last_read_message_id == null) {
+      return;
+    }
+    setPeerReadMap(prev => ({
+      ...prev,
+      [readerUuid]: Math.max(prev[readerUuid] ?? 0, payload.last_read_message_id ?? 0),
+    }));
+  }, []);
+
+  const handlePeerTyping = useCallback((payload: ChatTypingPayload) => {
+    const peerUuid = payload.user_uuid?.trim();
+    const selfUuid = getShellAuthUserUuid();
+    if (!peerUuid || peerUuid === selfUuid) {
+      return;
+    }
+    setTypingPeerUuids(prev => (prev.includes(peerUuid) ? prev : [...prev, peerUuid]));
+    if (typingClearTimersRef.current[peerUuid]) {
+      clearTimeout(typingClearTimersRef.current[peerUuid]);
+    }
+    typingClearTimersRef.current[peerUuid] = setTimeout(() => {
+      setTypingPeerUuids(prev => prev.filter(uuid => uuid !== peerUuid));
+      delete typingClearTimersRef.current[peerUuid];
+    }, 3500);
+  }, []);
+
+  const signalTyping = useCallback(() => {
+    const conversation = activeConversationRef.current;
+    if (!conversation) {
+      return;
+    }
+    const now = Date.now();
+    if (now - lastTypingSignalRef.current < 2000) {
+      return;
+    }
+    lastTypingSignalRef.current = now;
+    void signalChatTyping(conversation.uuid).catch(() => undefined);
+  }, []);
+
+  const isMessageReadByPeer = useCallback((message: ChatMessage): boolean => {
+    if (!message.id || message.id < 0 || message.pending) {
+      return false;
+    }
+    const peerIds = Object.values(peerReadMap);
+    if (peerIds.length === 0) {
+      return false;
+    }
+    return peerIds.some(readId => readId >= message.id);
+  }, [peerReadMap]);
+
+  const toggleConversationMute = useCallback(async () => {
+    const conversation = activeConversationRef.current;
+    if (!conversation) {
+      return;
+    }
+    try {
+      if (conversation.is_muted) {
+        await unmuteChatConversation(conversation.uuid);
+        setConversations(prev => prev.map(item => (
+          item.uuid === conversation.uuid ? { ...item, is_muted: false, muted_until: null } : item
+        )));
+        setActiveConversation(prev => (
+          prev?.uuid === conversation.uuid ? { ...prev, is_muted: false, muted_until: null } : prev
+        ));
+        pushInfoToast(t('moa_chat.mute_off'), 2400);
+      } else {
+        await muteChatConversation(conversation.uuid);
+        setConversations(prev => prev.map(item => (
+          item.uuid === conversation.uuid ? { ...item, is_muted: true } : item
+        )));
+        setActiveConversation(prev => (
+          prev?.uuid === conversation.uuid ? { ...prev, is_muted: true } : prev
+        ));
+        pushInfoToast(t('moa_chat.mute_on'), 2400);
+      }
+    } catch (e) {
+      pushWarningToast(chatErrorMessage(e, t), 3200);
+    }
+  }, [t]);
+
+  const removeOwnMessage = useCallback(async (messageUuid: string) => {
+    try {
+      await deleteChatMessage(messageUuid);
+      setMessages(prev => prev.filter(item => item.uuid !== messageUuid));
+    } catch (e) {
+      pushWarningToast(chatErrorMessage(e, t), 3200);
+    }
+  }, [t]);
+
+  const removeConversation = useCallback(async (conversationUuid: string) => {
+    try {
+      await deleteChatConversation(conversationUuid);
+      const wasActive = activeConversationRef.current?.uuid === conversationUuid;
+
+      if (wasActive) {
+        void unfocusChatConversation(conversationUuid).catch(() => undefined);
+        setMessages([]);
+        clearMoabomShellActiveChat();
+      }
+
+      let nextActive: ChatConversation | null = null;
+      setConversations(prev => {
+        const next = prev.filter(item => item.uuid !== conversationUuid);
+        setShellChatInboxCache(next);
+        if (wasActive) {
+          nextActive = next[0] ?? null;
+        }
+        return next;
+      });
+
+      if (wasActive) {
+        if (nextActive) {
+          void selectConversation(nextActive);
+        } else {
+          setActiveConversation(null);
+        }
+      }
+
+      pushInfoToast(t('moa_chat.toast_conversation_removed'), 2400);
+    } catch (e) {
+      pushWarningToast(chatErrorMessage(e, t), 3200);
+    }
+  }, [selectConversation, t]);
+
   useEffect(() => {
-    void loadConversations();
+    const cached = getShellChatInboxCache();
+    if (cached.length > 0) {
+      setConversations(cached);
+    }
+    void loadConversations(undefined, { silent: cached.length > 0 });
     void loadBlocks();
   }, [loadBlocks, loadConversations]);
 
   useEffect(() => {
-    const onFocus = () => {
+    const refreshOnFocus = () => {
       void loadBlocks();
+      requestShellChatInboxSync();
+      void refreshActiveMessagesSilent();
+    };
+    const onFocus = () => {
+      refreshOnFocus();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshOnFocus();
+      }
     };
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [loadBlocks]);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [loadBlocks, refreshActiveMessagesSilent]);
+
+  useEffect(() => {
+    const onWsAuthSynced = () => {
+      setWsAuthEpoch(epoch => epoch + 1);
+    };
+    window.addEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
+    return () => window.removeEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
+  }, []);
+
+  useEffect(() => {
+    return subscribeMoabomWebSocketConnectionChange(() => {
+      if (isMoabomWebSocketConnected()) {
+        void refreshActiveMessagesSilent();
+      }
+    });
+  }, [refreshActiveMessagesSilent]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -349,35 +640,62 @@ export function useMoabomChat(
   }, []);
 
   useEffect(() => {
+    return registerShellChatInboxCacheListener(cached => {
+      setConversations(cached);
+    });
+  }, []);
+
+  useEffect(() => {
+    return registerShellChatInboxHandler(applyIncomingChatMessage);
+  }, [applyIncomingChatMessage]);
+
+  useEffect(() => {
+    const channels = conversations
+      .map(conversation => conversation.channel)
+      .filter((channel): channel is string => Boolean(channel));
+
+    if (channels.length === 0) {
+      return undefined;
+    }
+
+    const subscription = subscribeChatConversations(channels, {
+      onMessageCreated: applyIncomingChatMessage,
+      onTyping: handlePeerTyping,
+      onMessageDeleted: payload => {
+        if (!payload.message_uuid) {
+          return;
+        }
+        setMessages(prev => prev.filter(item => item.uuid !== payload.message_uuid));
+      },
+    });
+
+    if (!subscription) {
+      return undefined;
+    }
+
+    return () => subscription.unsubscribe();
+  }, [applyIncomingChatMessage, conversations, handlePeerTyping, wsAuthEpoch]);
+
+  useEffect(() => {
     if (!activeConversation?.channel) {
       return undefined;
     }
+    const selfUuid = getShellAuthUserUuid();
     const subscription = subscribeChatConversation(activeConversation.channel, {
-      onMessageCreated: payload => {
-        const message = payload.message as ChatMessage | undefined;
-        const conversationUuid = payload.conversation_uuid ?? message?.conversation_uuid ?? activeConversation.uuid;
-        if (message && conversationUuid === activeConversation.uuid) {
-          setMessages(prev => appendMessage(prev, message));
-          void markChatConversationRead(activeConversation.uuid, message.id);
+      onMessageCreated: applyIncomingChatMessage,
+      onTyping: handlePeerTyping,
+      onMessageDeleted: payload => {
+        if (!payload.message_uuid) {
+          return;
         }
-        if (payload.conversation) {
-          setConversations(prev => upsertConversation(prev, payload.conversation as ChatConversation));
-          setActiveConversation(prev => (prev?.uuid === payload.conversation?.uuid ? payload.conversation as ChatConversation : prev));
-        } else if (message) {
-          setConversations(prev => prev.map(item => (
-            item.uuid === conversationUuid
-              ? {
-                ...item,
-                latest_message: message,
-                last_message_at: payload.last_message_at ?? message.created_at ?? item.last_message_at,
-                unread_count: conversationUuid === activeConversation.uuid ? 0 : item.unread_count + 1,
-              }
-              : item
-          )));
-        }
+        setMessages(prev => prev.filter(item => item.uuid !== payload.message_uuid));
       },
       onRead: payload => {
-        if (payload.conversation_uuid === activeConversation.uuid && payload.user_uuid === getShellAuthUserUuid()) {
+        if (payload.conversation_uuid === activeConversation.uuid && payload.user_uuid && payload.user_uuid !== selfUuid) {
+          applyPeerReadPayload(payload);
+          return;
+        }
+        if (payload.conversation_uuid === activeConversation.uuid && payload.user_uuid === selfUuid) {
           setConversations(prev => prev.map(item => (
             item.uuid === activeConversation.uuid ? { ...item, unread_count: 0 } : item
           )));
@@ -386,7 +704,7 @@ export function useMoabomChat(
     });
 
     return () => subscription?.unsubscribe();
-  }, [activeConversation?.channel, activeConversation?.uuid]);
+  }, [activeConversation?.channel, activeConversation?.uuid, applyIncomingChatMessage, applyPeerReadPayload, handlePeerTyping, wsAuthEpoch]);
 
   return {
     conversations,
@@ -401,6 +719,13 @@ export function useMoabomChat(
     selectConversation,
     startWithUsers,
     submitMessage,
+    submittingMessage,
+    signalTyping,
+    isMessageReadByPeer,
+    isPeerTyping: typingPeerUuids.length > 0,
+    toggleConversationMute,
+    removeOwnMessage,
+    removeConversation,
     searchUsers,
     unblockUser,
   };

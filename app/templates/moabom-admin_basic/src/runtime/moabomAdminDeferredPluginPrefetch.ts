@@ -1,7 +1,8 @@
 /**
- * lazy 플러그인이 관리자 레이아웃 JSON 로드 전에 IIFE로 올라오도록 `__g7BeforeLayoutLoad`를 등록한다.
- * 코어는 G7 순정을 유지하고, 순정 `reloadPluginHandlers` 액션으로 선로딩한다.
- * (moabom-basic의 `sirsoftEcommerceLayoutPrefetch`와 동일 훅이며, 관리자 템플릿 ID에서만 동작)
+ * lazy 모듈·플러그인이 관리자 레이아웃 JSON 로드 전에 IIFE로 올라오도록 `__g7BeforeLayoutLoad`를 등록한다.
+ * 코어는 G7 순정을 유지하고, 순정 `reloadModuleHandlers` / `reloadPluginHandlers`로 선로딩한다.
+ *
+ * @see moabom-basic `sirsoftEcommerceLayoutPrefetch.ts` (사용자 표면 동일 계약)
  */
 
 type DeferredEntry = { js?: string; css?: string; priority?: number; external?: unknown };
@@ -9,20 +10,41 @@ type DeferredEntry = { js?: string; css?: string; priority?: number; external?: 
 type MoabomAppConfig = {
     moabom?: {
         extensionDeferredRegistry?: {
+            modules?: Record<string, DeferredEntry>;
             plugins?: Record<string, DeferredEntry>;
         };
     };
 };
 
 type G7ConfigShape = {
+    moduleAssets?: Record<string, DeferredEntry>;
+    deferredModuleAssets?: Record<string, DeferredEntry>;
     pluginAssets?: Record<string, DeferredEntry>;
     deferredPluginAssets?: Record<string, DeferredEntry>;
     appConfig?: MoabomAppConfig;
 };
 
+const ECOMMERCE_MODULE_ID = 'sirsoft-ecommerce';
+const DAUM_PLUGIN_ID = 'sirsoft-daum_postcode';
+const CKEDITOR_PLUGIN_ID = 'sirsoft-ckeditor5';
 const TOSSPAYMENTS_PLUGIN_ID = 'sirsoft-tosspayments';
 
-let tossLoadInFlight: Promise<void> | null = null;
+const loadInFlight = new Map<string, Promise<void>>();
+
+function hydrateDeferredModuleFromRegistry(cfg: G7ConfigShape, moduleId: string): boolean {
+    cfg.deferredModuleAssets = cfg.deferredModuleAssets ?? {};
+    const existing = cfg.deferredModuleAssets[moduleId];
+    if (existing && (existing.js || existing.css)) {
+        return true;
+    }
+    const src = cfg.appConfig?.moabom?.extensionDeferredRegistry?.modules?.[moduleId];
+    if (!src || (!src.js && !src.css)) {
+        return false;
+    }
+    cfg.deferredModuleAssets[moduleId] = { ...src };
+
+    return true;
+}
 
 function hydrateDeferredPluginFromRegistry(cfg: G7ConfigShape, pluginId: string): boolean {
     cfg.deferredPluginAssets = cfg.deferredPluginAssets ?? {};
@@ -47,57 +69,132 @@ function getDispatch(): ((action: { handler: string; params?: Record<string, unk
     return typeof w.G7Core?.dispatch === 'function' ? w.G7Core.dispatch : undefined;
 }
 
-async function ensureSirsoftTosspaymentsPluginLoaded(): Promise<void> {
-    const w = window as unknown as {
-        G7Config?: G7ConfigShape;
-    };
-
-    const cfg = w.G7Config;
+async function ensureDeferredModuleLoaded(moduleId: string): Promise<void> {
+    const cfg = (window as unknown as { G7Config?: G7ConfigShape }).G7Config;
     const dispatch = getDispatch();
     if (!cfg || typeof dispatch !== 'function') {
         return;
     }
 
-    const plg = cfg.pluginAssets?.[TOSSPAYMENTS_PLUGIN_ID];
+    const mod = cfg.moduleAssets?.[moduleId];
+    if (mod && (mod.js || mod.css)) {
+        return;
+    }
+
+    hydrateDeferredModuleFromRegistry(cfg, moduleId);
+
+    const asset = cfg.deferredModuleAssets?.[moduleId];
+    if (!asset) {
+        return;
+    }
+
+    const key = `module:${moduleId}`;
+    const existing = loadInFlight.get(key);
+    if (existing) {
+        await existing;
+
+        return;
+    }
+
+    const promise = dispatch({
+        handler: 'reloadModuleHandlers',
+        params: {
+            action: 'add',
+            moduleInfo: { identifier: moduleId, assets: asset },
+        },
+    }).then(() => undefined);
+
+    loadInFlight.set(key, promise);
+    try {
+        await promise;
+    } finally {
+        loadInFlight.delete(key);
+    }
+}
+
+async function ensureDeferredPluginLoaded(pluginId: string): Promise<void> {
+    const cfg = (window as unknown as { G7Config?: G7ConfigShape }).G7Config;
+    const dispatch = getDispatch();
+    if (!cfg || typeof dispatch !== 'function') {
+        return;
+    }
+
+    const plg = cfg.pluginAssets?.[pluginId];
     if (plg && (plg.js || plg.css)) {
         return;
     }
 
-    hydrateDeferredPluginFromRegistry(cfg, TOSSPAYMENTS_PLUGIN_ID);
+    hydrateDeferredPluginFromRegistry(cfg, pluginId);
 
-    if (!cfg.deferredPluginAssets?.[TOSSPAYMENTS_PLUGIN_ID]) {
+    const asset = cfg.deferredPluginAssets?.[pluginId];
+    if (!asset) {
         return;
     }
 
-    if (tossLoadInFlight) {
-        await tossLoadInFlight;
+    const key = `plugin:${pluginId}`;
+    const existing = loadInFlight.get(key);
+    if (existing) {
+        await existing;
 
         return;
     }
 
-    tossLoadInFlight = (async () => {
-        const asset = cfg.deferredPluginAssets?.[TOSSPAYMENTS_PLUGIN_ID];
-        if (!asset) {
-            return;
-        }
+    const promise = dispatch({
+        handler: 'reloadPluginHandlers',
+        params: {
+            action: 'add',
+            pluginInfo: { identifier: pluginId, assets: asset },
+        },
+    }).then(() => undefined);
 
-        await dispatch({
-            handler: 'reloadPluginHandlers',
-            params: {
-                action: 'add',
-                pluginInfo: {
-                    identifier: TOSSPAYMENTS_PLUGIN_ID,
-                    assets: asset,
-                },
-            },
-        });
-    })();
-
+    loadInFlight.set(key, promise);
     try {
-        await tossLoadInFlight;
+        await promise;
     } finally {
-        tossLoadInFlight = null;
+        loadInFlight.delete(key);
     }
+}
+
+function layoutPathSuggestsAdminEcommerce(layoutPath: string): boolean {
+    const p = layoutPath.toLowerCase();
+
+    return p.startsWith('admin_ecommerce_') || p.includes('sirsoft-ecommerce.');
+}
+
+function layoutPathSuggestsCKEditor(layoutPath: string): boolean {
+    const p = layoutPath.toLowerCase();
+    if (p.includes('html-editor') || p.includes('htmleditor')) {
+        return true;
+    }
+    if (p.includes('post_form') || p.includes('page_form')) {
+        return true;
+    }
+    if (p.includes('notification_template')) {
+        return true;
+    }
+    if (p.includes('rich-text') || p.includes('richtext')) {
+        return true;
+    }
+    if (p.includes('description') && (p.includes('product') || p.includes('ecommerce') || p.includes('partial'))) {
+        return true;
+    }
+    if (p.startsWith('sirsoft-page.') || p.includes('.sirsoft-page.')) {
+        return true;
+    }
+    if (p.startsWith('board/') || p.includes('partials/board/')) {
+        return true;
+    }
+    if (p.includes('sirsoft-board.') && /write|edit|post|form|draft|compose/.test(p)) {
+        return true;
+    }
+
+    return false;
+}
+
+function layoutPathSuggestsTossPayments(layoutPath: string): boolean {
+    const p = layoutPath.toLowerCase();
+
+    return p.includes('sirsoft-tosspayments') || p.includes('checkout') || p.includes('pending_payment');
 }
 
 async function moabomAdminBeforeLayoutLoad(
@@ -109,12 +206,22 @@ async function moabomAdminBeforeLayoutLoad(
         return;
     }
 
-    const p = layoutPath.toLowerCase();
-    if (!p.includes('sirsoft-tosspayments')) {
-        return;
+    if (layoutPathSuggestsAdminEcommerce(layoutPath)) {
+        await ensureDeferredModuleLoaded(ECOMMERCE_MODULE_ID);
     }
 
-    await ensureSirsoftTosspaymentsPluginLoaded();
+    if (layoutPathSuggestsCKEditor(layoutPath)) {
+        await ensureDeferredPluginLoaded(CKEDITOR_PLUGIN_ID);
+    }
+
+    if (layoutPathSuggestsTossPayments(layoutPath)) {
+        await ensureDeferredPluginLoaded(TOSSPAYMENTS_PLUGIN_ID);
+    }
+
+    const p = layoutPath.toLowerCase();
+    if (p.includes('address') || p.includes('shipping') || p.includes('postcode')) {
+        await ensureDeferredPluginLoaded(DAUM_PLUGIN_ID);
+    }
 }
 
 /**
@@ -128,3 +235,11 @@ export function registerMoabomAdminDeferredPluginPrefetch(): void {
     (window as unknown as { __g7BeforeLayoutLoad?: typeof moabomAdminBeforeLayoutLoad }).__g7BeforeLayoutLoad =
         moabomAdminBeforeLayoutLoad;
 }
+
+/** Vitest·회귀용 */
+export {
+    moabomAdminBeforeLayoutLoad,
+    ensureDeferredModuleLoaded,
+    ensureDeferredPluginLoaded,
+    layoutPathSuggestsAdminEcommerce,
+};

@@ -84,6 +84,9 @@ class MoabomUserBootDeferredAssetsGhostComposerTest extends ModuleTestCase
         $data = $view->gatherData();
         $this->assertSame($originalModules, $data['deferredModuleAssets']);
         $this->assertSame($originalPlugins, $data['deferredPluginAssets']);
+        $this->assertArrayHasKey('extensionDeferredRegistry', $data['appConfig']['moabom']);
+        $this->assertSame($originalModules, $data['appConfig']['moabom']['extensionDeferredRegistry']['modules']);
+        $this->assertSame($originalPlugins, $data['appConfig']['moabom']['extensionDeferredRegistry']['plugins']);
         $this->assertIsInt($data['appConfig']['moabom']['extension_epoch']);
     }
 

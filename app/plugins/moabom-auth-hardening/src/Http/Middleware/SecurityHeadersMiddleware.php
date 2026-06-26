@@ -102,7 +102,8 @@ class SecurityHeadersMiddleware
     }
 
     /**
-     * Moabom AI 생성앱 iframe (apps.mek360.com / {id}.apps.mek360.com) 허용.
+     * Moabom AI 생성앱 iframe (apps.mek360.com / {id}.apps.mek360.com) 및
+     * website_link 외부 HTTPS embed 허용.
      *
      * frame-src 미지정 시 default-src 'self' 가 iframe 삽입을 막아 Report-Only 위반이 발생한다.
      * MOABOM_APPS_PREVIEW_* 는 moabom-apps 모듈과 동일 env 키를 공유한다.
@@ -115,6 +116,9 @@ class SecurityHeadersMiddleware
             $sources[] = 'https://'.$host;
             $sources[] = 'https://*.'.$host;
         }
+
+        // website_link 앱 — 저장·검증된 외부 HTTPS URL iframe (Report-Only/enforce frame-src)
+        $sources[] = 'https:';
 
         return 'frame-src '.implode(' ', array_values(array_unique($sources)));
     }

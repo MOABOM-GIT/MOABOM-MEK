@@ -16,6 +16,7 @@ import {
   removePresenceFriend,
   requestPresenceFriend,
   sendPresenceHeartbeat,
+  type PresenceHeartbeatTouch,
   type OwnPresenceState,
   type PresenceAvailability,
   type PresenceFriend,
@@ -25,24 +26,59 @@ import {
   type PresenceSummary,
 } from '../api/moabomPresenceApi';
 import {
-  leaveTenantPresenceChannel,
-  subscribeTenantPresenceChannel,
+  subscribePresenceRevisionChannel,
+  unsubscribePresenceRevisionChannel,
 } from '../runtime/moabomPresenceSocket';
-import { MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT } from '../runtime/moabomWebSocketAuthSync';
+import {
+  noteShellPresenceRevision,
+  registerShellPlatformSummaryInvalidate,
+  registerShellPresenceInvalidate,
+} from '../shell/ShellRealtimeStore';
+import {
+  installMoabomShellRealtimeCoordinator,
+  startMoabomShellRealtimeCoordinator,
+  stopMoabomShellRealtimeCoordinator,
+} from '../runtime/moabomShellRealtimeCoordinator';
+import {
+  startMoabomShellChatSyncService,
+  stopMoabomShellChatSyncService,
+} from '../runtime/moabomShellChatSyncService';
+import {
+  ensureMoabomChatNotificationPermission,
+  installMoabomShellChatBackgroundNotify,
+} from '../runtime/moabomShellChatBackgroundNotify';
+import {
+  installShellChatInboxCacheBridge,
+} from '../shell/moabomShellChatInboxCache';
+import { installShellNotificationBridge } from '../shell/moabomShellNotificationBridge';
+import { MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, syncMoabomWebSocketAuth } from '../runtime/moabomWebSocketAuthSync';
+import {
+  isMoabomWebSocketConnected,
+  subscribeMoabomWebSocketConnectionChange,
+} from '../runtime/moabomWebSocketConnection';
 import { useMoabomShellT } from '../i18n/MoabomUiI18nProvider';
 import {
   MOABOM_PRESENCE_SETTINGS_OPTIMISTIC_EVENT,
   type PresenceSettingsOptimisticDetail,
 } from '../components/composite/mypage/tabs/useMyPagePresenceSettings';
-import { resolveShellPresenceActivityText } from '../shell/moaShellPresenceActivity';
+import {
+  resolveShellPresenceActivityText,
+} from '../shell/moaShellPresenceActivity';
+import { deferShellSecondaryWork } from '../shell/moaShellDeferredWork';
 import { resolveClientFormFactor } from '../utils/clientFormFactor';
 import {
-  buildOptimisticSelfOnlineRow,
-  getRememberedPresenceSessionKey,
-  promoteGuestToSelfOnConnectList,
+  normalizePresenceConnectList,
   rememberPresenceSessionKey,
   shouldRefreshConnectListAfterHeartbeat,
 } from '../shell/presenceConnectSync';
+import {
+  applyOptimisticLoginToOnlineUsers,
+  applyOptimisticLogoutToOnlineUsers,
+} from '../shell/presenceLoginBridge';
+import {
+  notifyMoabomPresenceFriendsChanged,
+  subscribeMoabomPresenceFriendsChanged,
+} from '../shell/moabomPresenceFriendsSync';
 import {
   applyPendingSelfPresenceToFriends,
   applyPendingSelfPresenceToOnlineUsers,
@@ -103,9 +139,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   /** 로그인 직후 presence 채널 재구독 트리거 (WebSocket auth 동기화) */
   const [wsAuthEpoch, setWsAuthEpoch] = useState(0);
   const wasLoggedInRef = useRef(isLoggedIn);
+  const selfUserUuidRef = useRef<string | null>(getShellAuthUserUuid());
   const sessionBootstrappedRef = useRef(false);
   /** 저장 완료 전 heartbeat·API 재조회가 낙관적 설정을 덮어쓰지 않도록 보호 */
   const localPendingSettingsRef = useRef<LocalPendingPresenceSettings | null>(null);
+  const heartbeatDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     ownPresenceRef.current = ownPresence;
@@ -213,6 +251,7 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   const refreshSummary = useCallback(async () => {
     try {
       const next = await fetchPresenceSummary();
+      noteShellPresenceRevision(next.revision);
       setSummary(next);
     } catch {
       setSummary(null);
@@ -222,9 +261,10 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   const refreshOnline = useCallback(async () => {
     setLoadingOnline(true);
     try {
-      const users = await fetchPresenceOnlineUsers();
+      const payload = await fetchPresenceOnlineUsers();
+      noteShellPresenceRevision(payload.revision);
       setOnlineUsers(applyPendingSelfPresenceToOnlineUsers(
-        users,
+        normalizePresenceConnectList(payload.users),
         getShellAuthUserUuid(),
         ownPresenceRef.current,
         localPendingSettingsRef.current,
@@ -299,25 +339,10 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     }
   }, [applyOwnPresencePatch, applyPresenceSettingsSnapshot, isLoggedIn, t]);
 
-  const optimisticallyPromoteSelfOnConnectList = useCallback(() => {
-    const selfRow = buildOptimisticSelfOnlineRow(
-      t('moa_shell.right.presence_guest_fallback'),
-      ownPresenceRef.current,
-      getRememberedPresenceSessionKey(),
-    );
-    if (!selfRow) {
-      return;
-    }
-    setOnlineUsers(prev => promoteGuestToSelfOnConnectList(
-      prev,
-      selfRow,
-      getRememberedPresenceSessionKey(),
-    ));
-  }, [t]);
-
   const runHeartbeat = useCallback(async (options?: {
     skipSummaryRefresh?: boolean;
     refreshConnectList?: boolean;
+    touch?: PresenceHeartbeatTouch;
   }) => {
     try {
       let subtitleMode = ownPresenceRef.current?.subtitle_mode;
@@ -327,10 +352,15 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       const statusText = subtitleMode === 'activity'
         ? resolveShellPresenceActivityText(t)
         : null;
-      const heartbeat = await sendPresenceHeartbeat(statusText, resolveClientFormFactor());
+      const heartbeat = await sendPresenceHeartbeat(
+        statusText,
+        resolveClientFormFactor(),
+        options?.touch,
+      );
       if (heartbeat.session_key) {
         rememberPresenceSessionKey(heartbeat.session_key);
       }
+      noteShellPresenceRevision(heartbeat.revision);
       if (heartbeat.availability) {
         const pending = localPendingSettingsRef.current;
         const availability = pending?.availability ?? heartbeat.availability;
@@ -376,6 +406,20 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     }
   }, [applyOwnPresencePatch, hydrateOwnSettings, isLoggedIn, patchSelfPresenceOnLists, refreshOnline, refreshSummary, t]);
 
+  const scheduleDebouncedHeartbeat = useCallback((options?: {
+    skipSummaryRefresh?: boolean;
+    refreshConnectList?: boolean;
+    touch?: PresenceHeartbeatTouch;
+  }) => {
+    if (heartbeatDebounceRef.current !== null) {
+      clearTimeout(heartbeatDebounceRef.current);
+    }
+    heartbeatDebounceRef.current = setTimeout(() => {
+      heartbeatDebounceRef.current = null;
+      void runHeartbeat(options);
+    }, 1500);
+  }, [runHeartbeat]);
+
   const confirmPresenceSettingsOnServer = useCallback(async () => {
     localPendingSettingsRef.current = null;
     await runHeartbeat();
@@ -387,10 +431,12 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       return;
     }
     sessionBootstrappedRef.current = true;
-    void (async () => {
-      await refreshSummary();
-      await runHeartbeat({ skipSummaryRefresh: true, refreshConnectList: true });
-    })();
+    deferShellSecondaryWork(() => {
+      void (async () => {
+        await refreshSummary();
+        await runHeartbeat({ skipSummaryRefresh: true, refreshConnectList: true });
+      })();
+    }, 120);
   }, [refreshSummary, runHeartbeat]);
 
   useEffect(() => {
@@ -407,24 +453,60 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     setPresenceSettingsLoading(false);
 
     if (isLoggedIn) {
-      optimisticallyPromoteSelfOnConnectList();
+      selfUserUuidRef.current = getShellAuthUserUuid();
+      setOnlineUsers(prev => applyOptimisticLoginToOnlineUsers(prev, ownPresenceRef.current));
       void (async () => {
-        await runHeartbeat({ skipSummaryRefresh: true, refreshConnectList: true });
-        await Promise.all([refreshSummary(), refreshFriends()]);
-        await hydrateOwnSettings();
+        await runHeartbeat({
+          touch: 'login',
+          skipSummaryRefresh: true,
+          refreshConnectList: false,
+        });
+        await Promise.all([
+          refreshSummary(),
+          refreshOnline(),
+          refreshFriends(),
+          hydrateOwnSettings(),
+        ]);
       })();
       return;
     }
 
-    void runHeartbeat({ refreshConnectList: true });
+    const loggedOutUuid = selfUserUuidRef.current;
+    if (loggedOutUuid) {
+      setOnlineUsers(prev => applyOptimisticLogoutToOnlineUsers(prev, loggedOutUuid));
+    }
+    selfUserUuidRef.current = null;
+    void runHeartbeat({ touch: 'logout', refreshConnectList: true });
   }, [
     hydrateOwnSettings,
     isLoggedIn,
-    optimisticallyPromoteSelfOnConnectList,
     refreshFriends,
     refreshSummary,
     runHeartbeat,
   ]);
+
+  useEffect(() => {
+    installMoabomShellRealtimeCoordinator();
+    installShellChatInboxCacheBridge();
+    installShellNotificationBridge();
+    installMoabomShellChatBackgroundNotify();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      stopMoabomShellRealtimeCoordinator();
+      stopMoabomShellChatSyncService();
+      return;
+    }
+
+    syncMoabomWebSocketAuth(true);
+    void ensureMoabomChatNotificationPermission();
+    const uuid = getShellAuthUserUuid();
+    if (uuid) {
+      startMoabomShellRealtimeCoordinator(uuid);
+    }
+    startMoabomShellChatSyncService();
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const onWsAuthSynced = () => {
@@ -439,42 +521,69 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   useEffect(() => {
     const intervalSec = summary?.heartbeat_interval_sec ?? 60;
     const timer = window.setInterval(() => {
-      void runHeartbeat({ refreshConnectList: true });
+      void runHeartbeat({ refreshConnectList: false });
     }, intervalSec * 1000);
     return () => window.clearInterval(timer);
   }, [runHeartbeat, summary?.heartbeat_interval_sec]);
 
-  const refreshPresenceCounts = useCallback(() => {
-    void refreshSummary();
-    if (isLoggedIn) {
-      void refreshFriends();
-    }
-  }, [isLoggedIn, refreshFriends, refreshSummary]);
+  useEffect(() => {
+    return subscribeMoabomWebSocketConnectionChange(() => {
+      if (isMoabomWebSocketConnected()) {
+        void Promise.all([refreshSummary(), refreshOnline()]);
+      }
+    });
+  }, [refreshOnline, refreshSummary]);
 
-  const handlePresenceChannelChurn = useCallback(() => {
-    void refreshOnline();
-    refreshPresenceCounts();
-  }, [refreshOnline, refreshPresenceCounts]);
+  const invalidatePresenceFromRevision = useCallback(() => {
+    void Promise.all([refreshSummary(), refreshOnline()]);
+  }, [refreshOnline, refreshSummary]);
+
+  useEffect(() => registerShellPresenceInvalidate(invalidatePresenceFromRevision), [
+    invalidatePresenceFromRevision,
+  ]);
+
+  useEffect(() => registerShellPlatformSummaryInvalidate(refreshSummary), [refreshSummary]);
+
+  const revisionSubscriptionKeyRef = useRef<string | null>(null);
+  const platformRevisionSubscriptionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn || !summary?.presence_channel) {
+    if (!summary?.revision_channel) {
       return;
     }
 
-    const subscription = subscribeTenantPresenceChannel(summary.presence_channel, {
-      onHere: handlePresenceChannelChurn,
-      onJoining: handlePresenceChannelChurn,
-      onLeaving: handlePresenceChannelChurn,
-    });
+    const subscriptionKey = subscribePresenceRevisionChannel(summary.revision_channel);
+    revisionSubscriptionKeyRef.current = subscriptionKey;
 
     return () => {
-      if (subscription) {
-        subscription.leave();
-      } else if (summary.presence_channel) {
-        leaveTenantPresenceChannel(summary.presence_channel);
+      if (revisionSubscriptionKeyRef.current) {
+        unsubscribePresenceRevisionChannel(revisionSubscriptionKeyRef.current);
+        revisionSubscriptionKeyRef.current = null;
       }
     };
-  }, [handlePresenceChannelChurn, isLoggedIn, summary?.presence_channel, wsAuthEpoch]);
+  }, [summary?.revision_channel, wsAuthEpoch]);
+
+  useEffect(() => {
+    if (!summary?.platform_revision_channel) {
+      return;
+    }
+
+    const subscriptionKey = subscribePresenceRevisionChannel(summary.platform_revision_channel);
+    platformRevisionSubscriptionKeyRef.current = subscriptionKey;
+
+    return () => {
+      if (platformRevisionSubscriptionKeyRef.current) {
+        unsubscribePresenceRevisionChannel(platformRevisionSubscriptionKeyRef.current);
+        platformRevisionSubscriptionKeyRef.current = null;
+      }
+    };
+  }, [summary?.platform_revision_channel, wsAuthEpoch]);
+
+  useEffect(() => {
+    return subscribeMoabomPresenceFriendsChanged(() => {
+      void Promise.all([refreshOnline(), refreshFriends()]);
+    });
+  }, [refreshFriends, refreshOnline]);
 
   useEffect(() => {
     const handleSettingsChanged = () => {
@@ -491,22 +600,22 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     const handlePresenceContextChanged = () => {
       applyActivitySubtitleLocally();
       if (ownPresenceRef.current?.subtitle_mode === 'activity') {
-        void runHeartbeat({ refreshConnectList: true });
+        scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handlePathChanged = () => {
       applyActivitySubtitleLocally();
       if (ownPresenceRef.current?.subtitle_mode === 'activity') {
-        void runHeartbeat({ refreshConnectList: true });
+        scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void runHeartbeat({ refreshConnectList: true });
+        scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handleWindowFocus = () => {
-      void runHeartbeat({ refreshConnectList: true });
+      scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
     };
 
     window.addEventListener('moabom-presence-settings-changed', handleSettingsChanged);
@@ -525,7 +634,7 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [applyActivitySubtitleLocally, applyPresenceSettingsOptimistic, confirmPresenceSettingsOnServer, runHeartbeat]);
+  }, [applyActivitySubtitleLocally, applyPresenceSettingsOptimistic, confirmPresenceSettingsOnServer, scheduleDebouncedHeartbeat]);
 
   const addFriend = useCallback(async (userUuid: string) => {
     await requestPresenceFriend(userUuid);
@@ -539,6 +648,7 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
 
   const removeFriend = useCallback(async (userUuid: string) => {
     await removePresenceFriend(userUuid);
+    notifyMoabomPresenceFriendsChanged();
     await Promise.all([refreshOnline(), refreshFriends()]);
   }, [refreshFriends, refreshOnline]);
 

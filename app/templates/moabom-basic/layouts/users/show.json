@@ -69,21 +69,13 @@
       "children": [
             {
               "comment": "로딩/에러 상태 처리",
-              "type": "basic",
-              "name": "Div",
+              "type": "composite",
+              "name": "AppLoadingSpinner",
               "if": "{{profile.loading}}",
               "props": {
-                "className": "flex justify-center items-center py-20"
-              },
-              "children": [
-                {
-                  "type": "basic",
-                  "name": "Div",
-                  "props": {
-                    "className": "animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"
-                  }
-                }
-              ]
+                "label": "$t:nav.loading",
+                "className": "py-20"
+              }
             },
             {
               "comment": "프로필 내용",
@@ -99,12 +91,12 @@
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+                    "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700 p-6"
                   },
                   "responsive": {
                     "portable": {
                       "props": {
-                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                        "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700 p-4"
                       }
                     }
                   },
@@ -139,7 +131,7 @@
                       "type": "basic",
                       "name": "Div",
                       "props": {
-                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
+                        "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
                       },
                       "children": [
                         {
@@ -165,7 +157,7 @@
                       "type": "basic",
                       "name": "Div",
                       "props": {
-                        "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
+                        "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center"
                       },
                       "children": [
                         {
@@ -194,7 +186,7 @@
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700"
+                    "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700"
                   },
                   "children": [
                     {
@@ -241,21 +233,15 @@
                       "type": "basic",
                       "name": "Div",
                       "props": {
-                        "className": "flex flex-col gap-2 p-3 min-w-0"
+                        "className": "moa-user-profile-post-list min-w-0"
+                      },
+                      "iteration": {
+                        "source": "{{recentPosts.data?.data ?? []}}",
+                        "item_var": "post"
                       },
                       "children": [
                         {
-                          "type": "basic",
-                          "name": "Div",
-                          "iteration": {
-                            "source": "{{recentPosts.data?.data ?? []}}",
-                            "item_var": "post"
-                          },
-                          "children": [
-                            {
-                              "partial": "../partials/users/_user_post_row.json"
-                            }
-                          ]
+                          "partial": "../partials/users/_user_post_row.json"
                         }
                       ]
                     }
@@ -267,7 +253,7 @@
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700"
+                    "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700"
                   },
                   "children": [
                     {

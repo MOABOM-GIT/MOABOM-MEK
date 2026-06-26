@@ -16,6 +16,7 @@ ok()   { echo "    OK: $*"; }
 REQUIRED_ROUTES=(
   "Route::get('conversations'"
   "Route::post('conversations'"
+  "Route::delete('conversations/{conversationUuid}'"
   "Route::get('conversations/{conversationUuid}/messages'"
   "Route::post('conversations/{conversationUuid}/messages'"
   "Route::get('blocks'"
@@ -40,6 +41,7 @@ if [[ "${FAIL}" -eq 0 ]]; then
 fi
 
 [[ -f "${CHAT_API}" ]] || fail "moabomChatApi.ts 없음"
+grep -q 'user/conversations/' "${CHAT_API}" || fail "moabomChatApi.ts 에 conversations 경로 없음"
 grep -q 'user/blocks' "${CHAT_API}" || fail "moabomChatApi.ts 에 blocks 경로 없음"
 grep -q 'user/users/' "${CHAT_API}" || fail "moabomChatApi.ts 에 eligibility 경로 없음"
 grep -q 'createTransientShellModuleApi' "${CHAT_API}" \

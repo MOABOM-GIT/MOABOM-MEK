@@ -5,7 +5,9 @@ use Modules\Moabom\Apps\Http\Controllers\Admin\GeneratedAppAdminController;
 use Modules\Moabom\Apps\Http\Controllers\AiAppController;
 use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
 use Modules\Moabom\Apps\Http\Controllers\AiStreamQueueController;
+use Modules\Moabom\Apps\Http\Controllers\GeneratedAppWebsiteIconController;
 use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
+use Modules\Moabom\Apps\Http\Controllers\WebsiteLinkController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +28,9 @@ Route::prefix('apps')->middleware(['optional.sanctum'])->group(function () {
     Route::get('generated/shared/{id}', [PublicGeneratedAppController::class, 'show'])
         ->whereNumber('id')
         ->name('apps.generated.show.public');
+    Route::get('generated/{id}/website-icon', [GeneratedAppWebsiteIconController::class, 'show'])
+        ->whereNumber('id')
+        ->name('apps.generated.website_icon');
 });
 
 Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
@@ -55,6 +60,8 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
         ->whereNumber('id')
         ->name('apps.ai.sessions.destroy');
 
+    Route::get('generated/library', [AiAppController::class, 'library'])
+        ->name('apps.generated.library');
     Route::get('generated', [AiAppController::class, 'index'])
         ->name('apps.generated.index');
     Route::get('generated/{id}', [AiAppController::class, 'show'])
@@ -62,6 +69,9 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
         ->name('apps.generated.show');
     Route::post('generated', [AiAppController::class, 'store'])
         ->name('apps.generated.store');
+    Route::post('website-link/resolve', [WebsiteLinkController::class, 'resolve'])
+        ->middleware('throttle:30,1')
+        ->name('apps.website_link.resolve');
     Route::put('generated/{id}', [AiAppController::class, 'update'])
         ->whereNumber('id')
         ->name('apps.generated.update');

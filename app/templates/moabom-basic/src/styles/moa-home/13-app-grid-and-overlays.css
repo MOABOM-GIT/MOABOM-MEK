@@ -51,6 +51,17 @@
   font-size: var(--moa-main-desc-size);
 }
 
+/* 앱 아이콘 라벨 — 마퀴 없이 한 줄 말줄임 (타이틀·짧은 설명) */
+.moa-app-icon-label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .moa-left-panel-app-grid {
   --moa-left-panel-app-cell-min: 70px;
   --moa-left-panel-app-gap: 17px;
@@ -154,4 +165,20 @@
   .moa-responsive-backdrop {
     -webkit-backdrop-filter: blur(3px);
   }
+}
+
+/** 생성 앱 사용자 배지 — overflow:hidden 아이콘 밖으로 살짝 겹쳐 표시 */
+.moa-generated-app-icon-shell .moa-generated-app-user-badge {
+  right: -0.2rem;
+  bottom: -0.2rem;
+}
+
+.moa-main-app-item .moa-generated-app-icon-shell .moa-generated-app-user-badge {
+  right: -0.15rem;
+  bottom: -0.15rem;
+}
+
+.moa-left-panel-app-btn .moa-generated-app-icon-shell .moa-generated-app-user-badge {
+  right: -0.1rem;
+  bottom: -0.1rem;
 }

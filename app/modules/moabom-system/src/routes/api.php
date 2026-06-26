@@ -9,6 +9,7 @@ use Modules\Moabom\System\Http\Controllers\PublicExtensionBootMetaController;
 use Modules\Moabom\System\Http\Controllers\PublicFrontendDefaultsController;
 use Modules\Moabom\System\Http\Controllers\PublicLegalPageController;
 use Modules\Moabom\System\Http\Controllers\PublicShellAppUsageController;
+use Modules\Moabom\System\Http\Controllers\PublicRunReadyController;
 use Modules\Moabom\System\Http\Controllers\PublicShellBootController;
 use Modules\Moabom\System\Http\Controllers\PublicTemplateRoutesShellController;
 use Modules\Moabom\System\Http\Controllers\UserSystemSettingsController;
@@ -27,6 +28,9 @@ Route::get('home-backgrounds/{id}/{variant}', [HomeBackgroundFileController::cla
     ->whereUuid('id')
     ->whereIn('variant', ['full', 'thumb'])
     ->name('home-backgrounds.show');
+
+Route::get('public/ready', [PublicRunReadyController::class, '__invoke'])
+    ->name('public.ready');
 
 Route::get('public/shell-boot', [PublicShellBootController::class, '__invoke'])
     ->middleware('throttle:120,1')

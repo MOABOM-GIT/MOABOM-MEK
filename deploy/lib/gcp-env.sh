@@ -18,7 +18,7 @@ set -euo pipefail
 : "${GCP_ARTIFACT_REGION:=${GCP_REGION}}"
 : "${GCP_ARTIFACT_REPO:=moabom-dock}"
 : "${CLOUD_RUN_SERVICE:=mobaom-container}"
-: "${CLOUDSQL_INSTANCE:=${GCP_PROJECT_ID}:${GCP_REGION}:moabom-sql}"
+: "${CLOUDSQL_INSTANCE:=${GCP_PROJECT_ID}:${GCP_REGION}:moabom-sql-v2}"
 : "${GCS_BUCKET:=${GCP_PROJECT_ID}}"
 
 # Secret Manager 시크릿 이름 (Cloud Run 의 env 키 ← Secret Manager 시크릿 매핑)

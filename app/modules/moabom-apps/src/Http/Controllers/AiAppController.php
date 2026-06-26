@@ -192,6 +192,23 @@ class AiAppController extends AuthBaseController
     }
 
     /**
+     * 홈 셸 라이브러리 — owned·published 목록을 1회에 조회합니다.
+     */
+    public function library(): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return $this->unauthorized('auth.unauthenticated');
+        }
+
+        return ResponseHelper::moduleSuccess(
+            'moabom-apps',
+            'messages.apps.generated.fetch_success',
+            $this->aiAppService->libraryForUser($user->id),
+        );
+    }
+
+    /**
      * 생성 앱 목록을 조회합니다.
      */
     public function index(): JsonResponse

@@ -2,6 +2,7 @@
 
 namespace Modules\Moabom\System\Http\Controllers;
 
+use App\Extension\HookManager;
 use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Api\Base\AuthBaseController;
 use Illuminate\Http\JsonResponse;
@@ -37,13 +38,13 @@ class UserSystemSettingsController extends AuthBaseController
         return ResponseHelper::moduleSuccess(
             'moabom-system',
             'messages.user.fetch_success',
-            [
+            $this->enrichResponseData([
                 'defaults' => $this->defaultsReader->frontendDefaults(),
                 'settings' => $settings,
                 'defaults_revision' => $this->defaultsReader->combinedRevision(),
                 'site' => $this->defaultsReader->siteMeta(),
                 'locale_catalog' => MoabomUiLocales::catalog(),
-            ]
+            ], $user),
         );
     }
 
@@ -71,13 +72,13 @@ class UserSystemSettingsController extends AuthBaseController
         return ResponseHelper::moduleSuccess(
             'moabom-system',
             'messages.user.save_success',
-            [
+            $this->enrichResponseData([
                 'defaults' => $this->defaultsReader->frontendDefaults(),
                 'settings' => $next,
                 'defaults_revision' => $this->defaultsReader->combinedRevision(),
                 'site' => $this->defaultsReader->siteMeta(),
                 'locale_catalog' => MoabomUiLocales::catalog(),
-            ]
+            ], $user),
         );
     }
 
@@ -98,6 +99,20 @@ class UserSystemSettingsController extends AuthBaseController
     /**
      * 응답 메시지 번역에 사용할 로케일을 Moabom 사용자 설정과 맞춥니다.
      *
+     * @param  array<string, mixed>  $settings
+     */
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function enrichResponseData(array $data, object $user): array
+    {
+        $enriched = HookManager::applyFilters('moabom.user_settings.response_data', $data, $user);
+
+        return is_array($enriched) ? $enriched : $data;
+    }
+
+    /**
      * @param  array<string, mixed>  $settings
      */
     private function applyMoabomUiLocaleFromSettings(array $settings): void

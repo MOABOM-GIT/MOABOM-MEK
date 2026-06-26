@@ -43,6 +43,7 @@ RUN composer install \
 COPY app/ ./
 # moabom-chat SSOT — 부분 api.php 가 이미지에 들어가면 즉시 빌드 실패
 RUN grep -q "Route::delete('blocks/{userUuid}'" modules/moabom-chat/src/routes/api.php \
+ && grep -q "Route::delete('conversations/{conversationUuid}'" modules/moabom-chat/src/routes/api.php \
  && grep -q '\[0-9a-f\]{8}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{12}' modules/moabom-chat/src/routes/api.php \
  && grep -q registerMissingUserRoutes modules/moabom-chat/src/Providers/ChatServiceProvider.php \
  || (echo "ERROR: moabom-chat SSOT routes/provider guard missing in image context" && exit 1)
@@ -91,8 +92,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY deploy/nginx-cloudrun.conf /etc/nginx/conf.d/default.conf
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/moabom.conf
 COPY deploy/cloudrun-entrypoint.sh /usr/local/bin/cloudrun-entrypoint.sh
-COPY deploy/saas-module-sync.sh deploy/saas-clone-tenant.sh deploy/saas-extension-bootstrap.sh deploy/saas-tenant-extension-sync.sh /var/www/html/deploy/
-RUN chmod +x /usr/local/bin/cloudrun-entrypoint.sh
+COPY deploy/cloudrun-deferred-sync.sh deploy/saas-module-sync.sh deploy/saas-clone-tenant.sh deploy/saas-extension-bootstrap.sh deploy/saas-tenant-extension-sync.sh /var/www/html/deploy/
+RUN chmod +x /usr/local/bin/cloudrun-entrypoint.sh /var/www/html/deploy/cloudrun-deferred-sync.sh
 
 RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
     && chown -R www-data:www-data /var/www/html

@@ -67,6 +67,7 @@ class BroadcastNotificationListener implements HookListenerInterface
                     'subject' => $context['subject'] ?? null,
                     'body' => $context['body'] ?? null,
                     'type' => $context['notification_type'] ?? null,
+                    'data' => $context['data'] ?? null,
                 ]
             );
         } catch (\Throwable $e) {

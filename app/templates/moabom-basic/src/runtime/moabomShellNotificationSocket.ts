@@ -4,6 +4,7 @@ export type ShellNotificationReceivedPayload = {
   type?: string;
   id?: string;
   url?: string;
+  data?: Record<string, unknown> | null;
 };
 
 type G7WebSocketApi = {

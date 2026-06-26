@@ -20,12 +20,14 @@ export type ShellUserRankingItem = {
 
 export type ShellAppRankingsPayload = {
   period_hours: number;
+  change_period_hours?: number;
   generated_at: string;
   items: ShellAppRankingItem[];
 };
 
 export type ShellUserRankingsPayload = {
   period_hours: number;
+  change_period_hours?: number;
   generated_at: string;
   items: ShellUserRankingItem[];
 };

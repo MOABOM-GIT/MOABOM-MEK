@@ -51,11 +51,42 @@ class PresenceConnectListNormalizerTest extends TestCase
         $this->assertCount(2, $result);
     }
 
-    private function makeSession(string $sessionKey, ?int $userId, Carbon $lastSeenAt): TenantPresenceSession
+    public function test_dedupes_guest_sessions_by_visitor_id(): void
     {
+        $sessions = new Collection([
+            $this->makeSession('legacy-key', null, now()->subSeconds(5), 'visitor-1'),
+            $this->makeSession('new-key', null, now(), 'visitor-1'),
+        ]);
+
+        $result = PresenceConnectListNormalizer::dedupe($sessions, 10);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('new-key', $result->first()?->session_key);
+    }
+
+    public function test_hides_guest_when_authenticated_visitor_id_exists(): void
+    {
+        $sessions = new Collection([
+            $this->makeSession('guest-shadow', null, now(), 'visitor-1'),
+            $this->makeSession('member-key', 10, now()->subSeconds(5), 'visitor-1'),
+        ]);
+
+        $result = PresenceConnectListNormalizer::dedupe($sessions, 10);
+
+        $this->assertCount(1, $result);
+        $this->assertSame(10, $result->first()?->user_id);
+    }
+
+    private function makeSession(
+        string $sessionKey,
+        ?int $userId,
+        Carbon $lastSeenAt,
+        ?string $visitorId = null,
+    ): TenantPresenceSession {
         $session = new TenantPresenceSession;
         $session->forceFill([
             'session_key' => $sessionKey,
+            'visitor_id' => $visitorId,
             'user_id' => $userId,
             'display_name' => $userId ? 'User '.$userId : '방문자',
             'is_authenticated' => $userId !== null,

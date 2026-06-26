@@ -58,21 +58,13 @@
       "children": [
             {
               "comment": "로딩 상태",
-              "type": "basic",
-              "name": "Div",
+              "type": "composite",
+              "name": "AppLoadingSpinner",
               "if": "{{userPosts.loading && !userPosts.data}}",
               "props": {
-                "className": "flex justify-center items-center py-20"
-              },
-              "children": [
-                {
-                  "type": "basic",
-                  "name": "Div",
-                  "props": {
-                    "className": "animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"
-                  }
-                }
-              ]
+                "label": "$t:nav.loading",
+                "className": "py-20"
+              }
             },
             {
               "comment": "게시글 목록",
@@ -88,7 +80,7 @@
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "glass-panel rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                    "className": "moa-group rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
                   },
                   "children": [
                     {
@@ -120,26 +112,20 @@
                       ]
                     },
                     {
-                      "comment": "게시글 카드 목록",
+                      "comment": "게시글 목록",
                       "type": "basic",
                       "name": "Div",
                       "if": "{{userPosts.data?.data?.length > 0}}",
                       "props": {
-                        "className": "flex flex-col gap-2 p-3 min-w-0"
+                        "className": "moa-user-profile-post-list min-w-0"
+                      },
+                      "iteration": {
+                        "source": "{{userPosts.data?.data ?? []}}",
+                        "item_var": "post"
                       },
                       "children": [
                         {
-                          "type": "basic",
-                          "name": "Div",
-                          "iteration": {
-                            "source": "{{userPosts.data?.data ?? []}}",
-                            "item_var": "post"
-                          },
-                          "children": [
-                            {
-                              "partial": "../partials/users/_user_post_row.json"
-                            }
-                          ]
+                          "partial": "../partials/users/_user_post_row.json"
                         }
                       ]
                     }

@@ -9,6 +9,7 @@ interface UseMyPageLibraryTabOptions {
   isGuest: boolean;
   currentUser: MyPageUser | null;
   createdApps?: App[];
+  createdAppsLoading?: boolean;
 }
 
 export function useMyPageLibraryTab({
@@ -16,19 +17,21 @@ export function useMyPageLibraryTab({
   isGuest,
   currentUser,
   createdApps,
+  createdAppsLoading = false,
 }: UseMyPageLibraryTabOptions) {
+  const hasExternalCatalog = createdApps !== undefined;
   const [createdLibraryApps, setCreatedLibraryApps] = useState<App[]>([]);
   const [createdLibraryLoading, setCreatedLibraryLoading] = useState(false);
 
   useEffect(() => {
-    if (createdApps) {
-      setCreatedLibraryApps(createdApps);
-      setCreatedLibraryLoading(false);
+    if (!hasExternalCatalog) {
+      return;
     }
-  }, [createdApps]);
+    setCreatedLibraryApps(createdApps);
+  }, [createdApps, hasExternalCatalog]);
 
   useEffect(() => {
-    if (createdApps) {
+    if (hasExternalCatalog) {
       return;
     }
     if (activeTab !== 'library' || isGuest) {
@@ -59,10 +62,10 @@ export function useMyPageLibraryTab({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, isGuest, currentUser?.memberKey, createdApps]);
+  }, [activeTab, hasExternalCatalog, isGuest, currentUser?.memberKey]);
 
   return {
-    createdLibraryApps,
-    createdLibraryLoading,
+    createdLibraryApps: hasExternalCatalog ? createdApps : createdLibraryApps,
+    createdLibraryLoading: hasExternalCatalog ? createdAppsLoading : createdLibraryLoading,
   };
 }

@@ -35,7 +35,7 @@ fi
 job_name="moabom-purge-tenant-legacy-inline"
 image="$(moabom_container_image)"
 service_account="$(moabom_cloud_run_job_service_account)"
-boot_sleep="${MOABOM_CRJ_BOOT_SLEEP:-25}"
+boot_sleep="${MOABOM_CRJ_BOOT_SLEEP:-10}"
 
 php_script="$(mktemp)"
 trap 'rm -f "${php_script}"' EXIT

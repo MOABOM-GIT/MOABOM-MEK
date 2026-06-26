@@ -7,16 +7,19 @@ import { Div } from '../../basic/Div';
 import { Icon } from '../../basic/Icon';
 import { Span } from '../../basic/Span';
 import { isGeneratedLibraryAppId } from '../../../apps/generatedAppLibrary';
-import { Moa_GeneratedAppUserBadge } from '../Moa_GeneratedAppUserBadge';
+import { Moa_GeneratedAppIconShell } from '../Moa_GeneratedAppIconShell';
 import { Moa_OverflowMarqueeText } from '../Moa_OverflowMarqueeText';
 import { APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 
 interface LibrarySectionProps {
   title: string;
   locale: MoabomSystemLanguage;
   apps: App[];
   emptyText: string;
+  loading?: boolean;
+  loadingLabel?: string;
   appInfoFallback: string;
   onOpenApp?: (app: App) => void;
 }
@@ -26,6 +29,8 @@ export const LibrarySection: React.FC<LibrarySectionProps> = ({
   locale,
   apps,
   emptyText,
+  loading = false,
+  loadingLabel,
   appInfoFallback,
   onOpenApp,
 }) => (
@@ -46,10 +51,13 @@ export const LibrarySection: React.FC<LibrarySectionProps> = ({
                 onClick={() => onOpenApp?.(app)}
                 className="flex w-full flex-col items-center gap-2 rounded-xl border-0 bg-transparent p-0 hover:opacity-90 transition-all cursor-pointer"
               >
-                <Div className="relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ background: app.gradient }}>
-                  <Icon name={app.icon} className="text-white text-xl" />
-                  {isGeneratedLibraryAppId(app.id) ? <Moa_GeneratedAppUserBadge size="md" /> : null}
-                </Div>
+                <Moa_GeneratedAppIconShell
+                  app={app}
+                  showUserBadge={isGeneratedLibraryAppId(app.id)}
+                  badgeSize="md"
+                  iconClassName="w-16 h-16 rounded-2xl shrink-0 shadow-md"
+                  symbolClassName="text-white text-xl"
+                />
                 <Div className="w-full min-w-0 text-center">
                   <Moa_OverflowMarqueeText
                     text={name}
@@ -65,6 +73,8 @@ export const LibrarySection: React.FC<LibrarySectionProps> = ({
           );
         })}
       </Div>
+    ) : loading ? (
+      <AppLoadingSpinner label={loadingLabel} className="py-6" />
     ) : (
       <Div className="py-6 text-center text-sm text-faint">{emptyText}</Div>
     )}

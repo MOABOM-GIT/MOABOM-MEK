@@ -103,10 +103,14 @@ final class TenantOnlineUsersService
         $user = $session->relationLoaded('user') ? $session->user : null;
         $availability = $this->presentation->availabilityFor($preferences);
         $isReachable = $this->presentation->isReachable(true, $preferences);
-        $subtitle = $session->status_text ?: $this->presentation->resolveSubtitle($user, $preferences);
+        $subtitle = $session->user_id
+            ? ($session->status_text ?: $this->presentation->resolveSubtitle($user, $preferences))
+            : null;
 
         return [
             'session_key' => $session->session_key,
+            'visitor_id' => $session->visitor_id,
+            'client_ip_masked' => $session->client_ip_masked,
             'user_uuid' => $user?->uuid,
             'display_name' => $session->display_name,
             'status_text' => $subtitle,

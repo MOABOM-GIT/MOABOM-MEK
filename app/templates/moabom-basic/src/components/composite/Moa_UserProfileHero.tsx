@@ -70,7 +70,7 @@ export const Moa_UserProfileHero: React.FC<MoaUserProfileHeroProps> = ({
           <>
             <Div className="moa-user-profile-hero__name-row">
               <Span className="moa-user-profile-hero__name">{displayName}</Span>
-              <Moa_UserProfileActions userUuid={profile.uuid} />
+              <Moa_UserProfileActions userUuid={profile.uuid} displayName={displayName} />
             </Div>
             {profile.created_at ? (
               <Div className="moa-user-profile-hero__joined">

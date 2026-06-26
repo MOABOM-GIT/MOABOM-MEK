@@ -9,6 +9,7 @@ import { Icon } from '../basic/Icon';
 import { Img } from '../basic/Img';
 import { Span } from '../basic/Span';
 import { GlassPanel } from './Moa_GlassPanel';
+import AppLoadingSpinner from './AppLoadingSpinner';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LoginPrompt } from './Moa_LoginPrompt';
@@ -29,6 +30,7 @@ import type { ClientFormFactor } from '../../api/moabomPresenceApi';
 import { presenceAvatarAwayClass, presenceStatusDotClass } from '../../utils/presenceAvailability';
 import { getShellAuthUserUuid, resolvePresenceListStatusLine, resolvePresenceListUserStatus } from '../../utils/presenceSettingsSync';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
+import type { ShellSurfaceOpenAction, ShellUrlSyncOptions } from '../../shell/shellSurfaceTypes';
 import { prefetchUserProfileWindowLayouts } from '../../shell/userProfileWindowPrefetch';
 import { Moa_RightPanelAdSlot } from './Moa_RightPanelAdSlot';
 
@@ -45,7 +47,9 @@ export interface RightPanelProps {
   onOpenMyPage?: (initialTab?: MyPageTab) => void;
   /** 인증 윈도우 열기 */
   onOpenAuth?: (mode: AuthWindowMode) => void;
-  /** 공개 프로필 윈도우 열기 */
+  /** 셸 표면 열기 (SSOT) */
+  onOpenShellSurface?: (action: ShellSurfaceOpenAction, sync?: ShellUrlSyncOptions) => void;
+  /** @deprecated onOpenShellSurface 사용 */
   onOpenUserProfile?: (userUuid: string, displayName?: string, view?: 'profile' | 'posts') => void;
   /** 좁은 화면 오버레이 모드 여부 */
   isOverlay?: boolean;
@@ -80,7 +84,7 @@ interface PresenceUserActionsMenuProps {
   displayName: string;
   friendship?: 'none' | 'outgoing_pending' | 'incoming_pending' | 'accepted';
   isLoggedIn: boolean;
-  onOpenUserProfile?: (userUuid: string, displayName?: string, view?: 'profile' | 'posts') => void;
+  onOpenShellSurface?: (action: ShellSurfaceOpenAction) => void;
   onAddFriend: (userUuid: string) => void | Promise<void>;
   onAcceptFriend: (userUuid: string) => void | Promise<void>;
 }
@@ -91,7 +95,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
   displayName,
   friendship,
   isLoggedIn,
-  onOpenUserProfile,
+  onOpenShellSurface,
   onAddFriend,
   onAcceptFriend,
 }) => {
@@ -135,7 +139,6 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
     setOpen(false);
     try {
       await onAddFriend(userUuid);
-      pushInfoToast(t('moa_shell.right.presence_friend_request_sent'));
     } catch {
       pushWarningToast(t('moa_shell.right.presence_friend_request_failed'));
     }
@@ -145,7 +148,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
     setOpen(false);
     try {
       await onAcceptFriend(userUuid);
-      pushInfoToast(t('moa_shell.right.presence_friend_accepted'));
+      pushInfoToast(t('moa_profile_actions.friend_became_toast', { name: displayName }), 3000);
     } catch {
       pushWarningToast(t('moa_shell.right.presence_friend_request_failed'));
     }
@@ -172,17 +175,22 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
       {open && createPortal(
         <Div
           ref={menuRef}
-          className="fixed z-[9999] flex min-w-[9.5rem] flex-col gap-1 rounded-2xl glass-sm-blur p-2 shadow-lg"
+          className="fixed z-[9999] moa-presence-access-menu flex min-w-[9.5rem] flex-col gap-1 rounded-2xl glass-sm-blur p-2 shadow-lg"
           style={{ top: menuPosition.top, left: menuPosition.left, width: PRESENCE_MENU_WIDTH_PX }}
         >
           <Button
             type="button"
             variant="primary-outline"
             size="sm"
-            className="moa-user-profile-actions-menu-item w-full justify-start rounded-xl"
+            className="moa-user-profile-actions-menu-item w-full rounded-xl"
             onClick={() => {
               setOpen(false);
-              onOpenUserProfile?.(userUuid, displayName, 'profile');
+              onOpenShellSurface?.({
+                kind: 'profile',
+                userUuid,
+                displayName,
+                view: 'profile',
+              });
             }}
           >
             {t('moa_shell.right.presence_view_profile')}
@@ -191,10 +199,15 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
             type="button"
             variant="secondary"
             size="sm"
-            className="moa-user-profile-actions-menu-item w-full justify-start rounded-xl border-0"
+            className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
             onClick={() => {
               setOpen(false);
-              onOpenUserProfile?.(userUuid, displayName, 'posts');
+              onOpenShellSurface?.({
+                kind: 'profile',
+                userUuid,
+                displayName,
+                view: 'posts',
+              });
             }}
           >
             {t('userinfo.view_posts')}
@@ -204,7 +217,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
               type="button"
               variant="secondary"
               size="sm"
-              className="w-full justify-start border-0"
+              className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
               onClick={() => void handleAddFriend()}
             >
               {t('moa_shell.right.presence_add_friend')}
@@ -215,7 +228,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
               type="button"
               variant="secondary"
               size="sm"
-              className="w-full justify-start border-0"
+              className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
               onClick={() => void handleAcceptFriend()}
             >
               {t('moa_shell.right.presence_accept_friend')}
@@ -246,6 +259,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   currentUser,
   onOpenMyPage,
   onOpenAuth,
+  onOpenShellSurface,
   onOpenUserProfile,
   isOverlay = false,
   overlayFlushEdges = false,
@@ -254,6 +268,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const { t } = useMoabomShellT();
   const { setNodeRef: setRightPanelDropRef } = useDroppable({ id: 'right-panel' });
   const [rightTab, setRightTab] = useState('connect');
+
+  const openProfileSurface = useCallback((
+    userUuid: string,
+    displayName?: string,
+    view: 'profile' | 'posts' = 'profile',
+  ) => {
+    if (onOpenShellSurface) {
+      onOpenShellSurface({ kind: 'profile', userUuid, displayName, view });
+      return;
+    }
+    onOpenUserProfile?.(userUuid, displayName, view);
+  }, [onOpenShellSurface, onOpenUserProfile]);
   const profileActions = useMemo(
     () => PROFILE_ACTION_KEYS.map(row => ({ ...row, label: t(row.labelKey) })),
     [t],
@@ -268,8 +294,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     unreadCount,
     loading: notificationsLoading,
     markingAll,
+    deletingAll,
     hasMore: notificationsHasMore,
     markAllRead,
+    deleteAll,
     openNotification,
     loadMore: loadMoreNotifications,
   } = useMoabomShellNotifications({
@@ -460,9 +488,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <>
                     <Span className="text-xs text-muted px-1 block">{onlineSummaryLabel}</Span>
                     {loadingOnline && onlineUsers.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.presence_loading')}
-                      </Span>
+                      <AppLoadingSpinner
+                        label={t('moa_shell.right.presence_loading')}
+                        compact
+                        className="w-full py-4"
+                      />
                     )}
                     {!loadingOnline && onlineUsers.length === 0 && (
                       <Span className="text-xs text-muted px-3 py-4 text-center block">
@@ -477,11 +507,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
                         return (
                         <Div
-                          key={u.session_key}
+                          key={u.visitor_id ?? u.session_key}
                           className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
                           onClick={() => {
                             if (u.user_uuid) {
-                              onOpenUserProfile?.(u.user_uuid, u.display_name);
+                              openProfileSurface(u.user_uuid, u.display_name);
                             }
                           }}
                         >
@@ -524,7 +554,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               displayName={u.display_name}
                               friendship={u.friendship}
                               isLoggedIn={isLoggedIn}
-                              onOpenUserProfile={onOpenUserProfile}
+                              onOpenShellSurface={onOpenShellSurface}
                               onAddFriend={addFriend}
                               onAcceptFriend={acceptFriend}
                             />
@@ -548,9 +578,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       </Span>
                     )}
                     {isLoggedIn && loadingFriends && friends.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.presence_loading')}
-                      </Span>
+                      <AppLoadingSpinner
+                        label={t('moa_shell.right.presence_loading')}
+                        compact
+                        className="w-full py-4"
+                      />
                     )}
                     {isLoggedIn && !loadingFriends && friends.length === 0 && (
                       <Span className="text-xs text-muted px-3 py-4 text-center block">
@@ -566,7 +598,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         <Div
                           key={u.user_uuid}
                           className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!listStatus.isReachable ? 'opacity-70' : ''}`}
-                          onClick={() => onOpenUserProfile?.(u.user_uuid, u.display_name)}
+                          onClick={() => openProfileSurface(u.user_uuid, u.display_name)}
                         >
                           <Div className="relative shrink-0">
                             {u.avatar ? (
@@ -605,9 +637,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <Div className="py-3">
                   <Div className="flex flex-col gap-1">
                     {notificationsLoading && notificationItems.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.notifications_loading')}
-                      </Span>
+                      <AppLoadingSpinner
+                        label={t('moa_shell.right.notifications_loading')}
+                        compact
+                        className="w-full py-4"
+                      />
                     )}
                     {!notificationsLoading && notificationItems.length === 0 && (
                       <Span className="text-xs text-muted px-3 py-4 text-center block">
@@ -644,11 +678,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       );
                     })}
                     {showNotificationLoadMore ? (
-                      <Div className="grid grid-cols-2 gap-2 mt-2">
+                      <Div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="dark-outline"
                           size="medium"
-                          className="w-full"
+                          className="flex-1 min-w-0"
                           disabled={markingAll || unreadCount === 0}
                           onClick={() => { void markAllRead(); }}
                         >
@@ -657,23 +691,49 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         <Button
                           variant="dark-outline"
                           size="medium"
-                          className="w-full"
+                          className="flex-1 min-w-0"
                           disabled={notificationsLoading || !notificationsHasMore}
                           onClick={() => { void loadMoreNotifications(); }}
                         >
                           {t('moa_shell.right.notifications_load_more')}
                         </Button>
+                        <Button
+                          type="button"
+                          variant="dark-outline"
+                          size="medium"
+                          className="shrink-0 px-3"
+                          disabled={deletingAll || notificationItems.length === 0}
+                          onClick={() => { void deleteAll(); }}
+                          aria-label={t('moa_shell.right.notifications_delete_all')}
+                          title={t('moa_shell.right.notifications_delete_all')}
+                        >
+                          <Icon name="trash" className="text-sm" />
+                        </Button>
                       </Div>
                     ) : (
-                      <Button
-                        variant="dark-outline"
-                        size="medium"
-                        className="w-full mt-2"
-                        disabled={markingAll || unreadCount === 0}
-                        onClick={() => { void markAllRead(); }}
-                      >
-                        {t('moa_shell.right.mark_all_read')}
-                      </Button>
+                      <Div className="flex items-center gap-2 mt-2">
+                        <Button
+                          variant="dark-outline"
+                          size="medium"
+                          className="flex-1 min-w-0"
+                          disabled={markingAll || unreadCount === 0}
+                          onClick={() => { void markAllRead(); }}
+                        >
+                          {t('moa_shell.right.mark_all_read')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="dark-outline"
+                          size="medium"
+                          className="shrink-0 px-3"
+                          disabled={deletingAll || notificationItems.length === 0}
+                          onClick={() => { void deleteAll(); }}
+                          aria-label={t('moa_shell.right.notifications_delete_all')}
+                          title={t('moa_shell.right.notifications_delete_all')}
+                        >
+                          <Icon name="trash" className="text-sm" />
+                        </Button>
+                      </Div>
                     )}
                   </Div>
                 </Div>

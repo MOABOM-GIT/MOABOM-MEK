@@ -2,15 +2,14 @@ import React, { useCallback, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Div } from '../basic/Div';
+import { Span } from '../basic/Span';
 import { Button } from '../basic/Button';
-import { Icon } from '../basic/Icon';
 import { useLongPress } from '../../hooks/Moa_useLongPress';
 import type { App } from '../../data/Moa_apps';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
-import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
 import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
-import { Moa_GeneratedAppUserBadge } from './Moa_GeneratedAppUserBadge';
+import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
 
 export interface LeftPanelAppIconProps {
   /** 앱 데이터 */
@@ -124,18 +123,21 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
         draggable={false}
         {...normalModeHandlers}
       >
-        <Div
-          className={`${isCreateApp ? 'create-app-icon create-app-icon--compact' : ''} ${iconSize} relative flex items-center justify-center shadow-lg`}
-          style={isCreateApp ? undefined : { background: app.gradient }}
-        >
-          <Icon name={app.icon} className={`text-white ${iconTextSize} ${isCreateApp ? 'relative z-[1]' : ''}`} />
-          {isGeneratedApp ? <Moa_GeneratedAppUserBadge size="sm" /> : null}
-        </Div>
+        <Moa_GeneratedAppIconShell
+          app={app}
+          isCreateApp={isCreateApp}
+          showUserBadge={isGeneratedApp}
+          badgeSize="sm"
+          iconClassName={`${isCreateApp ? 'create-app-icon create-app-icon--compact' : ''} ${iconSize} shadow-lg`}
+          symbolClassName={`text-white ${iconTextSize} ${isCreateApp ? 'relative z-[1]' : ''}`}
+        />
         {showName && (
-          <Moa_OverflowMarqueeText
-            text={displayName}
-            className={`${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-left-panel-app-title font-bold text-center leading-tight`}
-          />
+          <Span
+            className={`moa-app-icon-label ${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-left-panel-app-title font-bold leading-tight`}
+            title={displayName}
+          >
+            {displayName}
+          </Span>
         )}
       </Button>
       </Div>

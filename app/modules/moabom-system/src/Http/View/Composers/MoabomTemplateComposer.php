@@ -13,6 +13,7 @@ use App\Services\SettingsService;
 use App\Services\TemplateService;
 use Illuminate\View\View;
 use Modules\Moabom\System\Services\MoabomExtensionAssetGroupService;
+use Modules\Moabom\System\Support\MoabomExtensionDeferredRegistrySupport;
 
 /**
  * 코어 `TemplateComposer`(admin) 대체 바인딩 — 확장 에셋 맵만 DB 활성 기준으로 정제한다.
@@ -49,5 +50,12 @@ final class MoabomTemplateComposer extends TemplateComposer
         $view->with('deferredModuleAssets', $moduleGroups['deferred']);
         $view->with('pluginAssets', $pluginGroups['immediate']);
         $view->with('deferredPluginAssets', $pluginGroups['deferred']);
+
+        MoabomExtensionDeferredRegistrySupport::mergeRegistryIntoAppConfig(
+            $view,
+            $moduleGroups['deferred'],
+            $pluginGroups['deferred'],
+        );
+        MoabomExtensionDeferredRegistrySupport::mergeExtensionEpochIntoAppConfig($view);
     }
 }

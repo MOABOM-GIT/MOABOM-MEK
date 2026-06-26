@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WEBSITE_LINK_APP_GRADIENT } from './ai-generator/websiteLinkApp';
 import {
   generatedAppLibraryId,
   mapStoredGeneratedAppToLibraryApp,
@@ -55,6 +56,46 @@ describe('generatedAppLibrary', () => {
   it('resolveMainAppsFromOrder omits generated-app ids that are not in the validated library', () => {
     const main = resolveMainAppsFromOrder(['hospital-info', 'generated-app-99'], [], [], true);
     expect(main.map(app => app.id)).toEqual(['hospital-info']);
+  });
+
+  it('maps website link apps with favicon metadata and site description', () => {
+    const app = mapStoredGeneratedAppToLibraryApp({
+      id: 7,
+      title: '네이버',
+      app_type: 'website_link',
+      prompt: '포털 사이트',
+      metadata: {
+        website_url: 'https://www.naver.com',
+        icon_url: 'https://www.google.com/s2/favicons?domain=www.naver.com&sz=128',
+      },
+    });
+
+    expect(app.name).toBe('네이버');
+    expect(app.description).toBe('포털 사이트');
+    expect(app.iconImageUrl).toContain('favicons');
+    expect(app.metadata).toMatchObject({
+      websiteUrl: 'https://www.naver.com',
+    });
+    expect(app.gradient).toBe(WEBSITE_LINK_APP_GRADIENT);
+  });
+
+  it('maps website link title-icon fallback with point color gradient', () => {
+    const app = mapStoredGeneratedAppToLibraryApp({
+      id: 8,
+      title: '국민건강보험',
+      app_type: 'website_link',
+      prompt: '공단',
+      metadata: {
+        website_url: 'https://www.nhis.or.kr/',
+        icon_from_title: true,
+        theme_color: '#005eb8',
+      },
+    });
+
+    expect(app.icon).toBe('notes-medical');
+    expect(app.iconImageUrl).toBeUndefined();
+    expect(app.gradient).toMatch(/^linear-gradient\(135deg,#005eb8,/);
+    expect(app.metadata).toMatchObject({ iconFromTitle: true });
   });
 
   it('keeps owner and permission metadata for generated app windows', () => {

@@ -125,6 +125,88 @@ final class ConversationController extends AuthBaseController
         }
     }
 
+    public function typing(string $conversationUuid): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return ResponseHelper::unauthorized('auth.unauthenticated');
+        }
+
+        $this->logApiUsage('moabom-chat.user.conversations.typing');
+
+        try {
+            return ResponseHelper::moduleSuccess(
+                'moabom-chat',
+                'messages.typing_signaled',
+                $this->chat->signalTyping($user, $conversationUuid),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->domainError($e);
+        }
+    }
+
+    public function destroy(string $conversationUuid): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return ResponseHelper::unauthorized('auth.unauthenticated');
+        }
+
+        $this->logApiUsage('moabom-chat.user.conversations.destroy');
+
+        try {
+            return ResponseHelper::moduleSuccess(
+                'moabom-chat',
+                'messages.conversation_deleted',
+                $this->chat->leaveConversation($user, $conversationUuid),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->domainError($e);
+        }
+    }
+
+    public function mute(string $conversationUuid): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return ResponseHelper::unauthorized('auth.unauthenticated');
+        }
+
+        $this->logApiUsage('moabom-chat.user.conversations.mute');
+
+        try {
+            $hours = request()->has('hours') ? (int) request()->input('hours') : null;
+
+            return ResponseHelper::moduleSuccess(
+                'moabom-chat',
+                'messages.conversation_muted',
+                $this->chat->muteConversation($user, $conversationUuid, $hours),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->domainError($e);
+        }
+    }
+
+    public function unmute(string $conversationUuid): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if (! $user) {
+            return ResponseHelper::unauthorized('auth.unauthenticated');
+        }
+
+        $this->logApiUsage('moabom-chat.user.conversations.unmute');
+
+        try {
+            return ResponseHelper::moduleSuccess(
+                'moabom-chat',
+                'messages.conversation_unmuted',
+                $this->chat->muteConversation($user, $conversationUuid, 0),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->domainError($e);
+        }
+    }
+
     private function domainError(\InvalidArgumentException $e): JsonResponse
     {
         $reason = $e->getMessage();

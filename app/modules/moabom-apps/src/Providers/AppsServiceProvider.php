@@ -18,11 +18,14 @@ use Modules\Moabom\Apps\Http\Controllers\GeneratedAppPreviewController;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\AiGenerationSessionRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
+use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
 use Modules\Moabom\Apps\Services\GeneratedAppHostingService;
+use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
 use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
 use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
+use Modules\Moabom\Apps\Support\ShellRankingGeneratedAppScope;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
 {
@@ -41,6 +44,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
      */
     protected array $storageServices = [
         GeneratedAppHostingService::class,
+        WebsiteLinkIconStorageService::class,
     ];
 
     public function register(): void
@@ -71,6 +75,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
         parent::boot();
 
         $this->registerGeneratedAppHostHooks();
+        $this->registerShellRankingScopeHooks();
 
         HookManager::addFilter(
             'moabom.shell_boot.apps',
@@ -84,6 +89,22 @@ class AppsServiceProvider extends BaseModuleServiceProvider
             },
         );
 
+        HookManager::addFilter(
+            'moabom.user_settings.response_data',
+            function (array $data, $user): array {
+                if (! is_object($user) || ! isset($user->id)) {
+                    return $data;
+                }
+
+                $data['generated_app_library'] = app(AiAppService::class)
+                    ->libraryForUser((int) $user->id);
+
+                return $data;
+            },
+            10,
+            2,
+        );
+
         Route::bind('hostedApp', static function (string $value): GeneratedApp {
             $app = GeneratedAppsConnection::apps()->whereKey((int) $value)->first()
                 ?? GeneratedApp::query()->whereKey((int) $value)->first();
@@ -95,6 +116,24 @@ class AppsServiceProvider extends BaseModuleServiceProvider
         });
 
         $this->registerPreviewDomainRoutes();
+    }
+
+    private function registerShellRankingScopeHooks(): void
+    {
+        $filterScores = function (array $scores): array {
+            return app(ShellRankingGeneratedAppScope::class)->filterAppScoreRows($scores);
+        };
+
+        $allowIngest = function (bool $allowed, string $appId): bool {
+            if (! $allowed) {
+                return false;
+            }
+
+            return app(ShellRankingGeneratedAppScope::class)->allowsShellAppId($appId);
+        };
+
+        HookManager::addFilter('moabom.shell_rankings.filter_app_scores', $filterScores, 10, 1);
+        HookManager::addFilter('moabom.shell_rankings.allow_app_usage_ingest', $allowIngest, 10, 2);
     }
 
     private function registerGeneratedAppHostHooks(): void

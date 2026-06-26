@@ -7,6 +7,7 @@ namespace Plugins\Moabom\Reverb\Providers;
 use App\Extension\HookManager;
 use Illuminate\Support\ServiceProvider;
 use Plugins\Moabom\Reverb\ReverbDriversDefaults;
+use Plugins\Moabom\Reverb\ReverbCredentialSync;
 use Plugins\Moabom\Reverb\WebsocketDriverConfigApplier;
 
 /**
@@ -20,6 +21,8 @@ class ReverbServiceProvider extends ServiceProvider
             dirname(__DIR__, 2).'/config/moabom-reverb.php',
             'moabom-reverb',
         );
+
+        ReverbCredentialSync::bootstrap();
     }
 
     public function boot(): void

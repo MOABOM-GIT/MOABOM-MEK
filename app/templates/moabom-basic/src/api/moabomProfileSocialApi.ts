@@ -26,3 +26,9 @@ export async function profileSocialRequestFriend(userUuid: string): Promise<void
     body: { user_uuid: userUuid },
   });
 }
+
+export async function profileSocialRemoveFriend(userUuid: string): Promise<void> {
+  await presenceApi(`user/friends/${encodeURIComponent(userUuid)}`, {
+    method: 'DELETE',
+  });
+}

@@ -23,6 +23,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
   const { t } = useMoabomShellT();
   const siteDisplayName = useMoabomSiteDisplayName();
   const [enabledProviders, setEnabledProviders] = useState<string[]>([]);
+  const [hideRocketBadge, setHideRocketBadge] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -41,11 +42,20 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-height: 700px)');
+    const sync = () => setHideRocketBadge(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
   return (
     <Div className="login-prompt-card glass-sm absolute inset-0 z-50 flex flex-col justify-center items-center p-8 rounded-[17px] text-center">
-      {/* 로켓 아이콘 */}
+      {/* 로켓 아이콘 — 뷰포트 높이 700px 이하에서는 숨김 */}
+      {!hideRocketBadge ? (
       <Div
-        className="relative w-[84px] h-[84px] rounded-[26px] inline-flex items-center justify-center text-white mb-6 z-10"
+        className="login-prompt-rocket relative w-[84px] h-[84px] rounded-[26px] inline-flex items-center justify-center text-white mb-6 z-10"
         style={{
           background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
           boxShadow: '0 15px 35px rgba(108, 92, 231, 0.4)',
@@ -53,6 +63,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
       >
         <Icon name="rocket" className="rocket-icon text-white" />
       </Div>
+      ) : null}
 
       {/* 타이틀 */}
       <Div className="text-3xl font-bold mb-2.5 tracking-tight leading-tight text-heading">

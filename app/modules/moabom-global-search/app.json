@@ -1,0 +1,25 @@
+{
+    "id": "global-search",
+    "module": "moabom-global-search",
+    "name": {
+        "ko": "전체검색",
+        "en": "Global Search"
+    },
+    "description": {
+        "ko": "게시판 및 앱검색",
+        "en": "Search boards and apps"
+    },
+    "icon": "magnifying-glass",
+    "gradient": "linear-gradient(135deg,#6366f1,#8b5cf6)",
+    "category": "basic",
+    "source": "system",
+    "frontend": {
+        "template": "moabom-basic",
+        "chunk": "moabom-shell-global-search.iife.js",
+        "global": "global-search"
+    },
+    "api_prefix": "api/modules/moabom-global-search",
+    "permissions": [],
+    "tenant_scoped": true,
+    "order": 3
+}

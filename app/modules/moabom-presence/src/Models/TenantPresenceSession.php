@@ -12,12 +12,14 @@ class TenantPresenceSession extends Model
 
     protected $fillable = [
         'session_key',
+        'visitor_id',
         'user_id',
         'display_name',
         'status_text',
         'avatar',
         'is_authenticated',
         'client_form_factor',
+        'client_ip_masked',
         'last_seen_at',
     ];
 

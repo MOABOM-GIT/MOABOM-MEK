@@ -8,7 +8,15 @@ import {
 export type ChatMember = {
   user_uuid: string;
   display_name: string;
+  nickname?: string | null;
+  real_name?: string | null;
   avatar?: string | null;
+};
+
+export type ChatPeerRead = {
+  user_uuid: string;
+  last_read_message_id: number | null;
+  last_read_at?: string | null;
 };
 
 export type ChatMessage = {
@@ -21,6 +29,8 @@ export type ChatMessage = {
   client_message_id?: string | null;
   created_at?: string | null;
   edited_at?: string | null;
+  /** 낙관적 전송 중인 클라이언트 전용 플래그 */
+  pending?: boolean;
 };
 
 export type ChatConversation = {
@@ -33,6 +43,9 @@ export type ChatConversation = {
   channel: string;
   members: ChatMember[];
   latest_message?: ChatMessage | null;
+  peer_read?: ChatPeerRead[];
+  is_muted?: boolean;
+  muted_until?: string | null;
 };
 
 export type ChatBlock = {
@@ -106,10 +119,16 @@ export async function startChatConversation(
   return data.conversation;
 }
 
+export async function deleteChatConversation(conversationUuid: string): Promise<void> {
+  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function fetchChatMessages(
   conversationUuid: string,
   beforeId?: number | null,
-): Promise<{ messages: ChatMessage[]; has_more: boolean; next_before_id?: number | null }> {
+): Promise<{ messages: ChatMessage[]; has_more: boolean; next_before_id?: number | null; peer_read?: ChatPeerRead[] }> {
   const params = new URLSearchParams();
   if (beforeId) {
     params.set('before_id', String(beforeId));
@@ -167,6 +186,31 @@ export async function unblockChatUser(userUuid: string): Promise<void> {
 
 export async function fetchChatEligibility(userUuid: string): Promise<ChatEligibility> {
   return chatRequest<ChatEligibility>(`user/users/${encodeURIComponent(userUuid)}/eligibility`);
+}
+
+export async function signalChatTyping(conversationUuid: string): Promise<void> {
+  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}/typing`, {
+    method: 'POST',
+  });
+}
+
+export async function muteChatConversation(conversationUuid: string, hours?: number | null): Promise<void> {
+  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
+    method: 'POST',
+    body: hours ? { hours } : {},
+  });
+}
+
+export async function unmuteChatConversation(conversationUuid: string): Promise<void> {
+  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteChatMessage(messageUuid: string): Promise<void> {
+  await chatRequest(`user/messages/${encodeURIComponent(messageUuid)}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function searchChatUsers(search: string): Promise<ChatUserSearchResult[]> {

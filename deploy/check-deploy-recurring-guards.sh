@@ -12,6 +12,7 @@ ok() { echo "OK:   $*"; }
 echo "== check-deploy-recurring-guards =="
 
 ENTRY="${ROOT}/deploy/cloudrun-entrypoint.sh"
+DEFERRED="${ROOT}/deploy/cloudrun-deferred-sync.sh"
 SYNC_CMD="${APP}/modules/moabom-system/src/Console/Commands/SaasSyncTemplateLayoutsCommand.php"
 PROVISION="${APP}/modules/moabom-system/src/Saas/TenantProvisionArtisanRunner.php"
 CRJ="${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
@@ -37,16 +38,16 @@ grep -q 'LEGACY_MEMORY_SPAN_PATTERN' "${SYNC_CMD}" \
 grep -q "template:cache-clear" "${SYNC_CMD}" \
   || fail "RF-08: sync 커맨드 끝에 template:cache-clear 없음"
 
-if grep -q "sync-template-layouts '\*'" "${ENTRY}" 2>/dev/null \
-  || grep -q 'sync-template-layouts "\*"' "${ENTRY}" 2>/dev/null; then
+if grep -q "sync-template-layouts '\*'" "${ENTRY}" "${DEFERRED}" 2>/dev/null \
+  || grep -q 'sync-template-layouts "\*"' "${ENTRY}" "${DEFERRED}" 2>/dev/null; then
   fail "RF-12: entrypoint 에 sync-template-layouts '*' — slug 생략 필요"
 else
   ok "RF-12: entrypoint sync slug * 미사용"
 fi
 
-grep -q 'MOABOM_SYNC_TEMPLATE_LAYOUTS' "${ENTRY}" \
+grep -q 'MOABOM_SYNC_TEMPLATE_LAYOUTS' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-08: entrypoint MOABOM_SYNC_TEMPLATE_LAYOUTS 가드 없음"
-grep -q 'moabom:saas:sync-template-layouts' "${ENTRY}" \
+grep -q 'moabom:saas:sync-template-layouts' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-08: entrypoint layout sync 호출 없음"
 ok "RF-08: entrypoint layout sync 블록"
 
@@ -68,9 +69,9 @@ grep -q 'moabom:saas:sync-module-layouts' "${ROOT}/deploy/run-layout-sync-job.sh
   || fail "RF-14b: run-layout-sync-job.sh 에 moabom:saas:sync-module-layouts 없음"
 ok "RF-13/RF-14b: run-layout-sync-job.sh (template + module layouts)"
 
-grep -q 'moabom:saas:sync-module-layouts' "${ENTRY}" \
+grep -q 'moabom:saas:sync-module-layouts' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-14b: entrypoint 에 moabom:saas:sync-module-layouts 없음"
-grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ENTRY}" \
+grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-14b: entrypoint MOABOM_SYNC_MODULE_LAYOUTS 가드 없음"
 ok "RF-14b: entrypoint module layout sync"
 
@@ -128,10 +129,12 @@ ok "RF-20: 로컬 dist 업로드/이미지 입력 제외"
 # RF-21: RUN_MIGRATIONS=false 운영에서도 새 모듈 컬럼 마이그레이션 누락 방지
 grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
   && {
-    grep -q 'Post-deploy allowlist module migrations' "${BUILD_DEPLOY}" \
-      || fail "RF-21: build-and-deploy.sh 에 allowlist module migrations Job 단계 없음"
-    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-moabom-apps,moabom-system,moabom-presence,moabom-chat}"' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration 기본 allowlist 가 moabom-apps,moabom-system,moabom-presence,moabom-chat 가 아님"
+    grep -q 'Post-deploy allowlist module migrations\|Post-deploy module migrations skipped' "${BUILD_DEPLOY}" \
+      || fail "RF-21: build-and-deploy.sh 에 post-deploy migration 단계 없음"
+    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-auto}"' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration 기본값이 auto(변경 모듈만) 가 아님"
+    grep -q 'moabom_post_deploy_auto_migration_modules' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration auto 감지 없음"
     grep -q 'post_deploy_migration_modules()' "${BUILD_DEPLOY}" \
       || fail "RF-21: post-deploy migration allowlist parser 없음"
     grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \
@@ -146,11 +149,58 @@ grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
 import sys
 text = open(sys.argv[1], encoding="utf-8").read()
 module = text.find("Post-deploy allowlist module migrations")
-smoke_after_module = text.find("run_smoke", module)
+if module == -1:
+    module = text.find("Post-deploy module migrations skipped")
+smoke_after_module = text.find("run_smoke", module if module != -1 else 0)
 raise SystemExit(0 if module != -1 and smoke_after_module != -1 and module < smoke_after_module else 1)
 PY
     ok "RF-21: RUN_MIGRATIONS=false active module migrations 배포 게이트"
   }
+
+# RF-22: Cloud Run Billing — Request-based (--cpu-throttling) 고정
+FLAGS_SSOT="${ROOT}/deploy/lib/cloud-run-service-flags.sh"
+[[ -f "${FLAGS_SSOT}" ]] || fail "RF-22: deploy/lib/cloud-run-service-flags.sh 없음"
+grep -q 'MOABOM_CLOUD_RUN_BILLING_MODE="request-based"' "${FLAGS_SSOT}" \
+  || fail "RF-22: billing SSOT 가 request-based 가 아님"
+grep -q 'moabom_cloud_run_service_deploy_args' "${FLAGS_SSOT}" \
+  || fail "RF-22: cloud-run-service-flags.sh deploy args 함수 없음"
+grep -q -- '--cpu-throttling' "${FLAGS_SSOT}" \
+  || fail "RF-22: cloud-run-service-flags.sh 에 --cpu-throttling 없음"
+if grep -v '^[[:space:]]*#' "${FLAGS_SSOT}" | grep -q -- '--no-cpu-throttling'; then
+  fail "RF-22: cloud-run-service-flags.sh 에 --no-cpu-throttling 금지"
+fi
+grep -q 'MOABOM_ENTRYPOINT_DEFERRED_SYNC' "${ROOT}/deploy/production.env.yaml" \
+  || fail "production.env.yaml 에 MOABOM_ENTRYPOINT_DEFERRED_SYNC 없음"
+grep -q 'cloudrun-deferred-sync.sh' "${ROOT}/deploy/supervisord.conf" \
+  || fail "supervisord.conf 에 cloudrun-deferred-sync 프로그램 없음"
+grep -q 'startup-probe' "${FLAGS_SSOT}" \
+  || fail "RF-22: cloud-run-service-flags.sh 에 startup-probe 없음"
+grep -q 'MOABOM_CLOUD_RUN_STARTUP_PROBE_PATH' "${FLAGS_SSOT}" \
+  || fail "RF-22: startup probe path SSOT 없음"
+grep -q 'cloud-run-service-flags.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-22: build-and-deploy.sh 가 billing SSOT 미사용"
+grep -q -- '--no-cpu-throttling' "${BUILD_DEPLOY}" \
+  && fail "RF-22: build-and-deploy.sh 에 --no-cpu-throttling 잔존"
+[[ -x "${ROOT}/deploy/check-cloud-run-billing-ssot.sh" ]] \
+  || fail "RF-22: check-cloud-run-billing-ssot.sh 없음"
+ok "RF-22: Cloud Run Request-based billing SSOT"
+
+# RF-23: 배포 파이프라인 속도 — 조건부 post-deploy·inner check skip·Job boot sleep
+grep -q '_SKIP_INNER_CHECK' "${ROOT}/deploy/cloudbuild-v3.yaml" \
+  || fail "RF-23: cloudbuild-v3.yaml 에 _SKIP_INNER_CHECK substitution 없음"
+grep -q '_SKIP_INNER_CHECK=true' "${BUILD_DEPLOY}" \
+  || fail "RF-23: build-and-deploy.sh 가 Cloud Build inner check skip 미전달"
+grep -q 'moabom_layout_sync_needed' "${BUILD_DEPLOY}" \
+  || fail "RF-23: build-and-deploy.sh 가 layout sync 해시 게이트 없음"
+grep -q 'MOABOM_CRJ_BOOT_SLEEP:-10' "${ROOT}/deploy/lib/cloud-run-artisan-job.sh" \
+  || fail "RF-23: cloud-run-artisan-job.sh boot_sleep 기본 10s 아님"
+grep -q 'MOABOM_SMOKE_PROFILE' "${ROOT}/deploy/smoke-after-deploy.sh" \
+  || fail "RF-23: smoke-after-deploy.sh light/full 프로필 없음"
+[[ -f "${ROOT}/deploy/lib/layout-sync-hash.sh" ]] \
+  || fail "RF-23: deploy/lib/layout-sync-hash.sh 없음"
+[[ -f "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" ]] \
+  || fail "RF-23: deploy/lib/post-deploy-migration-hash.sh 없음"
+ok "RF-23: 배포 속도 최적화 SSOT (조건부 Job·inner check skip·light smoke)"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

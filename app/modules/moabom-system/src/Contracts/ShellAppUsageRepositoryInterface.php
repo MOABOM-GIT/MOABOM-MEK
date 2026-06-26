@@ -19,9 +19,10 @@ interface ShellAppUsageRepositoryInterface
     public function incrementUserBuckets(array $events): void;
 
     /**
+     * @param  CarbonInterface|null  $since  null 이면 전체 누적
      * @return list<array{app_id: string, open_hits: int, active_seconds: int, score: int}>
      */
-    public function aggregateAppScores(CarbonInterface $since, int $openHitWeight): array;
+    public function aggregateAppScores(?CarbonInterface $since, int $openHitWeight): array;
 
     /**
      * @return list<array{user_id: int, open_hits: int, active_seconds: int, shell_score: int}>

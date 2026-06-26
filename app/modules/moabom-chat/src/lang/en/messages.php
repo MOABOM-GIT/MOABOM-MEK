@@ -3,6 +3,7 @@
 return [
     'conversations_success' => 'Conversations loaded.',
     'conversation_ready' => 'Conversation is ready.',
+    'conversation_deleted' => 'Conversation removed from your list.',
     'conversation_read' => 'Conversation marked as read.',
     'messages_success' => 'Messages loaded.',
     'message_sent' => 'Message sent.',

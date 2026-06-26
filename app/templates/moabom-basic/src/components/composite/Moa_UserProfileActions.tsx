@@ -6,9 +6,13 @@ import { Span } from '../basic/Span';
 
 export interface MoaUserProfileActionsProps {
   userUuid?: string;
+  displayName?: string;
 }
 
-export const Moa_UserProfileActions: React.FC<MoaUserProfileActionsProps> = ({ userUuid }) => {
+export const Moa_UserProfileActions: React.FC<MoaUserProfileActionsProps> = ({
+  userUuid,
+  displayName,
+}) => {
   const { t } = useMoabomShellT();
   const {
     isSelf,
@@ -18,10 +22,11 @@ export const Moa_UserProfileActions: React.FC<MoaUserProfileActionsProps> = ({ u
     busyBlock,
     friendButtonLabel,
     friendButtonDisabled,
+    friendButtonVariant,
     handleFriend,
     handleChat,
     handleBlockToggle,
-  } = useMoaUserProfileSocialActions(userUuid);
+  } = useMoaUserProfileSocialActions(userUuid, displayName);
 
   if (!userUuid || isSelf) {
     return null;
@@ -31,11 +36,12 @@ export const Moa_UserProfileActions: React.FC<MoaUserProfileActionsProps> = ({ u
     <Span className="inline-flex flex-wrap gap-2 rounded-2xl">
       <Button
         type="button"
-        variant="primary-outline"
+        variant={friendButtonVariant}
         size="xs"
         className="rounded-xl"
         disabled={friendButtonDisabled}
         onClick={handleFriend}
+        aria-pressed={friendButtonVariant === 'danger'}
       >
         {friendButtonLabel}
       </Button>

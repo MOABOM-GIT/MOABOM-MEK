@@ -12,6 +12,8 @@
       "post_write_amount": 20,
       "like_received_enabled": true,
       "like_received_amount": 2,
+      "comment_write_enabled": true,
+      "comment_write_amount": 2,
       "attendance_enabled": true,
       "attendance_amount": 10
     },
@@ -19,7 +21,8 @@
       "daily_earn_limit": 500,
       "attendance_daily_limit": 1,
       "max_post_write_rewards_per_day": 10,
-      "max_like_received_rewards_per_day": 50
+      "max_like_received_rewards_per_day": 50,
+      "max_comment_write_rewards_per_day": 20
     },
     "ads": {
       "attendance_requires_ad": false,

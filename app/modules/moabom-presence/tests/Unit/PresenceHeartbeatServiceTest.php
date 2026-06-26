@@ -11,9 +11,14 @@ use Modules\Moabom\Presence\Models\PresenceUserPreference;
 use Modules\Moabom\Presence\Models\TenantPresenceSession;
 use Modules\Moabom\Presence\Services\BotDetector;
 use Modules\Moabom\Presence\Services\PresenceHeartbeatService;
+use Modules\Moabom\Presence\Services\PresencePlatformMirrorService;
 use Modules\Moabom\Presence\Services\PresencePresentationService;
+use Modules\Moabom\Presence\Services\PresencePromotionService;
+use Modules\Moabom\Presence\Services\PresenceRevisionService;
 use Modules\Moabom\Presence\Support\PresenceChannelNames;
+use Modules\Moabom\Presence\Support\PresenceClientIpMasker;
 use Modules\Moabom\Presence\Support\PresenceSessionKeyResolver;
+use Modules\Moabom\System\Saas\PlatformConnectionFactory;
 use Modules\Moabom\System\Saas\TenantContext;
 use PHPUnit\Framework\TestCase;
 
@@ -43,30 +48,49 @@ final class PresenceHeartbeatServiceTest extends TestCase
 
     private function makeService(TenantPresenceSessionRepositoryInterface $tenantSessions): PresenceHeartbeatService
     {
+        $platformSessions = new class implements PlatformPresenceSessionRepositoryInterface {
+            public function upsertHeartbeat(array $attributes): void
+            {
+            }
+
+            public function deleteBySessionKeys(array $sessionKeys): int
+            {
+                return 0;
+            }
+
+            public function purgeGuestShadowsForVisitor(string $tenantSlug, string $visitorId, array $legacySessionKeys): int
+            {
+                return 0;
+            }
+
+            public function deleteOtherSessionsForTenantUser(string $tenantSlug, ?string $userUuid, string $visitorId): int
+            {
+                return 0;
+            }
+
+            public function pruneStale(\DateTimeInterface $before): int
+            {
+                return 0;
+            }
+
+            public function countActive(\DateTimeInterface $since): int
+            {
+                return 0;
+            }
+
+            public function countActiveForTenant(string $tenantSlug, \DateTimeInterface $since): int
+            {
+                return 0;
+            }
+        };
+
+        $sessionKeyResolver = new PresenceSessionKeyResolver;
+
         return new PresenceHeartbeatService(
             new BotDetector,
-            new PresenceSessionKeyResolver,
+            $sessionKeyResolver,
             $tenantSessions,
-            new class implements PlatformPresenceSessionRepositoryInterface {
-                public function upsertHeartbeat(array $attributes): void
-                {
-                }
-
-                public function deleteBySessionKeys(array $sessionKeys): int
-                {
-                    return 0;
-                }
-
-                public function pruneStale(\DateTimeInterface $before): int
-                {
-                    return 0;
-                }
-
-                public function countActive(\DateTimeInterface $since): int
-                {
-                    return 0;
-                }
-            },
+            $platformSessions,
             new PresenceChannelNames(new TenantContext),
             new class implements PresenceUserPreferencesRepositoryInterface {
                 public function findForUser(int $userId): ?PresenceUserPreference
@@ -90,6 +114,15 @@ final class PresenceHeartbeatServiceTest extends TestCase
                 }
             },
             new PresencePresentationService,
+            new PresenceRevisionService(new PresenceChannelNames(new TenantContext)),
+            new PresenceClientIpMasker,
+            new PresencePlatformMirrorService(
+                $platformSessions,
+                new PresenceChannelNames(new TenantContext),
+                new PresenceRevisionService(new PresenceChannelNames(new TenantContext)),
+                new PlatformConnectionFactory,
+            ),
+            new PresencePromotionService($sessionKeyResolver, $tenantSessions, $platformSessions),
         );
     }
 
@@ -110,7 +143,22 @@ final class PresenceHeartbeatServiceTest extends TestCase
                 throw new \RuntimeException('not expected');
             }
 
+            public function releaseAuthenticatedSessionForVisitor(string $visitorId, array $attributes): bool
+            {
+                return false;
+            }
+
             public function deleteBySessionKeys(array $sessionKeys): int
+            {
+                return 0;
+            }
+
+            public function purgeGuestShadowsForVisitor(string $visitorId, array $legacySessionKeys): int
+            {
+                return 0;
+            }
+
+            public function deleteOtherSessionsForUser(int $userId, string $visitorId): int
             {
                 return 0;
             }

@@ -26,4 +26,10 @@ return [
         'adjust' => 'Adjusted',
         'expire' => 'Expired',
     ],
+    'rewards' => [
+        'login_description' => 'Login reward',
+        'post_write_description' => 'Post write reward',
+        'comment_write_description' => 'Comment write reward',
+        'like_received_description' => 'Received like reward',
+    ],
 ];

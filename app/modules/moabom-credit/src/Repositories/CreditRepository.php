@@ -17,7 +17,7 @@ class CreditRepository implements CreditRepositoryInterface
     {
         return CreditBalance::firstOrCreate(
             ['user_id' => $user->id],
-            ['balance' => 0]
+            ['balance' => 0, 'ranking_points' => 0]
         );
     }
 
@@ -34,6 +34,7 @@ class CreditRepository implements CreditRepositoryInterface
         CreditBalance::create([
             'user_id' => $user->id,
             'balance' => 0,
+            'ranking_points' => 0,
         ]);
 
         return CreditBalance::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
@@ -45,6 +46,15 @@ class CreditRepository implements CreditRepositoryInterface
     public function updateBalance(CreditBalance $balance, int $amount): bool
     {
         return $balance->forceFill(['balance' => $amount])->save();
+    }
+
+    public function incrementRankingPoints(CreditBalance $balance, int $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $balance->increment('ranking_points', $amount);
     }
 
     /**

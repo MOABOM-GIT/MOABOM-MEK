@@ -33,6 +33,7 @@ import templateMetadata from '../template.json';
 import { handlerMap } from './handlers';
 import { registerSirsoftAdminBasicIdentityLauncher } from './handlers/identityLauncher';
 import { registerMoabomAdminDeferredPluginPrefetch } from './runtime/moabomAdminDeferredPluginPrefetch';
+import { installMoabomExtensionDeferredBootstrap } from './runtime/moabomExtensionDeferredBootstrap';
 
 // handlerMap을 전역으로 노출 (로케일 변경 시 재등록용)
 if (typeof window !== 'undefined') {
@@ -94,5 +95,6 @@ export function initTemplate(): void {
 initTemplate();
 
 if (typeof window !== 'undefined') {
+  installMoabomExtensionDeferredBootstrap();
   registerMoabomAdminDeferredPluginPrefetch();
 }

@@ -121,10 +121,6 @@
     min-width: 0;
   }
 
-  .moa-mypage-presence-toggles {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
   .moa-mypage-presence-toggles > .moa-mypage-presence-toggle-btn,
   .moa-mypage-presence-availability > .moa-btn,
   .moa-mypage-presence-subtitle > .moa-btn {
@@ -216,20 +212,11 @@
   }
 
   .moa-mypage-presence-toggles {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr !important;
   }
 
   .moa-mypage-presence-toggles > .moa-mypage-presence-toggle-btn {
     min-width: 0;
-    height: auto;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 0.5rem;
-  }
-
-  .moa-mypage-presence-toggle-label {
-    text-align: start;
-    line-height: 1.25;
   }
 
   .moa-mypage-presence-availability {
@@ -243,6 +230,17 @@
   .moa-mypage-presence-availability > .moa-btn,
   .moa-mypage-presence-subtitle > .moa-btn,
   .moa-mypage-presence-toggles > .moa-btn {
+    min-width: 0;
+  }
+}
+
+/* 마이페이지 접속 설정 토글 — 창 폭 sm(640px) 이상 2열 */
+@container moa-app-window (width >= 640px) {
+  .moa-mypage-presence-toggles {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .moa-mypage-presence-toggles > .moa-mypage-presence-toggle-btn {
     min-width: 0;
   }
 }

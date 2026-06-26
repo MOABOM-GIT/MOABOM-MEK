@@ -7,6 +7,7 @@ import { IconName } from '../basic/IconTypes';
 import { MoabomRuntime } from '../../runtime/MoabomRuntime';
 import { MOABOM_RUNTIME_OPTIONS_CHANGED_EVENT } from '../../runtime/events';
 import { useMoabomPwaUpdate } from '../../runtime/pwa/usePwaUpdate';
+import AppLoadingSpinner from './AppLoadingSpinner';
 
 /**
  * G7Core.t() 번역 함수 참조
@@ -55,7 +56,14 @@ export interface ToastItem {
   action?: {
     label: string;
     onClick: () => void | Promise<void>;
+    variant?: 'primary' | 'secondary';
   };
+  /** 복수 액션 버튼(확인/취소 등). `actions`가 있으면 `action`보다 우선한다. */
+  actions?: Array<{
+    label: string;
+    onClick: () => void | Promise<void>;
+    variant?: 'primary' | 'secondary';
+  }>;
 }
 
 export interface ToastProps {
@@ -151,7 +159,7 @@ export const Toast: React.FC<ToastProps> = ({
   duration = 3000,
   onRemove,
 }) => {
-  useMoabomPwaUpdate();
+  const { isApplyingUpdate, applyingLabel } = useMoabomPwaUpdate();
 
   // 내부적으로 표시할 토스트 상태 관리 (애니메이션용)
   const [visibleToasts, setVisibleToasts] = useState<Map<string | number, boolean>>(new Map());
@@ -250,21 +258,36 @@ export const Toast: React.FC<ToastProps> = ({
   }
 
   return (
-    <Div
-      className={`fixed z-[9999] flex flex-col gap-2 ${positionClassMap[position]}`}
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      {visibleForSeverity.map((toast) => (
-        <ToastItemComponent
-          key={toast.id}
-          toast={toast}
-          position={position}
-          isVisible={visibleToasts.get(toast.id) ?? true}
-          onClose={() => handleRemove(toast.id)}
-        />
-      ))}
-    </Div>
+    <>
+      {isApplyingUpdate ? (
+        <Div
+          className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/45 backdrop-blur-[1px]"
+          role="dialog"
+          aria-modal="true"
+          aria-busy="true"
+          aria-live="assertive"
+        >
+          <Div className="rounded-xl border border-white/15 bg-white/95 px-8 py-6 shadow-2xl dark:bg-slate-900/95">
+            <AppLoadingSpinner label={applyingLabel} />
+          </Div>
+        </Div>
+      ) : null}
+      <Div
+        className={`fixed z-[9999] flex flex-col gap-2 ${positionClassMap[position]}`}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {visibleForSeverity.map((toast) => (
+          <ToastItemComponent
+            key={toast.id}
+            toast={toast}
+            position={position}
+            isVisible={visibleToasts.get(toast.id) ?? true}
+            onClose={() => handleRemove(toast.id)}
+          />
+        ))}
+      </Div>
+    </>
   );
 };
 
@@ -277,6 +300,9 @@ interface ToastItemComponentProps {
 
 const ToastItemComponent: React.FC<ToastItemComponentProps> = ({ toast, position, isVisible, onClose }) => {
   const typeStyle = typeStyleMap[toast.type] || typeStyleMap.info;
+  const actionButtons = toast.actions?.length
+    ? toast.actions
+    : (toast.action ? [toast.action] : []);
 
   // 아이콘 결정: 커스텀 아이콘 > 타입별 기본 아이콘
   const iconName = toast.icon
@@ -285,6 +311,13 @@ const ToastItemComponent: React.FC<ToastItemComponentProps> = ({ toast, position
 
   // position에 따라 숨김 애니메이션 방향 결정 (top → 위로, bottom → 아래로)
   const hideTranslate = position.startsWith('bottom') ? 'translate-y-2' : '-translate-y-2';
+
+  const actionButtonClass = (variant: 'primary' | 'secondary' = 'primary'): string => {
+    if (variant === 'secondary') {
+      return `moa-toast-action moa-toast-action--secondary flex-shrink-0 min-h-8 px-3 py-1.5 rounded-lg text-xs font-semibold border shadow-sm transition-colors ${typeStyle.text} border-current/25 bg-white/70 hover:bg-white/90 dark:bg-black/20 dark:hover:bg-black/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30`;
+    }
+    return `moa-toast-action moa-toast-action--primary flex-shrink-0 min-h-8 px-3 py-1.5 rounded-lg text-xs font-semibold border shadow-sm transition-colors ${typeStyle.text} border-current/35 bg-current/10 hover:bg-current/20 dark:bg-white/10 dark:hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30`;
+  };
 
   return (
     <Div
@@ -304,16 +337,21 @@ const ToastItemComponent: React.FC<ToastItemComponentProps> = ({ toast, position
       <Span className={`flex-1 text-sm font-bold ${typeStyle.text}`}>
         {toast.message}
       </Span>
-      {toast.action ? (
-        <Button
-          type="button"
-          onClick={() => {
-            void toast.action?.onClick();
-          }}
-          className={`flex-shrink-0 px-2 py-1 rounded text-xs font-bold hover:bg-black/10 dark:hover:bg-white/10 ${typeStyle.text} focus:outline-none`}
-        >
-          {toast.action.label}
-        </Button>
+      {actionButtons.length > 0 ? (
+        <Div className="flex flex-shrink-0 items-center gap-2">
+          {actionButtons.map((actionButton, index) => (
+            <Button
+              key={`${actionButton.label}-${index}`}
+              type="button"
+              onClick={() => {
+                void actionButton.onClick();
+              }}
+              className={actionButtonClass(actionButton.variant ?? (index === actionButtons.length - 1 ? 'primary' : 'secondary'))}
+            >
+              {actionButton.label}
+            </Button>
+          ))}
+        </Div>
       ) : null}
       <Button
         type="button"

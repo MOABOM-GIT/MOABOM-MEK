@@ -19,6 +19,11 @@ export interface MoabomSettingsApiPayload {
   settings?: Record<string, unknown>;
   /** 서버 `defaults_revision` (미포함 시 0) */
   defaults_revision?: number;
+  /** 로그인 user/settings — moabom-apps 훅이 기여 */
+  generated_app_library?: {
+    owned: unknown[];
+    shared: unknown[];
+  };
 }
 
 export interface MergeMoabomFromApiOptions {

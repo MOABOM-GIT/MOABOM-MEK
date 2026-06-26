@@ -2,6 +2,9 @@ import { moabomApiGet, moabomApiPost, moabomApiPut, type MoabomApiResult } from 
 import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSystem';
 import type { MoabomSettingsApiPayload } from '../utils/moabomSystemServerMerge';
 import { setMoabomLocaleCatalog, type MoabomLocaleCatalog } from '../utils/moabomLocaleCatalog';
+import { ensureMoabomShellBootLoaded, getMoabomShellBootData } from '../runtime/moabomShellBoot';
+import { seedMoabomGeneratedAppLibrary } from '../runtime/moabomGeneratedAppLibraryLoad';
+import type { MoabomGeneratedAppLibraryPayload } from '../runtime/moabomGeneratedAppLibraryLoad';
 
 interface ApiSystemSettingsResponse {
   success?: boolean;
@@ -11,6 +14,7 @@ interface ApiSystemSettingsResponse {
     settings?: Partial<MoabomSystemState>;
     defaults_revision?: number;
     locale_catalog?: MoabomLocaleCatalog;
+    generated_app_library?: MoabomGeneratedAppLibraryPayload;
   };
 }
 
@@ -35,6 +39,17 @@ export function invalidateMoabomSystemSettingsCache(): void {
   userSystemSettingsCache = null;
 }
 
+function applyUserSettingsResponseSideEffects(
+  data: ApiSystemSettingsResponse['data'] | undefined,
+): void {
+  if (data?.locale_catalog) {
+    setMoabomLocaleCatalog(data.locale_catalog);
+  }
+  if (data?.generated_app_library) {
+    seedMoabomGeneratedAppLibrary(data.generated_app_library);
+  }
+}
+
 export function __resetMoabomPublicFrontendDefaultsCacheForTest(): void {
   publicFrontendDefaultsPromise = null;
   publicFrontendDefaultsCache = null;
@@ -42,9 +57,26 @@ export function __resetMoabomPublicFrontendDefaultsCacheForTest(): void {
   userSystemSettingsCache = null;
 }
 
+function publicDefaultsFromShellBoot(): PublicFrontendDefaultsResult | null {
+  const boot = getMoabomShellBootData();
+  if (!boot?.defaults) {
+    return null;
+  }
+  if (boot.locale_catalog) {
+    setMoabomLocaleCatalog(boot.locale_catalog);
+  }
+  return {
+    ok: true,
+    defaults: boot.defaults,
+    defaults_revision: boot.defaults_revision ?? 0,
+    locale_catalog: boot.locale_catalog,
+  };
+}
+
 export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
   const now = Date.now();
   if (userSystemSettingsCache && userSystemSettingsCache.expiresAt > now) {
+    applyUserSettingsResponseSideEffects(userSystemSettingsCache.value.data);
     return userSystemSettingsCache.value;
   }
 
@@ -54,9 +86,7 @@ export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSy
 
   userSystemSettingsPromise = (async () => {
     const result = await moabomApiGet<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings');
-    if (result.data?.locale_catalog) {
-      setMoabomLocaleCatalog(result.data.locale_catalog);
-    }
+    applyUserSettingsResponseSideEffects(result.data);
     if (result.ok) {
       userSystemSettingsCache = {
         value: result,
@@ -80,11 +110,30 @@ export async function fetchMoabomPublicFrontendDefaults(): Promise<PublicFronten
     return publicFrontendDefaultsCache.value;
   }
 
+  const fromBoot = publicDefaultsFromShellBoot();
+  if (fromBoot) {
+    publicFrontendDefaultsCache = {
+      value: fromBoot,
+      expiresAt: now + FRONTEND_DEFAULTS_MEMORY_TTL_MS,
+    };
+    return fromBoot;
+  }
+
   if (publicFrontendDefaultsPromise) {
     return publicFrontendDefaultsPromise;
   }
 
   publicFrontendDefaultsPromise = (async () => {
+    await ensureMoabomShellBootLoaded();
+    const afterBoot = publicDefaultsFromShellBoot();
+    if (afterBoot) {
+      publicFrontendDefaultsCache = {
+        value: afterBoot,
+        expiresAt: Date.now() + FRONTEND_DEFAULTS_MEMORY_TTL_MS,
+      };
+      return afterBoot;
+    }
+
     const response = await fetch('/api/modules/moabom-system/public/frontend-defaults', {
       headers: { Accept: 'application/json' },
     });
@@ -138,6 +187,7 @@ export async function loadMoabomSettingsPayloadForMerge(isLoggedIn: boolean): Pr
       defaults: r.data?.defaults,
       settings: r.data?.settings as Record<string, unknown> | undefined,
       defaults_revision: rev,
+      generated_app_library: r.data?.generated_app_library,
     };
   }
   const r = await fetchMoabomPublicFrontendDefaults();

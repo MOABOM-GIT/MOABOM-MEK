@@ -1,4 +1,5 @@
 import type { ChatConversation, ChatMessage } from '../api/moabomChatApi';
+import { shellNotificationChannelName } from './moabomShellNotificationSocket';
 
 type G7WebSocketApi = {
   subscribe?: (
@@ -24,6 +25,16 @@ export type ChatReadPayload = {
   last_read_at?: string | null;
 };
 
+export type ChatTypingPayload = {
+  conversation_uuid?: string;
+  user_uuid?: string;
+};
+
+export type ChatMessageDeletedPayload = {
+  message_uuid?: string;
+  conversation_uuid?: string;
+};
+
 export type ChatSocketSubscription = {
   unsubscribe: () => void;
 };
@@ -37,6 +48,8 @@ export function subscribeChatConversation(
   handlers: {
     onMessageCreated?: (payload: ChatMessageCreatedPayload) => void;
     onRead?: (payload: ChatReadPayload) => void;
+    onTyping?: (payload: ChatTypingPayload) => void;
+    onMessageDeleted?: (payload: ChatMessageDeletedPayload) => void;
   },
 ): ChatSocketSubscription | null {
   const ws = getWebSocketApi();
@@ -63,8 +76,83 @@ export function subscribeChatConversation(
     );
     if (key) keys.push(key);
   }
+  if (handlers.onTyping) {
+    const key = ws.subscribe(
+      channel,
+      'conversation.typing',
+      raw => handlers.onTyping?.((raw && typeof raw === 'object' ? raw : {}) as ChatTypingPayload),
+      { channelType: 'private' },
+    );
+    if (key) keys.push(key);
+  }
+  if (handlers.onMessageDeleted) {
+    const key = ws.subscribe(
+      channel,
+      'message.deleted',
+      raw => handlers.onMessageDeleted?.((raw && typeof raw === 'object' ? raw : {}) as ChatMessageDeletedPayload),
+      { channelType: 'private' },
+    );
+    if (key) keys.push(key);
+  }
+
+  if (keys.length === 0) {
+    return null;
+  }
 
   return {
     unsubscribe: () => keys.forEach(key => ws.unsubscribe?.(key)),
+  };
+}
+
+export function subscribeChatInbox(
+  userUuid: string,
+  handlers: {
+    onInboxUpdated?: (payload: ChatMessageCreatedPayload) => void;
+  },
+): ChatSocketSubscription | null {
+  const ws = getWebSocketApi();
+  if (!ws?.subscribe || !userUuid) {
+    return null;
+  }
+
+  const keys: string[] = [];
+  if (handlers.onInboxUpdated) {
+    const key = ws.subscribe(
+      shellNotificationChannelName(userUuid),
+      'chat.inbox.updated',
+      raw => handlers.onInboxUpdated?.((raw && typeof raw === 'object' ? raw : {}) as ChatMessageCreatedPayload),
+      { channelType: 'private' },
+    );
+    if (key) keys.push(key);
+  }
+
+  if (keys.length === 0) {
+    return null;
+  }
+
+  return {
+    unsubscribe: () => keys.forEach(key => ws.unsubscribe?.(key)),
+  };
+}
+
+export function subscribeChatConversations(
+  channels: string[],
+  handlers: {
+    onMessageCreated?: (payload: ChatMessageCreatedPayload) => void;
+    onRead?: (payload: ChatReadPayload) => void;
+    onTyping?: (payload: ChatTypingPayload) => void;
+    onMessageDeleted?: (payload: ChatMessageDeletedPayload) => void;
+  },
+): ChatSocketSubscription | null {
+  const subscriptions = channels
+    .map(channel => subscribeChatConversation(channel, handlers))
+    .filter((subscription): subscription is ChatSocketSubscription => subscription !== null);
+
+  if (subscriptions.length === 0) {
+    return null;
+  }
+
+  return {
+    unsubscribe: () => subscriptions.forEach(subscription => subscription.unsubscribe()),
   };
 }

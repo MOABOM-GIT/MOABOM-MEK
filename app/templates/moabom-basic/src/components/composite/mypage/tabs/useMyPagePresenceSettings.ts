@@ -184,7 +184,6 @@ export function useMyPagePresenceSettings({
       pending: true,
     });
     schedulePresenceSave({ show_avatar_in_connect_list: value });
-    window.dispatchEvent(new CustomEvent('moabom-presence-settings-changed'));
   }, [presenceOptimisticBase, schedulePresenceSave]);
 
   const setAcceptChatRequests = useCallback((value: boolean) => {
@@ -207,6 +206,10 @@ export function useMyPagePresenceSettings({
     }
 
     setFallbackError(null);
+
+    if (pendingSaveRef.current) {
+      return;
+    }
 
     if (presenceContext) {
       if (presenceContext.presenceSettingsHydrated && presenceContext.presenceSettings) {

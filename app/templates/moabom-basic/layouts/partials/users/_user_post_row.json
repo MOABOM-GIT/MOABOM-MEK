@@ -78,6 +78,15 @@
             "className": "flex-shrink-0 text-xs text-blue-600 dark:text-blue-400 font-medium ml-1"
           },
           "text": "[{{post.comment_count}}]"
+        },
+        {
+          "type": "basic",
+          "name": "Span",
+          "if": "{{post.is_new}}",
+          "props": {
+            "className": "moa-board-badge-new ml-1"
+          },
+          "text": "N"
         }
       ]
     },
@@ -92,7 +101,7 @@
           "type": "basic",
           "name": "Span",
           "props": {
-            "className": "inline-flex items-center gap-1"
+            "className": "inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400"
           },
           "children": [
             {

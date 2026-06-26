@@ -1,5 +1,5 @@
 /**
- * 공개 프로필·작성글 윈도우 — 좌측 패널 공지사항과 일관된 glass 디자인.
+ * 공개 프로필·작성글 윈도우 — `moa-group` 패널 표면(마이페이지·앱 창 SSOT)과 일관.
  * 탭 크롬은 SubTabBar(glass-sm-blur + moa-point-fill 인디케이터) 사용.
  */
 
@@ -99,24 +99,49 @@
   border-color: color-mix(in srgb, #3b82f6 45%, var(--moa-border, #e5e7eb));
 }
 
-/* ── 작성글 목록 — 공지사항 아이템 행과 동일한 간격·반경 ── */
+/* ── 작성글 목록 — 게시판 공지·일반 목록 행과 동일 (border-b · hover 배경) ── */
+.moa-user-profile-post-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .moa-user-profile-post-row {
   display: flex;
   align-items: center;
   gap: 0.625rem;
   min-width: 0;
   flex-wrap: nowrap;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--moa-border, #e5e7eb) 45%, transparent);
-  transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid rgb(243 244 246);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.14s ease;
+}
+
+.dark .moa-user-profile-post-row {
+  border-bottom-color: rgb(55 65 81);
+}
+
+.moa-user-profile-post-list > .moa-user-profile-post-row:last-child,
+.moa-user-profile-post-list > *:last-child.moa-user-profile-post-row,
+.moa-user-profile-post-list > *:last-child > .moa-user-profile-post-row {
+  border-bottom-width: 0;
 }
 
 .moa-user-profile-post-row:hover {
-  background: color-mix(in srgb, var(--moa-surface-muted, #f9fafb) 75%, transparent);
-  border-color: color-mix(in srgb, var(--moa-border, #e5e7eb) 70%, transparent);
+  background: rgb(249 250 251);
+}
+
+.dark .moa-user-profile-post-row:hover {
+  background: rgb(55 65 81 / 0.5);
 }
 
 .moa-user-profile-post-badge {
@@ -137,24 +162,26 @@
   white-space: nowrap;
   text-align: left;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 500;
   border: 0;
   background: transparent;
   padding: 0;
-  cursor: pointer;
-  color: var(--moa-text-primary, #111827);
-  transition: color 0.14s ease;
+  color: rgb(55 65 81);
 }
 
-.moa-user-profile-post-title:hover {
-  color: var(--moa-point-color, #6366f1);
+.dark .moa-user-profile-post-title {
+  color: rgb(209 213 219);
 }
 
 .moa-user-profile-post-date {
   flex-shrink: 0;
-  font-size: 0.6875rem;
-  color: var(--moa-text-muted, #6b7280);
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
   white-space: nowrap;
+}
+
+.dark .moa-user-profile-post-date {
+  color: rgb(156 163 175);
 }
 
 .moa-user-profile-post-row__meta {
@@ -304,6 +331,22 @@
   min-width: 0;
 }
 
+.moa-chat-conversation-item__meta {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.moa-chat-conversation-item__delete {
+  opacity: 0.72;
+}
+
+.moa-chat-conversation-item:hover .moa-chat-conversation-item__delete,
+.moa-chat-conversation-item:focus-within .moa-chat-conversation-item__delete {
+  opacity: 1;
+}
+
 .moa-chat-conversation-item__title {
   min-width: 0;
   overflow: hidden;
@@ -342,8 +385,32 @@
 
 .moa-chat-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--moa-border, #e5e7eb);
+}
+
+.moa-chat-header__lead {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.moa-chat-sidebar__back-btn {
+  flex-shrink: 0;
+  padding-inline: 0.5rem;
+}
+
+.moa-chat-header__list-btn {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.moa-chat-header__mute-toggle {
+  margin-top: 0.125rem;
+  min-width: 0;
 }
 
 :root[data-theme='dark'] .moa-chat-header,
@@ -419,6 +486,10 @@
   overflow-wrap: anywhere;
 }
 
+.moa-chat-bubble--pending {
+  opacity: 0.72;
+}
+
 .moa-chat-composer {
   --moa-chat-composer-control-size: 2.75rem;
   flex-shrink: 0;
@@ -490,18 +561,31 @@
 @container moa-app-window (width < 640px) {
   .moa-chat-panel {
     flex-direction: column;
+    position: relative;
+    min-height: 0;
   }
 
   .moa-chat-sidebar {
+    display: none;
     width: 100%;
-    max-height: 42%;
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
     border-right: 0;
-    border-bottom: 1px solid var(--moa-border, #e5e7eb);
+    border-bottom: 0;
   }
 
-  :root[data-theme='dark'] .moa-chat-sidebar,
-  .dark .moa-chat-sidebar {
-    border-bottom-color: rgb(55 65 81);
+  .moa-chat-panel--mobile-list .moa-chat-sidebar {
+    display: flex;
+  }
+
+  .moa-chat-panel--mobile-list .moa-chat-main {
+    display: none;
+  }
+
+  .moa-chat-main {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 
@@ -610,18 +694,23 @@
 
 .moa-user-profile-actions-menu-item {
   width: 100%;
-  justify-content: flex-start;
+  justify-content: center;
   border-radius: 0.875rem;
   border: 0;
   background: transparent;
   padding: 0.5rem 0.75rem;
-  text-align: left;
+  text-align: center;
   transition: opacity 0.16s ease, background-color 0.16s ease;
 }
 
 .moa-user-profile-actions-menu-item:hover {
   opacity: 0.92;
   background: color-mix(in srgb, var(--moa-surface-muted, #f9fafb) 80%, transparent);
+}
+
+.moa-presence-access-menu .moa-btn {
+  justify-content: center;
+  text-align: center;
 }
 
 :root[data-theme='dark'] .moa-user-profile-status .moa-profile-status,

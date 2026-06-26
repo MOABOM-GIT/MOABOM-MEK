@@ -38,4 +38,4 @@ SPA 가 관리자의 모듈/플러그인 상태 변경 이후 **캐시 세대(Ep
 `moabom-system` 의 Ghost View Composer가 `moabom-basic` 등에서 설정한다.
 
 - `appConfig.moabom.extension_epoch` — 서버가 내려준 확장 세대.
-- `appConfig.moabom.extensionDeferredRegistry` — Ghost 경로에서만 채워질 수 있는 **전체 지연 에셋 URL 맵**(표면 `deferredModuleAssets` 비운 뒤 복원용).
+- `appConfig.moabom.extensionDeferredRegistry` — **전체 지연 에셋 URL 맵**. Ghost 경로에서는 표면 `deferred*`를 비운 뒤 복원용으로 쓰이며, `/shop` 등 직접 진입 경로에서도 `MoabomUserBootDeferredAssetsGhostComposer`가 동일 맵을 병합한다.

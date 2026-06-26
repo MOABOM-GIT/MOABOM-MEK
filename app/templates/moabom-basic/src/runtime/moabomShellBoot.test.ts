@@ -38,6 +38,18 @@ describe('ensureMoabomShellBootLoaded', () => {
         vi.restoreAllMocks();
     });
 
+    it('502/503 시 shell-boot 를 재시도한다', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(new Response('', { status: 502 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify(BOOT_PAYLOAD), { status: 200 }));
+
+        const loaded = await ensureMoabomShellBootLoaded(fetchMock);
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(loaded?.social_providers).toEqual(['google', 'kakao']);
+    });
+
     it('shell-boot 1회만 호출하고 캐시를 재사용한다', async () => {
         const fetchMock = vi.fn().mockResolvedValue(
             new Response(JSON.stringify(BOOT_PAYLOAD), { status: 200 }),

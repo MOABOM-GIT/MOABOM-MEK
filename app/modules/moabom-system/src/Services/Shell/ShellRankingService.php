@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Services\Shell;
 
 use App\Enums\UserStatus;
-use Carbon\CarbonInterface;
+use App\Extension\HookManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,10 +14,6 @@ use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 
 final class ShellRankingService
 {
-    private const SCOPE_APPS = 'apps';
-
-    private const SCOPE_USERS = 'users';
-
     public function __construct(
         private readonly ShellAppUsageRepositoryInterface $usageRepository,
     ) {}
@@ -38,13 +34,12 @@ final class ShellRankingService
      */
     public function appRankings(int $limit): array
     {
-        $periodHours = max(1, (int) config('moabom-system.shell_rankings.period_hours', 24));
         $limit = min(30, max(1, $limit));
         $cacheTtl = max(0, (int) config('moabom-system.shell_rankings.cache_ttl', 300));
-        $cacheKey = MoabomPublicApiCacheKeys::shellAppRankings($periodHours, $limit);
+        $cacheKey = MoabomPublicApiCacheKeys::shellAppRankings($limit);
 
-        $resolver = function () use ($periodHours, $limit): array {
-            return $this->buildAppRankings($periodHours, $limit);
+        $resolver = function () use ($limit): array {
+            return $this->buildAppRankings($limit);
         };
 
         if ($cacheTtl <= 0) {
@@ -69,13 +64,12 @@ final class ShellRankingService
      */
     public function userRankings(int $limit): array
     {
-        $periodHours = max(1, (int) config('moabom-system.shell_rankings.period_hours', 24));
         $limit = min(30, max(1, $limit));
         $cacheTtl = max(0, (int) config('moabom-system.shell_rankings.cache_ttl', 300));
-        $cacheKey = MoabomPublicApiCacheKeys::shellUserRankings($periodHours, $limit);
+        $cacheKey = MoabomPublicApiCacheKeys::shellUserRankings($limit);
 
-        $resolver = function () use ($periodHours, $limit): array {
-            return $this->buildUserRankings($periodHours, $limit);
+        $resolver = function () use ($limit): array {
+            return $this->buildUserRankings($limit);
         };
 
         if ($cacheTtl <= 0) {
@@ -88,11 +82,13 @@ final class ShellRankingService
     /**
      * @return array{period_hours: int, generated_at: string, items: list<array<string, mixed>>}
      */
-    private function buildAppRankings(int $periodHours, int $limit): array
+    private function buildAppRankings(int $limit): array
     {
+        $changePeriodHours = $this->rankingChangePeriodHours();
         $openHitWeight = max(1, (int) config('moabom-system.shell_rankings.open_hit_weight', 10));
-        $since = now()->utc()->subHours($periodHours);
-        $scores = $this->usageRepository->aggregateAppScores($since, $openHitWeight);
+        $scores = $this->filterAppScoreRows(
+            $this->usageRepository->aggregateAppScores(null, $openHitWeight),
+        );
         $top = array_slice($scores, 0, $limit);
 
         $items = [];
@@ -110,14 +106,16 @@ final class ShellRankingService
             $rank++;
         }
 
-        $items = $this->applyRankingChanges(
+        $recentRankMap = $this->buildAppRankMapForPeriod($changePeriodHours, $limit, $openHitWeight);
+        $items = $this->annotateRankingChanges(
             $items,
-            self::SCOPE_APPS,
+            $recentRankMap,
             static fn (array $item): string => (string) $item['app_id'],
         );
 
         return [
-            'period_hours' => $periodHours,
+            'period_hours' => 0,
+            'change_period_hours' => $changePeriodHours,
             'generated_at' => now()->toIso8601String(),
             'items' => $items,
         ];
@@ -126,180 +124,290 @@ final class ShellRankingService
     /**
      * @return array{period_hours: int, generated_at: string, items: list<array<string, mixed>>}
      */
-    private function buildUserRankings(int $periodHours, int $limit): array
+    private function buildUserRankings(int $limit): array
     {
         if (! Schema::hasTable('users')) {
             return [
-                'period_hours' => $periodHours,
+                'period_hours' => 0,
                 'generated_at' => now()->toIso8601String(),
                 'items' => [],
             ];
         }
 
-        $since = now()->utc()->subHours($periodHours);
-        $openHitWeight = max(1, (int) config('moabom-system.shell_rankings.open_hit_weight', 10));
-        $postWeight = max(1, (int) config('moabom-system.shell_rankings.user_activity.post_weight', 50));
-        $commentWeight = max(1, (int) config('moabom-system.shell_rankings.user_activity.comment_weight', 20));
-
-        $scoreMap = $this->aggregateUserActivityScoreMap($since, $openHitWeight, $postWeight, $commentWeight);
-        if ($scoreMap === []) {
+        $rows = $this->loadCumulativeUserRankingRows($limit);
+        if ($rows === []) {
             return [
-                'period_hours' => $periodHours,
+                'period_hours' => 0,
                 'generated_at' => now()->toIso8601String(),
                 'items' => [],
             ];
         }
-
-        arsort($scoreMap);
 
         $items = [];
         $rank = 1;
 
-        foreach (array_keys($scoreMap) as $userId) {
-            if (count($items) >= $limit) {
-                break;
-            }
-
-            $user = DB::table('users')
-                ->where('id', $userId)
-                ->where('status', UserStatus::Active->value)
-                ->first(['id', 'uuid', 'nickname', 'name']);
-
-            if ($user === null) {
-                continue;
-            }
-
-            $displayName = trim((string) ($user->nickname ?: $user->name ?: ''));
+        foreach ($rows as $row) {
+            $userId = (int) $row->id;
+            $displayName = trim((string) ($row->nickname ?: $row->name ?: ''));
             if ($displayName === '') {
                 $displayName = 'User #'.$userId;
             }
 
             $items[] = [
-                'user_id' => (int) $userId,
-                'user_uuid' => (string) $user->uuid,
+                'user_id' => $userId,
+                'user_uuid' => (string) $row->uuid,
                 'name' => $displayName,
-                'score' => (int) $scoreMap[$userId],
+                'score' => (int) $row->ranking_points,
                 'rank' => $rank,
                 'change' => 'same',
             ];
             $rank++;
         }
 
-        $items = $this->applyRankingChanges(
+        $items = $this->annotateRankingChanges(
             $items,
-            self::SCOPE_USERS,
+            $this->buildUserCreditRankMapForPeriod($this->rankingChangePeriodHours(), $limit),
             static fn (array $item): string => (string) $item['user_id'],
         );
 
         return [
-            'period_hours' => $periodHours,
+            'period_hours' => 0,
+            'change_period_hours' => $this->rankingChangePeriodHours(),
             'generated_at' => now()->toIso8601String(),
             'items' => $items,
         ];
     }
 
     /**
-     * @return array<int, int> user_id => activity score
+     * @return list<object{id: int, uuid: string, nickname: ?string, name: ?string, ranking_points: int}>
      */
-    private function aggregateUserActivityScoreMap(
-        CarbonInterface $since,
-        int $openHitWeight,
-        int $postWeight,
-        int $commentWeight,
-    ): array {
-        /** @var array<int, int> $scores */
-        $scores = [];
-
-        foreach ($this->usageRepository->aggregateUserShellScores($since, $openHitWeight) as $row) {
-            $userId = (int) $row['user_id'];
-            $scores[$userId] = ($scores[$userId] ?? 0) + (int) $row['shell_score'];
-        }
-
-        if (Schema::hasTable('board_posts')) {
-            $posts = DB::table('board_posts')
-                ->selectRaw('user_id, COUNT(*) AS post_count')
-                ->whereNotNull('user_id')
-                ->where('status', 'published')
-                ->whereNull('deleted_at')
-                ->where('created_at', '>=', $since)
-                ->groupBy('user_id')
-                ->get();
-
-            foreach ($posts as $row) {
-                $userId = (int) $row->user_id;
-                $scores[$userId] = ($scores[$userId] ?? 0) + ((int) $row->post_count * $postWeight);
-            }
-        }
-
-        if (Schema::hasTable('board_comments')) {
-            $comments = DB::table('board_comments')
-                ->selectRaw('user_id, COUNT(*) AS comment_count')
-                ->whereNotNull('user_id')
-                ->where('status', 'published')
-                ->whereNull('deleted_at')
-                ->where('created_at', '>=', $since)
-                ->groupBy('user_id')
-                ->get();
-
-            foreach ($comments as $row) {
-                $userId = (int) $row->user_id;
-                $scores[$userId] = ($scores[$userId] ?? 0) + ((int) $row->comment_count * $commentWeight);
-            }
-        }
-
-        return array_filter($scores, static fn (int $score): bool => $score > 0);
-    }
-
-    /**
-     * 직전 집계 대비 등락 — DB 스냅샷 대신 테넌트 캐시의 이전 순위 맵을 사용한다.
-     *
-     * @param  list<array<string, mixed>>  $items
-     * @param  callable(array<string, mixed>): string  $itemKey
-     * @return list<array<string, mixed>>
-     */
-    private function applyRankingChanges(array $items, string $scope, callable $itemKey): array
+    private function loadCumulativeUserRankingRows(int $limit): array
     {
-        if ($items === []) {
+        if (Schema::hasTable('moabom_credit_balances')
+            && Schema::hasColumn('moabom_credit_balances', 'ranking_points')) {
+            return DB::table('moabom_credit_balances as b')
+                ->join('users as u', 'u.id', '=', 'b.user_id')
+                ->where('u.status', UserStatus::Active->value)
+                ->where('b.ranking_points', '>', 0)
+                ->orderByDesc('b.ranking_points')
+                ->orderBy('u.id')
+                ->limit($limit)
+                ->get([
+                    'u.id',
+                    'u.uuid',
+                    'u.nickname',
+                    'u.name',
+                    'b.ranking_points',
+                ])
+                ->all();
+        }
+
+        $scoreMap = $this->aggregateLifetimeUserCreditScoreMap();
+        if ($scoreMap === []) {
             return [];
         }
 
-        $cacheKey = MoabomPublicApiCacheKeys::shellRankingsPreviousRanks($scope);
-        /** @var array<string, int> $previousRanks */
-        $previousRanks = Cache::get($cacheKey, []);
+        arsort($scoreMap);
+        $userIds = array_slice(array_keys($scoreMap), 0, $limit);
+        if ($userIds === []) {
+            return [];
+        }
 
+        $users = DB::table('users')
+            ->whereIn('id', $userIds)
+            ->where('status', UserStatus::Active->value)
+            ->get(['id', 'uuid', 'nickname', 'name'])
+            ->keyBy('id');
+
+        $rows = [];
+        foreach ($userIds as $userId) {
+            $user = $users->get($userId);
+            if ($user === null) {
+                continue;
+            }
+
+            $rows[] = (object) [
+                'id' => (int) $user->id,
+                'uuid' => (string) $user->uuid,
+                'nickname' => $user->nickname,
+                'name' => $user->name,
+                'ranking_points' => (int) $scoreMap[$userId],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * 마이그레이션 전 폴백 — 적립 이벤트 원장 누적 합.
+     *
+     * @return array<int, int> user_id => earned credit sum
+     */
+    private function aggregateLifetimeUserCreditScoreMap(): array
+    {
+        if (! Schema::hasTable('moabom_credit_transactions')) {
+            return [];
+        }
+
+        $sourceTypes = [
+            'login',
+            'post_write',
+            'like_received',
+            'attendance',
+            'comment_write',
+        ];
+
+        /** @var array<int, int> $scores */
+        $scores = [];
+
+        $rows = DB::table('moabom_credit_transactions')
+            ->selectRaw('user_id, SUM(amount) AS score')
+            ->where('type', 'earn')
+            ->where('amount', '>', 0)
+            ->whereNotNull('user_id')
+            ->whereIn('source_type', $sourceTypes)
+            ->groupBy('user_id')
+            ->orderByDesc('score')
+            ->get();
+
+        foreach ($rows as $row) {
+            $score = (int) $row->score;
+            if ($score > 0) {
+                $scores[(int) $row->user_id] = $score;
+            }
+        }
+
+        return $scores;
+    }
+
+    private function rankingChangePeriodHours(): int
+    {
+        return max(1, (int) config('moabom-system.shell_rankings.period_hours', 24));
+    }
+
+    /**
+     * @return array<string, int> app_id => rank (최근 N시간 활동 기준)
+     */
+    private function buildAppRankMapForPeriod(int $periodHours, int $limit, int $openHitWeight): array
+    {
+        $since = now()->utc()->subHours($periodHours);
+        $scores = $this->filterAppScoreRows(
+            $this->usageRepository->aggregateAppScores($since, $openHitWeight),
+        );
+
+        return $this->scoresToRankMap(
+            $scores,
+            static fn (array $row): string => (string) $row['app_id'],
+            $limit * 3,
+        );
+    }
+
+    /**
+     * @return array<string, int> user_id => rank (최근 N시간 적립 기준)
+     */
+    private function buildUserCreditRankMapForPeriod(int $periodHours, int $limit): array
+    {
+        if (! Schema::hasTable('moabom_credit_transactions')) {
+            return [];
+        }
+
+        $since = now()->utc()->subHours($periodHours);
+        $sourceTypes = [
+            'login',
+            'post_write',
+            'like_received',
+            'attendance',
+            'comment_write',
+        ];
+
+        $rows = DB::table('moabom_credit_transactions')
+            ->selectRaw('user_id, SUM(amount) AS score')
+            ->where('type', 'earn')
+            ->where('amount', '>', 0)
+            ->whereNotNull('user_id')
+            ->whereIn('source_type', $sourceTypes)
+            ->where('created_at', '>=', $since)
+            ->groupBy('user_id')
+            ->orderByDesc('score')
+            ->orderBy('user_id')
+            ->get();
+
+        $scores = $rows->map(static fn ($row): array => [
+            'user_id' => (int) $row->user_id,
+            'score' => (int) $row->score,
+        ])->all();
+
+        return $this->scoresToRankMap(
+            $scores,
+            static fn (array $row): string => (string) $row['user_id'],
+            $limit * 3,
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $scores
+     * @param  callable(array<string, mixed>): string  $itemKey
+     * @return array<string, int>
+     */
+    private function scoresToRankMap(array $scores, callable $itemKey, int $maxItems): array
+    {
+        $rankMap = [];
+        $rank = 1;
+
+        foreach (array_slice($scores, 0, $maxItems) as $row) {
+            $rankMap[$itemKey($row)] = $rank;
+            $rank++;
+        }
+
+        return $rankMap;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @param  array<string, int>  $previousRanks
+     * @param  callable(array<string, mixed>): string  $itemKey
+     * @return list<array<string, mixed>>
+     */
+    private function annotateRankingChanges(array $items, array $previousRanks, callable $itemKey): array
+    {
         foreach ($items as $index => $item) {
             $key = $itemKey($item);
-            $items[$index]['change'] = $this->resolveChange(
+            $items[$index]['change'] = $this->resolveChangeVsRecentPeriod(
                 (int) $item['rank'],
                 $previousRanks[$key] ?? null,
             );
         }
 
-        $nextRanks = [];
-        foreach ($items as $item) {
-            $nextRanks[$itemKey($item)] = (int) $item['rank'];
-        }
-
-        $ttl = max(60, (int) config('moabom-system.shell_rankings.change_cache_ttl', 86400));
-        Cache::put($cacheKey, $nextRanks, $ttl);
-
         return $items;
     }
 
-    private function resolveChange(int $currentRank, ?int $previousRank): string
+    /** 누적 순위 대비 최근 N시간 순위 — 최근이 더 좋으면 up */
+    private function resolveChangeVsRecentPeriod(int $cumulativeRank, ?int $recentPeriodRank): string
     {
-        if ($previousRank === null) {
+        if ($recentPeriodRank === null) {
             return 'same';
         }
 
-        if ($currentRank < $previousRank) {
+        if ($recentPeriodRank < $cumulativeRank) {
             return 'up';
         }
 
-        if ($currentRank > $previousRank) {
+        if ($recentPeriodRank > $cumulativeRank) {
             return 'down';
         }
 
         return 'same';
+    }
+
+    /**
+     * @param  list<array{app_id: string, open_hits?: int, active_seconds?: int, score?: int}>  $scores
+     * @return list<array{app_id: string, open_hits?: int, active_seconds?: int, score?: int}>
+     */
+    private function filterAppScoreRows(array $scores): array
+    {
+        return array_values((array) HookManager::applyFilters(
+            'moabom.shell_rankings.filter_app_scores',
+            $scores,
+        ));
     }
 }

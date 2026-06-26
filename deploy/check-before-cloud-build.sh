@@ -45,7 +45,9 @@ echo "==> [v7-2] moabom-system 활성 경로 (404 방지)"
   || fail "활성 modules/moabom-system 에 PublicShellBootController.php 없음 (SSOT 누락)"
 grep -q 'public/shell-boot' "${ACTIVE_SYS}/src/routes/api.php" 2>/dev/null \
   || fail "활성 api.php 에 public/shell-boot 없음"
-ok "shell-boot @ modules/moabom-system"
+grep -q 'public/ready' "${ACTIVE_SYS}/src/routes/api.php" 2>/dev/null \
+  || fail "활성 api.php 에 public/ready 없음 (Cloud Run startup probe)"
+ok "shell-boot + ready @ modules/moabom-system"
 
 echo "==> [v7-2b] GCS 첨부파일 DI (아바타 500 방지)"
 REGISTRAR="${ACTIVE_SYS}/src/Support/MoabomGcsAttachmentRegistrar.php"
@@ -124,6 +126,12 @@ fi
 grep -q 'MOABOM_BUILD_ENV=cloudbuild npm run build' "${DOCKERFILE}" 2>/dev/null \
   || fail "deploy/Dockerfile asset build 가 MOABOM_BUILD_ENV=cloudbuild 로 npm build 를 실행하지 않음"
 ok "로컬 빌드 차단 가드 + cloudbuild build-arg"
+
+echo "==> [v7-5b] Cloud Run Billing SSOT (Request-based 고정)"
+chmod +x "${ROOT}/deploy/check-cloud-run-billing-ssot.sh" 2>/dev/null || true
+if ! "${ROOT}/deploy/check-cloud-run-billing-ssot.sh"; then
+  fail "Cloud Run billing SSOT — deploy/check-cloud-run-billing-ssot.sh"
+fi
 
 echo "==> [v7-5] production.env.yaml (v7 운영 스펙)"
 [[ -f "${ENV}" ]] || fail "production.env.yaml 없음"

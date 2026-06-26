@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.9] - 2026-06-25
+
+### Added
+
+- `moabom_credit_balances.ranking_points` — 유저별 누적 적립 포인트(랭킹 SSOT). 기존 적립 원장 백필 포함.
+
+### Changed
+
+- 적립 시 `ranking_points` 자동 증가(적립 이벤트 `source_type` 한정).
+
+## [0.1.8] - 2026-06-25
+
+### Added
+
+- 적립 이벤트 자동 지급: 로그인·글 작성·댓글 작성 (`CreditRewardService` + 훅 리스너).
+- 댓글 작성 적립 기본 2점·일일 20회 제한 설정 필드.
+- 유저 셸 랭킹 캐시 무효화 리스너 (`moabom-credit.after_record`).
+
+### Changed
+
+- 크레딧 적립 `source_type` SSOT enum (`CreditRewardSourceType`).
+
 ## [0.1.7] - 2026-06-21
 
 ### Changed

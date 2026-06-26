@@ -9,7 +9,7 @@
       "validation_error": "입력값을 확인해 주세요.",
       "sections": {
         "rewards": "적립 이벤트",
-        "rewards_description": "로그인, 글 작성, 좋아요, 출석체크 적립액을 설정합니다.",
+        "rewards_description": "로그인, 글 작성, 댓글 작성, 좋아요, 출석체크 적립액을 설정합니다.",
         "limits": "일일 제한",
         "limits_description": "과도한 적립을 막기 위한 하루 기준 제한값입니다.",
         "ads": "광고 연동 준비",
@@ -20,11 +20,13 @@
         "login_amount": "로그인 시 적립",
         "post_write_amount": "글 작성 시 적립",
         "like_received_amount": "게시글 좋아요 받을 때 적립",
+        "comment_write_amount": "댓글 작성 시 적립",
         "attendance_amount": "출석체크 시 적립",
         "daily_earn_limit": "사용자별 일일 총 적립 한도",
         "attendance_daily_limit": "출석체크 일일 가능 횟수",
         "max_post_write_rewards_per_day": "글 작성 적립 일일 횟수 제한",
         "max_like_received_rewards_per_day": "좋아요 적립 일일 횟수 제한",
+        "max_comment_write_rewards_per_day": "댓글 작성 적립 일일 횟수 제한",
         "attendance_requires_ad": "출석체크 적립 전 광고 시청 필요",
         "attendance_ad_provider": "광고 제공자",
         "attendance_ad_reward_multiplier": "광고 시청 적립 배율"

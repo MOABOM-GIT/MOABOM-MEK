@@ -1,3 +1,143 @@
+diff --git a/app/Console/Commands/Template/ClearTemplateCacheCommand.php b/app/Console/Commands/Template/ClearTemplateCacheCommand.php
+index 8c8a863..a9dd853 100644
+--- a/app/Console/Commands/Template/ClearTemplateCacheCommand.php
++++ b/app/Console/Commands/Template/ClearTemplateCacheCommand.php
+@@ -4,6 +4,7 @@
+ 
+ use App\Contracts\Extension\CacheInterface;
+ use App\Extension\TemplateManager;
++use App\Extension\Traits\ClearsTemplateCaches;
+ use App\Models\Template;
+ use App\Models\TemplateLayout;
+ use Illuminate\Console\Command;
+@@ -78,33 +79,18 @@ private function clearSingleTemplateCache(string $identifier): void
+ 
+         $clearedCount = 0;
+ 
+-        // 1. 레이아웃 캐시 삭제
+         $templateRecord = Template::where('identifier', $identifier)->first();
+-        if ($templateRecord) {
+-            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
+-            foreach ($layouts as $layout) {
+-                $this->cache->forget("layout.{$identifier}.{$layout->name}");
+-                $clearedCount++;
+-            }
+-        }
+-
+-        // 2. Routes 캐시 삭제
+-        $this->cache->forget("template.routes.{$identifier}");
+-        $clearedCount++;
++        $clearedCount += $this->forgetVersionedTemplateCaches($identifier, $templateRecord);
+ 
+-        // 3. 다국어 파일 캐시 삭제
+-        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
+-        foreach ($supportedLocales as $locale) {
+-            $this->cache->forget("template.language.{$identifier}.{$locale}");
+-            $clearedCount++;
+-        }
+-
+-        // 4. 활성 템플릿 타입 캐시 삭제
++        // 활성 템플릿 타입 캐시 삭제
+         if ($templateRecord) {
+             $this->cache->forget("templates.active.{$templateRecord->type}");
+             $clearedCount++;
+         }
+ 
++        $this->bumpExtensionCacheVersion();
++        $clearedCount++;
++
+         $this->info('✅ '.__('templates.commands.cache_clear.success_single', [
+             'template' => $identifier,
+             'count' => $clearedCount,
+@@ -124,35 +110,25 @@ private function clearAllTemplateCache(): void
+         $this->info(__('templates.commands.cache_clear.clearing_all'));
+ 
+         $clearedCount = 0;
+-        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
+ 
+         // 모든 설치된 템플릿의 캐시 삭제
+         $templates = Template::all();
+ 
+         foreach ($templates as $templateRecord) {
+-            // 1. 레이아웃 캐시 삭제
+-            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
+-            foreach ($layouts as $layout) {
+-                $this->cache->forget("layout.{$templateRecord->identifier}.{$layout->name}");
+-                $clearedCount++;
+-            }
+-
+-            // 2. Routes 캐시 삭제
+-            $this->cache->forget("template.routes.{$templateRecord->identifier}");
+-            $clearedCount++;
+-
+-            // 3. 다국어 파일 캐시 삭제
+-            foreach ($supportedLocales as $locale) {
+-                $this->cache->forget("template.language.{$templateRecord->identifier}.{$locale}");
+-                $clearedCount++;
+-            }
++            $clearedCount += $this->forgetVersionedTemplateCaches(
++                $templateRecord->identifier,
++                $templateRecord,
++            );
+         }
+ 
+-        // 4. 활성 템플릿 타입 캐시 삭제
++        // 활성 템플릿 타입 캐시 삭제
+         $this->cache->forget('templates.active.admin');
+         $this->cache->forget('templates.active.user');
+         $clearedCount += 2;
+ 
++        $this->bumpExtensionCacheVersion();
++        $clearedCount++;
++
+         $this->info('✅ '.__('templates.commands.cache_clear.success_all', [
+             'count' => $clearedCount,
+         ]));
+@@ -161,4 +137,44 @@ private function clearAllTemplateCache(): void
+             'count' => $clearedCount,
+         ]));
+     }
++
++    /**
++     * 버전 포함·레거시 키를 함께 삭제합니다.
++     */
++    private function forgetVersionedTemplateCaches(string $identifier, ?Template $templateRecord): int
++    {
++        $clearedCount = 0;
++        $cacheVersion = ClearsTemplateCaches::getExtensionCacheVersion();
++        $versionSuffix = ".v{$cacheVersion}";
++
++        if ($templateRecord) {
++            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
++            foreach ($layouts as $layout) {
++                $this->cache->forget("layout.{$identifier}.{$layout->name}{$versionSuffix}");
++                $this->cache->forget("layout.{$identifier}.{$layout->name}");
++                $clearedCount += 2;
++            }
++        }
++
++        $this->cache->forget("template.routes.{$identifier}{$versionSuffix}");
++        $this->cache->forget("template.routes.{$identifier}");
++        $clearedCount += 2;
++
++        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
++        foreach ($supportedLocales as $locale) {
++            $this->cache->forget("template.language.{$identifier}.{$locale}{$versionSuffix}");
++            $this->cache->forget("template.language.{$identifier}.{$locale}");
++            $clearedCount += 2;
++        }
++
++        return $clearedCount;
++    }
++
++    /**
++     * 프론트엔드가 새 캐시 키로 lang/routes를 요청하도록 버전을 올립니다.
++     */
++    private function bumpExtensionCacheVersion(): void
++    {
++        $this->cache->put('ext.cache_version', time());
++    }
+ }
 diff --git a/app/Http/Controllers/Api/Admin/MenuController.php b/app/Http/Controllers/Api/Admin/MenuController.php
 index 2ea4e92..45db4bd 100644
 --- a/app/Http/Controllers/Api/Admin/MenuController.php
@@ -142,10 +282,10 @@ index 45968f9..e022881 100644
      /**
       * 지원되는 S3 리전 목록
 diff --git a/app/Listeners/BroadcastNotificationListener.php b/app/Listeners/BroadcastNotificationListener.php
-index d42ea89..6d59daa 100644
+index d42ea89..36fb323 100644
 --- a/app/Listeners/BroadcastNotificationListener.php
 +++ b/app/Listeners/BroadcastNotificationListener.php
-@@ -62,6 +62,8 @@ public function broadcastNotification(string $channel, array $context): void
+@@ -62,9 +62,12 @@ public function broadcastNotification(string $channel, array $context): void
                  "core.user.notifications.{$uuid}",
                  'notification.received',
                  [
@@ -154,6 +294,10 @@ index d42ea89..6d59daa 100644
                      'subject' => $context['subject'] ?? null,
                      'body' => $context['body'] ?? null,
                      'type' => $context['notification_type'] ?? null,
++                    'data' => $context['data'] ?? null,
+                 ]
+             );
+         } catch (\Throwable $e) {
 diff --git a/app/Notifications/NotificationDispatcher.php b/app/Notifications/NotificationDispatcher.php
 index e74672d..5d8bc59 100644
 --- a/app/Notifications/NotificationDispatcher.php
@@ -1782,10 +1926,10 @@ index 0000000..d10b50a
 +  return result;
 +}
 diff --git a/resources/js/core/websocket/WebSocketManager.ts b/resources/js/core/websocket/WebSocketManager.ts
-index 2b6729f..471c560 100644
+index 2b6729f..caab378 100644
 --- a/resources/js/core/websocket/WebSocketManager.ts
 +++ b/resources/js/core/websocket/WebSocketManager.ts
-@@ -48,6 +48,8 @@ export interface WebSocketConfig {
+@@ -48,10 +48,15 @@ export interface WebSocketConfig {
   */
  const logger = createLogger('WebSocketManager');
  
@@ -1794,14 +1938,23 @@ index 2b6729f..471c560 100644
  class WebSocketManager {
    private echo: Echo<'reverb'> | null = null;
    private subscriptions: Map<string, ReturnType<Echo<'reverb'>['channel']>> = new Map();
-@@ -74,6 +76,73 @@ class WebSocketManager {
-     });
+   private initialized = false;
++  private initializing = false;
++  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
++  private lastAuthFingerprint = '';
+   private config: WebSocketConfig | null = null;
+ 
+   /**
+@@ -75,20 +80,124 @@ class WebSocketManager {
    }
  
-+  /**
+   /**
+-   * Echo 인스턴스를 초기화합니다.
 +   * Sanctum 토큰을 매 요청 시점에 읽어 private/presence 채널 인증에 사용합니다.
 +   * 초기화 시점 스냅샷만 쓰면 로그인 직후 /api/broadcasting/auth 403 이 발생합니다.
-+   */
+    */
+-  initialize(): void {
+-    if (this.initialized) {
 +  private getBroadcastAuthHeaders(): Record<string, string> {
 +    if (typeof localStorage === 'undefined') {
 +      return { Accept: 'application/json' };
@@ -1852,10 +2005,48 @@ index 2b6729f..471c560 100644
 +      });
 +  }
 +
++  private getAuthFingerprint(): string {
++    return this.getBroadcastAuthHeaders().Authorization ?? '';
++  }
++
++  private getConnectionState(): string | null {
++    const pusher = (this.echo as { connector?: { pusher?: { connection?: { state?: string } } } } | null)
++      ?.connector?.pusher;
++    return pusher?.connection?.state ?? null;
++  }
++
 +  /**
 +   * 로그인·로그아웃 후 private/presence 구독이 새 토큰으로 재인증되도록 연결을 재수립합니다.
++   * 부트 시 authStateChange·subscribe 가 연속 호출되면 in-flight 연결을 끊지 않도록 debounce 합니다.
 +   */
 +  reconnectForAuthChange(): void {
++    if (this.reconnectTimer !== null) {
++      clearTimeout(this.reconnectTimer);
++    }
++
++    this.reconnectTimer = setTimeout(() => {
++      this.reconnectTimer = null;
++      this.performReconnectForAuthChange();
++    }, 120);
++  }
++
++  private performReconnectForAuthChange(): void {
++    const fingerprint = this.getAuthFingerprint();
++    const connectionState = this.getConnectionState();
++
++    if (
++      this.initialized
++      && fingerprint === this.lastAuthFingerprint
++      && (connectionState === 'connected' || connectionState === 'connecting')
++    ) {
+       return;
+     }
+ 
+-    // 설정 확인
+-    if (!this.config || !this.config.appKey) {
+-      logger.warn('[WebSocketManager] WebSocket 설정이 없습니다. initTemplateApp에서 websocket 옵션을 전달해주세요.');
++    this.lastAuthFingerprint = fingerprint;
++
 +    if (!this.initialized) {
 +      this.initialize();
 +      return;
@@ -1865,10 +2056,28 @@ index 2b6729f..471c560 100644
 +    this.initialize();
 +  }
 +
-   /**
-    * Echo 인스턴스를 초기화합니다.
-    */
-@@ -96,11 +165,6 @@ class WebSocketManager {
++  /**
++   * Echo 인스턴스를 초기화합니다.
++   */
++  initialize(): void {
++    if (this.initialized || this.initializing) {
+       return;
+     }
+ 
+-    const { appKey, host = 'localhost', port = 80, scheme = 'https', authEndpoint = '/api/broadcasting/auth' } = this.config;
++    this.initializing = true;
++
++    try {
++      if (!this.config || !this.config.appKey) {
++        logger.warn('[WebSocketManager] WebSocket 설정이 없습니다. initTemplateApp에서 websocket 옵션을 전달해주세요.');
++        return;
++      }
++
++      const { appKey, host = 'localhost', port = 80, scheme = 'https', authEndpoint = '/api/broadcasting/auth' } = this.config;
+     const numPort = Number(port) || 80;
+     const useTLS = scheme === 'https';
+ 
+@@ -96,11 +205,6 @@ class WebSocketManager {
  
      window.Pusher = Pusher;
  
@@ -1880,7 +2089,7 @@ index 2b6729f..471c560 100644
      const pusherOptions = {
        wsHost: host,
        wsPort: numPort,
-@@ -109,17 +173,29 @@ class WebSocketManager {
+@@ -109,17 +213,29 @@ class WebSocketManager {
        disableStats: true,
        enabledTransports: ['ws', 'wss'] as const,
        cluster: 'mt1', // 필수 옵션이지만 Reverb에서는 무시됨
@@ -1916,7 +2125,7 @@ index 2b6729f..471c560 100644
  
      // eslint-disable-next-line @typescript-eslint/no-explicit-any
      const pusherClient = new Pusher(appKey, pusherOptions as any);
-@@ -159,6 +235,11 @@ class WebSocketManager {
+@@ -159,6 +275,11 @@ class WebSocketManager {
      this.echo = new Echo({
        broadcaster: 'reverb',
        client: pusherClient,
@@ -1928,7 +2137,19 @@ index 2b6729f..471c560 100644
      });
  
      // 명시적으로 연결 시작
-@@ -193,6 +274,12 @@ class WebSocketManager {
+@@ -167,7 +288,11 @@ class WebSocketManager {
+ 
+     window.Echo = this.echo;
+     this.initialized = true;
++    this.lastAuthFingerprint = this.getAuthFingerprint();
+     logger.log('[WebSocketManager] Echo 초기화 완료');
++    } finally {
++      this.initializing = false;
++    }
+   }
+ 
+   /**
+@@ -193,6 +318,12 @@ class WebSocketManager {
      }
  
      const { channelType = 'private' } = options;
@@ -1941,6 +2162,18 @@ index 2b6729f..471c560 100644
      const subscriptionKey = `${channel}:${event}`;
  
      if (this.subscriptions.has(subscriptionKey)) {
+@@ -282,6 +413,11 @@ class WebSocketManager {
+    * 모든 구독을 해제하고 연결을 종료합니다.
+    */
+   disconnect(): void {
++    if (this.reconnectTimer !== null) {
++      clearTimeout(this.reconnectTimer);
++      this.reconnectTimer = null;
++    }
++
+     if (this.echo) {
+       this.echo.disconnect();
+       this.subscriptions.clear();
 diff --git a/resources/views/admin.blade.php b/resources/views/admin.blade.php
 index 2574d8d..09b8d49 100644
 --- a/resources/views/admin.blade.php

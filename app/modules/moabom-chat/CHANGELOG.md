@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- 대화 목록 개별 삭제 — `DELETE conversations/{uuid}` API 및 채팅 패널 삭제 버튼
+- 목록에서 삭제한 1:1 대화 재시작 시 멤버십 자동 복구
+
 ## [0.1.2] - 2026-06-24
 
 ### Added

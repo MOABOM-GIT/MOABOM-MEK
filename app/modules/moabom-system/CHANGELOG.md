@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.8.9] - 2026-06-26
+
+### Changed
+
+- 지연 확장 URL 맵(`extensionDeferredRegistry`)을 moabom-basic·관리자 표면 **모든 요청**에 병합해 Ghost·직접 진입(/shop 등)이 동일한 deferred 복원 경로를 쓰도록 정렬.
+- `MoabomExtensionDeferredRegistrySupport`로 Ghost Composer·`MoabomTemplateComposer`의 registry·epoch 병합 로직을 공통화.
+
+## [0.8.8] - 2026-06-25
+
+### Changed
+
+- 앱 셸 랭킹을 **전기간 누적** 사용량 버킷 합산으로 전환 — `period_hours: 0`.
+- 앱·유저 등락 화살표는 누적 순위 대비 **최근 24시간**(설정 `shell_rankings.period_hours`) 활동 순위로 계산.
+
+## [0.8.7] - 2026-06-25
+
+### Changed
+
+- 유저 셸 랭킹을 **누적 적립 포인트** 기준으로 전환 — `moabom_credit_balances.ranking_points` 상위 30명, `period_hours: 0`(기간 제한 없음).
+
+## [0.8.6] - 2026-06-25
+
+### Changed
+
+- 유저 셸 랭킹 집계를 크레딧 적립 원장(`moabom_credit_transactions`) 합산으로 전환 — 셸 앱 사용량·게시판 건수 가중치 제거.
+- `shell_rankings.user_activity` 설정 제거.
+
 ## [0.8.4] - 2026-06-22
 
 ### Added

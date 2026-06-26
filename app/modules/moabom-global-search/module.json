@@ -1,0 +1,21 @@
+{
+    "identifier": "moabom-global-search",
+    "vendor": "moabom",
+    "name": {
+        "ko": "전체검색",
+        "en": "Global Search"
+    },
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": {
+        "ko": "앱·게시판 통합 검색 셸 앱",
+        "en": "Unified shell search for apps and boards"
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {
+            "moabom-apps": ">=0.1.0"
+        },
+        "plugins": {}
+    }
+}

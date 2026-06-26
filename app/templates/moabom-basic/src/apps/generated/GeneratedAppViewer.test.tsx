@@ -26,6 +26,25 @@ describe('GeneratedAppViewer', () => {
     vi.mocked(fetchVisibleGeneratedApp).mockReset();
   });
 
+  it('loads website_link app into iframe via metadata URL', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 9,
+      title: 'Naver',
+      app_type: 'website_link',
+      html: '<!DOCTYPE html><html><body data-moabom-website-link="1"></body></html>',
+      preview_url: 'https://apps.mek360.com/g/9',
+      metadata: { website_url: 'https://www.naver.com' },
+    });
+
+    renderViewer(9);
+
+    await waitFor(() => {
+      const frame = screen.getByTitle('Naver') as HTMLIFrameElement;
+      expect(frame.src).toContain('https://www.naver.com');
+      expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-forms allow-popups allow-same-origin');
+    });
+  });
+
   it('loads saved app into iframe preview via preview_url', async () => {
     vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
       id: 7,

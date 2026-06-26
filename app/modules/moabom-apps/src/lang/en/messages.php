@@ -27,6 +27,13 @@ return [
                 'google_failed' => 'The Google AI API request failed, so a preview HTML was generated.',
             ],
         ],
+        'website_link' => [
+            'resolve_success' => 'Website details resolved.',
+            'resolve_failed' => 'Could not resolve the website URL.',
+            'url_required' => 'Enter a website URL.',
+            'url_invalid' => 'The website URL is not valid.',
+            'url_blocked' => 'This address cannot be linked.',
+        ],
         'generated' => [
             'fetch_success' => 'Loaded generated apps.',
             'show_success' => 'Loaded the generated app.',

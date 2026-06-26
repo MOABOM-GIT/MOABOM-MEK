@@ -42,20 +42,42 @@
     "messages_loading": "메시지를 불러오는 중…",
     "messages_empty": "아직 메시지가 없습니다.",
     "choose_conversation": "왼쪽에서 대화 상대를 선택하세요.",
+    "choose_conversation_mobile": "상단 목록에서 대화 상대를 선택하세요.",
+    "conversation_list": "목록",
+    "back_to_chat": "대화로",
     "unknown_sender": "사용자",
     "message_placeholder": "메시지를 입력하세요.",
     "send": "전송",
-    "toast_request_rejected": "대화요청 수락을 거부한 사용자입니다.",
+    "toast_request_rejected": "상대방이 메시지를 수신받을 수 없습니다.",
     "toast_blocked_by_self": "대화거부한 사용자입니다. 대화거부 목록에서 해제할 수 있습니다.",
-    "toast_blocked_by_peer": "상대방이 대화를 거부한 상태입니다.",
+    "toast_blocked_by_peer": "상대방이 메시지를 수신받을 수 없습니다.",
     "toast_login_required": "로그인 후 대화할 수 있습니다.",
     "toast_failed": "대화 처리에 실패했습니다.",
     "toast_conversation_ready": "대화방을 열었습니다.",
     "unblock": "해제",
-    "remove_selected": "선택 제거"
+    "remove_selected": "선택 제거",
+    "read_badge": "읽음",
+    "typing": "입력 중…",
+    "mute_on": "대화 알림을 껐습니다.",
+    "mute_off": "대화 알림을 켰습니다.",
+    "mute_toggle_off": "알림끄기",
+    "mute_toggle_on": "알림켜기",
+    "delete_message": "삭제",
+    "delete_conversation": "대화 삭제",
+    "toast_conversation_removed": "대화를 목록에서 삭제했습니다."
   },
   "moa_profile_actions": {
     "friend_add": "친구추가",
+    "friend_remove": "친구해제",
+    "friend_remove_confirm": "친구를 해제 하시겠습니까?",
+    "friend_request_cancel_confirm": "{name}에게 보낸 친구 요청을 취소 하시겠습니까?",
+    "friend_request_cancelled": "{name}에게 보낸 친구 요청을 취소했습니다.",
+    "friend_removed_toast": "{name}와 친구가 해제되었습니다.",
+    "friend_became_toast": "{name}와 친구가 되었습니다.",
+    "friend_accept_confirm": "{name}와 친구를 수락 하시겠습니까?",
+    "friend_accept": "수락",
+    "toast_confirm_yes": "예",
+    "toast_confirm_no": "아니오",
     "chat": "대화하기",
     "chat_block_on": "대화거부 중",
     "chat_block_off": "대화거부",
@@ -379,6 +401,7 @@
       "tabs_updates": "업데이트",
       "empty_favorites": "즐겨찾기한 앱이 없습니다",
       "empty_myapps": "등록된 앱이 없습니다",
+      "myapps_loading": "앱 목록을 불러오는 중…",
       "empty_basic_apps": "기본앱이 없습니다",
       "empty_user_apps": "유저앱이 없습니다",
       "notice_view_all": "공지사항 전체 보기",
@@ -389,7 +412,7 @@
       "rankings_apps_empty": "아직 집계된 앱 순위가 없습니다",
       "rankings_users_empty": "아직 집계된 유저 순위가 없습니다",
       "rankings_load_failed": "순위를 불러오지 못했습니다",
-      "rankings_activity_score": "{score} point",
+      "rankings_activity_score": "크레딧 {score}점",
       "creator_badge": "Lv.{level} Creator"
     },
     "right": {
@@ -428,6 +451,7 @@
       "notifications_empty": "알림이 없습니다",
       "notifications_loading": "알림을 불러오는 중…",
       "notifications_load_more": "더 보기",
+      "notifications_delete_all": "알림 모두 삭제",
       "new_notification_received": "새 알림이 도착했습니다",
       "notification_open": "열기",
       "notification_fallback_title": "알림",
@@ -530,7 +554,8 @@
     "pwa": {
       "update": {
         "message": "플랫폼이 업데이트 되었습니다.",
-        "cta": "다시 불러오기"
+        "cta": "다시 불러오기",
+        "loading": "다시 불러오는 중…"
       }
     }
   },
@@ -546,6 +571,10 @@
     "consulting": {
       "name": "스마트 컨설팅",
       "description": "병원 수익성 시뮬레이션 · 전자계약"
+    },
+    "global-search": {
+      "name": "전체검색",
+      "description": "게시판 및 앱검색"
     },
     "hospital-info": {
       "name": "병원명",
@@ -580,6 +609,21 @@
     "coming_soon_title": "준비 중입니다",
     "coming_soon_description": "서비스 콘텐츠를 곧 제공할 예정입니다."
   },
+  "moa_apps_search": {
+    "placeholder": "앱·게시판 검색",
+    "submit": "검색",
+    "searching": "검색 중…",
+    "clear": "지우기",
+    "hint": "앱 이름이나 게시글 제목으로 검색해 보세요.",
+    "min_length": "검색어는 2글자 이상 입력해 주세요.",
+    "result_count": "\"{query}\" 검색 결과 {count}건",
+    "section_system_apps": "전체앱",
+    "section_generated_apps": "제작앱",
+    "section_boards": "게시판",
+    "empty_system_apps": "일치하는 앱이 없습니다.",
+    "empty_generated_apps": "일치하는 제작앱이 없습니다.",
+    "empty_boards": "일치하는 게시글이 없습니다."
+  },
   "moa_apps_ai": {
     "title": "AI 앱 만들기",
     "description": "원하는 앱을 설명하면 HTML 웹앱 미리보기를 생성합니다.",
@@ -589,13 +633,18 @@
     "field_tier": "데이터 저장",
     "field_model": "AI 모델",
     "field_prompt": "프롬프트",
+    "field_site_description": "사이트 설명",
+    "field_url": "웹사이트 주소",
+    "field_url_placeholder": "예: https://www.naver.com",
+    "field_site_description_placeholder": "예: 포털 사이트",
     "field_prompt_placeholder": "만들고 싶은 앱의 화면, 기능, 색감, 동작을 구체적으로 적어주세요.",
     "field_modify_placeholder": "현재 미리보기에서 바꾸고 싶은 부분을 적어주세요.",
     "types": {
       "general": "일반 웹앱 (html)",
       "3d": "3D 캔버스 (three.js)",
       "game": "인터렉션 (phaser.js)",
-      "dataviz": "차트 생성 (chart.js)"
+      "dataviz": "차트 생성 (chart.js)",
+      "website_link": "웹사이트 연결 (URL)"
     },
     "tiers": {
       "standard": "내 기기에 저장",
@@ -629,6 +678,9 @@
     "viewer_empty": "표시할 앱 HTML이 없습니다.",
     "preview_empty_title": "아직 생성된 앱이 없습니다",
     "preview_empty_description": "프롬프트를 입력하고 생성 버튼을 눌러 미리보기를 확인하세요.",
+    "preview_empty_description_website": "웹사이트 주소와 사이트 설명을 입력하고 생성 버튼을 눌러 미리보기를 확인하세요.",
+    "website_resolving": "사이트 확인 중…",
+    "error_website_resolve": "웹사이트 주소를 확인하지 못했습니다.",
     "notice_fallback": "AI provider 설정 전까지 기본 미리보기가 표시됩니다.",
     "notice_truncated": "토큰 제한으로 생성이 중간에 끊겼습니다. 「이어서 완성」을 눌러 계속할 수 있습니다.",
     "stream_title": "생성 코드",
@@ -642,6 +694,8 @@
     "error_save": "생성 앱 저장에 실패했습니다.",
     "validation": {
       "prompt_required": "프롬프트를 입력해주세요.",
+      "site_description_required": "사이트 설명을 입력해주세요.",
+      "url_required": "웹사이트 주소를 입력해주세요.",
       "title_required": "앱 제목을 입력해주세요.",
       "html_required": "저장할 생성 HTML이 없습니다."
     },

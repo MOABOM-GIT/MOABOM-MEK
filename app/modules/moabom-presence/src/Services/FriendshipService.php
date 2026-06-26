@@ -105,6 +105,11 @@ final class FriendshipService
 
     public function removeFriendship(User $viewer, User $other): int
     {
-        return $this->friendships->deletePair($viewer->id, $other->id);
+        $deleted = $this->friendships->deletePair($viewer->id, $other->id);
+        if ($deleted > 0) {
+            HookManager::doAction('moabom-presence.friendship.after_remove', $viewer, $other);
+        }
+
+        return $deleted;
     }
 }

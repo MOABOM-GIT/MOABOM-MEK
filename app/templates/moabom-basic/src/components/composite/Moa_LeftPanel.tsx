@@ -11,6 +11,7 @@ import { Img } from '../basic/Img';
 import { GlassPanel } from './Moa_GlassPanel';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LeftPanelAppIcon } from './Moa_LeftPanelAppIcon';
+import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import { APPS, type App } from '../../data/Moa_apps';
 import { NAV_ITEMS } from '../../data/Moa_navigation';
 import {
@@ -36,6 +37,7 @@ import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import { useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
+import AppLoadingSpinner from './AppLoadingSpinner';
 
 /** 메인 좌측 패널 하단 고정 네비 슬롯 높이 */
 const NAV_H = 78;
@@ -78,6 +80,8 @@ export interface LeftPanelProps {
   favoriteApps: App[];
   /** 사용자가 저장한 AI 생성 앱 목록 */
   createdApps?: App[];
+  /** 로그인 사용자 생성앱 라이브러리 API 동기화 중 */
+  ownedGeneratedAppsLoading?: boolean;
   /** 다른 사용자가 공유 공개한 AI 생성 앱 목록 */
   sharedApps?: App[];
   /** 좁은 화면 오버레이 모드 여부 */
@@ -191,6 +195,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onEnterEditMode,
   favoriteApps,
   createdApps = [],
+  ownedGeneratedAppsLoading = false,
   sharedApps = [],
   isOverlay = false,
   overlayFlushEdges = false,
@@ -208,7 +213,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [userRankings, setUserRankings] = useState<ShellUserRankingItem[]>([]);
   const [rankingLoading, setRankingLoading] = useState(false);
   const [rankingLoadFailed, setRankingLoadFailed] = useState(false);
-  const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('favorites');
+  const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('myapps');
   const [noticeSubTab, setNoticeSubTab] = useState<'notices' | 'updates'>('notices');
   const [noticeBoardItems, setNoticeBoardItems] = useState<{
     notices: LeftPanelNoticeItem[];
@@ -221,6 +226,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const tapToAdd = isOverlay && editMode;
   const panelScrollRef = useRef<HTMLDivElement>(null);
   const panelScrollHandlers = useMoaPanelScrollDrag(panelScrollRef, { disabled: editMode });
+  const hasOwnedGeneratedApps = createdApps.some(app => app.id !== createAppShellMetadata.id);
 
   const filteredApps = activeTab === 'user'
     ? [
@@ -233,6 +239,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     () => [...APPS, ...createdApps, ...sharedApps],
     [createdApps, sharedApps],
   );
+
+  /** 앱순위 — 좌측 유저앱 카탈로그(기본+공유 생성앱)에 없는 id는 표시하지 않음 */
+  const visibleAppRankings = useMemo(() => {
+    const allowedIds = new Set(rankingLibraryApps.map(app => app.id));
+    return appRankings.filter(item => allowedIds.has(item.app_id));
+  }, [appRankings, rankingLibraryApps]);
 
   useEffect(() => {
     if (activeNav !== 'economy') {
@@ -340,7 +352,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         };
       case 'myapp':
         return {
-          tabs: [{ id: 'favorites', label: t('moa_shell.left.tabs_favorites') }, { id: 'myapps', label: t('moa_shell.left.tabs_my_apps') }],
+          tabs: [{ id: 'myapps', label: t('moa_shell.left.tabs_my_apps') }, { id: 'favorites', label: t('moa_shell.left.tabs_favorites') }],
           activeTab: myappSubTab,
           onTabChange: (id: string) => setMyappSubTab(id as 'favorites' | 'myapps'),
         };
@@ -426,18 +438,15 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             <Div className="py-1">
               {rankingSubTab === 'apps' && (
                 rankingLoading ? (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_loading')}</Div>
-                  </Div>
+                  <AppLoadingSpinner label={t('moa_shell.left.rankings_loading')} className="py-8" />
                 ) : rankingLoadFailed ? (
                   <Div className="text-center py-8 text-muted">
                     <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
                     <Div className="text-sm">{t('moa_shell.left.rankings_load_failed')}</Div>
                   </Div>
-                ) : appRankings.length > 0 ? (
+                ) : visibleAppRankings.length > 0 ? (
                   <Div className="flex flex-col gap-1">
-                    {appRankings.map(item => {
+                    {visibleAppRankings.map(item => {
                       const rankApp = resolveRankingApp(item.app_id, rankingLibraryApps);
                       return (
                       <Div
@@ -484,10 +493,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               )}
               {rankingSubTab === 'users' && (
                 rankingLoading ? (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_loading')}</Div>
-                  </Div>
+                  <AppLoadingSpinner label={t('moa_shell.left.rankings_loading')} className="py-8" />
                 ) : rankingLoadFailed ? (
                   <Div className="text-center py-8 text-muted">
                     <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
@@ -545,6 +551,27 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {/* 마이앱 탭 */}
           {activeNav === 'myapp' && (
             <Div className="py-1">
+              {myappSubTab === 'myapps' && (
+                <Div>
+                  {ownedGeneratedAppsLoading && !hasOwnedGeneratedApps ? (
+                    <AppLoadingSpinner label={t('moa_shell.left.myapps_loading')} className="py-8" />
+                  ) : createdApps.length > 0 ? (
+                    <LeftPanelAppGrid
+                      apps={createdApps}
+                      editMode={editMode}
+                      onEnterEditMode={onEnterEditMode}
+                      onOpenApp={onOpenApp}
+                      onAddApp={onAddApp}
+                      tapToAdd={tapToAdd}
+                    />
+                  ) : (
+                    <Div className="text-center py-8 text-muted">
+                      <Icon name="cube" className="text-3xl mb-2 opacity-30" />
+                      <Div className="text-sm">{t('moa_shell.left.empty_myapps')}</Div>
+                    </Div>
+                  )}
+                </Div>
+              )}
               {myappSubTab === 'favorites' && (
                 <Div>
                   {favoriteApps.length > 0 ? (
@@ -564,25 +591,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   )}
                 </Div>
               )}
-              {myappSubTab === 'myapps' && (
-                <Div>
-                  {createdApps.length > 0 ? (
-                    <LeftPanelAppGrid
-                      apps={createdApps}
-                      editMode={editMode}
-                      onEnterEditMode={onEnterEditMode}
-                      onOpenApp={onOpenApp}
-                      onAddApp={onAddApp}
-                      tapToAdd={tapToAdd}
-                    />
-                  ) : (
-                    <Div className="text-center py-8 text-muted">
-                      <Icon name="cube" className="text-3xl mb-2 opacity-30" />
-                      <Div className="text-sm">{t('moa_shell.left.empty_myapps')}</Div>
-                    </Div>
-                  )}
-                </Div>
-              )}
             </Div>
           )}
 
@@ -590,10 +598,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {activeNav === 'notice' && (
             <Div className="py-1">
               {noticeBoardLoading ? (
-                <Div className="text-center py-8 text-muted">
-                  <Icon name="spinner" className="text-2xl mb-2 opacity-40" />
-                  <Div className="text-sm">{t('moa_shell.left.notice_loading')}</Div>
-                </Div>
+                <AppLoadingSpinner label={t('moa_shell.left.notice_loading')} className="py-8" />
               ) : noticeItems.length > 0 ? (
                 <Div className="flex flex-col gap-1">
                   {noticeItems.map((notice, index) => (

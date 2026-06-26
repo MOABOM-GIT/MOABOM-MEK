@@ -12,6 +12,7 @@ import { APP_STACK_CLASS, APP_STACK_GRID_CLASS } from '../../../apps/appShellTyp
 import { Moa_MyPagePresenceSettingsSection } from './Moa_MyPagePresenceSettingsSection';
 import type { PresenceAvailability, PresenceSubtitleMode } from '../../../api/moabomPresenceApi';
 import { ACTION_BUTTON_VARIANT, GROUP_PANEL, INPUT_SURFACE, MY_PAGE_BLOCK_TITLE_CLASS, TEXTAREA_SURFACE } from './myPageStyles';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 
 export interface Moa_MyPageProfilePanelProps {
   t: MoabomTranslateFn;
@@ -113,7 +114,7 @@ export const Moa_MyPageProfilePanel: React.FC<Moa_MyPageProfilePanelProps> = ({
       )}
 
       {profileLoading ? (
-        <Span className="text-sm text-muted">{t('moa_mypage.profile.loading')}</Span>
+        <AppLoadingSpinner label={t('moa_mypage.profile.loading')} />
       ) : (
         <>
           <Div>

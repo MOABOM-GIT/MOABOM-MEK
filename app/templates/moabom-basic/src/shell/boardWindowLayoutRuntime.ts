@@ -8,6 +8,7 @@ import { getMoaShellBoardBridge } from './moaShellBoardBridge';
 import { resolveShellAuthModeFromPath } from './moaShellBoardNavigate';
 import { parseQuery } from './moaShellLayoutQuery';
 import { withTransientRetry } from './moaShellTransientRetry';
+import { publishShellLayoutContext } from './ShellContextBridge';
 
 export interface BoardComponentDefinition {
   id?: string;
@@ -649,7 +650,7 @@ export async function loadG7LayoutWindowPayload(
   ]);
 
   const query = queryOverride ?? parseQuery(typeof window !== 'undefined' ? window.location.search : '');
-  const globalState = templateApp?.getGlobalState?.() ?? {};
+  const globalState = publishShellLayoutContext(templateApp);
 
   await loadBoardLayoutScripts(layoutData.scripts, {
     route,

@@ -1,5 +1,5 @@
 /**
- * 앱 창 섹션 패널 표면 SSOT — 마이페이지 `moa-group moa-app-panel` 과 동일.
+ * 앱 창 섹션 패널 표면 SSOT — 마이페이지 `moa-group moa-app-panel border …` 과 동일.
  * TS: `APP_SHELL_PANEL_CLASS` · `APP_SHELL_PANEL_BODY_CLASS` (`appShellTypography.ts`)
  * 곡률: `33-app-panel-radius.css` (`--moa-app-panel-radius`)
  */

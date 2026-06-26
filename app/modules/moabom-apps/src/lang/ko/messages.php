@@ -27,6 +27,13 @@ return [
                 'google_failed' => 'Google AI API 호출에 실패해 미리보기 HTML을 생성했습니다.',
             ],
         ],
+        'website_link' => [
+            'resolve_success' => '웹사이트 정보를 확인했습니다.',
+            'resolve_failed' => '웹사이트 주소를 확인하지 못했습니다.',
+            'url_required' => '웹사이트 주소를 입력해주세요.',
+            'url_invalid' => '올바른 웹사이트 주소가 아닙니다.',
+            'url_blocked' => '연결할 수 없는 주소입니다.',
+        ],
         'generated' => [
             'fetch_success' => '생성 앱 목록을 조회했습니다.',
             'show_success' => '생성 앱을 조회했습니다.',

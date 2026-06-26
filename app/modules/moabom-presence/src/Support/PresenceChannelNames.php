@@ -11,6 +11,10 @@ final class PresenceChannelNames
 {
     public const TENANT_ONLINE_PATTERN = 'module.moabom-presence.tenant.%s.online';
 
+    public const TENANT_REVISION_PATTERN = 'module.moabom-presence.tenant.%s.revision';
+
+    public const PLATFORM_REVISION_CHANNEL = 'module.moabom-presence.platform.revision';
+
     public function __construct(
         private TenantContext $tenantContext,
     ) {}
@@ -23,5 +27,15 @@ final class PresenceChannelNames
     public function tenantOnlineChannel(): string
     {
         return sprintf(self::TENANT_ONLINE_PATTERN, $this->tenantSlug());
+    }
+
+    public function tenantRevisionChannel(): string
+    {
+        return sprintf(self::TENANT_REVISION_PATTERN, $this->tenantSlug());
+    }
+
+    public function platformRevisionChannel(): string
+    {
+        return self::PLATFORM_REVISION_CHANNEL;
     }
 }

@@ -171,6 +171,68 @@ class ChatRepository implements ChatRepositoryInterface
             ->count();
     }
 
+    public function setMemberMutedUntil(int $conversationId, int $userId, ?\DateTimeInterface $mutedUntil): ?ChatConversationMember
+    {
+        $member = $this->findMember($conversationId, $userId);
+        if (! $member) {
+            return null;
+        }
+
+        $member->muted_until = $mutedUntil;
+        $member->save();
+
+        return $member->refresh();
+    }
+
+    public function removeMember(int $conversationId, int $userId): bool
+    {
+        $member = $this->findMember($conversationId, $userId);
+        if (! $member) {
+            return false;
+        }
+
+        return (bool) $member->delete();
+    }
+
+    public function restoreMemberIfTrashed(int $conversationId, int $userId): bool
+    {
+        $member = ChatConversationMember::query()
+            ->withTrashed()
+            ->where('conversation_id', $conversationId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (! $member || ! $member->trashed()) {
+            return false;
+        }
+
+        $member->restore();
+
+        return true;
+    }
+
+    public function findMessageByUuid(string $messageUuid): ?ChatMessage
+    {
+        return ChatMessage::query()
+            ->with(['sender', 'conversation'])
+            ->where('uuid', $messageUuid)
+            ->first();
+    }
+
+    public function softDeleteMessage(int $messageId, int $senderId): bool
+    {
+        $message = ChatMessage::query()
+            ->where('id', $messageId)
+            ->where('sender_id', $senderId)
+            ->first();
+
+        if (! $message) {
+            return false;
+        }
+
+        return (bool) $message->delete();
+    }
+
     public function findBlock(int $blockerId, int $blockedId): ?ChatUserBlock
     {
         return ChatUserBlock::query()

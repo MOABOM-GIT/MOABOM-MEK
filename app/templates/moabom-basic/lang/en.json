@@ -42,6 +42,9 @@
     "messages_loading": "Loading messages…",
     "messages_empty": "No messages yet.",
     "choose_conversation": "Select a conversation on the left.",
+    "choose_conversation_mobile": "Select a conversation from the list above.",
+    "conversation_list": "List",
+    "back_to_chat": "Back to chat",
     "unknown_sender": "User",
     "message_placeholder": "Type a message.",
     "send": "Send",
@@ -52,10 +55,24 @@
     "toast_failed": "Could not process chat request.",
     "toast_conversation_ready": "Conversation opened.",
     "unblock": "Unblock",
-    "remove_selected": "Remove"
+    "remove_selected": "Remove",
+    "read_badge": "Read",
+    "typing": "Typing…",
+    "mute_on": "Notifications muted for this chat.",
+    "mute_off": "Notifications enabled for this chat.",
+    "mute_toggle_off": "Mute notifications",
+    "mute_toggle_on": "Enable notifications",
+    "delete_message": "Delete",
+    "delete_conversation": "Delete conversation",
+    "toast_conversation_removed": "Conversation removed from your list."
   },
   "moa_profile_actions": {
     "friend_add": "Add friend",
+    "friend_remove": "Remove friend",
+    "friend_remove_confirm": "Remove this friend?",
+    "friend_request_cancel_confirm": "Cancel your friend request to {name}?",
+    "friend_request_cancelled": "Cancelled your friend request to {name}.",
+    "toast_confirm_yes": "Yes",
     "chat": "Chat",
     "chat_block_on": "Blocked",
     "chat_block_off": "Block chat",
@@ -379,6 +396,7 @@
       "tabs_updates": "Updates",
       "empty_favorites": "No favorite apps yet",
       "empty_myapps": "No apps registered",
+      "myapps_loading": "Loading your apps…",
       "empty_basic_apps": "No basic apps yet",
       "empty_user_apps": "No user apps yet",
       "notice_view_all": "View all notices",
@@ -428,6 +446,7 @@
       "notifications_empty": "No notifications",
       "notifications_loading": "Loading notifications…",
       "notifications_load_more": "Load more",
+      "notifications_delete_all": "Delete all notifications",
       "new_notification_received": "You have a new notification",
       "notification_open": "Open",
       "notification_fallback_title": "Notification",
@@ -530,7 +549,8 @@
     "pwa": {
       "update": {
         "message": "The platform has been updated.",
-        "cta": "Reload"
+        "cta": "Reload",
+        "loading": "Reloading…"
       }
     }
   },
@@ -550,6 +570,10 @@
     "consulting": {
       "name": "Smart Consulting",
       "description": "Hospital profitability simulation & e-contract"
+    },
+    "global-search": {
+      "name": "Global Search",
+      "description": "Search boards and apps"
     },
     "hospital-info": {
       "name": "Hospital",
@@ -584,6 +608,21 @@
     "coming_soon_title": "Coming soon",
     "coming_soon_description": "Service content will be available shortly."
   },
+  "moa_apps_search": {
+    "placeholder": "Search apps and boards",
+    "submit": "Search",
+    "searching": "Searching…",
+    "clear": "Clear",
+    "hint": "Search by app name or post title.",
+    "min_length": "Enter at least 2 characters.",
+    "result_count": "{count} results for \"{query}\"",
+    "section_system_apps": "All apps",
+    "section_generated_apps": "Created apps",
+    "section_boards": "Boards",
+    "empty_system_apps": "No matching apps.",
+    "empty_generated_apps": "No matching created apps.",
+    "empty_boards": "No matching posts."
+  },
   "moa_apps_ai": {
     "title": "AI App Builder",
     "description": "Describe the app you want and generate an HTML web app preview.",
@@ -593,13 +632,18 @@
     "field_tier": "Data storage",
     "field_model": "AI model",
     "field_prompt": "Prompt",
+    "field_site_description": "Site description",
+    "field_url": "Website URL",
+    "field_url_placeholder": "Example: https://www.example.com",
+    "field_site_description_placeholder": "Example: Company portal",
     "field_prompt_placeholder": "Describe the screen, features, colors, and interactions you want.",
     "field_modify_placeholder": "Describe what you want to change in the current preview.",
     "types": {
       "general": "General web app (html)",
       "3d": "3D canvas (three.js)",
       "game": "Interaction (phaser.js)",
-      "dataviz": "Chart builder (chart.js)"
+      "dataviz": "Chart builder (chart.js)",
+      "website_link": "Website link (URL)"
     },
     "tiers": {
       "standard": "Save on my device",
@@ -633,6 +677,9 @@
     "viewer_empty": "No app HTML to display.",
     "preview_empty_title": "No app generated yet",
     "preview_empty_description": "Enter a prompt and generate a preview.",
+    "preview_empty_description_website": "Enter a website URL and site description, then generate a preview.",
+    "website_resolving": "Checking site…",
+    "error_website_resolve": "Could not resolve the website URL.",
     "notice_fallback": "A default preview is shown until the AI provider is configured.",
     "notice_truncated": "Generation stopped due to token limits. Use Continue to finish the app.",
     "stream_title": "Generated code",
@@ -646,6 +693,8 @@
     "error_save": "Failed to save the generated app.",
     "validation": {
       "prompt_required": "Please enter a prompt.",
+      "site_description_required": "Please enter a site description.",
+      "url_required": "Please enter a website URL.",
       "title_required": "Please enter an app title.",
       "html_required": "There is no generated HTML to save."
     },

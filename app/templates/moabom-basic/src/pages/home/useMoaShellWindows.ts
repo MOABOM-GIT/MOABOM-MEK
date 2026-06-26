@@ -21,10 +21,16 @@ import {
   moaShellBoardSlugFromAppId,
 } from '../../shell/moaShellBoardIds';
 import {
-  moaShellUserProfileAppId,
+  SHELL_PROFILE_SURFACE_APP_ID,
   isMoaShellUserProfileAppId,
   moaShellUserProfileUuidFromAppId,
 } from '../../shell/moaShellUserProfileIds';
+import {
+  findProfileSurfaceWindow,
+  onProfileSurfaceSubjectChange,
+  purgeProfileSurfaceWindows,
+  reconcileProfileSurfaceWindows,
+} from '../../shell/shellProfileSurface';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import {
   MOA_SHELL_ERROR_APP_ID,
@@ -81,6 +87,7 @@ import {
   prefetchUserProfileWindowLayouts,
   resolveUserProfileShellSearch,
 } from '../../shell/userProfileWindowPrefetch';
+import type { ShellSurfaceOpenAction } from '../../shell/shellSurfaceTypes';
 import { commitShellWindows } from '../../shell/shellWindowsCommit';
 
 function resolveForegroundShellAppId(items: WindowState[]): string | null {
@@ -794,7 +801,7 @@ export function useMoaShellWindows({
 
       prefetchUserProfileWindowLayouts(view);
 
-      const appId = moaShellUserProfileAppId(normalizedUuid);
+      const appId = SHELL_PROFILE_SURFACE_APP_ID;
       const shellPath = sync.shellPath
         ?? formatUserProfileShellPath(
           normalizedUuid,
@@ -813,34 +820,43 @@ export function useMoaShellWindows({
         notifyBoardShellUrlChanged();
       };
 
-      const existing = windowsRef.current.find(w => w.appId === appId);
-      const minimized = taskbarItemsRef.current.find(w => w.appId === appId);
+      const priorSurface = findProfileSurfaceWindow(windowsRef.current);
+      onProfileSurfaceSubjectChange(priorSurface?.userProfileUuid, normalizedUuid);
 
-      if (!existing && minimized) {
+      const existingAny = priorSurface
+        ?? windowsRef.current.find(w => w.appId === appId);
+      const minimized = taskbarItemsRef.current.find(w => isMoaShellUserProfileAppId(w.appId));
+
+      const surfaceParams = { userUuid: normalizedUuid, view, displayName };
+
+      if (!existingAny && minimized) {
         restoreTaskbarWindow(minimized.id);
-        commitWindows(prev => prev.map(w => (w.appId === appId
-          ? { ...w, userProfileUuid: normalizedUuid, userProfileView: view }
+        commitWindows(prev => reconcileProfileSurfaceWindows(prev, surfaceParams).windows);
+        setTaskbarItems(prev => purgeProfileSurfaceWindows(prev).map(w => (w.id === minimized.id
+          ? {
+            ...w,
+            appId,
+            userProfileUuid: normalizedUuid,
+            userProfileView: view,
+            title: displayName?.trim() || w.title,
+          }
           : w)));
         syncUserProfileShellUrl();
         return;
       }
 
-      if (existing) {
-        commitWindows(prev => prev.map(w => (w.id === existing.id
-          ? {
-            ...w,
-            userProfileUuid: normalizedUuid,
-            userProfileView: view,
-            zIndex: nextZIndex,
-            isMinimized: false,
-          }
-          : w)));
+      if (existingAny) {
+        commitWindows(prev => reconcileProfileSurfaceWindows(prev, surfaceParams, {
+          zIndex: nextZIndex,
+          isMinimized: false,
+        }).windows);
+        setTaskbarItems(prev => purgeProfileSurfaceWindows(prev));
         setNextZIndex(z => z + 1);
         syncUserProfileShellUrl();
         return;
       }
 
-      const openWindowCount = countOpenWindows(windowsRef.current);
+      const openWindowCount = countOpenWindows(purgeProfileSurfaceWindows(windowsRef.current));
       if (openWindowCount >= MAX_OPEN_WINDOWS) {
         pushWarningToast(t('moa_shell.home.toast_max_windows', { max: MAX_OPEN_WINDOWS }));
         return;
@@ -849,10 +865,12 @@ export function useMoaShellWindows({
       const position = getNewWindowPosition(
         USER_PROFILE_WINDOW_WIDTH,
         USER_PROFILE_WINDOW_HEIGHT,
-        countOpenWindows(windowsRef.current),
+        openWindowCount,
       );
 
-      commitWindows(prev => [...prev, {
+      commitWindows(prev => {
+        const { windows: cleaned } = reconcileProfileSurfaceWindows(prev, surfaceParams);
+        return [...cleaned, {
         id: `${appId}-${Date.now()}`,
         appId,
         userProfileUuid: normalizedUuid,
@@ -864,7 +882,9 @@ export function useMoaShellWindows({
         isMaximized: resolveShellWindowMaximized(),
         isMinimized: false,
         ...position,
-      }]);
+        }];
+      });
+      setTaskbarItems(prev => purgeProfileSurfaceWindows(prev));
       setNextZIndex(z => z + 1);
       syncUserProfileShellUrl();
     },
@@ -1120,6 +1140,28 @@ export function useMoaShellWindows({
     setCurrentUser(buildMoaCurrentUser(user ?? null, t('moa_shell.common.user_fallback')));
   }, [setCurrentUser, t]);
 
+  const openShellSurface = useCallback((
+    action: ShellSurfaceOpenAction,
+    sync: ShellUrlSync = {},
+  ) => {
+    switch (action.kind) {
+      case 'profile':
+        openUserProfileWindow(
+          action.userUuid,
+          action.displayName,
+          sync,
+          action.view ?? 'profile',
+        );
+        break;
+      case 'board':
+        openBoardWindow(action.slug, action.postId, sync, action.boardMode);
+        break;
+      case 'mypage':
+        void openMyPage(action.tab, sync);
+        break;
+    }
+  }, [openBoardWindow, openMyPage, openUserProfileWindow]);
+
   return {
     windows,
     windowsRef,
@@ -1138,6 +1180,7 @@ export function useMoaShellWindows({
     closeErrorWindow,
     openBoardWindow,
     openUserProfileWindow,
+    openShellSurface,
     openLegalPage,
     applyShellRoute,
     closeAuthWindows,

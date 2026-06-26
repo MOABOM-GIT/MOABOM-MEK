@@ -3,11 +3,13 @@ import {
   profileSocialBlockUser,
   profileSocialFetchBlocks,
   profileSocialFetchEligibility,
+  profileSocialRemoveFriend,
   profileSocialRequestFriend,
   profileSocialUnblockUser,
 } from '../api/moabomProfileSocialApi';
 import { getShellAccessToken } from '../api/moabomShellAccess';
 import { useMoabomShellT } from '../i18n/MoabomUiI18nProvider';
+import { pushConfirmToast } from '../runtime/moabomActionToasts';
 import { setMoabomShellPendingChatNavigation } from '../runtime/moabomShellPendingChatNavigation';
 import { pushInfoToast, pushWarningToast } from '../runtime/moaShellToasts';
 import {
@@ -20,12 +22,13 @@ import {
   notifyMoabomShellChatBlockChanged,
   subscribeMoabomShellChatBlockChanged,
 } from '../shell/moabomShellChatBlockSync';
+import { notifyMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
 import { getShellAuthUserUuid } from '../utils/presenceSettingsSync';
 import { useMoabomPresenceContextOptional } from './MoabomPresenceProvider';
 
 export type ProfileFriendshipUiState = 'none' | 'pending' | 'accepted' | 'incoming';
 
-export function useMoaUserProfileSocialActions(userUuid?: string) {
+export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: string) {
   const { t } = useMoabomShellT();
   const presence = useMoabomPresenceContextOptional();
   const [blocked, setBlocked] = useState(false);
@@ -36,6 +39,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string) {
 
   const isSelf = Boolean(userUuid && getShellAuthUserUuid() === userUuid);
   const busy = busyFriend || busyChat || busyBlock;
+  const peerDisplayName = displayName?.trim() || t('moa_chat.unknown_sender');
 
   useEffect(() => {
     if (!userUuid || !presence) {
@@ -104,32 +108,88 @@ export function useMoaUserProfileSocialActions(userUuid?: string) {
     });
   }, []);
 
+  const refreshFriendState = useCallback(async () => {
+    if (presence) {
+      await Promise.all([presence.refreshOnline(), presence.refreshFriends()]);
+    }
+  }, [presence]);
+
+  const removeFriendship = useCallback(async (uuid: string) => {
+    setBusyFriend(true);
+    try {
+      await profileSocialRemoveFriend(uuid);
+      setFriendState('none');
+      notifyMoabomPresenceFriendsChanged();
+      await refreshFriendState();
+      pushInfoToast(t('moa_profile_actions.friend_removed_toast', { name: peerDisplayName }), 2800);
+    } catch (error) {
+      pushWarningToast(t(resolveSocialActionToastKey(error, 'friend')), 3200);
+    } finally {
+      setBusyFriend(false);
+    }
+  }, [peerDisplayName, refreshFriendState, t]);
+
+  const cancelFriendRequest = useCallback(async (uuid: string) => {
+    setBusyFriend(true);
+    try {
+      await profileSocialRemoveFriend(uuid);
+      setFriendState('none');
+      notifyMoabomPresenceFriendsChanged();
+      await refreshFriendState();
+      pushInfoToast(t('moa_profile_actions.friend_request_cancelled', { name: peerDisplayName }), 2800);
+    } catch (error) {
+      pushWarningToast(t(resolveSocialActionToastKey(error, 'friend')), 3200);
+    } finally {
+      setBusyFriend(false);
+    }
+  }, [peerDisplayName, refreshFriendState, t]);
+
   const handleFriend = useCallback(async () => {
     const uuid = ensureUser();
-    if (!uuid || friendState === 'pending' || friendState === 'accepted') {
+    if (!uuid) {
+      return;
+    }
+
+    if (friendState === 'pending') {
+      pushConfirmToast({
+        message: t('moa_profile_actions.friend_request_cancel_confirm', { name: peerDisplayName }),
+        confirmLabel: t('moa_profile_actions.toast_confirm_yes'),
+        onConfirm: () => {
+          void cancelFriendRequest(uuid);
+        },
+      });
+      return;
+    }
+
+    if (friendState === 'accepted') {
+      pushConfirmToast({
+        message: t('moa_profile_actions.friend_remove_confirm'),
+        confirmLabel: t('moa_profile_actions.toast_confirm_yes'),
+        onConfirm: () => {
+          void removeFriendship(uuid);
+        },
+      });
       return;
     }
 
     setBusyFriend(true);
     try {
       await profileSocialRequestFriend(uuid);
-      pushInfoToast(t('userinfo.friend_request_sent'), 2400);
       if (presence) {
-        await Promise.all([presence.refreshOnline(), presence.refreshFriends()]);
+        await refreshFriendState();
       } else {
         setFriendState('pending');
       }
     } catch (error) {
       if (isFriendshipAlreadyExistsError(error)) {
         setFriendState('pending');
-        pushInfoToast(t('userinfo.friend_request_pending'), 2800);
         return;
       }
       pushWarningToast(t(resolveSocialActionToastKey(error, 'friend')), 3200);
     } finally {
       setBusyFriend(false);
     }
-  }, [ensureUser, friendState, presence, t]);
+  }, [cancelFriendRequest, ensureUser, friendState, peerDisplayName, presence, refreshFriendState, removeFriendship, t]);
 
   const handleChat = useCallback(async () => {
     const uuid = ensureUser();
@@ -181,7 +241,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string) {
 
   const friendButtonLabel = useMemo(() => {
     if (friendState === 'accepted') {
-      return t('userinfo.friend_already');
+      return t('moa_profile_actions.friend_remove');
     }
     if (friendState === 'pending') {
       return t('userinfo.friend_request_pending');
@@ -189,7 +249,8 @@ export function useMoaUserProfileSocialActions(userUuid?: string) {
     return t('moa_profile_actions.friend_add');
   }, [friendState, t]);
 
-  const friendButtonDisabled = busy || friendState === 'pending' || friendState === 'accepted';
+  const friendButtonDisabled = busy;
+  const friendButtonVariant = friendState === 'accepted' ? 'danger' : 'primary-outline';
 
   return {
     isSelf,
@@ -201,6 +262,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string) {
     busyBlock,
     friendButtonLabel,
     friendButtonDisabled,
+    friendButtonVariant,
     handleFriend,
     handleChat,
     handleBlockToggle,

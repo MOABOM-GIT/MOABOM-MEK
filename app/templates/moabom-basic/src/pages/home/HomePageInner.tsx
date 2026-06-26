@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { installShellAppUsageTracker } from '../../shell/moaShellAppUsageTracker';
 import { Moa_HomeShellView } from './Moa_HomeShellView';
@@ -10,6 +10,7 @@ import { useMoaShellWindows } from './useMoaShellWindows';
 import { useMoaShellRouteSync } from './useMoaShellRouteSync';
 import { useMoaShellSocialAuth } from './useMoaShellSocialAuth';
 import { MoabomPresenceProvider } from '../../hooks/MoabomPresenceProvider';
+import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 
 export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
   const { t, language } = useMoabomShellT();
@@ -76,6 +77,18 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
 
   useEffect(() => installShellAppUsageTracker(), []);
 
+  const openShellProfileFromPanel = useCallback(
+    (userUuid: string, displayName?: string, view?: UserProfileWindowView) => {
+      windows.openShellSurface({
+        kind: 'profile',
+        userUuid,
+        displayName,
+        view: view ?? 'profile',
+      });
+    },
+    [windows.openShellSurface],
+  );
+
   return (
     <MoabomPresenceProvider isLoggedIn={isLoggedIn}>
     <Moa_HomeShellView
@@ -107,6 +120,7 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       favoriteApps={catalog.favoriteApps}
       favoriteIdsRef={catalog.favoriteIdsRef}
       createdApps={catalog.createdApps}
+      libraryHydration={catalog.libraryHydration}
       sharedGeneratedApps={catalog.sharedGeneratedApps}
       leftPanelMyApps={catalog.leftPanelMyApps}
       recentApps={catalog.recentApps}
@@ -131,7 +145,8 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       openMyPage={windows.openMyPage}
       openAuthWindow={windows.openAuthWindow}
       openBoardWindow={windows.openBoardWindow}
-      openUserProfileWindow={windows.openUserProfileWindow}
+      openUserProfileWindow={openShellProfileFromPanel}
+      openShellSurface={windows.openShellSurface}
       openLegalPage={windows.openLegalPage}
       restoreTaskbarWindow={windows.restoreTaskbarWindow}
       closeWindow={windows.closeWindow}

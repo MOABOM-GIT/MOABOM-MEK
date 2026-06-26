@@ -69,6 +69,7 @@ Tenant appearance DoD-5·split-brain, moabom-system decomposition 등은 별도 
 | D5 | `--async` 후 `gcloud run deploy` 생략 | Build SUCCESS → deploy → smoke [RF-03](#rf-03-async-후-deploy-누락) |
 | D6 | 로컬 `docker build -f deploy/Dockerfile` 로 운영 push | **Cloud Build만** [README.md](./README.md) |
 | D7 | WSL 호스트에서 `cd templates/moabom-basic && npm ci`/`npm run build` | **금지** — dist 는 Cloud Build asset stage 산출물, 가드가 차단 [RF-20](#rf-20-wsl-호스트-npm-으로-moabom-basic-로컬-빌드--node_modules-파손) |
+| D8 | Cloud Run **Instance-based** (`--no-cpu-throttling`) 수동 deploy | **Request-based 고정** — `deploy/lib/cloud-run-service-flags.sh` [RF-22](#rf-22-cloud-run-billing-request-based-고정) |
 
 ---
 
@@ -193,6 +194,16 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 > **핵심:** moabom-basic 운영 산출물(`dist/`)은 Cloud Build asset stage 에서 만들어진다. 호스트/WSL 에서 `npm run build` 를 돌릴 이유가 없고, Windows npm 폴백 환경에서는 그 시도가 곧 node_modules 파손이다.
 
+### RF-22: Cloud Run Billing Request-based 고정
+
+| | |
+|---|---|
+| **정책** | Billing = **Request-based** (`gcloud --cpu-throttling`). 콘솔 Billing 탭과 동일 |
+| **SSOT** | `deploy/lib/cloud-run-service-flags.sh` — `build-and-deploy.sh` 가 이 플래그만 사용 |
+| **금지** | `--no-cpu-throttling` (Instance-based) 를 deploy 스크립트·수동 gcloud 에 넣는 것 |
+| **가드** | `deploy/check-cloud-run-billing-ssot.sh` (배포 전) · 스모크 시 `MOABOM_BILLING_CHECK_LIVE=1` (운영 revision 검증) |
+| **채팅** | Reverb sidecar 는 HTTP 요청 밖에서 CPU 스로틀 대상 — WS·실시간 푸시에 영향 가능. `CHAT-ARCHITECTURE.md` §5 참고 |
+
 ### RF-12: Cloud Run Job 인자에 `*` 전달
 
 | | |
@@ -204,7 +215,8 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | | |
 |---|---|
-| **기본** | `./deploy/build-and-deploy.sh` 성공 시 **자동** `run-layout-sync-job.sh` (SaaS + `MOABOM_SYNC_TEMPLATE_LAYOUTS=true`) |
+| **기본** | `./deploy/build-and-deploy.sh` — layout·module JSON **해시 변경 시에만** `run-layout-sync-job.sh` (`deploy/ssot/layout-sync-manifest.sha256`) |
+| **강제** | `MOABOM_FORCE_LAYOUT_SYNC=1` 또는 `--skip-layout-sync` 반대로 sync 생략은 `--skip-layout-sync` |
 | **부팅 백업** | `cloudrun-entrypoint.sh` — 3회 재시도, 실패 시 ERROR 로그 (`\|\| true` 제거) |
 | **수동만 필요** | `--async` 후 deploy·smoke를 직접 할 때 → 출력 안내의 `run-layout-sync-job.sh` 1회 |
 | **생략** | `--skip-layout-sync` (비권장, 디버그용) |
@@ -238,7 +250,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **증상** | 관리자 화면 API 요청 중 `Request failed with status code 502` |
 | **가능 원인** | Cloud Run 인스턴스 cold start · PHP-FPM/Artisan 타임아웃 · tenant bootstrap(DB·GCS) 지연 · 동시 다발 layout/lang API |
 | **캐시 오염** | file `CACHE_STORE` + `template.language.*` 키에 tenant scope 없음 → RF-18b (`TenantScopedCacheDecorator`) |
-| **조치** | Cloud Run 로그(해당 시각 requestId) · `min-instances=1` 유지 · 재현 시 `/api/templates/.../lang/` 200 여부 확인 |
+| **조치** | Cloud Run 로그(해당 시각 requestId) · 스케일 SSOT `min-instances=0` `max-instances=10` (`cloud-run-service-flags.sh`) · 재현 시 `/api/templates/.../lang/` 200 여부 확인 |
 | **예방** | v181+ `TenantScopedCacheDecorator` · layout sync Job · tenant `sync-tenant-admin-menus` |
 
 ### RF-19: 테넌트 admin **메뉴 순서** 불일치 (freshent 등)

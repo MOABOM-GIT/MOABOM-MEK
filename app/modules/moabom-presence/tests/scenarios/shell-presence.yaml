@@ -1,0 +1,65 @@
+# Moabom 셸 · 접속자 · 게시판 검증 시나리오 (smoke/수동 QA SSOT)
+# deploy/smoke-after-deploy.sh 보조 — 로컬 PHPUnit/Vitest 대체 체크리스트
+
+scenarios:
+  - id: board-notice-member-write-form
+    phase: P4
+    description: 로그인 회원이 공지 글쓰기 시 비회원 author/password 폼이 보이지 않음
+    steps:
+      - 로그인 상태에서 /board/notice/write 또는 공지 셸 윈도우 write 모드 오픈
+      - form_meta 로드 성공
+      - layout 조건 `!_global.currentUser?.uuid` 가 false → guest 필드 hidden
+    assert:
+      - dataContext._global.currentUser.uuid 존재
+      - author_name/password 입력 필드 DOM 없음
+
+  - id: board-notice-member-comment
+    phase: P4
+    description: 로그인 회원 댓글 입력에 guest 필드 없음
+    steps:
+      - 공지 게시글 show 로드
+      - 댓글 입력 partial `!_global.currentUser?.uuid` 분기
+    assert:
+      - guest_comment_author_name 필드 없음
+
+  - id: presence-guest-single-row
+    phase: P2-P6
+    description: 비로그인 1브라우저 = 접속자 1행
+    steps:
+      - 비로그인 heartbeat (X-Moabom-Visitor-Id)
+      - GET /public/online
+    assert:
+      - 동일 visitor_id guest 1행
+      - 로그인 후 guest 행 제거, member 1행
+
+  - id: presence-summary-mirror
+    phase: P2
+    description: summary는 platform_total·tenant_active 숫자를 항상 표시 (mirror 실패 시 platform_total 0)
+    steps:
+      - platform DB 미연결 또는 mirror 실패 유도
+      - GET /public/summary
+    assert:
+      - mirror_ok false
+      - platform_total 0 (tenant fallback 아님)
+      - UI에 — 표시 없음
+
+  - id: presence-revision-ws
+    phase: P3
+    description: heartbeat 후 presence.revision → 접속자 목록 1회 갱신
+    steps:
+      - WS public 채널 module.moabom-presence.tenant.{slug}.revision 구독
+      - 다른 탭 heartbeat
+    assert:
+      - presence.revision 수신
+      - 300ms debounce 후 online+summary refetch 1회
+
+  - id: profile-surface-singleton
+    phase: P1
+    description: 접속자 N명 프로필 클릭 시 subject 전환
+    steps:
+      - 사용자 A 프로필 오픈
+      - 사용자 B 프로필 오픈 (동일 moa-shell-surface:profile 창)
+    assert:
+      - win.userProfileUuid === B
+      - DynamicRenderer key에 B uuid
+      - 이전 A payload 캐시 미표시

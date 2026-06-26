@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Chat\Contracts\ChatRepositoryInterface;
 use Modules\Moabom\Chat\Http\Controllers\User\BlockController;
+use Modules\Moabom\Chat\Http\Controllers\User\ConversationController;
 use Modules\Moabom\Chat\Http\Controllers\User\EligibilityController;
 use Modules\Moabom\Chat\Repositories\ChatRepository;
 use Modules\Moabom\Chat\Services\ChatService;
@@ -34,26 +35,31 @@ class ChatServiceProvider extends BaseModuleServiceProvider
     }
 
     /**
-     * api.php 가 부분 배포·캐시로 누락될 때 프로필 차단 해제·eligibility 404 방지.
-     * 정상 경로에서는 api.php 가 먼저 등록하므로 no-op.
+     * api.php 가 부분 배포·캐시로 누락될 때 user 라우트 404 방지.
+     * 라우트별 Route::has 검사 — 한 경로만 있어도 나머지 early-return 하지 않음.
      */
     private function registerMissingUserRoutes(): void
     {
-        if (Route::has('api.modules.moabom-chat.user.blocks.destroy')) {
-            return;
-        }
-
         Route::prefix('api/modules/moabom-chat')
             ->middleware('api')
             ->name('api.modules.moabom-chat.')
             ->group(function (): void {
                 Route::prefix('user')->middleware(['auth:sanctum'])->group(function (): void {
-                    Route::delete('blocks/{userUuid}', [BlockController::class, 'destroy'])
-                        ->where('userUuid', self::USER_UUID_PATTERN)
-                        ->name('user.blocks.destroy');
-                    Route::get('users/{userUuid}/eligibility', [EligibilityController::class, 'show'])
-                        ->where('userUuid', self::USER_UUID_PATTERN)
-                        ->name('user.users.eligibility');
+                    if (! Route::has('api.modules.moabom-chat.user.blocks.destroy')) {
+                        Route::delete('blocks/{userUuid}', [BlockController::class, 'destroy'])
+                            ->where('userUuid', self::USER_UUID_PATTERN)
+                            ->name('user.blocks.destroy');
+                    }
+                    if (! Route::has('api.modules.moabom-chat.user.users.eligibility')) {
+                        Route::get('users/{userUuid}/eligibility', [EligibilityController::class, 'show'])
+                            ->where('userUuid', self::USER_UUID_PATTERN)
+                            ->name('user.users.eligibility');
+                    }
+                    if (! Route::has('api.modules.moabom-chat.user.conversations.destroy')) {
+                        Route::delete('conversations/{conversationUuid}', [ConversationController::class, 'destroy'])
+                            ->where('conversationUuid', self::USER_UUID_PATTERN)
+                            ->name('user.conversations.destroy');
+                    }
                 });
             });
     }

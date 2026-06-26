@@ -99,6 +99,10 @@
     ],
     "overlay-required": [
       {
+        "path": "app/Console/Commands/Template/ClearTemplateCacheCommand.php",
+        "reason": "template:cache-clear must forget versioned lang/routes keys and bump ext.cache_version for SaaS lang refresh."
+      },
+      {
         "path": "app/Http/Controllers/Api/Admin/MenuController.php",
         "reason": "Admin active menu API must send no-store headers for shell navigation freshness."
       },

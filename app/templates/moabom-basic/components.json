@@ -861,6 +861,39 @@
         }
       },
       {
+        "name": "AppLoadingSpinner",
+        "type": "composite",
+        "description": "Moabom 공통 원형 스피너 로딩 인디케이터",
+        "path": "src/components/composite/AppLoadingSpinner.tsx",
+        "props": {
+          "label": {
+            "type": "string",
+            "required": false,
+            "description": "로딩 안내 문구"
+          },
+          "fill": {
+            "type": "boolean",
+            "required": false,
+            "description": "영역을 채우는 최소 높이 적용"
+          },
+          "compact": {
+            "type": "boolean",
+            "required": false,
+            "description": "목록·인라인용 작은 스피너"
+          },
+          "hideLabel": {
+            "type": "boolean",
+            "required": false,
+            "description": "라벨을 화면에 표시하지 않고 aria-label만 설정"
+          },
+          "className": {
+            "type": "string",
+            "required": false,
+            "description": "추가 클래스"
+          }
+        }
+      },
+      {
         "name": "ThemeToggle",
         "type": "composite",
         "description": "테마 전환 토글 (auto/light/dark)",

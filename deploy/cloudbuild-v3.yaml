@@ -1,14 +1,22 @@
 # 태그는 substitutions._IMAGE_TAG 한 곳만 수정 (build -t / images 자동 동기화)
 substitutions:
-  _IMAGE_TAG: v320
+  _IMAGE_TAG: v357
+  _SKIP_INNER_CHECK: 'false'
 
 steps:
-  # v7 성공 기준 — 직접 gcloud submit 해도 동일 검증 (재발 방지)
+  # v7 성공 기준 — 로컬 check-before-cloud-build 통과 시 _SKIP_INNER_CHECK=true 로 생략 가능
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args:
       - -c
-      - export MOABOM_SKIP_FRESH_G7_DRY_RUN=1 && chmod +x deploy/check-before-cloud-build.sh && ./deploy/check-before-cloud-build.sh
+      - |
+        if [[ "${_SKIP_INNER_CHECK}" == "true" ]]; then
+          echo "SKIP inner check-before-cloud-build (local gate passed)"
+        else
+          export MOABOM_SKIP_FRESH_G7_DRY_RUN=1
+          chmod +x deploy/check-before-cloud-build.sh
+          ./deploy/check-before-cloud-build.sh
+        fi
   - name: gcr.io/cloud-builders/docker
     args:
       - build

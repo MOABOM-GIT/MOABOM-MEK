@@ -11,6 +11,9 @@ Route::prefix('user')->middleware(['auth:sanctum'])->group(function (): void {
         ->name('user.conversations.index');
     Route::post('conversations', [ConversationController::class, 'store'])
         ->name('user.conversations.store');
+    Route::delete('conversations/{conversationUuid}', [ConversationController::class, 'destroy'])
+        ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->name('user.conversations.destroy');
     Route::post('conversations/{conversationUuid}/read', [ConversationController::class, 'read'])
         ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
         ->name('user.conversations.read');
@@ -20,6 +23,15 @@ Route::prefix('user')->middleware(['auth:sanctum'])->group(function (): void {
     Route::delete('conversations/{conversationUuid}/focus', [ConversationController::class, 'unfocus'])
         ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
         ->name('user.conversations.unfocus');
+    Route::post('conversations/{conversationUuid}/typing', [ConversationController::class, 'typing'])
+        ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->name('user.conversations.typing');
+    Route::post('conversations/{conversationUuid}/mute', [ConversationController::class, 'mute'])
+        ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->name('user.conversations.mute');
+    Route::delete('conversations/{conversationUuid}/mute', [ConversationController::class, 'unmute'])
+        ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->name('user.conversations.unmute');
 
     Route::get('conversations/{conversationUuid}/messages', [MessageController::class, 'index'])
         ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -27,6 +39,9 @@ Route::prefix('user')->middleware(['auth:sanctum'])->group(function (): void {
     Route::post('conversations/{conversationUuid}/messages', [MessageController::class, 'store'])
         ->where('conversationUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
         ->name('user.messages.store');
+    Route::delete('messages/{messageUuid}', [MessageController::class, 'destroy'])
+        ->where('messageUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->name('user.messages.destroy');
 
     Route::get('blocks', [BlockController::class, 'index'])
         ->name('user.blocks.index');

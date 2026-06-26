@@ -6,11 +6,9 @@ namespace Modules\Moabom\System\Tests\Feature;
 
 use App\Enums\UserStatus;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
-use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 use Modules\Moabom\System\Tests\ModuleTestCase;
 
 class PublicShellRankingApiTest extends ModuleTestCase
@@ -61,7 +59,7 @@ class PublicShellRankingApiTest extends ModuleTestCase
         $response = $this->getJson('/api/modules/moabom-system/public/shell/rankings/apps?limit=30');
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.period_hours', 24)
+            ->assertJsonPath('data.period_hours', 0)
             ->assertJsonStructure([
                 'data' => [
                     'items' => [
@@ -75,27 +73,29 @@ class PublicShellRankingApiTest extends ModuleTestCase
         $this->assertSame('consulting', $items[0]['app_id']);
     }
 
-    public function test_app_rankings_report_change_from_previous_build(): void
+    public function test_app_rankings_report_change_from_recent_period(): void
     {
-        Cache::put(MoabomPublicApiCacheKeys::shellRankingsPreviousRanks('apps'), [
-            'consulting' => 2,
-            'cpap-mask' => 1,
-        ], 3600);
-
-        $bucketHour = now()->utc()->startOfHour()->toDateTimeString();
+        $recentHour = now()->utc()->startOfHour()->toDateTimeString();
+        $oldHour = now()->utc()->subHours(30)->startOfHour()->toDateTimeString();
 
         $this->withHeaders($this->usageIngestHeaders())
             ->postJson('/api/modules/moabom-system/public/shell/app-usage', [
                 'events' => [
                     [
+                        'app_id' => 'cpap-mask',
+                        'bucket_hour' => $oldHour,
+                        'open_hits' => 50,
+                        'active_seconds' => 0,
+                    ],
+                    [
                         'app_id' => 'consulting',
-                        'bucket_hour' => $bucketHour,
+                        'bucket_hour' => $recentHour,
                         'open_hits' => 5,
                         'active_seconds' => 200,
                     ],
                     [
                         'app_id' => 'cpap-mask',
-                        'bucket_hour' => $bucketHour,
+                        'bucket_hour' => $recentHour,
                         'open_hits' => 1,
                         'active_seconds' => 10,
                     ],
@@ -104,15 +104,35 @@ class PublicShellRankingApiTest extends ModuleTestCase
 
         $items = $this->getJson('/api/modules/moabom-system/public/shell/rankings/apps?limit=30')
             ->assertOk()
+            ->assertJsonPath('data.period_hours', 0)
             ->json('data.items');
 
         $this->assertNotEmpty($items);
-        $this->assertSame('consulting', $items[0]['app_id']);
-        $this->assertSame('up', $items[0]['change']);
+        $this->assertSame('cpap-mask', $items[0]['app_id']);
+        $this->assertSame('down', $items[0]['change']);
+
+        $consulting = collect($items)->firstWhere('app_id', 'consulting');
+        $this->assertNotNull($consulting);
+        $this->assertSame(2, $consulting['rank']);
+        $this->assertSame('up', $consulting['change']);
     }
 
-    public function test_user_rankings_use_activity_scores(): void
+    public function test_user_rankings_use_cumulative_ranking_points(): void
     {
+        if (! Schema::hasTable('moabom_credit_balances')) {
+            $this->artisan('migrate', [
+                '--path' => base_path('modules/moabom-credit/database/migrations/2026_05_03_000001_create_moabom_credit_tables.php'),
+                '--realpath' => true,
+            ]);
+        }
+
+        if (! Schema::hasColumn('moabom_credit_balances', 'ranking_points')) {
+            $this->artisan('migrate', [
+                '--path' => base_path('modules/moabom-credit/database/migrations/2026_06_25_000001_add_ranking_points_to_moabom_credit_balances.php'),
+                '--realpath' => true,
+            ]);
+        }
+
         $leader = User::factory()->create([
             'nickname' => 'Leader_User',
             'status' => UserStatus::Active->value,
@@ -122,30 +142,28 @@ class PublicShellRankingApiTest extends ModuleTestCase
             'status' => UserStatus::Active->value,
         ]);
 
-        $bucketHour = now()->utc()->startOfHour()->toDateTimeString();
-
-        DB::table('moabom_shell_user_usage_buckets')->insert([
+        $now = now();
+        DB::table('moabom_credit_balances')->insert([
             [
                 'user_id' => $leader->id,
-                'bucket_hour' => $bucketHour,
-                'open_hits' => 5,
-                'active_seconds' => 100,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'balance' => 50,
+                'ranking_points' => 50,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
                 'user_id' => $follower->id,
-                'bucket_hour' => $bucketHour,
-                'open_hits' => 1,
-                'active_seconds' => 10,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'balance' => 5,
+                'ranking_points' => 5,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
         ]);
 
         $response = $this->getJson('/api/modules/moabom-system/public/shell/rankings/users?limit=5');
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('data.period_hours', 0)
             ->assertJsonStructure([
                 'data' => [
                     'items' => [
@@ -158,7 +176,7 @@ class PublicShellRankingApiTest extends ModuleTestCase
         $this->assertNotEmpty($items);
         $this->assertSame($leader->id, $items[0]['user_id']);
         $this->assertSame($leader->uuid, $items[0]['user_uuid']);
-        $this->assertSame(150, $items[0]['score']);
+        $this->assertSame(50, $items[0]['score']);
         $this->assertSame(1, $items[0]['rank']);
     }
 
@@ -216,11 +234,14 @@ class PublicShellRankingApiTest extends ModuleTestCase
 
     protected function tearDown(): void
     {
-        Cache::forget(MoabomPublicApiCacheKeys::shellRankingsPreviousRanks('apps'));
-        Cache::forget(MoabomPublicApiCacheKeys::shellRankingsPreviousRanks('users'));
-
         if (Schema::hasTable('moabom_shell_user_usage_buckets')) {
             DB::table('moabom_shell_user_usage_buckets')->delete();
+        }
+        if (Schema::hasTable('moabom_credit_transactions')) {
+            DB::table('moabom_credit_transactions')->delete();
+        }
+        if (Schema::hasTable('moabom_credit_balances')) {
+            DB::table('moabom_credit_balances')->delete();
         }
         if (Schema::hasTable('moabom_shell_app_usage_buckets')) {
             DB::table('moabom_shell_app_usage_buckets')->delete();

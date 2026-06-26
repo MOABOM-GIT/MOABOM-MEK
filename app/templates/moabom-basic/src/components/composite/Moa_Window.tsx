@@ -5,6 +5,7 @@ import { Icon } from '../basic/Icon';
 import { Span } from '../basic/Span';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { truncateShellWindowTitle } from '../../utils/truncateShellWindowTitle';
+import { isLightShellGradient, shellChromeToneClasses } from '../../utils/shellGradientContrast';
 
 /** 뷰포트 안에 창 위치 클램프 */
 function clampWindowPosition(x: number, y: number, w: number, h: number): { x: number; y: number } {
@@ -148,6 +149,15 @@ export const Window: React.FC<WindowProps> = ({
   const displayTitle = useMemo(
     () => truncateShellWindowTitle(title, titleBarWidth),
     [title, titleBarWidth],
+  );
+  const titleBarBackground = gradient ?? 'var(--moa-point-color)';
+  const lightTitleBar = useMemo(
+    () => isLightShellGradient(titleBarBackground),
+    [titleBarBackground],
+  );
+  const chromeTone = useMemo(
+    () => shellChromeToneClasses(lightTitleBar),
+    [lightTitleBar],
   );
 
   useEffect(() => {
@@ -470,12 +480,13 @@ export const Window: React.FC<WindowProps> = ({
             ref={titleBarRef}
             data-window-title-bar
             className={`flex shrink-0 cursor-move select-none items-center justify-between px-4 py-3 ${isEdgeToEdge ? 'rounded-none' : 'rounded-2xl'}`}
-            style={{ background: gradient ?? 'var(--moa-point-color)' }}
+            style={{ background: titleBarBackground }}
+            data-shell-chrome-tone={lightTitleBar ? 'light' : 'dark'}
             onPointerDown={handlePointerDownDrag}
           >
             <Div className="flex min-w-0 flex-1 items-center gap-2">
-              {icon && <Icon name={icon} className="shrink-0 text-base text-white" />}
-              <Span className="min-w-0 truncate text-base font-bold text-white" title={title}>
+              {icon && <Icon name={icon} className={`shrink-0 text-base ${chromeTone.icon}`} />}
+              <Span className={`min-w-0 truncate text-base font-bold ${chromeTone.label}`} title={title}>
                 {displayTitle}
               </Span>
               {onToggleFavorite && (
@@ -490,12 +501,12 @@ export const Window: React.FC<WindowProps> = ({
                   className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 transition-all ${
                     isFavorite
                       ? 'bg-amber-400/90 hover:bg-amber-400'
-                      : 'bg-white/20 hover:bg-white/35'
+                      : chromeTone.favoriteIdle
                   }`}
                   title={isFavorite ? t('moa_shell.window.favorite_remove') : t('moa_shell.window.favorite_add')}
                   aria-label={isFavorite ? t('moa_shell.window.favorite_remove') : t('moa_shell.window.favorite_add')}
                 >
-                  <Icon name="star" className="text-xs text-white" />
+                  <Icon name="star" className={`text-xs ${isFavorite ? 'text-white' : chromeTone.favoriteStar}`} />
                 </Button>
               )}
             </Div>
@@ -503,16 +514,16 @@ export const Window: React.FC<WindowProps> = ({
               <Button
                 type="button"
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (onMinimize) onMinimize(); }}
-                className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                className={`moa-window-chrome-btn cursor-pointer rounded-full border-0 transition-all ${chromeTone.chromeBtn}`}
               >
-                <Icon name="minus" className="moa-window-chrome-icon-slot text-white" />
+                <Icon name="minus" className={`moa-window-chrome-icon-slot ${chromeTone.icon}`} />
               </Button>
               <Button
                 type="button"
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsMaximized(!isMaximized); if (onMaximize) onMaximize(); }}
-                className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
+                className={`moa-window-chrome-btn cursor-pointer rounded-full border-0 transition-all ${chromeTone.chromeBtn}`}
               >
-                <Icon name={isMaximized ? 'compress' : 'expand'} className="moa-window-chrome-icon-slot text-white" />
+                <Icon name={isMaximized ? 'compress' : 'expand'} className={`moa-window-chrome-icon-slot ${chromeTone.icon}`} />
               </Button>
               <Button
                 type="button"

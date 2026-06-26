@@ -22,6 +22,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   currentUser,
   onOpenApp,
   createdApps,
+  createdAppsLoading = false,
   favoriteApps = [],
   recentApps = [],
   onProfileUpdated,
@@ -77,6 +78,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     isGuest,
     currentUser,
     createdApps,
+    createdAppsLoading,
   });
 
   const activity = useMyPageActivityTab({

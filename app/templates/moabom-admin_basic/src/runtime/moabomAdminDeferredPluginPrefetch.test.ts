@@ -62,7 +62,37 @@ describe('moabomAdminDeferredPluginPrefetch', () => {
         });
     });
 
-    it('다른 관리자 레이아웃에서는 dispatch를 호출하지 않는다', async () => {
+    it('admin_ecommerce 레이아웃 직전에 이커머스 모듈을 선로드한다', async () => {
+        const dispatch = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('window', {
+            ...window,
+            G7Config: {
+                moduleAssets: {},
+                deferredModuleAssets: {
+                    'sirsoft-ecommerce': { js: '/m.js' },
+                },
+            },
+            G7Core: { dispatch },
+        } as unknown as Window & typeof globalThis);
+
+        registerMoabomAdminDeferredPluginPrefetch();
+        const hook = (window as unknown as { __g7BeforeLayoutLoad?: (a: unknown, b: string, c: string) => Promise<void> })
+            .__g7BeforeLayoutLoad;
+        await hook!({}, 'admin_ecommerce_product_list', 'moabom-admin_basic');
+
+        expect(dispatch).toHaveBeenCalledWith({
+            handler: 'reloadModuleHandlers',
+            params: {
+                action: 'add',
+                moduleInfo: {
+                    identifier: 'sirsoft-ecommerce',
+                    assets: { js: '/m.js' },
+                },
+            },
+        });
+    });
+
+    it('이커머스·결제와 무관한 관리자 레이아웃에서는 dispatch를 호출하지 않는다', async () => {
         const dispatch = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('window', {
             ...window,
@@ -78,7 +108,7 @@ describe('moabomAdminDeferredPluginPrefetch', () => {
         registerMoabomAdminDeferredPluginPrefetch();
         const hook = (window as unknown as { __g7BeforeLayoutLoad?: (a: unknown, b: string, c: string) => Promise<void> })
             .__g7BeforeLayoutLoad;
-        await hook!({}, 'sirsoft-ecommerce.admin_dashboard', 'moabom-admin_basic');
+        await hook!({}, 'admin_dashboard', 'moabom-admin_basic');
         expect(dispatch).not.toHaveBeenCalled();
     });
 

@@ -9,6 +9,7 @@ use Illuminate\Database\QueryException;
 use Modules\Moabom\Chat\Contracts\ChatRepositoryInterface;
 use Modules\Moabom\Chat\Enums\ChatConversationType;
 use Modules\Moabom\Chat\Models\ChatConversation;
+use Modules\Moabom\Chat\Models\ChatConversationMember;
 use Modules\Moabom\Chat\Models\ChatMessage;
 use Modules\Moabom\Chat\Models\ChatUserBlock;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
@@ -128,6 +129,11 @@ final class ChatService
                     throw $e;
                 }
             }
+        } else {
+            foreach ($memberIds as $memberId) {
+                $this->chat->restoreMemberIfTrashed($conversation->id, (int) $memberId);
+            }
+            $conversation = $conversation->refresh()->load(['members.user', 'latestMessage.sender']);
         }
 
         return [
@@ -147,6 +153,7 @@ final class ChatService
             'messages' => $messages->map(fn (ChatMessage $message) => $this->serializeMessage($message))->values()->all(),
             'has_more' => $messages->count() >= min(max($limit, 1), 100),
             'next_before_id' => $messages->first()?->id,
+            'peer_read' => $this->serializePeerReadStates($conversation, $viewer),
         ];
     }
 
@@ -186,6 +193,7 @@ final class ChatService
                 'last_message_at' => $conversation->last_message_at?->toIso8601String(),
             ],
         );
+        $this->broadcastInboxUpdated($conversation, $message, $sender);
 
         return $responsePayload + ['deduplicated' => false];
     }
@@ -193,6 +201,120 @@ final class ChatService
     /**
      * @return array<string, mixed>
      */
+    public function signalTyping(User $viewer, string $conversationUuid): array
+    {
+        $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
+
+        $payload = [
+            'conversation_uuid' => $conversation->uuid,
+            'user_uuid' => $viewer->uuid,
+        ];
+
+        HookManager::broadcast(
+            $this->conversationChannelName($conversation),
+            'conversation.typing',
+            $payload,
+        );
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function leaveConversation(User $viewer, string $conversationUuid): array
+    {
+        $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
+
+        if (! $this->chat->removeMember($conversation->id, $viewer->id)) {
+            throw new \InvalidArgumentException('conversation_not_found');
+        }
+
+        $this->clearConversationFocus($viewer, $conversation->uuid);
+
+        return [
+            'conversation_uuid' => $conversation->uuid,
+            'deleted' => true,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function muteConversation(User $viewer, string $conversationUuid, ?int $hours = null): array
+    {
+        $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
+        $mutedUntil = $hours === null || $hours <= 0
+            ? null
+            : now()->addHours(min($hours, 24 * 365));
+
+        $member = $this->chat->setMemberMutedUntil($conversation->id, $viewer->id, $mutedUntil);
+
+        return [
+            'conversation_uuid' => $conversation->uuid,
+            'muted_until' => $member?->muted_until?->toIso8601String(),
+            'is_muted' => $this->isMemberMuted($member),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function deleteMessage(User $viewer, string $messageUuid): array
+    {
+        $message = $this->chat->findMessageByUuid($messageUuid);
+        if (! $message || ! $message->conversation) {
+            throw new \InvalidArgumentException('message_not_found');
+        }
+
+        $conversation = $message->conversation;
+        if (! $this->chat->findMember($conversation->id, $viewer->id)) {
+            throw new \InvalidArgumentException('conversation_not_found');
+        }
+
+        if ((int) $message->sender_id !== (int) $viewer->id) {
+            throw new \InvalidArgumentException('message_delete_forbidden');
+        }
+
+        if (! $this->chat->softDeleteMessage($message->id, $viewer->id)) {
+            throw new \InvalidArgumentException('message_not_found');
+        }
+
+        $payload = [
+            'message_uuid' => $message->uuid,
+            'conversation_uuid' => $conversation->uuid,
+        ];
+
+        HookManager::broadcast(
+            $this->conversationChannelName($conversation),
+            'message.deleted',
+            $payload,
+        );
+
+        return $payload;
+    }
+
+    public function isMemberMuted(?ChatConversationMember $member): bool
+    {
+        if (! $member || ! $member->muted_until) {
+            return false;
+        }
+
+        return $member->muted_until->isFuture();
+    }
+
+    public function isConversationMutedForUser(User $viewer, string $conversationUuid): bool
+    {
+        $conversation = $this->chat->findConversationByUuid($conversationUuid);
+        if (! $conversation) {
+            return false;
+        }
+
+        $member = $this->chat->findMember($conversation->id, $viewer->id);
+
+        return $this->isMemberMuted($member);
+    }
+
     public function markRead(User $viewer, string $conversationUuid, ?int $messageId = null): array
     {
         $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
@@ -273,6 +395,30 @@ final class ChatService
         return 'module.moabom-chat.tenant.'.$this->tenantId().'.conversation.'.$conversation->uuid;
     }
 
+    private function broadcastInboxUpdated(ChatConversation $conversation, ChatMessage $message, User $sender): void
+    {
+        $serializedMessage = $this->serializeMessage($message);
+        $lastMessageAt = $conversation->last_message_at?->toIso8601String();
+
+        foreach ($conversation->members as $member) {
+            $recipient = $member->user;
+            if (! $recipient || (int) $recipient->id === (int) $sender->id) {
+                continue;
+            }
+
+            HookManager::broadcast(
+                "core.user.notifications.{$recipient->uuid}",
+                'chat.inbox.updated',
+                [
+                    'conversation_uuid' => $conversation->uuid,
+                    'message' => $serializedMessage,
+                    'conversation' => $this->serializeConversation($conversation, $recipient),
+                    'last_message_at' => $lastMessageAt,
+                ],
+            );
+        }
+    }
+
     private function requireConversationForMember(User $viewer, string $conversationUuid): ChatConversation
     {
         $conversation = $this->chat->findConversationByUuid($conversationUuid);
@@ -344,7 +490,34 @@ final class ChatService
                 ->values()
                 ->all(),
             'latest_message' => $conversation->latestMessage ? $this->serializeMessage($conversation->latestMessage) : null,
+            'peer_read' => $this->serializePeerReadStates($conversation, $viewer),
+            'is_muted' => $this->isMemberMuted($member),
+            'muted_until' => $member?->muted_until?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function serializePeerReadStates(ChatConversation $conversation, User $viewer): array
+    {
+        return $conversation->members
+            ->filter(fn (ChatConversationMember $member) => (int) $member->user_id !== (int) $viewer->id)
+            ->map(function (ChatConversationMember $member) {
+                $user = $member->user;
+                if (! $user) {
+                    return null;
+                }
+
+                return [
+                    'user_uuid' => $user->uuid,
+                    'last_read_message_id' => $member->last_read_message_id ? (int) $member->last_read_message_id : null,
+                    'last_read_at' => $member->last_read_at?->toIso8601String(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -356,9 +529,14 @@ final class ChatService
             return null;
         }
 
+        $nickname = trim((string) $user->nickname);
+        $realName = trim((string) $user->name);
+
         return [
             'user_uuid' => $user->uuid,
-            'display_name' => (string) ($user->nickname ?: $user->name),
+            'display_name' => $nickname !== '' ? $nickname : $realName,
+            'nickname' => $nickname !== '' ? $nickname : $realName,
+            'real_name' => $realName,
             'avatar' => $user->getAvatarUrl(),
         ];
     }

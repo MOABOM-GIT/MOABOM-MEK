@@ -59,10 +59,24 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
      */
     public function extractData(array $default, string $type, array $args): array
     {
-        if ($type !== 'friend_request') {
-            return $default;
+        if ($type === 'friend_request') {
+            return $this->extractFriendRequestData($default, $args);
         }
 
+        if ($type === 'friend_removed') {
+            return $this->extractFriendRemovedData($default, $args);
+        }
+
+        return $default;
+    }
+
+    /**
+     * @param  array{notifiable: mixed, notifiables: mixed, data: array<string, mixed>, context: array<string, mixed>}  $default
+     * @param  array<int, mixed>  $args
+     * @return array{notifiable: null, notifiables: null, data: array<string, mixed>, context: array<string, mixed>}
+     */
+    private function extractFriendRequestData(array $default, array $args): array
+    {
         $friendship = $args[0] ?? null;
         $requester = $args[1] ?? null;
         $addressee = $args[2] ?? null;
@@ -83,6 +97,7 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
                 'name' => '{recipient_name}',
                 'app_name' => (string) config('app.name'),
                 'requester_name' => $requesterName,
+                'requester_uuid' => $requester->uuid,
                 'site_url' => (string) config('app.url'),
             ],
             'context' => [
@@ -90,6 +105,43 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
                 'trigger_user' => $requester,
                 'related_users' => [
                     'addressee' => $addressee,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{notifiable: mixed, notifiables: mixed, data: array<string, mixed>, context: array<string, mixed>}  $default
+     * @param  array<int, mixed>  $args
+     * @return array{notifiable: null, notifiables: null, data: array<string, mixed>, context: array<string, mixed>}
+     */
+    private function extractFriendRemovedData(array $default, array $args): array
+    {
+        $viewer = $args[0] ?? null;
+        $other = $args[1] ?? null;
+
+        if (! $viewer instanceof User || ! $other instanceof User) {
+            return $default;
+        }
+
+        $otherName = trim((string) ($other->nickname ?: $other->name));
+        if ($otherName === '') {
+            $otherName = 'User #'.$other->id;
+        }
+
+        return [
+            'notifiable' => null,
+            'notifiables' => null,
+            'data' => [
+                'name' => '{recipient_name}',
+                'other_name' => $otherName,
+                'other_uuid' => $other->uuid,
+            ],
+            'context' => [
+                'trigger_user_id' => $viewer->id,
+                'trigger_user' => $viewer,
+                'related_users' => [
+                    'other' => $other,
                 ],
             ],
         ];

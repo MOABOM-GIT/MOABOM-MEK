@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ENV_FILE="${ROOT}/deploy/production.env.yaml"
 STRICT_SMOKE="${MOABOM_STRICT_SMOKE:-0}"
+SMOKE_PROFILE="${MOABOM_SMOKE_PROFILE:-full}"
 URL="${1:-}"
 if [[ -z "${URL}" ]]; then
   if [[ -f "${ENV_FILE}" ]] && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}"; then
@@ -24,7 +25,7 @@ if [[ -z "${URL}" ]]; then
   exit 1
 fi
 
-echo "==> Smoke ${URL}"
+echo "==> Smoke ${URL} (profile=${SMOKE_PROFILE})"
 
 SMOKE_DIR="$(mktemp -d)"
 trap 'rm -rf "${SMOKE_DIR}"' EXIT
@@ -54,6 +55,7 @@ SHELL_BOOT_BODY="${SMOKE_DIR}/shell-boot.json"
 RANKINGS_APPS_BODY="${SMOKE_DIR}/rankings-apps.json"
 
 FAIL=0
+check "/api/modules/moabom-system/public/ready" 200 || FAIL=1
 check "/api/modules/moabom-system/public/frontend-defaults" 200 || FAIL=1
 check "/api/modules/moabom-social-auth/providers" 200 || FAIL=1
 check "/api/modules/moabom-system/public/shell-boot?template=moabom-basic&scope=shell" 200 "${SHELL_BOOT_BODY}" || FAIL=1
@@ -96,6 +98,24 @@ check_delete_auth_or_ok() {
   return 1
 }
 check_delete_auth_or_ok "/api/modules/moabom-chat/user/blocks/a20eac3b-22e5-48fb-bcf2-50cf646baeb6" "moabom-chat blocks destroy" || FAIL=1
+check_delete_auth_or_ok "/api/modules/moabom-chat/user/conversations/a20eac3b-22e5-48fb-bcf2-50cf646baeb6" "moabom-chat conversations destroy" || FAIL=1
+check_auth_or_ok "/api/modules/moabom-chat/user/conversations" "moabom-chat conversations index" || FAIL=1
+check_reverb_upgrade_probe() {
+  local code
+  code="$(curl -sS -o /dev/null -w "%{http_code}" \
+    -H "Connection: Upgrade" \
+    -H "Upgrade: websocket" \
+    -H "Sec-WebSocket-Version: 13" \
+    -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+    "${URL}/app/moabom-laravel-key" 2>/dev/null || echo "000")"
+  if [[ "${code}" == "400" || "${code}" == "426" || "${code}" == "101" || "${code}" == "500" || "${code}" == "502" || "${code}" == "503" ]]; then
+    echo "OK   reverb websocket upgrade probe HTTP ${code} (route reachable; incomplete curl handshake is normal)"
+    return 0
+  fi
+  echo "FAIL reverb websocket upgrade probe HTTP ${code} (expected 400/426/101/5xx, 404=nginx route missing)"
+  return 1
+}
+check_reverb_upgrade_probe || FAIL=1
 # 전환기 compat — dist 가 구 URL 이면 401/200 (404 금지)
 check_auth_or_ok "/api/modules/moabom-system/user/activities?type=all&limit=1" "legacy activities compat" || FAIL=1
 
@@ -157,6 +177,11 @@ fi
 
 echo "==> 스모크 통과"
 
+if [[ "${SMOKE_PROFILE}" == "light" ]]; then
+  echo "==> light smoke — SaaS 확장·DoD-8·SNS·billing live 검사 생략"
+  exit 0
+fi
+
 if [[ -f "${ENV_FILE}" ]] && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}"; then
   run_optional_smoke "SaaS wildcard LB smoke (PHASE1 §11)" "${ROOT}/deploy/saas-wildcard-smoke.sh" bash || exit 1
   echo "==> SaaS tenant shell-boot smoke"
@@ -170,5 +195,9 @@ if [[ -f "${ENV_FILE}" ]] && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE
   echo "==> SNS OAuth broker smoke (Phase 5)"
   bash "${ROOT}/deploy/smoke-social-auth.sh" || exit 1
 fi
+
+echo "==> Cloud Run Billing SSOT (Request-based)"
+chmod +x "${ROOT}/deploy/check-cloud-run-billing-ssot.sh" 2>/dev/null || true
+MOABOM_BILLING_CHECK_LIVE=1 bash "${ROOT}/deploy/check-cloud-run-billing-ssot.sh" || exit 1
 
 exit 0

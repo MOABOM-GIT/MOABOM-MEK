@@ -21,6 +21,9 @@ enum AppType: string
     /** Chart.js 데이터 시각화 */
     case DataViz = 'dataviz';
 
+    /** 외부 웹사이트 iframe 연결 */
+    case WebsiteLink = 'website_link';
+
     /**
      * 허용되는 앱 유형 값 목록을 반환합니다(검증 규칙용).
      *

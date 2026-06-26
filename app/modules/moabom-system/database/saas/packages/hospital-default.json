@@ -19,6 +19,7 @@
     "moabom-apps",
     "moabom-cpap",
     "moabom-consulting",
+    "moabom-global-search",
     "sirsoft-ecommerce"
   ],
     "plugins": [
@@ -45,6 +46,7 @@
       "moabom-apps",
       "moabom-cpap",
       "moabom-consulting",
+      "moabom-global-search",
       "sirsoft-ecommerce"
     ]
   }

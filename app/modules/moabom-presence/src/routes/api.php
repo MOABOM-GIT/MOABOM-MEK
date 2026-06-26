@@ -5,7 +5,7 @@ use Modules\Moabom\Presence\Http\Controllers\Public\PresencePublicController;
 use Modules\Moabom\Presence\Http\Controllers\User\FriendshipController;
 use Modules\Moabom\Presence\Http\Controllers\User\PresenceSettingsController;
 
-Route::prefix('public')->group(function (): void {
+Route::prefix('public')->middleware(['optional.sanctum'])->group(function (): void {
     Route::get('summary', [PresencePublicController::class, 'summary'])
         ->name('public.summary');
     Route::get('online', [PresencePublicController::class, 'online'])

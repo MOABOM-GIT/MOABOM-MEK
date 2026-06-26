@@ -11,7 +11,7 @@ export type { AppTier };
 
 export type GeneratedAppVisibility = 'private' | 'tenant' | 'global';
 
-export type AiAppType = 'general' | '3d' | 'game' | 'dataviz';
+export type AiAppType = 'general' | '3d' | 'game' | 'dataviz' | 'website_link';
 
 export interface GenerateAiAppPayload {
   prompt: string;
@@ -166,6 +166,20 @@ const requestMoabomAppsApi = createShellModuleApi('moabom-apps');
 const requestOptionalMoabomAppsApi = createOptionalShellModuleApi('moabom-apps');
 const requestMoabomCpapApi = createShellModuleApi('moabom-cpap');
 
+export interface WebsiteLinkResolveResult {
+  url: string;
+  icon_url: string | null;
+  theme_color?: string | null;
+  icon_from_title: boolean;
+}
+
+export async function resolveWebsiteLink(url: string): Promise<WebsiteLinkResolveResult> {
+  return requestMoabomAppsApi<WebsiteLinkResolveResult>('apps/website-link/resolve', {
+    method: 'POST',
+    body: { url },
+  });
+}
+
 export async function generateAiApp(payload: GenerateAiAppPayload): Promise<GenerateAiAppResult> {
   return requestMoabomAppsApi<GenerateAiAppResult>('apps/ai/generate', {
     method: 'POST',
@@ -206,13 +220,40 @@ export async function storeGeneratedApp(payload: StoreGeneratedAppPayload): Prom
 }
 
 export async function fetchGeneratedApps(): Promise<StoredGeneratedAppSummary[]> {
-  const data = await requestMoabomAppsApi<{ items: StoredGeneratedAppSummary[] }>('apps/generated');
-  return Array.isArray(data.items) ? data.items : [];
+  const library = await fetchGeneratedAppLibrary();
+  return library.owned;
 }
 
 export async function fetchSharedGeneratedApps(): Promise<StoredGeneratedAppSummary[]> {
+  if (hasShellAccessToken()) {
+    try {
+      const library = await fetchGeneratedAppLibrary();
+      return library.shared;
+    } catch (error) {
+      if (!(error instanceof MoabomShellAuthRequiredError)) {
+        throw error;
+      }
+    }
+  }
+
   const data = await requestOptionalMoabomAppsApi<{ items: StoredGeneratedAppSummary[] }>('apps/generated/shared');
   return Array.isArray(data.items) ? data.items : [];
+}
+
+/** 홈 셸 라이브러리 — owned·published 1회 조회 (로그인 필수) */
+export async function fetchGeneratedAppLibrary(): Promise<{
+  owned: StoredGeneratedAppSummary[];
+  shared: StoredGeneratedAppSummary[];
+}> {
+  const data = await requestMoabomAppsApi<{
+    owned?: StoredGeneratedAppSummary[];
+    shared?: StoredGeneratedAppSummary[];
+  }>('apps/generated/library');
+
+  return {
+    owned: Array.isArray(data.owned) ? data.owned : [],
+    shared: Array.isArray(data.shared) ? data.shared : [],
+  };
 }
 
 export async function fetchGeneratedApp(id: number): Promise<StoredGeneratedApp> {

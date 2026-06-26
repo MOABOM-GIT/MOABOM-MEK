@@ -191,9 +191,9 @@ grep -q '"handler": "confirm"' "${ACTIVE_SYS}/resources/layouts/admin/admin_saas
   && fail "admin_saas_hospitals.json 에 handler confirm 사용 (RF-17 — apiCall.confirm 만 허용)" || true
 grep -q 'forEach' "${ACTIVE_SYS}/resources/layouts/admin/admin_saas_hospitals.json" \
   && fail "admin_saas_hospitals.json 에 forEach 사용 (RF-16 위반)" || true
-grep -q "moabom:saas:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q "moabom:saas:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 가 platform-migrate 미호출 (idempotent 운영 적용용)"
-grep -q "moabom:apps:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q "moabom:apps:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 가 apps platform-migrate 미호출"
 grep -q "moabom:apps:migrate-to-platform" "${ROOT}/deploy/run-saas-phase-e-post-deploy.sh" \
   && fail "run-saas-phase-e-post-deploy.sh 에 migrate-to-platform 금지 (SaaS 쓰기 SSOT=platform, 배포마다 legacy 이관 시 삭제 앱 복원)"
@@ -668,7 +668,7 @@ grep -q 'moabom:saas:sync-package-extensions' "${SYNC_CMD}" \
   || fail "SaasSyncPackageExtensionsCommand signature 누락"
 grep -q 'SaasSyncPackageExtensionsCommand' "${PROVIDER}" \
   || fail "SystemServiceProvider 에 SaasSyncPackageExtensionsCommand 미등록"
-grep -q 'moabom:saas:sync-package-extensions' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:sync-package-extensions' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 moabom:saas:sync-package-extensions 호출 없음"
 [[ -x "${ROOT}/deploy/saas-extension-bootstrap.sh" ]] \
   || fail "deploy/saas-extension-bootstrap.sh 없음 또는 실행 불가"
@@ -714,11 +714,11 @@ PROVISION_RUNNER="${APP}/modules/moabom-system/src/Saas/TenantProvisionArtisanRu
 grep -q 'tenant-repair' "${PROVISION_RUNNER}" \
   && grep -q 'sync-tenant-admin-menus' "${PROVISION_RUNNER}" \
   || fail "TenantProvisionArtisanRunner 에 tenant-repair + sync-tenant-admin-menus 없음"
-grep -q 'moabom:saas:tenant-repair' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:tenant-repair' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 moabom:saas:tenant-repair 호출 없음"
-grep -q 'moabom:saas:sync-tenant-admin-menus' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:sync-tenant-admin-menus' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 moabom:saas:sync-tenant-admin-menus 호출 없음"
-grep -q 'MOABOM_SYNC_TENANT_ADMIN_MENUS' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_SYNC_TENANT_ADMIN_MENUS' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TENANT_ADMIN_MENUS 가드 없음"
 grep -q 'MOABOM_SYNC_TENANT_ADMIN_MENUS' "${ROOT}/deploy/production.env.yaml" \
   || fail "production.env.yaml 에 MOABOM_SYNC_TENANT_ADMIN_MENUS 없음"
@@ -747,9 +747,9 @@ grep -q '/api/admin/language-packs' "${RECONCILE_CMD}" \
   || fail "tenant-reconcile 에 admin_settings 언어팩 data source 검증 누락"
 grep -q 'SaasTenantReconcileCommand' "${PROVIDER}" \
   || fail "SystemServiceProvider 에 SaasTenantReconcileCommand 미등록"
-grep -q 'moabom:saas:tenant-reconcile' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:tenant-reconcile' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 tenant-reconcile 검증 패스 없음"
-grep -q 'MOABOM_VERIFY_TENANT_RECONCILE' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_VERIFY_TENANT_RECONCILE' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_VERIFY_TENANT_RECONCILE 가드 없음"
 grep -q 'moabom:saas:tenant-reconcile' "${ROOT}/deploy/run-layout-sync-job.sh" \
   || fail "run-layout-sync-job.sh 에 tenant-reconcile 검증 패스 없음"
@@ -780,11 +780,11 @@ grep -q 'MOABOM_SAAS_SHARED_LANGUAGE_PACKS' "${APP}/modules/moabom-system/src/Sa
 grep -q "prefix.*self::TABLE_BASE\|prefix.\+language_packs\|->getTablePrefix\|database.connections" "${SHARED_SCHEMA}" \
   || fail "TenantSharedLanguagePackSchema 가 DB_PREFIX 미적용 (g7_ 누락 시 view 전환 skip)"
 ok "shared language-packs (A안 read-through VIEW + prefix + 런타임 브리지 + 롤백)"
-grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TENANT_EXTENSIONS 가드 없음"
-grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE 가드 없음"
-grep -q 'insert-only' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'insert-only' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh tenant sync 에 insert-only 분기 없음"
 [[ -x "${ROOT}/deploy/saas-tenant-extension-sync.sh" ]] \
   || fail "deploy/saas-tenant-extension-sync.sh 없음 또는 실행 불가"
@@ -809,13 +809,13 @@ grep -q '{slug\?' "${SYNC_LAYOUT_CMD}" \
   || fail "SaasSyncTemplateLayoutsCommand — slug optional 인자 없음 (gcloud * 전달 시 실패)"
 grep -q 'TemplateManagerInterface' "${SYNC_LAYOUT_CMD}" \
   || fail "SaasSyncTemplateLayoutsCommand — TemplateManager 직접 refresh 미사용"
-grep -q 'moabom:saas:sync-template-layouts' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:sync-template-layouts' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 moabom:saas:sync-template-layouts 호출 없음"
-grep -q 'MOABOM_SYNC_TEMPLATE_LAYOUTS' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_SYNC_TEMPLATE_LAYOUTS' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TEMPLATE_LAYOUTS 가드 없음"
-grep -q 'moabom:saas:sync-module-layouts' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'moabom:saas:sync-module-layouts' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 moabom:saas:sync-module-layouts 호출 없음"
-grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_MODULE_LAYOUTS 가드 없음"
 [[ -x "${ROOT}/deploy/saas-template-layout-sync.sh" ]] \
   || fail "deploy/saas-template-layout-sync.sh 없음 또는 실행 불가"
@@ -953,10 +953,12 @@ echo "==> [v9-iframe] AI 미리보기 iframe 출처 격리 + CSP (C2)"
 _iframe_active_src="${APP}/templates/moabom-basic/src/apps"
 _iframe_viewer="${_iframe_active_src}/generated/GeneratedAppViewer.tsx"
 if [[ -d "${_iframe_active_src}" ]]; then
-  grep -q 'src={previewUrl}' "${_iframe_viewer}" \
-    || fail "GeneratedAppViewer 가 preview_url src 프리뷰를 사용하지 않음"
-  grep -q 'generatedAppPreviewSandbox' "${_iframe_viewer}" \
-    || fail "GeneratedAppViewer 가 cross-origin sandbox 헬퍼를 사용하지 않음"
+  grep -q 'resolveGeneratedAppFrameUrl' "${_iframe_viewer}" \
+    || fail "GeneratedAppViewer 가 resolveGeneratedAppFrameUrl 을 사용하지 않음"
+  grep -q 'generatedAppFrameSandbox' "${_iframe_viewer}" \
+    || fail "GeneratedAppViewer 가 generatedAppFrameSandbox 헬퍼를 사용하지 않음"
+  grep -q 'isWebsiteLinkAppType' "${_iframe_active_src}/generated/generatedAppPreviewUrl.ts" \
+    || fail "generatedAppPreviewUrl.ts 에 website_link iframe 분기 없음"
   grep -q 'allow-same-origin' "${_iframe_active_src}/generated/generatedAppPreviewUrl.ts" \
     || fail "generatedAppPreviewUrl.ts 에 cross-origin allow-same-origin 분기 없음"
   while IFS= read -r _iframe_file; do
@@ -996,6 +998,8 @@ grep -q 'moabom.saas.override_host_parse' "${APP}/modules/moabom-apps/src/Provid
   || fail "AppsServiceProvider 에 moabom.saas.override_host_parse 훅 누락"
 grep -q 'viewerCanSeePublishedHtmlOnDedicatedHost' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPublishPolicy.php" \
   || fail "GeneratedAppPublishPolicy dedicated_host 게스트 HTML 정책 누락"
+grep -q "sources\[\] = 'https:'" "${APP}/plugins/moabom-auth-hardening/src/Http/Middleware/SecurityHeadersMiddleware.php" \
+  || fail "SecurityHeadersMiddleware frame-src 에 website_link용 https: 누락"
 ok "AI iframe 출처 격리 + CSP (v9-iframe)"
 
 echo "==> [v9-app-manifest] 앱 SDK 매니페스트 계약 + 레지스트리/shell-boot 배선 (Phase 4)"

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Modules\Moabom\Presence\Http\Requests\Public\PresenceHeartbeatRequest;
 use Modules\Moabom\Presence\Services\PresenceHeartbeatService;
+use Modules\Moabom\Presence\Services\PresenceRevisionService;
 use Modules\Moabom\Presence\Services\PresenceSummaryService;
 use Modules\Moabom\Presence\Services\PresenceUserPreferencesService;
 use Modules\Moabom\Presence\Services\TenantOnlineUsersService;
@@ -19,6 +20,7 @@ final class PresencePublicController extends PublicBaseController
         private PresenceHeartbeatService $heartbeatService,
         private TenantOnlineUsersService $onlineUsersService,
         private PresenceUserPreferencesService $preferencesService,
+        private PresenceRevisionService $revisionService,
     ) {
         parent::__construct();
     }
@@ -44,6 +46,7 @@ final class PresencePublicController extends PublicBaseController
             'moabom-presence',
             'messages.online_success',
             [
+                'revision' => $this->revisionService->current(),
                 'users' => $this->onlineUsersService->listOnlineUsers($viewer),
             ],
         );
@@ -58,6 +61,7 @@ final class PresencePublicController extends PublicBaseController
             auth('sanctum')->user(),
             $request->validated('status_text'),
             $request->validated('client_form_factor'),
+            $request->validated('touch'),
         );
 
         return ResponseHelper::moduleSuccess(

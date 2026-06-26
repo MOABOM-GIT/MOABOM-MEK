@@ -37,6 +37,7 @@
       "app_type_3d": "3D",
       "app_type_game": "인터렉션",
       "app_type_dataviz": "차트",
+      "app_type_website_link": "웹사이트 연결",
       "fork_badge": "포크",
       "visibility_private": "비공개",
       "visibility_tenant": "병원 등록",

@@ -55,7 +55,7 @@ moabom_run_artisan_job() {
   if [[ -n "${service_account}" ]]; then
     service_account_args=(--service-account="${service_account}")
   fi
-  boot_sleep="${MOABOM_CRJ_BOOT_SLEEP:-25}"
+  boot_sleep="${MOABOM_CRJ_BOOT_SLEEP:-10}"
   shell_cmd="sleep ${boot_sleep} && php artisan"
   for arg in "${artisan_tail[@]}"; do
     shell_cmd+=" $(printf '%q' "$arg")"

@@ -14,6 +14,7 @@ import { Img } from '../../basic/Img';
 import { isMoabomCustomBackgroundUuid, moabomUploadedBackgroundUrl } from '../../../utils/moBackgroundAssets';
 import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
+import AppLoadingSpinner from '../AppLoadingSpinner';
 import { useWeatherStatusLabel } from '../../../runtime/weather/useWeatherStatusLabel';
 
 interface MyPageSettingsTabProps {
@@ -87,22 +88,6 @@ const ToggleIndicator: React.FC<{ active: boolean }> = ({ active }) => (
     style={active ? { background: 'var(--moa-point-color)' } : undefined}
   >
     <Span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-[left] ${active ? 'left-6' : 'left-1'}`} />
-  </Span>
-);
-
-/**
- * 날씨 상태 데이터 대기 중 표시하는 로딩 인디케이터(텍스트 없이 점 3개가 물결치는 형태).
- * `currentColor` 를 따르므로 부모의 muted 톤을 그대로 사용한다.
- */
-const WeatherStatusDots: React.FC<{ ariaLabel: string }> = ({ ariaLabel }) => (
-  <Span className="inline-flex items-center gap-1 text-muted" role="status" aria-label={ariaLabel}>
-    {[0, 1, 2].map((i) => (
-      <Span
-        key={i}
-        className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"
-        style={{ animationDelay: `${i * 0.2}s` }}
-      />
-    ))}
   </Span>
 );
 
@@ -400,7 +385,11 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
                 label = (
                   <Span className="inline-flex items-center gap-2">
                     <Span>{option.label}</Span>
-                    <WeatherStatusDots ariaLabel={t('moa_mypage.weather_status.loading')} />
+                    <AppLoadingSpinner
+                      compact
+                      hideLabel
+                      label={t('moa_mypage.weather_status.loading')}
+                    />
                   </Span>
                 );
               }

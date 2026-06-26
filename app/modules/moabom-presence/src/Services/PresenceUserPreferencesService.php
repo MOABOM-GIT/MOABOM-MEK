@@ -13,6 +13,7 @@ final class PresenceUserPreferencesService
         private PresenceUserPreferencesRepositoryInterface $preferences,
         private TenantPresenceSessionRepositoryInterface $tenantSessions,
         private PresencePresentationService $presentation,
+        private PresenceRevisionService $revisionService,
     ) {}
 
     public function getForUser(int $userId): PresenceUserPreference
@@ -48,7 +49,10 @@ final class PresenceUserPreferencesService
             return $current;
         }
 
-        return $this->preferences->upsertForUser($user->id, $attributes);
+        $updated = $this->preferences->upsertForUser($user->id, $attributes);
+        $this->revisionService->bump('preference');
+
+        return $updated;
     }
 
     /**

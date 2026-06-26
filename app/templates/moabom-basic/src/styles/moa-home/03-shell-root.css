@@ -30,6 +30,7 @@ body.moa-home-active {
   overscroll-behavior: contain;
   overflow-x: hidden;
   padding: var(--moa-app-window-body-padding) 0;
+  padding-bottom: 0;
   color: var(--moa-text-primary);
 }
 
