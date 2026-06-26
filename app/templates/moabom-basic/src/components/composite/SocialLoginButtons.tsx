@@ -14,6 +14,7 @@ import {
   startSocialAuth,
   type SocialProvider,
 } from '../../utils/socialAuth';
+import { whenMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 
 /**
  * 소셜 로그인 아이콘 SVG 컴포넌트
@@ -152,6 +153,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
 
   useEffect(() => {
     let mounted = true;
+    let cancelBoot: (() => void) | undefined;
 
     const loadProviders = async () => {
       const nextProviders = await fetchEnabledSocialProviders();
@@ -160,10 +162,13 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
       }
     };
 
-    void loadProviders();
+    cancelBoot = whenMoabomBootPhaseAtLeast('shell-critical', () => {
+      void loadProviders();
+    });
 
     return () => {
       mounted = false;
+      cancelBoot?.();
     };
   }, []);
 

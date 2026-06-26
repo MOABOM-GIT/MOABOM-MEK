@@ -33,6 +33,7 @@ const ASSETS_CACHE = `${CACHE_PREFIX}-assets-v${__VERSION__}`;
 const HTML_CACHE = `${CACHE_PREFIX}-html-v${__VERSION__}`;
 const CDN_CACHE = `${CACHE_PREFIX}-cdn-v${__VERSION__}`;
 const FRONTEND_DEFAULTS_CACHE = `${CACHE_PREFIX}-frontend-defaults-v${__VERSION__}`;
+const SHELL_BOOT_CACHE = `${CACHE_PREFIX}-shell-boot-v${__VERSION__}`;
 const LAYOUT_JSON_CACHE = `${CACHE_PREFIX}-layout-json-v${__VERSION__}`;
 
 /** PWA 사용자 템플릿 — 이 prefix 아래 asset 만 SW cache-first 대상. */
@@ -216,6 +217,22 @@ registerRoute(
     plugins: [
       createCacheGuardPlugin(),
       new ExpirationPlugin({ maxEntries: 1, maxAgeSeconds: 60 }),
+    ],
+  }),
+);
+
+registerRoute(
+  ({ url, request }) => (
+    request.method === 'GET' &&
+    !isBypassed(url) &&
+    !request.headers.has('Authorization') &&
+    url.pathname === '/api/modules/moabom-system/public/shell-boot'
+  ),
+  new CacheFirst({
+    cacheName: SHELL_BOOT_CACHE,
+    plugins: [
+      createCacheGuardPlugin(),
+      new ExpirationPlugin({ maxEntries: 2, maxAgeSeconds: 60 }),
     ],
   }),
 );

@@ -51,6 +51,12 @@ import {
 } from '../runtime/moabomWebSocketConnection';
 import { requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
 import type { ChatMessageCreatedPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
+import {
+  hasChatAutoStartBeenAttempted,
+  isChatAutoStartSuppressed,
+  markChatAutoStartAttempted,
+  suppressChatAutoStartForPeer,
+} from '../runtime/moabomShellChatAutoStartGuard';
 
 function chatErrorMessage(error: unknown, t: MoabomTranslateFn): string {
   if (error instanceof MoabomChatApiError) {
@@ -124,7 +130,6 @@ export function useMoabomChat(
   const [loading, setLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const startedTargetRef = useRef<string | null>(null);
   const activeConversationRef = useRef<ChatConversation | null>(null);
   const selectSeqRef = useRef(0);
   const pendingNavigationRef = useRef<ReturnType<typeof consumeMoabomShellPendingChatNavigation>>(null);
@@ -304,7 +309,7 @@ export function useMoabomChat(
 
     if (pending.peerUserUuid) {
       pendingNavigationRef.current = null;
-      startedTargetRef.current = pending.peerUserUuid;
+      markChatAutoStartAttempted(pending.peerUserUuid);
       await startWithUsers([pending.peerUserUuid]);
       return true;
     }
@@ -487,8 +492,13 @@ export function useMoabomChat(
         clearMoabomShellActiveChat();
       }
 
+      const selfUuid = getShellAuthUserUuid();
       let nextActive: ChatConversation | null = null;
       setConversations(prev => {
+        const removed = prev.find(item => item.uuid === conversationUuid);
+        if (removed) {
+          peerUserUuids(removed, selfUuid).forEach(peerUuid => suppressChatAutoStartForPeer(peerUuid));
+        }
         const next = prev.filter(item => item.uuid !== conversationUuid);
         setShellChatInboxCache(next);
         if (wasActive) {
@@ -584,7 +594,13 @@ export function useMoabomChat(
   }, [applyPendingNavigation, conversations, initialConversationUuid, selectConversation]);
 
   useEffect(() => {
-    if (!targetUserUuid || startedTargetRef.current === targetUserUuid || getShellAuthUserUuid() === targetUserUuid) {
+    if (!targetUserUuid || getShellAuthUserUuid() === targetUserUuid) {
+      return;
+    }
+    if (loading) {
+      return;
+    }
+    if (isChatAutoStartSuppressed(targetUserUuid)) {
       return;
     }
     if (pendingNavigationRef.current || initialConversationUuid) {
@@ -597,9 +613,26 @@ export function useMoabomChat(
       setError(t('moa_chat.toast_blocked_by_self'));
       return;
     }
-    startedTargetRef.current = targetUserUuid;
+
+    const selfUuid = getShellAuthUserUuid();
+    const existing = conversations.find(conversation => (
+      conversationIncludesPeer(conversation, targetUserUuid, selfUuid)
+    ));
+    if (existing) {
+      markChatAutoStartAttempted(targetUserUuid);
+      if (!activeConversationRef.current) {
+        void selectConversation(existing);
+      }
+      return;
+    }
+
+    if (hasChatAutoStartBeenAttempted(targetUserUuid)) {
+      return;
+    }
+
+    markChatAutoStartAttempted(targetUserUuid);
     void startWithUsers([targetUserUuid]);
-  }, [blocks, initialConversationUuid, startWithUsers, targetUserUuid]);
+  }, [blocks, conversations, initialConversationUuid, loading, selectConversation, startWithUsers, targetUserUuid, t]);
 
   useEffect(() => {
     return subscribeMoabomShellChatBlockChanged(detail => {
@@ -607,7 +640,6 @@ export function useMoabomChat(
         void loadBlocks();
         const selfUuid = getShellAuthUserUuid();
         if (targetUserUuid === detail.userUuid) {
-          startedTargetRef.current = detail.userUuid;
           setError(t('moa_chat.toast_blocked_by_self'));
         }
         const active = activeConversationRef.current;
@@ -624,7 +656,6 @@ export function useMoabomChat(
       }
       setBlocks(prev => prev.filter(item => item.user_uuid !== detail.userUuid));
       if (targetUserUuid === detail.userUuid) {
-        startedTargetRef.current = null;
         setError(null);
         void startWithUsers([detail.userUuid]);
       }

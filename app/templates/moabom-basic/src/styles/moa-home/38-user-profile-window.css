@@ -339,7 +339,20 @@
 }
 
 .moa-chat-conversation-item__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5rem;
+  padding: 0.125rem 0.375rem;
+  cursor: pointer;
+  background: transparent;
   opacity: 0.72;
+  transition: opacity 0.16s ease;
+}
+
+.moa-chat-conversation-item__delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .moa-chat-conversation-item:hover .moa-chat-conversation-item__delete,
@@ -690,27 +703,6 @@
 /* ── 프로필 액션 — 공지 패널 glass 행 스타일 ── */
 .moa-user-profile-actions .moa-btn {
   border-radius: 0.875rem;
-}
-
-.moa-user-profile-actions-menu-item {
-  width: 100%;
-  justify-content: center;
-  border-radius: 0.875rem;
-  border: 0;
-  background: transparent;
-  padding: 0.5rem 0.75rem;
-  text-align: center;
-  transition: opacity 0.16s ease, background-color 0.16s ease;
-}
-
-.moa-user-profile-actions-menu-item:hover {
-  opacity: 0.92;
-  background: color-mix(in srgb, var(--moa-surface-muted, #f9fafb) 80%, transparent);
-}
-
-.moa-presence-access-menu .moa-btn {
-  justify-content: center;
-  text-align: center;
 }
 
 :root[data-theme='dark'] .moa-user-profile-status .moa-profile-status,

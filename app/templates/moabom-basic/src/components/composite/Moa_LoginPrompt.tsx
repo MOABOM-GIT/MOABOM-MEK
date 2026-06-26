@@ -6,6 +6,7 @@ import { Span } from '../basic/Span';
 import { Svg } from '../basic/Svg';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { fetchEnabledSocialProviders, startSocialAuth } from '../../utils/socialAuth';
+import { whenMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import { useMoabomSiteDisplayName } from '../../utils/moabomSiteBranding';
 import type { AuthWindowMode } from './Moa_AuthWindowContent';
 
@@ -27,6 +28,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
 
   useEffect(() => {
     let mounted = true;
+    let cancelBoot: (() => void) | undefined;
 
     const loadProviders = async () => {
       const providers = await fetchEnabledSocialProviders();
@@ -35,10 +37,13 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({ onOpenAuth }) => {
       }
     };
 
-    void loadProviders();
+    cancelBoot = whenMoabomBootPhaseAtLeast('shell-critical', () => {
+      void loadProviders();
+    });
 
     return () => {
       mounted = false;
+      cancelBoot?.();
     };
   }, []);
 

@@ -58,6 +58,9 @@ import { loadJsonSanitizedIds, saveJson } from '../../shell/moaShellLocalStorage
 import { pushWarningToast, showAppEditToast } from '../../runtime/moaShellToasts';
 import type { MoaCurrentUser } from '../../shell/moaShellTypes';
 import type { MoabomTranslateFn } from '../../i18n/moabomT';
+import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../../i18n/moabomShellEvents';
+import { getMoabomShellBootData } from '../../runtime/moabomShellBoot';
+import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 
 export interface UseMoaHomeAppCatalogOptions {
   isLoggedIn: boolean;
@@ -222,11 +225,38 @@ export function useMoaHomeAppCatalog({
     });
   }, [isLoggedInRef]);
 
+  const refreshMainAppsFromCurrentOrder = useCallback(() => {
+    const merged = resolveMainAppsFromOrder(
+      orderRef.current,
+      createdAppsRef.current,
+      sharedGeneratedAppsRef.current,
+      orderCustomizedRef.current,
+    );
+    mainAppsRef.current = merged;
+    setMainApps(merged);
+  }, []);
+
+  useEffect(() => {
+    const onShellBootLoaded = () => {
+      refreshMainAppsFromCurrentOrder();
+    };
+
+    window.addEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, onShellBootLoaded);
+    if (getMoabomShellBootData()) {
+      refreshMainAppsFromCurrentOrder();
+    }
+
+    return () => {
+      window.removeEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, onShellBootLoaded);
+    };
+  }, [refreshMainAppsFromCurrentOrder]);
+
   useEffect(() => {
     if (isLoggedIn && !currentUser?.memberKey) return;
 
     let cancelled = false;
     void (async () => {
+      await awaitMoabomBootPhaseAtLeast('shell-critical');
       const pulled = await pullShellServerSnapshot();
       if (cancelled || !pulled) return;
       setSystemState(pulled.state);
@@ -386,6 +416,11 @@ export function useMoaHomeAppCatalog({
     }
 
     void (async () => {
+      await awaitMoabomBootPhaseAtLeast('catalog-critical');
+      if (cancelled) {
+        return;
+      }
+
       try {
         const { owned: ownedItems, shared: sharedItems } = await loadMoabomGeneratedAppLibrary(isLoggedIn);
         if (cancelled) {

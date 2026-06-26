@@ -1,3 +1,5 @@
+import { clearChatAutoStartGuard } from './moabomShellChatAutoStartGuard';
+
 export type MoabomShellPendingChatNavigation = {
   peerUserUuid: string;
   conversationUuid: string | null;
@@ -8,6 +10,7 @@ export type MoabomShellPendingChatNavigation = {
 let pending: MoabomShellPendingChatNavigation | null = null;
 
 export function setMoabomShellPendingChatNavigation(nav: MoabomShellPendingChatNavigation): void {
+  clearChatAutoStartGuard(nav.peerUserUuid);
   pending = nav;
 }
 

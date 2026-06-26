@@ -102,7 +102,7 @@ export const Moa_MyPagePresenceSettingsSection: React.FC<Moa_MyPagePresenceSetti
               key={option}
               type="button"
               variant={availability === option ? 'primary' : 'dark-outline'}
-              size="sm"
+              size="medium"
               className="justify-start"
               disabled={disabled || saving}
               onClick={() => setAvailability(option)}
@@ -122,7 +122,7 @@ export const Moa_MyPagePresenceSettingsSection: React.FC<Moa_MyPagePresenceSetti
               key={option}
               type="button"
               variant={subtitleMode === option ? 'primary' : 'dark-outline'}
-              size="sm"
+              size="medium"
               className="justify-start"
               disabled={disabled || saving}
               onClick={() => setSubtitleMode(option)}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { AuthWindowMode } from '../../components/composite/Moa_AuthWindowContent';
+import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import {
   installMoaShellBoardNavigateBridge,
   uninstallMoaShellBoardNavigateBridge,
@@ -73,17 +74,31 @@ export function useMoaShellRouteSync({
   closeErrorWindowRef.current = closeErrorWindow;
 
   useEffect(() => {
-    if (shellRouteBootstrappedRef.current) return;
-    shellRouteBootstrappedRef.current = true;
-    const route = parseShellRoute(window.location.pathname, window.location.search);
-    if (route.kind !== 'home') {
-      applyShellRoute(route);
-    } else {
-      const pending = takePendingShellError();
-      if (pending) {
-        openErrorWindow(pending, { replace: true });
-      }
+    if (shellRouteBootstrappedRef.current) {
+      return;
     }
+
+    let cancelled = false;
+    void (async () => {
+      await awaitMoabomBootPhaseAtLeast('catalog-critical');
+      if (cancelled || shellRouteBootstrappedRef.current) {
+        return;
+      }
+      shellRouteBootstrappedRef.current = true;
+      const route = parseShellRoute(window.location.pathname, window.location.search);
+      if (route.kind !== 'home') {
+        applyShellRoute(route);
+      } else {
+        const pending = takePendingShellError();
+        if (pending) {
+          openErrorWindow(pending, { replace: true });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [applyShellRoute, openErrorWindow]);
 
   useEffect(() => {

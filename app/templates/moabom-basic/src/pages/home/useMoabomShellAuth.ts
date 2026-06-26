@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { bootstrapMoabomShellAuthConfig } from '../../runtime/moabomShellAuth';
+import { ensureMoabomShellAuthPreloaded } from '../../runtime/moabomShellAuthPreload';
+import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import { syncMoabomWebSocketAuth } from '../../runtime/moabomWebSocketAuthSync';
 import { clearShellAccessToken, getShellAccessToken } from '../../api/moabomShellAccess';
 import { buildMoaCurrentUser, type AuthUserLike, type MoaCurrentUser } from '../../shell/moaShellTypes';
@@ -25,6 +27,7 @@ function getAuthManager(): AuthManagerSnapshot | null {
  * 홈 셸 인증 SSOT — G7 AuthManager 상태를 React UI에 미러링.
  *
  * 토큰이 없으면 /api/auth/user 를 호출하지 않는다.
+ * preload 는 부트 파이프라인 `auth-ready` 와 공유한다.
  */
 export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -73,9 +76,12 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
         return;
       }
 
-      const ok = await authManager.preloadAuth('user');
+      await awaitMoabomBootPhaseAtLeast('shell-critical');
+      await ensureMoabomShellAuthPreloaded();
+      await awaitMoabomBootPhaseAtLeast('auth-ready');
       if (cancelled) return;
-      if (ok && authManager.getUser()) {
+
+      if (authManager.isAuthenticated() && authManager.getUser()) {
         applyAuthState(true, authManager.getUser());
         return;
       }

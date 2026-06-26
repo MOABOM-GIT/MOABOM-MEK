@@ -32,6 +32,7 @@ import { getShellAuthUserUuid, resolvePresenceListStatusLine, resolvePresenceLis
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 import type { ShellSurfaceOpenAction, ShellUrlSyncOptions } from '../../shell/shellSurfaceTypes';
 import { prefetchUserProfileWindowLayouts } from '../../shell/userProfileWindowPrefetch';
+import { navigateMoabomChatConversation } from '../../utils/moabomChatNotificationNavigate';
 import { Moa_RightPanelAdSlot } from './Moa_RightPanelAdSlot';
 
 export interface RightPanelProps {
@@ -78,6 +79,8 @@ const RIGHT_TAB_KEYS = [
 ];
 
 const PRESENCE_MENU_WIDTH_PX = 152;
+const PRESENCE_ROW_ACTION_BUTTON_CLASS =
+  'w-7 h-7 rounded-lg glass-xs flex items-center justify-center border-0 shrink-0 cursor-pointer hover:opacity-90';
 
 interface PresenceUserActionsMenuProps {
   userUuid: string;
@@ -88,6 +91,24 @@ interface PresenceUserActionsMenuProps {
   onAddFriend: (userUuid: string) => void | Promise<void>;
   onAcceptFriend: (userUuid: string) => void | Promise<void>;
 }
+
+/** 친구 행 — 대화 바로가기 */
+const FriendChatOpenButton: React.FC<{ userUuid: string }> = ({ userUuid }) => {
+  const { t } = useMoabomShellT();
+
+  return (
+    <Div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+      <Button
+        type="button"
+        className={PRESENCE_ROW_ACTION_BUTTON_CLASS}
+        aria-label={t('moa_profile_actions.chat')}
+        onClick={() => navigateMoabomChatConversation(userUuid)}
+      >
+        <Icon name="paper-plane" className="icon-muted text-sm" />
+      </Button>
+    </Div>
+  );
+};
 
 /** 접속자 행 — 세로 … 메뉴 (Portal fixed — 패널 overflow 클리핑 회피) */
 const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
@@ -159,7 +180,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
       <Button
         ref={buttonRef}
         type="button"
-        className="w-7 h-7 rounded-lg glass-sm flex items-center justify-center border-0 shrink-0 cursor-pointer hover:opacity-90"
+        className={PRESENCE_ROW_ACTION_BUTTON_CLASS}
         aria-label={t('moa_shell.right.presence_menu')}
         aria-expanded={open}
         onClick={() => {
@@ -175,14 +196,14 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
       {open && createPortal(
         <Div
           ref={menuRef}
-          className="fixed z-[9999] moa-presence-access-menu flex min-w-[9.5rem] flex-col gap-1 rounded-2xl glass-sm-blur p-2 shadow-lg"
+          className="fixed z-[9999] moa-presence-access-menu flex min-w-[9.5rem] flex-col gap-1 rounded-2xl glass-sm p-2 shadow-lg"
           style={{ top: menuPosition.top, left: menuPosition.left, width: PRESENCE_MENU_WIDTH_PX }}
         >
           <Button
             type="button"
             variant="primary-outline"
             size="sm"
-            className="moa-user-profile-actions-menu-item w-full rounded-xl"
+            className="w-full"
             onClick={() => {
               setOpen(false);
               onOpenShellSurface?.({
@@ -199,7 +220,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
             type="button"
             variant="secondary"
             size="sm"
-            className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
+            className="w-full border-0"
             onClick={() => {
               setOpen(false);
               onOpenShellSurface?.({
@@ -217,7 +238,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
               type="button"
               variant="secondary"
               size="sm"
-              className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
+              className="w-full border-0"
               onClick={() => void handleAddFriend()}
             >
               {t('moa_shell.right.presence_add_friend')}
@@ -228,7 +249,7 @@ const PresenceUserActionsMenu: React.FC<PresenceUserActionsMenuProps> = ({
               type="button"
               variant="secondary"
               size="sm"
-              className="moa-user-profile-actions-menu-item w-full rounded-xl border-0"
+              className="w-full border-0"
               onClick={() => void handleAcceptFriend()}
             >
               {t('moa_shell.right.presence_accept_friend')}
@@ -624,6 +645,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               className="text-xs text-muted mt-0.5"
                             />
                           </Div>
+                          <FriendChatOpenButton userUuid={u.user_uuid} />
                         </Div>
                         );
                       })}

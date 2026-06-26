@@ -5,13 +5,6 @@
  * Moabom 스타일 기반
  */
 
-// Logger 설정 (G7Core 초기화 전에도 동작하도록 폴백 포함)
-const logger = ((window as any).G7Core?.createLogger?.('Template:moabom')) ?? {
-    log: (...args: unknown[]) => console.log('[Template:moabom]', ...args),
-    warn: (...args: unknown[]) => console.warn('[Template:moabom]', ...args),
-    error: (...args: unknown[]) => console.error('[Template:moabom]', ...args),
-};
-
 // Styles
 import './styles/main.css';
 import './components/composite/imageGalleryLightboxStyles';
@@ -21,6 +14,7 @@ import { installMoabomExtensionDeferredBootstrap } from './runtime/moabomExtensi
 import { ensureMoaShellErrorPageHandlerPatched } from './shell/installMoaShellErrorNavigateBridge';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
 import { prefetchMoabomGeneratedAppLibrary } from './runtime/moabomGeneratedAppLibraryLoad';
+import { startMoabomShellBootPipeline } from './runtime/moabomShellBootPipeline';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
 import { installMoabomWebSocketAuthSync } from './runtime/moabomWebSocketAuthSync';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
@@ -154,66 +148,11 @@ export { templateMetadata };
 /**
  * 템플릿 초기화 함수
  *
- * 코어 엔진에 커스텀 핸들러를 등록합니다.
+ * 핸들러·PWA 등록은 `startMoabomShellBootPipeline()` 이 DOMContentLoaded 이후 순차 처리한다.
  */
 export function initTemplate(): void {
-  // ActionDispatcher가 로드될 때까지 대기 후 핸들러 등록
   if (typeof window !== 'undefined') {
-    let retryCount = 0;
-    const maxRetries = 50; // 최대 5초 대기 (50 * 100ms)
-
-    const registerHandlers = () => {
-      const actionDispatcher = (window as any).G7Core?.getActionDispatcher?.();
-
-      if (actionDispatcher) {
-        // handlerMap의 모든 핸들러를 자동으로 등록
-        Object.entries(handlerMap).forEach(([name, handler]) => {
-          actionDispatcher.registerHandler(name, handler);
-        });
-
-        logger.log(`${Object.keys(handlerMap).length} custom handler(s) registered:`, Object.keys(handlerMap));
-      } else {
-        retryCount++;
-        if (retryCount <= maxRetries) {
-          logger.warn(`ActionDispatcher not found, retrying... (${retryCount}/${maxRetries})`);
-          setTimeout(registerHandlers, 100);
-        } else {
-          logger.error('Failed to register handlers: ActionDispatcher not available after maximum retries');
-        }
-      }
-    };
-
-    const installManifestLink = () => {
-      import('./runtime/pwa/installManifestLink')
-        .then((module) => {
-          module.installMoabomPwaManifestLink();
-          module.installMoabomPwaIconLinks();
-        })
-        .catch((error) => {
-          logger.warn('PWA manifest link module failed to load.', error);
-        });
-    };
-
-    const registerServiceWorker = () => {
-      if (!navigator.serviceWorker) return;
-
-      import('./runtime/pwa/registerServiceWorker')
-        .then((module) => module.registerMoabomPwaServiceWorker())
-        .catch((error) => {
-          logger.warn('PWA Service Worker registration module failed to load.', error);
-        });
-    };
-
-    // window.load 이벤트 사용 (모든 리소스 로드 완료 후)
-    if (document.readyState === 'complete') {
-      registerHandlers();
-      installManifestLink();
-      registerServiceWorker();
-    } else {
-      window.addEventListener('load', registerHandlers);
-      window.addEventListener('load', installManifestLink, { once: true });
-      window.addEventListener('load', registerServiceWorker, { once: true });
-    }
+    startMoabomShellBootPipeline();
   }
 }
 

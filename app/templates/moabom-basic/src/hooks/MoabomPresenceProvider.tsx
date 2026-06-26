@@ -65,6 +65,7 @@ import {
   resolveShellPresenceActivityText,
 } from '../shell/moaShellPresenceActivity';
 import { deferShellSecondaryWork } from '../shell/moaShellDeferredWork';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 import { resolveClientFormFactor } from '../utils/clientFormFactor';
 import {
   normalizePresenceConnectList,
@@ -455,19 +456,21 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     if (isLoggedIn) {
       selfUserUuidRef.current = getShellAuthUserUuid();
       setOnlineUsers(prev => applyOptimisticLoginToOnlineUsers(prev, ownPresenceRef.current));
-      void (async () => {
-        await runHeartbeat({
-          touch: 'login',
-          skipSummaryRefresh: true,
-          refreshConnectList: false,
-        });
-        await Promise.all([
-          refreshSummary(),
-          refreshOnline(),
-          refreshFriends(),
-          hydrateOwnSettings(),
-        ]);
-      })();
+      deferShellSecondaryWork(() => {
+        void (async () => {
+          await runHeartbeat({
+            touch: 'login',
+            skipSummaryRefresh: true,
+            refreshConnectList: false,
+          });
+          await Promise.all([
+            refreshSummary(),
+            refreshOnline(),
+            refreshFriends(),
+            hydrateOwnSettings(),
+          ]);
+        })();
+      }, 120);
       return;
     }
 
@@ -499,13 +502,21 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       return;
     }
 
-    syncMoabomWebSocketAuth(true);
-    void ensureMoabomChatNotificationPermission();
-    const uuid = getShellAuthUserUuid();
-    if (uuid) {
-      startMoabomShellRealtimeCoordinator(uuid);
-    }
-    startMoabomShellChatSyncService();
+    const cancel = whenMoabomBootPhaseAtLeast('secondary', () => {
+      syncMoabomWebSocketAuth(true);
+      void ensureMoabomChatNotificationPermission();
+      const uuid = getShellAuthUserUuid();
+      if (uuid) {
+        startMoabomShellRealtimeCoordinator(uuid);
+      }
+      startMoabomShellChatSyncService();
+    });
+
+    return () => {
+      cancel();
+      stopMoabomShellRealtimeCoordinator();
+      stopMoabomShellChatSyncService();
+    };
   }, [isLoggedIn]);
 
   useEffect(() => {

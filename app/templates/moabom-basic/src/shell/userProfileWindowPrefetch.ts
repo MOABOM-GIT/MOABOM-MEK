@@ -1,5 +1,7 @@
 import type { BoardWindowRenderPayload } from './boardWindowLayoutRuntime';
 import { prefetchBoardWindowTranslations } from './boardWindowLayoutRuntime';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
+import { deferShellTertiaryWork } from './moaShellDeferredWork';
 import { parseQuery } from './moaShellLayoutQuery';
 import type { UserProfileWindowView } from './userProfileWindowLayoutRuntime';
 import {
@@ -39,27 +41,25 @@ function prefetchLayoutPaths(paths: readonly string[]): void {
   }
 }
 
-/** 홈 셸 부트 idle — 프로필·작성글 layout JSON + 번역 선로드 */
+function runUserProfileShellLayoutPrefetch(): void {
+  const loader = getLayoutLoader();
+  if (!loader) {
+    window.setTimeout(runUserProfileShellLayoutPrefetch, 250);
+    return;
+  }
+  prefetchLayoutPaths(USER_PROFILE_SHELL_LAYOUT_PATHS);
+  void prefetchBoardWindowTranslations();
+}
+
+/** 홈 셸 부트 — handlers-ready 이후 tertiary-idle 큐에서 layout 선로드 */
 export function schedulePrefetchUserProfileWindowLayouts(): void {
   if (typeof window === 'undefined') {
     return;
   }
 
-  const run = () => {
-    const loader = getLayoutLoader();
-    if (!loader) {
-      window.setTimeout(run, 250);
-      return;
-    }
-    prefetchLayoutPaths(USER_PROFILE_SHELL_LAYOUT_PATHS);
-    void prefetchBoardWindowTranslations();
-  };
-
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(() => run(), { timeout: 3000 });
-  } else {
-    window.setTimeout(run, 500);
-  }
+  whenMoabomBootPhaseAtLeast('handlers-ready', () => {
+    deferShellTertiaryWork(runUserProfileShellLayoutPrefetch, 200);
+  });
 }
 
 /** 접속자 메뉴·프로필 윈도우 오픈 직전 — 즉시 선로드 */

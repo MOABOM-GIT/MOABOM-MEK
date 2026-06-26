@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { installShellAppUsageTracker } from '../../shell/moaShellAppUsageTracker';
+import { whenMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import { Moa_HomeShellView } from './Moa_HomeShellView';
 import type { HomePageProps } from '../../shell/moaShellTypes';
 import { useMoabomShellAuth } from './useMoabomShellAuth';
@@ -75,7 +76,16 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
     openAuthWindow: windows.openAuthWindow,
   });
 
-  useEffect(() => installShellAppUsageTracker(), []);
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    const cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      cleanup = installShellAppUsageTracker();
+    });
+    return () => {
+      cancelBoot();
+      cleanup?.();
+    };
+  }, []);
 
   const openShellProfileFromPanel = useCallback(
     (userUuid: string, displayName?: string, view?: UserProfileWindowView) => {

@@ -3,6 +3,7 @@ import {
   isMoabomWebSocketConnected,
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 import { useMoabomPresenceContext } from './MoabomPresenceProvider';
 
 interface UseMoabomPresenceOptions {
@@ -12,6 +13,10 @@ interface UseMoabomPresenceOptions {
 
 const TAB_POLL_MS = 30_000;
 
+/**
+ * 탭별 목록 폴링 — Provider secondary bootstrap 이후(tertiary-idle)에만 시작.
+ * 초기 online/friends 는 Provider heartbeat 가 담당해 중복 fetch 를 막는다.
+ */
 function useTabListPolling(
   active: boolean,
   refresh: () => Promise<void>,
@@ -21,9 +26,9 @@ function useTabListPolling(
       return;
     }
 
-    void refresh();
-
     let timer: ReturnType<typeof setInterval> | undefined;
+    let unsubscribeWs: (() => void) | undefined;
+    let cancelBoot: (() => void) | undefined;
 
     const syncPolling = () => {
       if (timer !== undefined) {
@@ -37,16 +42,19 @@ function useTabListPolling(
       }
     };
 
-    syncPolling();
-    const unsubscribe = subscribeMoabomWebSocketConnectionChange(() => {
+    cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
       syncPolling();
-      if (isMoabomWebSocketConnected()) {
-        void refresh();
-      }
+      unsubscribeWs = subscribeMoabomWebSocketConnectionChange(() => {
+        syncPolling();
+        if (isMoabomWebSocketConnected()) {
+          void refresh();
+        }
+      });
     });
 
     return () => {
-      unsubscribe();
+      cancelBoot?.();
+      unsubscribeWs?.();
       if (timer !== undefined) {
         clearInterval(timer);
       }

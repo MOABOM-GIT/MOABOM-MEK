@@ -85,6 +85,22 @@ export function prefetchMoabomGeneratedAppLibrary(): void {
   void ensureLoggedInLibraryLoadStarted();
 }
 
+/**
+ * 부트 파이프라인 catalog-critical 단계 — 선행 prefetch 완료를 기다린다.
+ * 토큰 없으면 즉시 resolve.
+ */
+export async function awaitMoabomGeneratedAppLibraryPrefetch(): Promise<void> {
+  if (!hasShellAccessToken()) {
+    return;
+  }
+
+  try {
+    await ensureLoggedInLibraryLoadStarted();
+  } catch {
+    // catalog-critical 은 library 실패여도 진행(React 훅이 재시도)
+  }
+}
+
 export async function loadMoabomGeneratedAppLibrary(
   isLoggedIn: boolean,
 ): Promise<MoabomGeneratedAppLibraryPayload> {

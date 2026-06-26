@@ -24,6 +24,7 @@ import {
 } from '../utils/moabomShellNotificationUtils';
 import { MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../layout/moabomShellPanelLayout';
 import { MOABOM_SHELL_UNREAD_SYNCED_EVENT } from '../runtime/moabomShellChatSyncService';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 
 interface UseMoabomShellNotificationsOptions {
   isLoggedIn: boolean;
@@ -185,7 +186,9 @@ export function useMoabomShellNotifications({
       return;
     }
 
-    void refreshUnreadCount();
+    return whenMoabomBootPhaseAtLeast('secondary', () => {
+      void refreshUnreadCount();
+    });
   }, [isLoggedIn, refreshUnreadCount]);
 
   useEffect(() => {
@@ -216,7 +219,10 @@ export function useMoabomShellNotifications({
     if (!isLoggedIn || !alarmTabActive) {
       return;
     }
-    void reloadList();
+
+    return whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      void reloadList();
+    });
   }, [alarmTabActive, isLoggedIn, reloadList]);
 
   return {

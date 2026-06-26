@@ -30,7 +30,7 @@ import {
   subscribeShellNoticeBoardChanged,
   type ShellNoticeBoardChangedDetail,
 } from '../../shell/moaShellNoticeBoardEvents';
-import { deferShellSecondaryWork } from '../../shell/moaShellDeferredWork';
+import { deferShellSecondaryWork, deferShellTertiaryWork } from '../../shell/moaShellDeferredWork';
 import { prefetchBoardWindowLayouts } from '../../shell/boardWindowPrefetch';
 import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShellNoticeBoardPreview';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
@@ -281,7 +281,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       }
     }
 
-    void loadRankings();
+    deferShellTertiaryWork(() => {
+      void loadRankings();
+    }, 120);
 
     return () => controller.abort();
   }, [activeNav]);
@@ -291,7 +293,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       return;
     }
 
-    prefetchBoardWindowLayouts(MOA_SHELL_NOTICE_BOARD_SLUG);
+    deferShellTertiaryWork(() => {
+      prefetchBoardWindowLayouts(MOA_SHELL_NOTICE_BOARD_SLUG);
+    }, 0);
 
     let controller = new AbortController();
     let requestId = 0;

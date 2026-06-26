@@ -57,6 +57,13 @@
   --moa-glass-sm-inset-bottom: rgba(255, 255, 255, 0.2);
   --moa-glass-sm-outer-shadow: rgba(27, 26, 29, 0.03);
 
+  /** glass-xs: 아이콘 버튼용 — glass-sm 보다 더 옅음 */
+  --moa-glass-xs-surface: #ffffff33;
+  --moa-glass-xs-border: rgba(255, 255, 255, 0.22);
+  --moa-glass-xs-inset-top: rgba(255, 255, 255, 0.22);
+  --moa-glass-xs-inset-bottom: rgba(255, 255, 255, 0.12);
+  --moa-glass-xs-outer-shadow: rgba(27, 26, 29, 0.02);
+
   /** glass-sm-blur: 흐림 추가본 */
   --moa-glass-smblur-surface: #ffffffc7;
   --moa-glass-smblur-border: #ffffff70;
@@ -120,6 +127,12 @@
   --moa-glass-sm-inset-top: #1b1a1d52;
   --moa-glass-sm-inset-bottom: #ffffff0f;
   --moa-glass-sm-outer-shadow: #1b1a1d00;
+
+  --moa-glass-xs-surface: #1b1a1d52;
+  --moa-glass-xs-border: #1b1a1d80;
+  --moa-glass-xs-inset-top: #1b1a1d3d;
+  --moa-glass-xs-inset-bottom: #ffffff0a;
+  --moa-glass-xs-outer-shadow: #1b1a1d00;
 
   --moa-field-reuse-surface-bg: rgb(0 0 0 / 40%);
 

@@ -303,6 +303,10 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
 
   const profileReady = viewPayloads.profile != null;
   const postsReady = viewPayloads.posts != null;
+  const showRefetchOverlay = refetching && (
+    (userProfileView === 'profile' && profileReady)
+    || (userProfileView === 'posts' && postsReady)
+  );
   const showChrome = Boolean(activePayload) || loading || refetching;
 
   if (!showChrome) {
@@ -336,7 +340,7 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
       </Div>
 
       <Div className="moa-user-profile-slide-viewport relative min-h-0 flex-1">
-        {refetching ? (
+        {showRefetchOverlay ? (
           <Div
             className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[1px]"
             aria-busy="true"

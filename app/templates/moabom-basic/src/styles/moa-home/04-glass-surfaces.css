@@ -33,6 +33,16 @@
     inset 0 -1px 0 var(--moa-glass-inset-bottom);
 }
 
+/* 글래스 효과 (초소형 아이콘 버튼) — 토큰 기반 */
+.glass-xs {
+  background: var(--moa-glass-xs-surface);
+  border: 1px solid var(--moa-glass-xs-border);
+  box-shadow:
+    0 1px 4px var(--moa-glass-xs-outer-shadow),
+    inset 0 1px 0 var(--moa-glass-xs-inset-top),
+    inset 0 -1px 0 var(--moa-glass-xs-inset-bottom);
+}
+
 /* 글래스 효과 (소형) — 토큰 기반 */
 .glass-sm {
   background: var(--moa-glass-sm-surface);

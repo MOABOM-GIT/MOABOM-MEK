@@ -57,16 +57,6 @@
       },
       "children": [
             {
-              "comment": "로딩 상태",
-              "type": "composite",
-              "name": "AppLoadingSpinner",
-              "if": "{{userPosts.loading && !userPosts.data}}",
-              "props": {
-                "label": "$t:nav.loading",
-                "className": "py-20"
-              }
-            },
-            {
               "comment": "게시글 목록",
               "type": "basic",
               "name": "Div",

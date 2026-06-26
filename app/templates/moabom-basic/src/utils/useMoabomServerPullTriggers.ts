@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isMoabomBootPhaseAtLeast, whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 
 interface UseMoabomServerPullTriggersOptions {
   enabled?: boolean;
@@ -48,12 +49,21 @@ export function useMoabomServerPullTriggers(
     };
 
     const schedulePull = () => {
-      if (timeoutRef.current !== undefined) {
-        clearTimeout(timeoutRef.current);
+      const runScheduled = () => {
+        if (timeoutRef.current !== undefined) {
+          clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = setTimeout(() => {
+          void runPull();
+        }, debounceMs);
+      };
+
+      if (isMoabomBootPhaseAtLeast('secondary')) {
+        runScheduled();
+        return;
       }
-      timeoutRef.current = setTimeout(() => {
-        void runPull();
-      }, debounceMs);
+
+      whenMoabomBootPhaseAtLeast('secondary', runScheduled);
     };
 
     const onVisibilityChange = () => {

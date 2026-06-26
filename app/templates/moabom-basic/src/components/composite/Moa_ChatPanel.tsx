@@ -348,8 +348,6 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                     ) : null}
                     <Button
                       type="button"
-                      variant="dark-outline"
-                      size="xxs"
                       className="moa-chat-conversation-item__delete shrink-0 rounded-lg border-0 px-1.5"
                       aria-label={t('moa_chat.delete_conversation')}
                       disabled={deletingConversationUuid === conversation.uuid}
@@ -407,7 +405,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
               <Button
                 type="button"
                 variant="dark-outline"
-                size="xs"
+                size="sm"
                 className="moa-chat-header__mute-toggle shrink-0"
                 style={{ justifyContent: 'space-between', gap: '0.5rem' }}
                 aria-pressed={!chat.activeConversation.is_muted}
