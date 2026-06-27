@@ -169,16 +169,26 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
   ), [currentUserUuid]);
 
   const activePeerMembers = useMemo(
-    () => peerMembers(chat.activeConversation?.members ?? []),
+    () => peerMembers(chat.activeConversation?.members ?? []).filter(member => !member.has_left),
     [chat.activeConversation?.members, peerMembers],
   );
+
+  const leftPeerMembers = useMemo(
+    () => peerMembers(chat.activeConversation?.members ?? []).filter(member => member.has_left),
+    [chat.activeConversation?.members, peerMembers],
+  );
+
+  const composerWritable = chat.activeConversation?.is_writable !== false;
 
   const headerNickname = useMemo(() => {
     if (activePeerMembers.length === 1) {
       return chatMemberNickname(activePeerMembers[0]);
     }
+    if (leftPeerMembers.length === 1 && activePeerMembers.length === 0) {
+      return chatMemberNickname(leftPeerMembers[0]);
+    }
     return chat.activeConversation?.display_title ?? t('moa_chat.no_conversation');
-  }, [activePeerMembers, chat.activeConversation?.display_title, t]);
+  }, [activePeerMembers, chat.activeConversation?.display_title, leftPeerMembers, t]);
 
   const headerRealNames = useMemo(() => (
     activePeerMembers
@@ -348,7 +358,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                     ) : null}
                     <Button
                       type="button"
-                      className="moa-chat-conversation-item__delete shrink-0 rounded-lg border-0 px-1.5"
+                      className="moa-btn-xxs moa-chat-conversation-item__delete"
                       aria-label={t('moa_chat.delete_conversation')}
                       disabled={deletingConversationUuid === conversation.uuid}
                       onClick={event => {
@@ -407,7 +417,6 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                 variant="dark-outline"
                 size="sm"
                 className="moa-chat-header__mute-toggle shrink-0"
-                style={{ justifyContent: 'space-between', gap: '0.5rem' }}
                 aria-pressed={!chat.activeConversation.is_muted}
                 onClick={() => void chat.toggleConversationMute()}
               >
@@ -490,13 +499,18 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
 
         <Div className="moa-chat-composer">
           {chat.error ? <Div className="moa-chat-composer__error">{chat.error}</Div> : null}
+          {!composerWritable && leftPeerMembers.length > 0 ? (
+            <Div className="moa-chat-composer__peer-left text-sm text-muted px-2 py-1">
+              {t('moa_chat.peer_left', { name: chatMemberNickname(leftPeerMembers[0]) })}
+            </Div>
+          ) : null}
           <Div className="moa-chat-composer__row">
             <Textarea
               value={message}
               placeholder={t('moa_chat.message_placeholder')}
               className="moa-chat-composer__input"
               rows={1}
-              disabled={!chat.activeConversation}
+              disabled={!chat.activeConversation || !composerWritable}
               onChange={event => {
                 setMessage(event.target.value);
                 chat.signalTyping();
@@ -506,7 +520,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
               type="button"
               variant="primary"
               className="moa-chat-composer__send"
-              disabled={!chat.activeConversation || !message.trim() || chat.submittingMessage}
+              disabled={!chat.activeConversation || !composerWritable || !message.trim() || chat.submittingMessage}
               onClick={() => void submit()}
             >
               {t('moa_chat.send')}

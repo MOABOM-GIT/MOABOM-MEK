@@ -8,6 +8,7 @@ import {
 import {
   buildUserProfilePayloadCacheKey,
   getCachedUserProfilePayload,
+  invalidateUserProfileShellBindingCache,
   resolveUserProfileWindowQuery,
   setCachedUserProfilePayload,
 } from '../../shell/userProfileWindowPrefetch';
@@ -123,7 +124,11 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
     if (prevUserUuidRef.current === userUuid) {
       return;
     }
+    const previousUserUuid = prevUserUuidRef.current;
     prevUserUuidRef.current = userUuid;
+    if (previousUserUuid && previousUserUuid !== userUuid) {
+      invalidateUserProfileShellBindingCache();
+    }
     setViewPayloads({ profile: null, posts: null });
     setError(null);
     setLoading(true);

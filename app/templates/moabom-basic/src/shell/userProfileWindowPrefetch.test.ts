@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   buildUserProfilePayloadCacheKey,
+  invalidateUserProfileShellBindingCache,
   resolveUserProfileShellSearch,
 } from './userProfileWindowPrefetch';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('userProfileWindowPrefetch', () => {
   it('캐시 키에 uuid·view·page를 포함한다', () => {
@@ -17,5 +22,24 @@ describe('userProfileWindowPrefetch', () => {
 
   it('posts 탭 URL에서는 page 쿼리를 유지한다', () => {
     expect(resolveUserProfileShellSearch('posts', '?page=2')).toBe('?page=2');
+  });
+
+  it('invalidateUserProfileShellBindingCache는 프로필 data_source 바인딩 키만 무효화한다', () => {
+    const invalidateCacheByKeys = vi.fn();
+    vi.stubGlobal('window', {
+      G7Core: {
+        getDataBindingEngine: () => ({ invalidateCacheByKeys }),
+      },
+    });
+
+    invalidateUserProfileShellBindingCache();
+
+    expect(invalidateCacheByKeys).toHaveBeenCalledWith([
+      'profile',
+      'postStats',
+      'recentPosts',
+      'userProfile',
+      'userPosts',
+    ]);
   });
 });

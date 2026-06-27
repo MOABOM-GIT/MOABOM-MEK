@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMoabomDarkMode } from '../../hooks/useMoabomDarkMode';
 import { useMoaPanelScrollDrag } from '../../hooks/Moa_usePanelScrollDrag';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
@@ -34,13 +34,11 @@ import { deferShellSecondaryWork, deferShellTertiaryWork } from '../../shell/moa
 import { prefetchBoardWindowLayouts } from '../../shell/boardWindowPrefetch';
 import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShellNoticeBoardPreview';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
-import { MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
+import { MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX, MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
-import { useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
+import { resolveMoabomSiteLogoFallbackUrl, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
+import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
 import AppLoadingSpinner from './AppLoadingSpinner';
-
-/** 메인 좌측 패널 하단 고정 네비 슬롯 높이 */
-const NAV_H = 78;
 
 type LeftPanelNoticeItem = ShellNoticePreviewItem;
 
@@ -206,6 +204,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const isDark = useMoabomDarkMode();
   const { t } = useMoabomShellT();
   const { lightUrl: logoImageLight, darkUrl: logoImageDark } = useMoabomSiteLogoUrls();
+  const preferredLogoSrc = isDark ? logoImageDark : logoImageLight;
+  const [logoSrc, setLogoSrc] = useState(preferredLogoSrc);
+
+  useEffect(() => {
+    setLogoSrc(preferredLogoSrc);
+  }, [preferredLogoSrc]);
   const { setNodeRef: setLeftPanelDropRef } = useDroppable({ id: 'left-panel' });
   const [activeNav, setActiveNav] = useState('launcher');
   const [rankingSubTab, setRankingSubTab] = useState<'apps' | 'users'>('apps');
@@ -246,14 +250,15 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     return appRankings.filter(item => allowedIds.has(item.app_id));
   }, [appRankings, rankingLibraryApps]);
 
-  useEffect(() => {
-    if (activeNav !== 'economy') {
-      return;
-    }
+  const rankingAbortRef = useRef<AbortController | null>(null);
+  const noticeReloadRef = useRef<(() => void) | null>(null);
 
+  const reloadRankings = useCallback(() => {
+    rankingAbortRef.current?.abort();
     const controller = new AbortController();
+    rankingAbortRef.current = controller;
 
-    async function loadRankings(): Promise<void> {
+    void (async () => {
       try {
         setRankingLoading(true);
         setRankingLoadFailed(false);
@@ -279,17 +284,30 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           setRankingLoading(false);
         }
       }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (activeNav !== 'economy') {
+      return;
     }
 
     deferShellTertiaryWork(() => {
-      void loadRankings();
+      reloadRankings();
     }, 120);
 
-    return () => controller.abort();
-  }, [activeNav]);
+    return () => {
+      rankingAbortRef.current?.abort();
+    };
+  }, [activeNav, reloadRankings]);
+
+  const reloadNoticeBoard = useCallback(() => {
+    noticeReloadRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (activeNav !== 'notice') {
+      noticeReloadRef.current = null;
       return;
     }
 
@@ -327,14 +345,43 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       deferShellSecondaryWork(() => loadNoticeBoardItems(signal), 120);
     };
 
+    noticeReloadRef.current = reload;
     reload();
 
     const unsubscribe = subscribeShellNoticeBoardChanged(reload);
 
     return () => {
+      noticeReloadRef.current = null;
       controller.abort();
       unsubscribe();
     };
+  }, [activeNav]);
+
+  const settledLauncherTab = useShellSubTabSettle(activeTab);
+  const settledRankingSubTab = useShellSubTabSettle(rankingSubTab);
+  const settledMyappSubTab = useShellSubTabSettle(myappSubTab);
+  const settledNoticeSubTab = useShellSubTabSettle(noticeSubTab);
+
+  const handleLauncherSubTabChange = useShellSubTabSelect(activeTab, settledLauncherTab, onTabChange);
+  const handleRankingSubTabChange = useShellSubTabSelect(
+    rankingSubTab,
+    settledRankingSubTab,
+    setRankingSubTab,
+    () => reloadRankings(),
+  );
+  const handleMyappSubTabChange = useShellSubTabSelect(myappSubTab, settledMyappSubTab, setMyappSubTab);
+  const handleNoticeSubTabChange = useShellSubTabSelect(
+    noticeSubTab,
+    settledNoticeSubTab,
+    setNoticeSubTab,
+    () => reloadNoticeBoard(),
+  );
+
+  const handleNavChange = useCallback((navId: string) => {
+    if (navId === activeNav) {
+      return;
+    }
+    setActiveNav(navId);
   }, [activeNav]);
 
   const noticeItems = noticeSubTab === 'updates' ? noticeBoardItems.updates : noticeBoardItems.notices;
@@ -346,25 +393,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         return {
           tabs: [{ id: 'basic', label: t('moa_shell.left.tabs_basic_apps') }, { id: 'user', label: t('moa_shell.left.tabs_user_apps') }],
           activeTab: activeTab,
-          onTabChange: (id: string) => onTabChange(id as 'basic' | 'user'),
+          onTabChange: handleLauncherSubTabChange,
         };
       case 'economy':
         return {
           tabs: [{ id: 'apps', label: t('moa_shell.left.tabs_rank_apps') }, { id: 'users', label: t('moa_shell.left.tabs_rank_users') }],
           activeTab: rankingSubTab,
-          onTabChange: (id: string) => setRankingSubTab(id as 'apps' | 'users'),
+          onTabChange: handleRankingSubTabChange,
         };
       case 'myapp':
         return {
           tabs: [{ id: 'myapps', label: t('moa_shell.left.tabs_my_apps') }, { id: 'favorites', label: t('moa_shell.left.tabs_favorites') }],
           activeTab: myappSubTab,
-          onTabChange: (id: string) => setMyappSubTab(id as 'favorites' | 'myapps'),
+          onTabChange: handleMyappSubTabChange,
         };
       case 'notice':
         return {
           tabs: [{ id: 'notices', label: t('moa_shell.left.tabs_notices') }, { id: 'updates', label: t('moa_shell.left.tabs_updates') }],
           activeTab: noticeSubTab,
-          onTabChange: (id: string) => setNoticeSubTab(id as 'notices' | 'updates'),
+          onTabChange: handleNoticeSubTabChange,
         };
       default:
         return null;
@@ -392,10 +439,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       {/* 로고 */}
       <Div className="glass p-6 shrink-0 flex flex-col items-center gap-2 rounded-2xl relative">
         <Img
-          src={isDark ? logoImageDark : logoImageLight}
+          src={logoSrc}
           alt="SMARTCARE"
           className="h-8 mb-2 object-contain cursor-pointer"
           onClick={() => (window.location.href = '/')}
+          onError={() => {
+            setLogoSrc(resolveMoabomSiteLogoFallbackUrl(isDark ? 'dark' : 'light'));
+          }}
         />
         <Div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'color-mix(in srgb, var(--moa-point-color) 8%, transparent)' }}>
           <Icon name="bolt" className="text-xs" style={{ color: 'var(--moa-point-color)' }} />
@@ -408,7 +458,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         <Div
           ref={panelScrollRef}
           className="moa-panel-scroll absolute inset-0 overflow-y-auto px-3 scrollbar-hide"
-          style={{ paddingTop: `${MOABOM_SHELL_SUB_TAB_SLOT_PX}px`, paddingBottom: `${NAV_H}px` }}
+          style={{
+            paddingTop: `${MOABOM_SHELL_SUB_TAB_SLOT_PX}px`,
+            paddingBottom: `${MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX}px`,
+          }}
           {...panelScrollHandlers}
         >
           {/* 라이브러리 탭 - 앱 그리드 */}
@@ -670,7 +723,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
         {/* 하단 네비 */}
         <Div className="absolute bottom-0 left-0 right-0 z-10 rounded-2xl">
-          <Div className="glass-sm-blur p-2 rounded-2xl">
+          <Div className="glass-sm-blur p-1.5 rounded-2xl">
             <Div className="relative">
               {/* 이동하는 배경 */}
               <Div
@@ -688,7 +741,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                 {NAV_ITEMS.map(nav => (
                   <Button
                     key={nav.id}
-                    onClick={() => setActiveNav(nav.id)}
+                    onClick={() => handleNavChange(nav.id)}
                     className={`flex flex-col items-center gap-1 py-2 border-0 transition-colors duration-200 cursor-pointer ${
                       activeNav === nav.id
                         ? isDark

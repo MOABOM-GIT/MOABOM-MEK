@@ -21,6 +21,8 @@ export const MOABOM_CHAT_INBOX_SYNC_SAFETY_MS = 30_000;
 export const MOABOM_CHAT_INBOX_SYNC_SAFETY_CONNECTED_MS = 60_000;
 /** WS 끊김 시 알림·unread REST 동기화 */
 export const MOABOM_NOTIFICATION_SYNC_MS = 10_000;
+/** WS 연결 시 알림 안전망 (이벤트 누락 대비) */
+export const MOABOM_NOTIFICATION_SYNC_SAFETY_CONNECTED_MS = 60_000;
 
 export const MOABOM_SHELL_UNREAD_SYNCED_EVENT = 'moabom-shell-unread-synced';
 
@@ -121,6 +123,25 @@ function clearTimers(): void {
   }
 }
 
+function notificationSyncIntervalMs(): number {
+  return isMoabomWebSocketConnected()
+    ? MOABOM_NOTIFICATION_SYNC_SAFETY_CONNECTED_MS
+    : MOABOM_NOTIFICATION_SYNC_MS;
+}
+
+function rescheduleNotificationTimer(): void {
+  if (notificationTimer !== null) {
+    clearInterval(notificationTimer);
+    notificationTimer = null;
+  }
+  if (!syncActive) {
+    return;
+  }
+  notificationTimer = setInterval(() => {
+    void syncNotificationsFromRest();
+  }, notificationSyncIntervalMs());
+}
+
 function safetyInboxIntervalMs(): number {
   return isMoabomWebSocketConnected()
     ? MOABOM_CHAT_INBOX_SYNC_SAFETY_CONNECTED_MS
@@ -150,12 +171,7 @@ function schedulePolling(): void {
   }, MOABOM_CHAT_INBOX_SYNC_FAST_MS);
 
   rescheduleSafetyInboxTimer();
-
-  notificationTimer = setInterval(() => {
-    if (!isMoabomWebSocketConnected()) {
-      void syncNotificationsFromRest();
-    }
-  }, MOABOM_NOTIFICATION_SYNC_MS);
+  rescheduleNotificationTimer();
 }
 
 /**
@@ -170,6 +186,7 @@ export function startMoabomShellChatSyncService(): void {
         return;
       }
       rescheduleSafetyInboxTimer();
+      rescheduleNotificationTimer();
       if (isMoabomWebSocketConnected()) {
         void runCatchUpSync();
       }

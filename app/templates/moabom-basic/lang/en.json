@@ -64,7 +64,9 @@
     "mute_toggle_on": "Enable notifications",
     "delete_message": "Delete",
     "delete_conversation": "Delete conversation",
-    "toast_conversation_removed": "Conversation removed from your list."
+    "toast_conversation_removed": "Conversation removed from your list.",
+    "peer_left": "{{name}} left the conversation.",
+    "peer_left_send_blocked": "The other person left. You cannot send messages."
   },
   "moa_profile_actions": {
     "friend_add": "Add friend",

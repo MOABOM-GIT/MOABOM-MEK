@@ -14,6 +14,7 @@ import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LoginPrompt } from './Moa_LoginPrompt';
 import { useMoabomPresence } from '../../hooks/useMoabomPresence';
+import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
 import type { AuthWindowMode } from './Moa_AuthWindowContent';
 import { MOABOM_SHELL_SUB_TAB_SLOT_PX, MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../../layout/moabomShellPanelLayout';
@@ -27,7 +28,7 @@ import {
 import { isShellNotificationUnread } from '../../utils/moabomShellNotificationUtils';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import type { ClientFormFactor } from '../../api/moabomPresenceApi';
-import { presenceAvatarAwayClass, presenceStatusDotClass } from '../../utils/presenceAvailability';
+import { presenceAvatarGrayscaleClass, presenceStatusDotClass } from '../../utils/presenceAvailability';
 import { getShellAuthUserUuid, resolvePresenceListStatusLine, resolvePresenceListUserStatus } from '../../utils/presenceSettingsSync';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 import type { ShellSurfaceOpenAction, ShellUrlSyncOptions } from '../../shell/shellSurfaceTypes';
@@ -80,7 +81,7 @@ const RIGHT_TAB_KEYS = [
 
 const PRESENCE_MENU_WIDTH_PX = 152;
 const PRESENCE_ROW_ACTION_BUTTON_CLASS =
-  'w-7 h-7 rounded-lg glass-xs flex items-center justify-center border-0 shrink-0 cursor-pointer hover:opacity-90';
+  'w-7 h-7 moa-btn moa-btn-dark-outline moa-btn-xs shrink-0';
 
 interface PresenceUserActionsMenuProps {
   userUuid: string;
@@ -289,6 +290,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const { t } = useMoabomShellT();
   const { setNodeRef: setRightPanelDropRef } = useDroppable({ id: 'right-panel' });
   const [rightTab, setRightTab] = useState('connect');
+  const settledRightTab = useShellSubTabSettle(rightTab);
 
   const openProfileSurface = useCallback((
     userUuid: string,
@@ -321,9 +323,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     deleteAll,
     openNotification,
     loadMore: loadMoreNotifications,
+    reloadList: reloadNotifications,
   } = useMoabomShellNotifications({
     isLoggedIn,
-    alarmTabActive: rightTab === 'alarm',
+    alarmTabActive: settledRightTab === 'alarm',
     newNotificationToastText: t('moa_shell.right.new_notification_received'),
     newNotificationOpenText: t('moa_shell.right.notification_open'),
   });
@@ -335,11 +338,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     ownPresence,
     loadingOnline,
     loadingFriends,
+    refreshOnline,
+    refreshFriends,
     addFriend,
     acceptFriend,
   } = useMoabomPresence({
-    connectTabActive: rightTab === 'connect',
-    friendTabActive: rightTab === 'friend',
+    connectTabActive: settledRightTab === 'connect',
+    friendTabActive: settledRightTab === 'friend',
   });
 
   const onlineSummaryLabel = t('moa_shell.right.online_summary_live', {
@@ -355,7 +360,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     ownPresence?.availability ?? 'online',
     ownPresence?.is_reachable ?? isLoggedIn,
   );
-  const ownAvatarAwayClass = presenceAvatarAwayClass(
+  const ownAvatarAwayClass = presenceAvatarGrayscaleClass(
     ownPresence?.availability,
     ownPresence?.is_reachable ?? isLoggedIn,
   );
@@ -365,6 +370,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
     [rightTabs, unreadCount],
   );
+
+  const handleRightTabChange = useShellSubTabSelect(rightTab, settledRightTab, setRightTab, tabId => {
+    if (tabId === 'connect') {
+      void refreshOnline();
+    } else if (tabId === 'friend') {
+      void refreshFriends();
+    } else if (tabId === 'alarm') {
+      void reloadNotifications();
+    }
+  });
 
   const isOpen = rightOffset >= 0;
   /** 데스크톱 20px / 오버레이 기본 10px / 최소 구간 flush 시 0 */
@@ -486,7 +501,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <Button
                 onClick={handleOpenAdmin}
                 variant="primary-outline"
-                size="medium"
+                size="sm"
                 className="w-full mt-3 shadow-md"
               >
                 <Icon name="user-shield" />
@@ -524,7 +539,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       {onlineUsers.map(u => {
                         const deviceIcon = presenceClientFormFactorIcon(u.client_form_factor);
                         const listStatus = resolvePresenceListUserStatus(u, ownPresence, viewerUuid);
-                        const avatarAwayClass = presenceAvatarAwayClass(listStatus.availability, listStatus.isReachable);
+                        const avatarGrayscaleClass = presenceAvatarGrayscaleClass(listStatus.availability, listStatus.isReachable);
                         const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
                         return (
                         <Div
@@ -541,11 +556,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               <Img
                                 src={u.avatar}
                                 alt={u.display_name}
-                                className={`w-10 h-10 rounded-full object-cover${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
+                                className={`w-10 h-10 rounded-full object-cover${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                               />
                             ) : (
                               <Div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                                 style={{ background: 'var(--moa-point-color)' }}
                               >
                                 {(u.display_name || '?').charAt(0).toUpperCase()}
@@ -613,12 +628,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     <Div className="mt-2 flex flex-col gap-1">
                       {friends.map(u => {
                         const listStatus = resolvePresenceListUserStatus(u, ownPresence, viewerUuid);
-                        const avatarAwayClass = presenceAvatarAwayClass(listStatus.availability, listStatus.isReachable);
+                        const avatarGrayscaleClass = presenceAvatarGrayscaleClass(listStatus.availability, listStatus.isReachable);
                         const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
                         return (
                         <Div
                           key={u.user_uuid}
-                          className={`group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer ${!listStatus.isReachable ? 'opacity-70' : ''}`}
+                          className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
                           onClick={() => openProfileSurface(u.user_uuid, u.display_name)}
                         >
                           <Div className="relative shrink-0">
@@ -626,11 +641,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               <Img
                                 src={u.avatar}
                                 alt={u.display_name}
-                                className={`w-10 h-10 rounded-full object-cover${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
+                                className={`w-10 h-10 rounded-full object-cover${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                               />
                             ) : (
                               <Div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarAwayClass ? ` ${avatarAwayClass}` : ''}`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                                 style={{ background: 'var(--moa-point-color)' }}
                               >
                                 {(u.display_name || '?').charAt(0).toUpperCase()}
@@ -703,7 +718,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       <Div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="dark-outline"
-                          size="medium"
+                          size="sm"
                           className="flex-1 min-w-0"
                           disabled={markingAll || unreadCount === 0}
                           onClick={() => { void markAllRead(); }}
@@ -712,7 +727,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         </Button>
                         <Button
                           variant="dark-outline"
-                          size="medium"
+                          size="sm"
                           className="flex-1 min-w-0"
                           disabled={notificationsLoading || !notificationsHasMore}
                           onClick={() => { void loadMoreNotifications(); }}
@@ -722,7 +737,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         <Button
                           type="button"
                           variant="dark-outline"
-                          size="medium"
+                          size="sm"
                           className="shrink-0 px-3"
                           disabled={deletingAll || notificationItems.length === 0}
                           onClick={() => { void deleteAll(); }}
@@ -736,7 +751,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       <Div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="dark-outline"
-                          size="medium"
+                          size="sm"
                           className="flex-1 min-w-0"
                           disabled={markingAll || unreadCount === 0}
                           onClick={() => { void markAllRead(); }}
@@ -746,7 +761,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         <Button
                           type="button"
                           variant="dark-outline"
-                          size="medium"
+                          size="sm"
                           className="shrink-0 px-3"
                           disabled={deletingAll || notificationItems.length === 0}
                           onClick={() => { void deleteAll(); }}
@@ -763,7 +778,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </Div>
 
             <Div className="absolute top-0 left-0 right-0 z-10 py-2">
-              <SubTabBar tabs={rightTabsWithBadges} activeTab={rightTab} onTabChange={setRightTab} />
+              <SubTabBar tabs={rightTabsWithBadges} activeTab={rightTab} onTabChange={handleRightTabChange} />
             </Div>
           </Div>
 

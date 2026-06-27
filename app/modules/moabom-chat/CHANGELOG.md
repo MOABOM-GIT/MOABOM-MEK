@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1] - 2026-06-27
+
+### Added
+
+- 대화 나가기 시 상대방 `chat.inbox.updated` 실시간 브로드캐스트 (`reason: member.left`)
+- `is_writable`·`members[].has_left` 직렬화 — 상대 나감 시 입력 비활성화 SSOT
+- `conversation_peer_left` — API 전송·타이핑 차단
+
 ## [Unreleased]
 
 ### Added

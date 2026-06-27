@@ -19,6 +19,7 @@ final class WebsocketDriverConfigApplier
     public static function apply(array $driverSettings): void
     {
         $driverSettings = ReverbCredentialSync::mergeEnvSecretIntoDrivers($driverSettings);
+        $driverSettings = self::mergeEnvEndpointsIntoDrivers($driverSettings);
 
         if (empty($driverSettings['websocket_enabled'])) {
             Config::set('broadcasting.default', 'null');
@@ -97,5 +98,46 @@ final class WebsocketDriverConfigApplier
         if ($clientScheme !== '') {
             Config::set('g7.websocket.client.scheme', $clientScheme);
         }
+    }
+
+    /**
+     * 전용 realtime VM 등 — Run env 가 공유 WS endpoint SSOT 일 때 DB drivers endpoint 를 덮어쓴다.
+     *
+     * @param  array<string, mixed>  $drivers
+     * @return array<string, mixed>
+     */
+    public static function mergeEnvEndpointsIntoDrivers(array $drivers): array
+    {
+        $clientHost = trim((string) env('REVERB_HOST', ''));
+        if ($clientHost !== '') {
+            $drivers['websocket_host'] = $clientHost;
+        }
+
+        $clientPort = env('REVERB_PORT');
+        if ($clientPort !== null && $clientPort !== '') {
+            $drivers['websocket_port'] = (int) $clientPort;
+        }
+
+        $clientScheme = trim((string) env('REVERB_SCHEME', ''));
+        if ($clientScheme !== '') {
+            $drivers['websocket_scheme'] = $clientScheme;
+        }
+
+        $serverHost = trim((string) env('REVERB_SERVER_HOST', ''));
+        if ($serverHost !== '') {
+            $drivers['websocket_server_host'] = $serverHost;
+        }
+
+        $serverPort = env('REVERB_SERVER_PORT');
+        if ($serverPort !== null && $serverPort !== '') {
+            $drivers['websocket_server_port'] = (int) $serverPort;
+        }
+
+        $serverScheme = trim((string) env('REVERB_SERVER_SCHEME', ''));
+        if ($serverScheme !== '') {
+            $drivers['websocket_server_scheme'] = $serverScheme;
+        }
+
+        return $drivers;
     }
 }

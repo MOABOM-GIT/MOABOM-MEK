@@ -133,7 +133,7 @@ final class ChatService
             foreach ($memberIds as $memberId) {
                 $this->chat->restoreMemberIfTrashed($conversation->id, (int) $memberId);
             }
-            $conversation = $conversation->refresh()->load(['members.user', 'latestMessage.sender']);
+            $conversation = $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']);
         }
 
         return [
@@ -170,14 +170,17 @@ final class ChatService
             if ($existing) {
                 return [
                     'message' => $this->serializeMessage($existing),
-                    'conversation' => $this->serializeConversation($conversation->refresh()->load(['members.user', 'latestMessage.sender']), $sender),
+                    'conversation' => $this->serializeConversation(
+                        $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']),
+                        $sender,
+                    ),
                     'deduplicated' => true,
                 ];
             }
         }
 
         $message = $this->chat->createMessage($conversation->id, $sender->id, $this->normalizeBody($body), $clientMessageId);
-        $conversation = $conversation->refresh()->load(['members.user', 'latestMessage.sender']);
+        $conversation = $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']);
         $responsePayload = [
             'message' => $this->serializeMessage($message),
             'conversation' => $this->serializeConversation($conversation, $sender),
@@ -204,6 +207,11 @@ final class ChatService
     public function signalTyping(User $viewer, string $conversationUuid): array
     {
         $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
+        $conversation->loadMissing(['membersIncludingTrashed.user']);
+
+        if (! $this->resolveConversationWritable($conversation, $viewer, $conversation->membersIncludingTrashed)) {
+            throw new \InvalidArgumentException('conversation_peer_left');
+        }
 
         $payload = [
             'conversation_uuid' => $conversation->uuid,
@@ -231,6 +239,13 @@ final class ChatService
         }
 
         $this->clearConversationFocus($viewer, $conversation->uuid);
+
+        $conversation = $conversation->refresh()->load([
+            'members.user',
+            'membersIncludingTrashed.user',
+            'latestMessage.sender',
+        ]);
+        $this->broadcastInboxStateToActiveMembers($conversation, 'member.left');
 
         return [
             'conversation_uuid' => $conversation->uuid,
@@ -419,6 +434,26 @@ final class ChatService
         }
     }
 
+    private function broadcastInboxStateToActiveMembers(ChatConversation $conversation, string $reason): void
+    {
+        foreach ($conversation->members as $member) {
+            $recipient = $member->user;
+            if (! $recipient) {
+                continue;
+            }
+
+            HookManager::broadcast(
+                "core.user.notifications.{$recipient->uuid}",
+                'chat.inbox.updated',
+                [
+                    'conversation_uuid' => $conversation->uuid,
+                    'conversation' => $this->serializeConversation($conversation, $recipient),
+                    'reason' => $reason,
+                ],
+            );
+        }
+    }
+
     private function requireConversationForMember(User $viewer, string $conversationUuid): ChatConversation
     {
         $conversation = $this->chat->findConversationByUuid($conversationUuid);
@@ -431,6 +466,12 @@ final class ChatService
 
     private function assertConversationWritable(User $sender, ChatConversation $conversation): void
     {
+        $conversation->loadMissing(['membersIncludingTrashed.user', 'members.user']);
+
+        if (! $this->resolveConversationWritable($conversation, $sender, $conversation->membersIncludingTrashed)) {
+            throw new \InvalidArgumentException('conversation_peer_left');
+        }
+
         foreach ($conversation->members as $member) {
             if ((int) $member->user_id === (int) $sender->id || ! $member->user) {
                 continue;
@@ -475,6 +516,9 @@ final class ChatService
     {
         $member = $conversation->members->first(fn ($row) => (int) $row->user_id === (int) $viewer->id);
         $lastReadMessageId = $member?->last_read_message_id ? (int) $member->last_read_message_id : null;
+        $memberRows = $conversation->relationLoaded('membersIncludingTrashed')
+            ? $conversation->membersIncludingTrashed
+            : $conversation->members;
 
         return [
             'uuid' => $conversation->uuid,
@@ -484,8 +528,8 @@ final class ChatService
             'last_message_at' => $conversation->last_message_at?->toIso8601String(),
             'unread_count' => $this->chat->countUnread($conversation->id, $viewer->id, $lastReadMessageId),
             'channel' => $this->conversationChannelName($conversation),
-            'members' => $conversation->members
-                ->map(fn ($member) => $this->serializeMember($member->user))
+            'members' => $memberRows
+                ->map(fn (ChatConversationMember $memberRow) => $this->serializeMemberRow($memberRow))
                 ->filter()
                 ->values()
                 ->all(),
@@ -493,6 +537,7 @@ final class ChatService
             'peer_read' => $this->serializePeerReadStates($conversation, $viewer),
             'is_muted' => $this->isMemberMuted($member),
             'muted_until' => $member?->muted_until?->toIso8601String(),
+            'is_writable' => $this->resolveConversationWritable($conversation, $viewer, $memberRows),
         ];
     }
 
@@ -518,6 +563,45 @@ final class ChatService
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeMemberRow(ChatConversationMember $member): ?array
+    {
+        $serialized = $this->serializeMember($member->user);
+        if (! $serialized) {
+            return null;
+        }
+
+        if ($member->trashed()) {
+            $serialized['has_left'] = true;
+        }
+
+        return $serialized;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, ChatConversationMember>  $memberRows
+     */
+    private function resolveConversationWritable(
+        ChatConversation $conversation,
+        User $viewer,
+        \Illuminate\Support\Collection $memberRows,
+    ): bool {
+        $viewerMember = $memberRows->first(fn (ChatConversationMember $row) => (int) $row->user_id === (int) $viewer->id);
+        if (! $viewerMember || $viewerMember->trashed()) {
+            return false;
+        }
+
+        if ($conversation->type === ChatConversationType::Direct) {
+            return $memberRows
+                ->filter(fn (ChatConversationMember $row) => (int) $row->user_id !== (int) $viewer->id && ! $row->trashed())
+                ->isNotEmpty();
+        }
+
+        return true;
     }
 
     /**

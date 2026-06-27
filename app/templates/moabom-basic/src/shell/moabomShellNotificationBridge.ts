@@ -6,6 +6,7 @@ import {
   pushFriendAcceptConfirmToast,
   resolveFriendRequesterName,
 } from './moabomFriendNotificationActions';
+import { notifyMoabomPresenceFriendsChanged } from './moabomPresenceFriendsSync';
 import { moabomT } from '../i18n/moabomT';
 import { navigateMoabomNotificationUrl } from '../utils/moabomNotificationNavigateUrl';
 import { extractChatSenderUuidFromUrl } from '../utils/moabomChatNotificationNavigate';
@@ -74,6 +75,10 @@ function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): 
       });
       return;
     }
+  }
+
+  if (notificationType === 'friend_accepted') {
+    notifyMoabomPresenceFriendsChanged();
   }
 
   const message = payload.subject?.trim() || moabomT('moa_shell.right.new_notification_received');

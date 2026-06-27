@@ -546,8 +546,8 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   }, [refreshOnline, refreshSummary]);
 
   const invalidatePresenceFromRevision = useCallback(() => {
-    void Promise.all([refreshSummary(), refreshOnline()]);
-  }, [refreshOnline, refreshSummary]);
+    void Promise.all([refreshSummary(), refreshOnline(), refreshFriends()]);
+  }, [refreshFriends, refreshOnline, refreshSummary]);
 
   useEffect(() => registerShellPresenceInvalidate(invalidatePresenceFromRevision), [
     invalidatePresenceFromRevision,
@@ -649,15 +649,18 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
 
   const addFriend = useCallback(async (userUuid: string) => {
     await requestPresenceFriend(userUuid);
+    notifyMoabomPresenceFriendsChanged();
     await Promise.all([refreshOnline(), refreshFriends()]);
   }, [refreshFriends, refreshOnline]);
 
   const acceptFriend = useCallback(async (userUuid: string) => {
     await acceptPresenceFriend(userUuid);
+    notifyMoabomPresenceFriendsChanged();
     await Promise.all([refreshOnline(), refreshFriends()]);
   }, [refreshFriends, refreshOnline]);
 
   const removeFriend = useCallback(async (userUuid: string) => {
+    setFriends(prev => prev.filter(friend => friend.user_uuid !== userUuid));
     await removePresenceFriend(userUuid);
     notifyMoabomPresenceFriendsChanged();
     await Promise.all([refreshOnline(), refreshFriends()]);

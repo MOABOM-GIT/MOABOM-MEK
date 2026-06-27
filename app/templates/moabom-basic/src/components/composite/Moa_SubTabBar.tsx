@@ -14,7 +14,7 @@ export interface SubTabBarProps {
   tabs: SubTabBarTab[];
   /** 현재 활성 탭 ID */
   activeTab: string;
-  /** 탭 변경 핸들러 */
+  /** 탭 변경 핸들러 (동일 탭 재클릭도 호출 — 부모에서 갱신 처리) */
   onTabChange: (tabId: string) => void;
   /** 추가 CSS 클래스 */
   className?: string;
@@ -36,13 +36,13 @@ export const SubTabBar: React.FC<SubTabBarProps> = ({
   const tabCount = tabs.length;
 
   return (
-    <Div className={`glass-sm-blur rounded-2xl p-2 relative ${className}`.trim()}>
+    <Div className={`glass-sm-blur rounded-2xl p-1.5 relative ${className}`.trim()}>
       {/* 슬라이딩 인디케이터 */}
       <Div
-        className="moa-point-fill absolute top-2 bottom-2 rounded-xl transition-all duration-300 ease-out"
+        className="moa-point-fill absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out"
         style={{
-          left: `calc(8px + ${activeIndex} * ((100% - 16px) / ${tabCount}))`,
-          width: `calc((100% - 16px) / ${tabCount})`,
+          left: `calc(6px + ${activeIndex} * ((100% - 12px) / ${tabCount}))`,
+          width: `calc((100% - 12px) / ${tabCount})`,
         }}
       />
       {/* 탭 버튼들 */}

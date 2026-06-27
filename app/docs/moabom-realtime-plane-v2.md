@@ -81,7 +81,7 @@
 |-------|------|------|-----------|
 | **R0** | ReverbCredentialSync + nginx `/app/{key}` 분리 | ✅ | WS handshake 성공, 콘솔 연결 오류 없음 |
 | **R1** | PresencePlatformMirrorService + summary health | ✅ | mirror_degraded 시 플랫폼 `—` 표시 |
-| **R2** | WS 연결 후 revision 구독 E2E | 🔄 | heartbeat → revision → 1회 refetch |
+| **R2** | WS 연결 후 revision 구독 E2E | ✅ | friendship revision bump 포함 |
 | **R3** | visitors 테이블로 sessions 대체 | ⏳ | P6 migration |
 | **R4** | ShellSurfaceController 흡수 완료 | ⏳ | P1–P5 |
 | **R5** | platform_total UI — 글로벌 vs 테넌트 분리 표기 | ⏳ | `platform_tenant_active` 노출 |

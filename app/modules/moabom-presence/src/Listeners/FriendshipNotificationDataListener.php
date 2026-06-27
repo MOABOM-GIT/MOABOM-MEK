@@ -63,6 +63,10 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
             return $this->extractFriendRequestData($default, $args);
         }
 
+        if ($type === 'friend_accepted') {
+            return $this->extractFriendAcceptedData($default, $args);
+        }
+
         if ($type === 'friend_removed') {
             return $this->extractFriendRemovedData($default, $args);
         }
@@ -98,6 +102,46 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
                 'app_name' => (string) config('app.name'),
                 'requester_name' => $requesterName,
                 'requester_uuid' => $requester->uuid,
+                'site_url' => (string) config('app.url'),
+            ],
+            'context' => [
+                'trigger_user_id' => $requester->id,
+                'trigger_user' => $requester,
+                'related_users' => [
+                    'addressee' => $addressee,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{notifiable: mixed, notifiables: mixed, data: array<string, mixed>, context: array<string, mixed>}  $default
+     * @param  array<int, mixed>  $args
+     * @return array{notifiable: null, notifiables: null, data: array<string, mixed>, context: array<string, mixed>}
+     */
+    private function extractFriendAcceptedData(array $default, array $args): array
+    {
+        $friendship = $args[0] ?? null;
+        $requester = $args[1] ?? null;
+        $addressee = $args[2] ?? null;
+
+        if (! $friendship instanceof Friendship || ! $requester instanceof User || ! $addressee instanceof User) {
+            return $default;
+        }
+
+        $accepterName = trim((string) ($addressee->nickname ?: $addressee->name));
+        if ($accepterName === '') {
+            $accepterName = 'User #'.$addressee->id;
+        }
+
+        return [
+            'notifiable' => null,
+            'notifiables' => null,
+            'data' => [
+                'name' => '{recipient_name}',
+                'app_name' => (string) config('app.name'),
+                'accepter_name' => $accepterName,
+                'accepter_uuid' => $addressee->uuid,
                 'site_url' => (string) config('app.url'),
             ],
             'context' => [

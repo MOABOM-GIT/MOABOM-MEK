@@ -5,7 +5,7 @@
         "ko": "Moabom Reverb",
         "en": "Moabom Reverb"
     },
-    "version": "0.1.1",
+    "version": "0.1.2",
     "license": "MIT",
     "description": {
         "ko": "Laravel Reverb WebSocket — 신규 테넌트 drivers 시드·런타임 hydration. moabom-system SaaS hydrator/seeder 와 Hook 으로만 연결한다.",

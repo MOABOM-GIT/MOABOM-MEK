@@ -11,6 +11,7 @@ export type ChatMember = {
   nickname?: string | null;
   real_name?: string | null;
   avatar?: string | null;
+  has_left?: boolean;
 };
 
 export type ChatPeerRead = {
@@ -46,6 +47,7 @@ export type ChatConversation = {
   peer_read?: ChatPeerRead[];
   is_muted?: boolean;
   muted_until?: string | null;
+  is_writable?: boolean;
 };
 
 export type ChatBlock = {

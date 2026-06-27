@@ -25,6 +25,8 @@ export function resolveChatReasonToastKey(reason?: string | null): string {
       return 'moa_chat.toast_blocked_by_peer';
     case 'chat_request_rejected':
       return 'moa_chat.toast_request_rejected';
+    case 'conversation_peer_left':
+      return 'moa_chat.peer_left_send_blocked';
     default:
       return 'moa_chat.toast_request_rejected';
   }

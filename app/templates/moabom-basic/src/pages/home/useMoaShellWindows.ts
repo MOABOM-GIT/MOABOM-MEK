@@ -30,6 +30,7 @@ import {
   onProfileSurfaceSubjectChange,
   purgeProfileSurfaceWindows,
   reconcileProfileSurfaceWindows,
+  resolveProfileSurfaceSubjectUuid,
 } from '../../shell/shellProfileSurface';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import {
@@ -821,7 +822,10 @@ export function useMoaShellWindows({
       };
 
       const priorSurface = findProfileSurfaceWindow(windowsRef.current);
-      onProfileSurfaceSubjectChange(priorSurface?.userProfileUuid, normalizedUuid);
+      onProfileSurfaceSubjectChange(
+        resolveProfileSurfaceSubjectUuid(priorSurface),
+        normalizedUuid,
+      );
 
       const existingAny = priorSurface
         ?? windowsRef.current.find(w => w.appId === appId);

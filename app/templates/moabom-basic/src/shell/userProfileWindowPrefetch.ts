@@ -111,6 +111,43 @@ export function clearUserProfilePayloadCache(): void {
   globalPayloadCache.clear();
 }
 
+/** users/show·users/posts data_source id — G7 단순 경로 바인딩 캐시 선택 무효화 */
+const USER_PROFILE_SHELL_DATA_SOURCE_IDS = [
+  'profile',
+  'postStats',
+  'recentPosts',
+  'userProfile',
+  'userPosts',
+] as const;
+
+type ShellBindingEngineLike = {
+  invalidateCacheByKeys?: (keys: string[]) => void;
+  clearCache?: () => void;
+};
+
+/**
+ * 프로필 subject 전환 시 G7 DataBindingEngine의 profile 관련 경로 캐시만 무효화.
+ * 추가 API 호출 없음 — `{{profile.data}}` 등 단순 바인딩이 이전 사용자에 고정되는 것을 방지.
+ */
+export function invalidateUserProfileShellBindingCache(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const engine = (window as { G7Core?: { getDataBindingEngine?: () => ShellBindingEngineLike | null } })
+    .G7Core?.getDataBindingEngine?.();
+  if (!engine) {
+    return;
+  }
+
+  if (typeof engine.invalidateCacheByKeys === 'function') {
+    engine.invalidateCacheByKeys([...USER_PROFILE_SHELL_DATA_SOURCE_IDS]);
+    return;
+  }
+
+  engine.clearCache?.();
+}
+
 /** 탭 전환 시 profile 뷰 URL — page 쿼리 제거 */
 export function resolveUserProfileShellSearch(
   view: UserProfileWindowView,

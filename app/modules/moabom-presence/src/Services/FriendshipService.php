@@ -16,6 +16,7 @@ final class FriendshipService
         private TenantOnlineUsersService $onlineUsers,
         private PresenceUserPreferencesRepositoryInterface $preferences,
         private PresencePresentationService $presentation,
+        private PresenceRevisionService $revisionService,
     ) {}
 
     /**
@@ -81,13 +82,16 @@ final class FriendshipService
                 return $existing;
             }
             if ($existing->status === FriendshipStatus::Pending && $existing->addressee_id === $requester->id) {
-                return $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+                $friendship = $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+
+                return $this->finalizeAcceptedFriendship($friendship, $existing->requester, $existing->addressee);
             }
 
             throw new \InvalidArgumentException('friendship_already_exists');
         }
 
         $friendship = $this->friendships->createRequest($requester->id, $addressee->id);
+        $this->revisionService->bump('friendship_requested');
         HookManager::doAction('moabom-presence.friendship.after_request', $friendship, $requester, $addressee);
 
         return $friendship;
@@ -100,16 +104,27 @@ final class FriendshipService
             throw new \InvalidArgumentException('friendship_request_not_found');
         }
 
-        return $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+        $friendship = $this->friendships->updateStatus($existing, FriendshipStatus::Accepted->value, now());
+
+        return $this->finalizeAcceptedFriendship($friendship, $requester, $viewer);
     }
 
     public function removeFriendship(User $viewer, User $other): int
     {
         $deleted = $this->friendships->deletePair($viewer->id, $other->id);
         if ($deleted > 0) {
+            $this->revisionService->bump('friendship_removed');
             HookManager::doAction('moabom-presence.friendship.after_remove', $viewer, $other);
         }
 
         return $deleted;
+    }
+
+    private function finalizeAcceptedFriendship(Friendship $friendship, User $requester, User $addressee): Friendship
+    {
+        $this->revisionService->bump('friendship_accepted');
+        HookManager::doAction('moabom-presence.friendship.after_accept', $friendship, $requester, $addressee);
+
+        return $friendship;
     }
 }

@@ -43,6 +43,11 @@ class ChatConversation extends Model
         return $this->hasMany(ChatConversationMember::class, 'conversation_id');
     }
 
+    public function membersIncludingTrashed(): HasMany
+    {
+        return $this->hasMany(ChatConversationMember::class, 'conversation_id')->withTrashed();
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(ChatMessage::class, 'conversation_id');

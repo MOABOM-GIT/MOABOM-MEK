@@ -19,12 +19,23 @@ export function presenceStatusDotClass(
   }
 }
 
-/** 자리 비움 — 접속자 목록 아바타(사진·이니셜) 회색 처리 */
+/** 자리 비움·오프라인 — 목록 아바타 회색 필터 */
+export function presenceAvatarGrayscaleClass(
+  availability: PresenceAvailability | undefined,
+  isReachable: boolean,
+): string {
+  if (!isReachable) {
+    return 'moa-presence-avatar-away';
+  }
+  return availability === 'away' ? 'moa-presence-avatar-away' : '';
+}
+
+/** @deprecated presenceAvatarGrayscaleClass 사용 */
 export function presenceAvatarAwayClass(
   availability: PresenceAvailability | undefined,
   isReachable: boolean,
 ): string {
-  return isReachable && availability === 'away' ? 'moa-presence-avatar-away' : '';
+  return presenceAvatarGrayscaleClass(availability, isReachable);
 }
 
 export function resolvePresenceSubtitle(

@@ -64,6 +64,9 @@ Backend (moabom-chat)
 | 동일 | `message.deleted` | 삭제 |
 | `core.user.notifications.{uuid}` | `notification.received` | 토스트 |
 | 동일 | `chat.inbox.updated` | 인박스 |
+| 동일 | `chat.inbox.updated` (`reason: member.left`) | 상대 대화 나가기 |
+
+**직렬화:** `is_writable`, `members[].has_left` — v0.2.1+
 
 ---
 

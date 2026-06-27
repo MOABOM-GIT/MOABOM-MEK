@@ -5,7 +5,7 @@
         "ko": "프로필 대화",
         "en": "Profile Chat"
     },
-    "version": "0.2.0",
+    "version": "0.2.1",
     "license": "MIT",
     "description": {
         "ko": "프로필 윈도우 1:1·그룹 대화, 메시지 보관, 대화거부, 실시간 채팅 이벤트를 제공합니다.",
@@ -14,7 +14,7 @@
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {
         "modules": {
-            "moabom-presence": ">=0.1.13",
+            "moabom-presence": ">=0.1.24",
             "moabom-system": ">=0.7.9"
         },
         "plugins": {

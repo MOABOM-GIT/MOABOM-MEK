@@ -47,7 +47,7 @@ body.lock-scroll {
   background: #9ca3af;
 }
 
-/** 접속자 목록 — 자리 비움 시 프로필 사진·이니셜 배경 회색 필터 */
+/** 접속자·친구 목록 — 자리 비움·오프라인 시 아바타 회색 필터 */
 .moa-presence-avatar-away {
   filter: grayscale(1);
 }

@@ -14,8 +14,7 @@ interface UseMoabomPresenceOptions {
 const TAB_POLL_MS = 30_000;
 
 /**
- * 탭별 목록 폴링 — Provider secondary bootstrap 이후(tertiary-idle)에만 시작.
- * 초기 online/friends 는 Provider heartbeat 가 담당해 중복 fetch 를 막는다.
+ * 탭별 목록 갱신 — tertiary-idle 이후 탭 활성화 시 1회 fetch, WS 끊김 시 30초 폴링.
  */
 function useTabListPolling(
   active: boolean,
@@ -43,10 +42,12 @@ function useTabListPolling(
     };
 
     cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      void refresh();
       syncPolling();
       unsubscribeWs = subscribeMoabomWebSocketConnectionChange(() => {
+        const wasPolling = timer !== undefined;
         syncPolling();
-        if (isMoabomWebSocketConnected()) {
+        if (wasPolling && isMoabomWebSocketConnected()) {
           void refresh();
         }
       });
@@ -62,7 +63,7 @@ function useTabListPolling(
   }, [active, refresh]);
 }
 
-/** 우측 패널 — Provider heartbeat·revision 위에서 WS 끊김 시에만 탭별 목록 폴링 */
+/** 우측 패널 — 탭 전환 시 목록 갱신, WS 끊김 시 탭별 폴링 */
 export function useMoabomPresence({
   connectTabActive,
   friendTabActive,

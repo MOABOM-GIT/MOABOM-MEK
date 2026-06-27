@@ -1,0 +1,26 @@
+{
+    "name": "moabom/reverb-standalone",
+    "type": "project",
+    "description": "Minimal Laravel host for Moabom dedicated Reverb on realtime VM",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^12.0",
+        "laravel/reverb": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

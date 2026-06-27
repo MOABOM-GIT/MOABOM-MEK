@@ -107,6 +107,42 @@ class Module extends AbstractModule
                 ],
             ],
             [
+                'type' => 'friend_accepted',
+                'hook_prefix' => 'moabom-presence',
+                'name' => [
+                    'ko' => '친구 수락',
+                    'en' => 'Friend Accepted',
+                ],
+                'description' => [
+                    'ko' => '내 친구 요청이 수락되면 요청자에게 발송',
+                    'en' => 'Sent to the requester when a friend request is accepted',
+                ],
+                'channels' => ['database'],
+                'hooks' => ['moabom-presence.friendship.after_accept'],
+                'variables' => [
+                    ['key' => 'name', 'description' => '수신자 이름'],
+                    ['key' => 'app_name', 'description' => '사이트명'],
+                    ['key' => 'accepter_name', 'description' => '수락자 표시 이름'],
+                    ['key' => 'accepter_uuid', 'description' => '수락자 UUID'],
+                    ['key' => 'site_url', 'description' => '사이트 URL'],
+                ],
+                'templates' => [
+                    [
+                        'channel' => 'database',
+                        'recipients' => [['type' => 'trigger_user']],
+                        'click_url' => '/users/{accepter_uuid}',
+                        'subject' => [
+                            'ko' => '친구 수락',
+                            'en' => 'Friend request accepted',
+                        ],
+                        'body' => [
+                            'ko' => '{accepter_name}님이 친구 요청을 수락했습니다.',
+                            'en' => '{accepter_name} accepted your friend request.',
+                        ],
+                    ],
+                ],
+            ],
+            [
                 'type' => 'friend_removed',
                 'hook_prefix' => 'moabom-presence',
                 'name' => [

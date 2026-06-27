@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.24] - 2026-06-27
+
+### Added
+
+- 친구 요청·수락 시 `presence.revision` bump — 접속자 목록·프로필 친구 버튼 실시간 동기화
+- `friend_accepted` 알림 — 요청자에게 수락 실시간 알림
+
+### Changed
+
+- `friendship.after_accept` 훅 추가 — 알림·확장 연동 SSOT
+
 ## [0.1.15] - 2026-06-24
 
 ### Fixed

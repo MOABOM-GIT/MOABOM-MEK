@@ -22,7 +22,8 @@ import {
   notifyMoabomShellChatBlockChanged,
   subscribeMoabomShellChatBlockChanged,
 } from '../shell/moabomShellChatBlockSync';
-import { notifyMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
+import { notifyMoabomPresenceFriendsChanged, subscribeMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
+import { registerShellPresenceInvalidate } from '../shell/ShellRealtimeStore';
 import { getShellAuthUserUuid } from '../utils/presenceSettingsSync';
 import { useMoabomPresenceContextOptional } from './MoabomPresenceProvider';
 
@@ -114,6 +115,24 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     }
   }, [presence]);
 
+  useEffect(() => {
+    if (!userUuid) {
+      return undefined;
+    }
+
+    const refresh = () => {
+      void refreshFriendState();
+    };
+
+    const unsubscribeFriends = subscribeMoabomPresenceFriendsChanged(refresh);
+    const unsubscribePresence = registerShellPresenceInvalidate(refresh);
+
+    return () => {
+      unsubscribeFriends();
+      unsubscribePresence();
+    };
+  }, [refreshFriendState, userUuid]);
+
   const removeFriendship = useCallback(async (uuid: string) => {
     setBusyFriend(true);
     try {
@@ -175,6 +194,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     setBusyFriend(true);
     try {
       await profileSocialRequestFriend(uuid);
+      notifyMoabomPresenceFriendsChanged();
       if (presence) {
         await refreshFriendState();
       } else {

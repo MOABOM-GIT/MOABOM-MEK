@@ -1,0 +1,35 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --bind 0.0.0.0
+    volumes:
+      - redis_data:/data
+    networks:
+      - realtime
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:6001:6001"
+    networks:
+      - realtime
+
+networks:
+  realtime:
+
+volumes:
+  redis_data:

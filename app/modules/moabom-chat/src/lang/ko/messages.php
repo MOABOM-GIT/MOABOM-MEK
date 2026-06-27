@@ -19,6 +19,7 @@ return [
     'blocked_by_self' => '대화거부한 사용자입니다.',
     'blocked_by_peer' => '상대방이 메시지를 수신받을 수 없습니다.',
     'conversation_not_found' => '대화방을 찾을 수 없습니다.',
+    'conversation_peer_left' => '상대방이 대화를 나갔습니다.',
     'message_not_found' => '메시지를 찾을 수 없습니다.',
     'message_body_required' => '메시지를 입력해주세요.',
     'typing_signaled' => '입력 중 상태를 전송했습니다.',

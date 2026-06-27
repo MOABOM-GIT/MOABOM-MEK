@@ -17,7 +17,7 @@ class ChatRepository implements ChatRepositoryInterface
     public function listConversationsForUser(int $userId, ?string $search, int $limit): Collection
     {
         $query = ChatConversation::query()
-            ->with(['members.user', 'latestMessage.sender'])
+            ->with(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender'])
             ->whereHas('members', fn ($memberQuery) => $memberQuery->where('user_id', $userId))
             ->orderByDesc('last_message_at')
             ->orderByDesc('id')
@@ -40,7 +40,7 @@ class ChatRepository implements ChatRepositoryInterface
     public function findConversationByUuid(string $uuid): ?ChatConversation
     {
         return ChatConversation::query()
-            ->with(['members.user', 'latestMessage.sender'])
+            ->with(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender'])
             ->where('uuid', $uuid)
             ->first();
     }
@@ -61,7 +61,7 @@ class ChatRepository implements ChatRepositoryInterface
         }
 
         return ChatConversation::query()
-            ->with(['members.user', 'latestMessage.sender'])
+            ->with(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender'])
             ->where('type', 'direct')
             ->where('direct_key', $this->directKey($ids->all()))
             ->first();
