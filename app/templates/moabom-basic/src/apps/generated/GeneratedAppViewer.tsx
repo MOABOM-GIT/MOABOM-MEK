@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type StoredGeneratedApp } from '../../api/moabomAppsApi';
 import { loadVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
 import { useMoabomShellT } from 'moabom-shell-i18n';
@@ -8,6 +8,7 @@ import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
 import {
+  type LiquidGlassBackdropTone,
   liquidGlassBackdropClassName,
   resolveLiquidGlassBackdropToneFromHtml,
 } from '../../components/composite/liquidGlassBackdropTone';
@@ -45,8 +46,10 @@ export function GeneratedAppViewer({
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [probedTone, setProbedTone] = useState<LiquidGlassBackdropTone | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const {
     toolbarStyle,
     isDragging,
@@ -60,6 +63,7 @@ export function GeneratedAppViewer({
     setIsLoading(true);
     setError('');
     setIsMenuOpen(false);
+    setProbedTone(null);
     resetPosition();
     setApp(null);
     setFrameUrl(null);
@@ -104,6 +108,60 @@ export function GeneratedAppViewer({
     }
   }, [isDragging]);
 
+  // iframe 내부 프로브가 회신한 배경 톤 수신 (cross-origin 안전: 톤 문자열만 신뢰).
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      // 자기 iframe 이 보낸 톤만 수용 — 여러 앱 창이 열려도 창별로 독립 동작한다.
+      if (event.source !== iframeRef.current?.contentWindow) {
+        return;
+      }
+      const data = event.data as { source?: string; type?: string; tone?: string } | null;
+      if (!data || data.source !== 'moabom-app' || data.type !== 'backdrop-tone') {
+        return;
+      }
+      if (data.tone === 'light' || data.tone === 'dark') {
+        setProbedTone(data.tone);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  // 오너 버튼의 현재 화면 위치를 iframe 좌표로 변환해 프로브에 측정 지점을 요청한다.
+  const requestBackdropProbe = useCallback(() => {
+    const frame = iframeRef.current;
+    if (!frame?.contentWindow) {
+      return;
+    }
+    const frameRect = frame.getBoundingClientRect();
+    const button = toolbarRef.current?.querySelector<HTMLElement>('.generated-app-owner-button');
+    const points: Array<{ x: number; y: number }> = [];
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      const cy = rect.top - frameRect.top + rect.height / 2;
+      points.push(
+        { x: rect.left - frameRect.left + rect.width / 2, y: cy },
+        { x: rect.left - frameRect.left + 6, y: cy },
+        { x: rect.right - frameRect.left - 6, y: cy },
+      );
+    } else {
+      points.push({ x: 28, y: frameRect.height - 28 });
+    }
+    frame.contentWindow.postMessage(
+      { source: 'moabom-shell', type: 'backdrop-probe', id: Date.now(), points },
+      '*',
+    );
+  }, []);
+
+  // 최초/드래그 종료 후 재측정 (드래그 중에는 생략).
+  useEffect(() => {
+    if (isDragging || !frameUrl) {
+      return;
+    }
+    const timer = window.setTimeout(requestBackdropProbe, 140);
+    return () => window.clearTimeout(timer);
+  }, [isDragging, frameUrl, requestBackdropProbe]);
+
   const ownerNickname = app?.owner?.nickname?.trim() || '';
   const permissions = app?.permissions;
   const isPublished = Boolean(app?.visibility && app.visibility !== 'private') || Boolean(app?.is_shared);
@@ -134,10 +192,12 @@ export function GeneratedAppViewer({
   const canCommunityRead = Boolean(permissions?.can_community_read !== false && onOpenAppCommunity);
   const canCommunityWrite = Boolean(isMember && permissions?.can_community_write);
   const hasActions = canEdit || canShare || canDelete || canCommunityRead;
-  const liquidGlassBackdropClass = useMemo(
-    () => liquidGlassBackdropClassName(resolveLiquidGlassBackdropToneFromHtml(app?.html)),
+  const staticTone = useMemo(
+    () => resolveLiquidGlassBackdropToneFromHtml(app?.html),
     [app?.html],
   );
+  // 런타임 프로브(실측) 우선, 미수신 시 HTML 정적 추정으로 폴백.
+  const liquidGlassBackdropClass = liquidGlassBackdropClassName(probedTone ?? staticTone);
 
   if (isLoading) {
     return (
@@ -216,7 +276,7 @@ export function GeneratedAppViewer({
                   aria-label={t('moa_mypage.library.edit_app')}
                   title={t('moa_mypage.library.edit_app')}
                   onClick={() => onEditGeneratedApp?.(serverId)}
-                  className="moa-btn moa-btn-xs generated-app-action-button is-edit"
+                  className="generated-app-action-button is-edit"
                 >
                   <Icon name="edit" />
                   <Span>{t('moa_mypage.library.edit_app')}</Span>
@@ -228,7 +288,7 @@ export function GeneratedAppViewer({
                   aria-label={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
                   title={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
                   onClick={handleToggleShare}
-                  className="moa-btn moa-btn-xs generated-app-action-button is-share"
+                  className="generated-app-action-button is-share"
                 >
                   <Icon name={isPublished ? 'share-alt' : 'share'} />
                   <Span>{t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}</Span>
@@ -240,7 +300,7 @@ export function GeneratedAppViewer({
                   aria-label={t('moa_mypage.library.delete_app')}
                   title={t('moa_mypage.library.delete_app')}
                   onClick={() => onDeleteGeneratedApp?.(serverId)}
-                  className="moa-btn moa-btn-xs generated-app-action-button is-danger"
+                  className="generated-app-action-button is-danger"
                 >
                   <Icon name="trash" />
                   <Span>{t('moa_mypage.library.delete_app')}</Span>
@@ -258,7 +318,7 @@ export function GeneratedAppViewer({
                       canWrite: canCommunityWrite,
                     });
                   }}
-                  className="moa-btn moa-btn-xs generated-app-action-button is-community"
+                  className="generated-app-action-button is-community"
                 >
                   <Icon name="comments" />
                   <Span>{t('moa_apps_ai.community.open')}</Span>
@@ -269,10 +329,14 @@ export function GeneratedAppViewer({
         </Div>
       ) : null}
       <iframe
+        ref={iframeRef}
         title={title || t('moa_apps_ai.preview_title')}
         className="generated-app-preview-frame"
         src={frameUrl}
         sandbox={generatedAppFrameSandbox(frameUrl, app?.app_type)}
+        onLoad={() => {
+          window.setTimeout(requestBackdropProbe, 140);
+        }}
       />
     </Div>
   );
