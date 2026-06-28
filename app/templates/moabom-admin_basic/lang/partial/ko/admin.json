@@ -1262,9 +1262,9 @@
       "site_url": "사이트 URL",
       "site_description": "사이트 설명",
       "site_description_placeholder": "사이트에 대한 간단한 설명을 입력하세요.",
-      "site_address": "병원 주소",
-      "site_address_placeholder": "찾아오시는길에 표시될 주소 (병원 생성 시 입력한 주소와 동일)",
-      "site_address_hint": "병원소개 앱의 찾아오시는길·Google 지도에 연동됩니다.",
+      "site_address": "업체 주소",
+      "site_address_placeholder": "찾아오시는길에 표시될 주소 (업체 추가 시 입력한 주소와 동일)",
+      "site_address_hint": "소개 앱의 찾아오시는길·Google 지도에 연동됩니다.",
       "admin_email": "관리자 이메일",
       "site_logo": "사이트 타이틀 이미지",
       "site_logo_desc": "라이트·다크 모드용 로고입니다. 비우면 기본 SMARTCARE 로고가 사용됩니다. SVG 포함.",
@@ -1534,6 +1534,10 @@
     "drivers": {
       "common": {
         "optional": "선택사항"
+      },
+      "runtime_locked": {
+        "title": "운영 드라이버는 Cloud Run 환경 변수 기준으로 고정됩니다.",
+        "desc": "이 화면은 실제 런타임 값을 표시합니다. cache/session/queue/log/websocket 등 인프라 드라이버 변경은 배포 환경 설정을 통해서만 반영됩니다."
       },
       "storage": {
         "title": "파일 스토리지",

@@ -102,23 +102,23 @@ class Module extends AbstractModule
                 [
                     'identifier' => 'saas',
                     'name' => [
-                        'ko' => 'SaaS 병원',
-                        'en' => 'SaaS Hospitals',
+                        'ko' => 'SaaS 업체',
+                        'en' => 'SaaS Companies',
                     ],
                     'description' => [
-                        'ko' => 'mek360.com 플랫폼 전용 병원 프로비저닝',
-                        'en' => 'Platform-only hospital provisioning',
+                        'ko' => 'mek360.com 플랫폼 전용 업체 프로비저닝',
+                        'en' => 'Platform-only company provisioning',
                     ],
                     'permissions' => [
                         [
                             'action' => 'read',
                             'name' => [
-                                'ko' => '병원 목록 조회',
-                                'en' => 'List Hospitals',
+                                'ko' => '업체 목록 조회',
+                                'en' => 'List Companies',
                             ],
                             'description' => [
-                                'ko' => '등록된 SaaS 병원 테넌트 조회',
-                                'en' => 'Read SaaS hospital tenants',
+                                'ko' => '등록된 SaaS 업체 테넌트 조회',
+                                'en' => 'Read SaaS company tenants',
                             ],
                             'type' => 'admin',
                             'roles' => ['admin'],
@@ -126,12 +126,12 @@ class Module extends AbstractModule
                         [
                             'action' => 'create',
                             'name' => [
-                                'ko' => '병원 생성',
-                                'en' => 'Create Hospital',
+                                'ko' => '업체 추가',
+                                'en' => 'Add Company',
                             ],
                             'description' => [
-                                'ko' => '신규 병원 테넌트 프로비저닝',
-                                'en' => 'Provision new hospital tenant',
+                                'ko' => '신규 업체 테넌트 프로비저닝',
+                                'en' => 'Provision new company tenant',
                             ],
                             'type' => 'admin',
                             'roles' => ['admin'],
@@ -139,8 +139,8 @@ class Module extends AbstractModule
                         [
                             'action' => 'purge',
                             'name' => [
-                                'ko' => '병원 데이터 정리',
-                                'en' => 'Purge Hospital Data',
+                                'ko' => '업체 데이터 정리',
+                                'en' => 'Purge Company Data',
                             ],
                             'description' => [
                                 'ko' => 'DB·Storage 운영 데이터 정리 (baseline 유지)',
@@ -152,8 +152,8 @@ class Module extends AbstractModule
                         [
                             'action' => 'destroy',
                             'name' => [
-                                'ko' => '병원 전체 삭제',
-                                'en' => 'Destroy Hospital',
+                                'ko' => '업체 전체 삭제',
+                                'en' => 'Destroy Company',
                             ],
                             'description' => [
                                 'ko' => '레지스트리·DB·GCS 완전 제거',

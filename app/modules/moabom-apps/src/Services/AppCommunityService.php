@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Moabom\Apps\Services;
 
+use App\Extension\HookManager;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 use Modules\Moabom\Apps\Enums\AppCommunityPostStatus;
@@ -121,7 +123,7 @@ class AppCommunityService
     public function createReview(int $appId, int $userId, array $data): array
     {
         AppCommunityTenantScope::assertWritableAuthorTenant();
-        $this->resolveWritableApp($appId, $userId);
+        $app = $this->resolveWritableApp($appId, $userId);
 
         $existing = $this->postRepository->findReviewForUser($appId, $userId, true);
         if ($existing !== null && ! $existing->trashed()) {
@@ -129,7 +131,7 @@ class AppCommunityService
         }
 
         try {
-            return $this->runCommunityMutation(function () use ($appId, $userId, $data, $existing): array {
+            $result = $this->runCommunityMutation(function () use ($appId, $userId, $data, $existing): array {
                 if ($existing !== null && $existing->trashed()) {
                     $existing->restore();
                     $post = $this->postRepository->update($existing, [
@@ -154,14 +156,39 @@ class AppCommunityService
                 $this->statsService->recalculate($appId);
                 $this->revisionService->bump($appId, 'review_created');
 
-                return $this->serializePost($post, $userId);
+                return [
+                    'item' => $this->serializePost($post, $userId),
+                    'post_id' => (int) $post->id,
+                ];
             });
+
+            $this->dispatchReviewCreatedHook($app, (int) $result['post_id']);
+
+            return $result['item'];
         } catch (QueryException $exception) {
             if ($this->isDuplicateReviewConstraint($exception)) {
                 throw new ConflictHttpException(__('moabom-apps::messages.apps.community.review_exists'), $exception);
             }
 
             throw $exception;
+        }
+    }
+
+    private function dispatchReviewCreatedHook(GeneratedApp $app, int $postId): void
+    {
+        $post = $this->postRepository->findPublishedForApp((int) $app->id, $postId);
+        if ($post === null) {
+            return;
+        }
+
+        try {
+            HookManager::doAction('moabom-apps.community_review.after_create', $post, $app);
+        } catch (\Throwable $exception) {
+            Log::warning('AppCommunityService: 리뷰 생성 알림 훅 실행 실패', [
+                'generated_app_id' => (int) $app->id,
+                'post_id' => $postId,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

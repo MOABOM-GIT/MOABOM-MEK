@@ -142,6 +142,38 @@ describe('GeneratedAppViewer', () => {
     expect(screen.queryByLabelText('moa_mypage.library.delete_app')).not.toBeInTheDocument();
   });
 
+  it('applies dark-backdrop liquid glass class from saved app background', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 7,
+      title: 'Dark Dashboard',
+      app_type: 'general',
+      html: '<!DOCTYPE html><html><head><style>body{background:#020617}</style></head><body></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
+      owner: { id: 1, nickname: 'A' },
+    });
+
+    renderViewer(7);
+
+    const creatorButton = await screen.findByRole('button', { name: 'A' });
+    expect(creatorButton.className).toContain('liquid-glass--on-dark');
+  });
+
+  it('applies dark-backdrop liquid glass class from Tailwind root background', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 7,
+      title: 'Dark Dashboard',
+      app_type: 'general',
+      html: '<!DOCTYPE html><html><body><div id="root" class="min-h-screen bg-slate-950"></div></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
+      owner: { id: 1, nickname: 'A' },
+    });
+
+    renderViewer(7);
+
+    const creatorButton = await screen.findByRole('button', { name: 'A' });
+    expect(creatorButton.className).toContain('liquid-glass--on-dark');
+  });
+
   it('updates share button state immediately after toggle', async () => {
     const onToggleGeneratedAppShare = vi.fn().mockResolvedValue(undefined);
     vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({

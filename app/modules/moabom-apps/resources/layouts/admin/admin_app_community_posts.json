@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.7",
   "layout_name": "admin_app_community_posts",
   "permissions": ["moabom-apps.community.read"],
   "extends": "_admin_base",
@@ -43,6 +43,7 @@
     "showTenantColumn": "{{((_local.listOverride || communityPosts?.data)?.meta?.abilities?.show_tenant_column) === true}}",
     "canFilterTenant": "{{((_local.listOverride || communityPosts?.data)?.meta?.abilities?.filter_tenant_slug) === true}}",
     "listMeta": "{{(_local.listOverride || communityPosts?.data)?.meta || {}}}",
+    "dataPlane": "{{(_local.listOverride || communityPosts?.data)?.meta?.data_plane || {}}}",
     "hasError": "{{!!_dataSourceErrors?.communityPosts}}"
   },
   "transition_overlay": {
@@ -458,6 +459,20 @@
                 "name": "P",
                 "props": { "className": "mt-1 text-sm text-gray-500 dark:text-gray-400" },
                 "text": "$t:moabom-apps.admin.community.empty_description"
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "if": "{{_computed.dataPlane?.table_exists === false}}",
+                "props": { "className": "mt-3 text-xs font-mono text-amber-600 dark:text-amber-400" },
+                "text": "$t:moabom-apps.admin.community.empty_table_missing"
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "if": "{{_computed.dataPlane?.table_exists !== false && _computed.dataPlane?.unscoped_total > 0}}",
+                "props": { "className": "mt-3 text-xs font-mono text-gray-400 dark:text-gray-500" },
+                "text": "$t:moabom-apps.admin.community.empty_filtered"
               }
             ]
           },
@@ -499,15 +514,15 @@
                   {
                     "type": "basic",
                     "name": "Tbody",
-                    "iteration": {
-                      "data": "{{_computed.itemsList}}",
-                      "item_var": "item",
-                      "index_var": "rowIndex"
-                    },
                     "children": [
                       {
                         "type": "basic",
                         "name": "Tr",
+                        "iteration": {
+                          "source": "{{_computed.itemsList}}",
+                          "item_var": "item",
+                          "index_var": "rowIndex"
+                        },
                         "props": { "className": "border-t border-gray-100 dark:border-gray-700" },
                         "children": [
                           {

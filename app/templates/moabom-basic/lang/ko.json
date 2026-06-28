@@ -551,7 +551,7 @@
       "toast_main_grid_saved": "메인 앱 배치를 저장했습니다.",
       "confirm_delete_generated": "생성 앱 \"{name}\"을(를) 영구 삭제할까요?",
       "toast_delete_generated_failed": "생성 앱 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.",
-      "toast_share_generated_on": "병원 앱 목록에 등록했습니다.",
+      "toast_share_generated_on": "업체 앱 목록에 등록했습니다.",
       "toast_share_generated_off": "앱 등록을 해제했습니다.",
       "toast_share_generated_failed": "공유 상태 변경에 실패했습니다. 잠시 후 다시 시도해주세요.",
       "sns_login_success": "SNS 로그인되었습니다.",
@@ -577,15 +577,15 @@
     },
     "consulting": {
       "name": "스마트 컨설팅",
-      "description": "병원 수익성 시뮬레이션 · 전자계약"
+      "description": "업체 수익성 시뮬레이션 · 전자계약"
     },
     "global-search": {
       "name": "전체검색",
       "description": "게시판 및 앱검색"
     },
     "hospital-info": {
-      "name": "병원명",
-      "description": "병원소개 및 찾아오시는길"
+      "name": "업체명",
+      "description": "소개 및 찾아오시는길"
     },
     "cpap-rental": {
       "name": "양압기 임대",

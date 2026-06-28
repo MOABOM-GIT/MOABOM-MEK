@@ -1,6 +1,6 @@
 /**
  * Moabom 관리자 인프라 페이지 공통 Tailwind surface (라이트/다크 SSOT).
- * 환경설정·병원관리·SNS·크레딧·마이페이지 설정 등 module layout 과 맞춘다.
+ * 환경설정·업체관리·SNS·크레딧·마이페이지 설정 등 module layout 과 맞춘다.
  */
 export const MOABOM_ADMIN_PAGE_SHELL =
   'p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen';

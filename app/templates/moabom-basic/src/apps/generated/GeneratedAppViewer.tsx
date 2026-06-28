@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type StoredGeneratedApp } from '../../api/moabomAppsApi';
 import { loadVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
 import { useMoabomShellT } from 'moabom-shell-i18n';
@@ -7,6 +7,10 @@ import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
+import {
+  liquidGlassBackdropClassName,
+  resolveLiquidGlassBackdropToneFromHtml,
+} from '../../components/composite/liquidGlassBackdropTone';
 import { isShellAuthMember, useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 import { resolveGeneratedAppFrameUrl, generatedAppFrameSandbox } from './generatedAppPreviewUrl';
@@ -130,6 +134,10 @@ export function GeneratedAppViewer({
   const canCommunityRead = Boolean(permissions?.can_community_read !== false && onOpenAppCommunity);
   const canCommunityWrite = Boolean(isMember && permissions?.can_community_write);
   const hasActions = canEdit || canShare || canDelete || canCommunityRead;
+  const liquidGlassBackdropClass = useMemo(
+    () => liquidGlassBackdropClassName(resolveLiquidGlassBackdropToneFromHtml(app?.html)),
+    [app?.html],
+  );
 
   if (isLoading) {
     return (
@@ -184,7 +192,7 @@ export function GeneratedAppViewer({
                 setIsMenuOpen(open => !open);
               }
             }}
-            className={`liquid-glass generated-app-owner-button ${hasActions ? 'is-actionable' : 'is-draggable'} ${hasActions && isMenuOpen ? 'is-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
+            className={`liquid-glass ${liquidGlassBackdropClass} generated-app-owner-button ${hasActions ? 'is-actionable' : 'is-draggable'} ${hasActions && isMenuOpen ? 'is-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
           >
             {hasActions ? (
               <Icon
@@ -200,7 +208,7 @@ export function GeneratedAppViewer({
           </Button>
           {hasActions ? (
             <Div
-              className={`generated-app-action-menu liquid-glass ${isMenuOpen ? 'is-open' : 'is-closed'}`}
+              className={`generated-app-action-menu liquid-glass ${liquidGlassBackdropClass} ${isMenuOpen ? 'is-open' : 'is-closed'}`}
             >
               {canEdit ? (
                 <Button

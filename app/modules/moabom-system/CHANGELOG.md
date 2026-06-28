@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.12] - 2026-06-28
+
+### Added
+
+- `moabom:saas:normalize-driver-settings` 커맨드 추가 — platform/tenant `drivers` DB·GCS 설정을 Cloud Run 운영 env 기준으로 1회 정규화.
+
+### Changed
+
+- 관리자 `drivers` 정규화 기준을 stale DB 적용값이 아니라 env 우선으로 보강.
+
+## [0.8.11] - 2026-06-28
+
+### Fixed
+
+- 관리자 환경설정 `drivers` 탭의 cache/session/queue/log/websocket 표시·저장값을 Cloud Run 운영 env 와 정규화해 UI 선택값과 실제 런타임 드라이버가 어긋나지 않도록 보정.
+
 ## [0.8.9] - 2026-06-26
 
 ### Changed
@@ -78,7 +94,7 @@
 ### Changed
 
 - 관리자 사이드바 **플랫폼 환경설정**을 **플랫폼 메뉴**로 명칭 변경하고 대시보드 위(order 0)로 이동.
-- **병원 관리**를 플랫폼 메뉴 하위(order 10)로 재배치 — 마스터 Host 전용 규칙은 `TenantAdminMenuPolicy` 로 유지.
+- **업체 관리**를 플랫폼 메뉴 하위(order 10)로 재배치 — 마스터 Host 전용 규칙은 `TenantAdminMenuPolicy` 로 유지.
 - 테넌트 repair 필수 메뉴에 AI 생성 앱·마스크피팅 관리 slug 추가.
 
 ### Added
@@ -93,7 +109,7 @@
 - **admin composite 중복 제거**: `HomeBackgroundManager`·`SortableMypageMenuList`·deferred plugin prefetch 는 `moabom-admin_basic` SSOT 만 사용. 모듈 `module.json` assets·Cloud Build `moabom-system` npm 빌드 제거.
 - **shell-boot 저결합**: `social_providers`·공개 API 캐시 revision 을 `moabom.shell_boot.social_providers`·`moabom.public_api.cache_fragment.social_providers` 훅으로 분리 (`moabom-social-auth` 가 기여).
 - **Reverb 분리**: `Broadcasting/*` → `moabom-reverb` 플러그인. `TenantSettingsSeeder`·`SaasCoreSettingsHydrator` 는 `moabom.saas.drivers.seed_defaults` / `apply_runtime` 훅만 사용.
-- 병원 기본 패키지에 `moabom-reverb` 플러그인 추가.
+- 업체 기본 패키지에 `moabom-reverb` 플러그인 추가.
 
 ## [0.7.6] - 2026-06-18
 
@@ -124,7 +140,7 @@
 
 ### Changed
 
-- `module.json` description 을 현재 책임(SaaS 런타임·병원 관리·설정·부트 API)에 맞게 간략화. 날씨·AI 앱·CPAP 등 분리 모듈 문구 제거.
+- `module.json` description 을 현재 책임(SaaS 런타임·업체 관리·설정·부트 API)에 맞게 간략화. 날씨·AI 앱·CPAP 등 분리 모듈 문구 제거.
 - `moabom:module-sync-declarations` 가 `module.json` 의 name·version·description 을 DB modules row 에도 반영 (관리자 모듈 목록 SSOT).
 
 ## [0.6.11] - 2026-06-01

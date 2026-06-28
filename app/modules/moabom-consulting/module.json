@@ -8,7 +8,7 @@
     "version": "0.2.0",
     "license": "MIT",
     "description": {
-        "ko": "병원 대상 양압기 렌탈 영업용 컨설팅 앱. 회사/비전 소개, 360 서비스 소개, 맞춤형 수익성 시뮬레이션, 전자계약서 서명을 태블릿에서 제공한다. 계약 데이터는 moabom_consulting_contracts 테이블에 보관한다.",
+        "ko": "업체 대상 양압기 렌탈 영업용 컨설팅 앱. 회사/비전 소개, 360 서비스 소개, 맞춤형 수익성 시뮬레이션, 전자계약서 서명을 태블릿에서 제공한다. 계약 데이터는 moabom_consulting_contracts 테이블에 보관한다.",
         "en": "Tablet sales-consulting app for CPAP rental partnerships. Provides company/vision intro, 360 service intro, profitability simulation and e-contract signing. Contracts are stored in the moabom_consulting_contracts table."
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",

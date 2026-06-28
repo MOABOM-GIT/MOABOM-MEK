@@ -65,6 +65,8 @@ class AppCommunityAdminService
                     'tenant_slug' => 'generated_app_owner_tenant',
                     'author_tenant_slug' => 'post_author_tenant',
                 ],
+                // 빈 목록 원인 자가 진단: 데이터 plane·테이블 존재·스코프 전 전체 수.
+                'data_plane' => $result['diagnostics'] ?? [],
             ]),
         ];
     }

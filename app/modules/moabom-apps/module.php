@@ -114,6 +114,52 @@ class Module extends AbstractModule
     }
 
     /**
+     * 앱 리뷰 알림 정의.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getNotificationDefinitions(): array
+    {
+        return [
+            [
+                'type' => 'app_review_created',
+                'hook_prefix' => 'moabom-apps',
+                'name' => ['ko' => '앱 리뷰 등록 알림', 'en' => 'App Review Notification'],
+                'description' => [
+                    'ko' => '내가 만든 앱에 새 리뷰가 등록되면 앱 제작자에게 발송합니다.',
+                    'en' => 'Sent to the app creator when a new review is posted on their app.',
+                ],
+                'channels' => ['database'],
+                'hooks' => ['moabom-apps.community_review.after_create'],
+                'variables' => [
+                    ['key' => 'name', 'description' => '수신자 이름'],
+                    ['key' => 'app_name', 'description' => '사이트명'],
+                    ['key' => 'app_title', 'description' => '앱 제목'],
+                    ['key' => 'review_author', 'description' => '리뷰 작성자'],
+                    ['key' => 'review_title', 'description' => '리뷰 제목'],
+                    ['key' => 'review_body', 'description' => '리뷰 본문 요약'],
+                    ['key' => 'app_url', 'description' => '앱 리뷰 창 URL'],
+                    ['key' => 'site_url', 'description' => '사이트 URL'],
+                ],
+                'templates' => [
+                    [
+                        'channel' => 'database',
+                        'subject' => [
+                            'ko' => '내 앱에 새 리뷰가 등록되었습니다',
+                            'en' => 'New review on your app',
+                        ],
+                        'body' => [
+                            'ko' => '{review_author}님이 \'{app_title}\' 앱에 리뷰를 남겼습니다: {review_title}',
+                            'en' => '{review_author} posted a review on your app "{app_title}": {review_title}',
+                        ],
+                        'click_url' => '{app_url}',
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * 언인스톨 시 삭제될 동적 테이블.
      * Phase 3 분리(2026-06-02): 테이블명은 보존하되 소유권을 moabom-apps 로 이관.
      */

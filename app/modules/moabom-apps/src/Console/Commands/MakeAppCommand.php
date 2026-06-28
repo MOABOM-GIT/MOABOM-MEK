@@ -82,7 +82,7 @@ final class MakeAppCommand extends Command
         // bootstrap/cache/autoload-extensions.php 커밋본에 PSR-4/classmap 추가 (배포 전 정적 검사용).
         $this->updateAutoload($namespace, $moduleId, $studly);
 
-        // hospital-default 패키지에 모듈 등록 (모든 신규 병원 테넌트 자동 프로비저닝).
+        // hospital-default 패키지에 모듈 등록 (모든 신규 업체 테넌트 자동 프로비저닝).
         if (! $this->option('no-provision')) {
             $this->provisionHospitalDefault($moduleId);
         }
@@ -94,7 +94,7 @@ final class MakeAppCommand extends Command
         $this->line("  - 프론트 청크 골격 templates/moabom-basic/src/apps/{$name} (metadata/shellRegister/컴포넌트/index)");
         $this->line('  - autoload-extensions.php PSR-4/classmap 등록 (배포 전 정적 검사용 커밋본)');
         if (! $this->option('no-provision')) {
-            $this->line('  - hospital-default 패키지 등록 (신규 병원 테넌트 자동 프로비저닝)');
+            $this->line('  - hospital-default 패키지 등록 (신규 업체 테넌트 자동 프로비저닝)');
         }
         $this->newLine();
         $this->line('다음 단계 (운영 반영):');

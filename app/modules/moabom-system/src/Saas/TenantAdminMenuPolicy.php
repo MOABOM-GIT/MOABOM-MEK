@@ -30,7 +30,7 @@ final class TenantAdminMenuPolicy
     /**
      * Platform(master) DB 에서도 제거할 폐기 slug.
      *
-     * 'platform-saas' 그룹 wrapper 는 제거되었다. 병원 관리(moabom-saas-hospitals)는
+     * 'platform-saas' 그룹 wrapper 는 제거되었다. 업체 관리(moabom-saas-hospitals)는
      * 플랫폼 메뉴(platform-settings) 하위 자식으로만 유지한다.
      *
      * @var list<string>

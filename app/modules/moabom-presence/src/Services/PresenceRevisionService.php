@@ -2,8 +2,8 @@
 
 namespace Modules\Moabom\Presence\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Modules\Moabom\Presence\Contracts\PresenceRevisionRepositoryInterface;
 use Modules\Moabom\Presence\Events\PresenceRevisionBroadcastEvent;
 use Modules\Moabom\Presence\Support\PresenceChannelNames;
 
@@ -11,17 +11,18 @@ final class PresenceRevisionService
 {
     public function __construct(
         private PresenceChannelNames $channelNames,
+        private PresenceRevisionRepositoryInterface $revisions,
     ) {}
 
     public function current(): int
     {
-        return (int) Cache::get($this->cacheKey(), 0);
+        return $this->revisions->currentTenant($this->channelNames->tenantSlug());
     }
 
     public function bump(string $reason = 'heartbeat'): int
     {
-        $revision = (int) Cache::increment($this->cacheKey());
         $tenantSlug = $this->channelNames->tenantSlug();
+        $revision = $this->revisions->bumpTenant($tenantSlug, $reason);
 
         $this->broadcastRevision(
             $this->channelNames->tenantRevisionChannel(),
@@ -35,7 +36,7 @@ final class PresenceRevisionService
 
     public function bumpPlatform(string $reason = 'mirror'): int
     {
-        $revision = (int) Cache::increment($this->platformCacheKey());
+        $revision = $this->revisions->bumpPlatform($reason);
 
         $this->broadcastRevision(
             $this->channelNames->platformRevisionChannel(),
@@ -45,16 +46,6 @@ final class PresenceRevisionService
         );
 
         return $revision;
-    }
-
-    private function cacheKey(): string
-    {
-        return 'moabom-presence:revision:'.$this->channelNames->tenantSlug();
-    }
-
-    private function platformCacheKey(): string
-    {
-        return 'moabom-presence:revision:platform';
     }
 
     private function broadcastRevision(string $channelName, string $scopeSlug, int $revision, string $reason): void

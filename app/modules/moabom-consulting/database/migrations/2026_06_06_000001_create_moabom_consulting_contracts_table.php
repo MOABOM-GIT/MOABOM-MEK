@@ -24,8 +24,8 @@ return new class extends Migration
                 ->comment('계약을 작성한 상담원(로그인 사용자) ID')
                 ->constrained('users')
                 ->cascadeOnDelete();
-            $table->string('hospital_name', 200)->comment('병원명');
-            $table->string('representative_name', 120)->nullable()->comment('대표자/원장명');
+            $table->string('hospital_name', 200)->comment('업체명');
+            $table->string('representative_name', 120)->nullable()->comment('대표자명');
             $table->string('contact', 120)->nullable()->comment('연락처');
             $table->string('business_number', 40)->nullable()->comment('사업자등록번호');
             $table->string('plan', 120)->nullable()->comment('선택 요금제/플랜');

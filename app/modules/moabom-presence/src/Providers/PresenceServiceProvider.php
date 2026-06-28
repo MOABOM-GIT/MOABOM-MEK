@@ -7,10 +7,12 @@ use Illuminate\Support\Facades\Broadcast;
 use Modules\Moabom\Presence\Console\Commands\PresencePlatformMigrateCommand;
 use Modules\Moabom\Presence\Contracts\FriendshipRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\PlatformPresenceSessionRepositoryInterface;
+use Modules\Moabom\Presence\Contracts\PresenceRevisionRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\TenantPresenceSessionRepositoryInterface;
 use Modules\Moabom\Presence\Repositories\FriendshipRepository;
 use Modules\Moabom\Presence\Repositories\PlatformPresenceSessionRepository;
+use Modules\Moabom\Presence\Repositories\PresenceRevisionRepository;
 use Modules\Moabom\Presence\Repositories\PresenceUserPreferencesRepository;
 use Modules\Moabom\Presence\Repositories\TenantPresenceSessionRepository;
 use Modules\Moabom\Presence\Support\PresenceChannelNames;
@@ -26,6 +28,7 @@ class PresenceServiceProvider extends BaseModuleServiceProvider
         FriendshipRepositoryInterface::class => FriendshipRepository::class,
         TenantPresenceSessionRepositoryInterface::class => TenantPresenceSessionRepository::class,
         PlatformPresenceSessionRepositoryInterface::class => PlatformPresenceSessionRepository::class,
+        PresenceRevisionRepositoryInterface::class => PresenceRevisionRepository::class,
         PresenceUserPreferencesRepositoryInterface::class => PresenceUserPreferencesRepository::class,
     ];
 

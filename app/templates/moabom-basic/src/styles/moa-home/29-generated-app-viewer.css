@@ -18,12 +18,13 @@
   padding: 0 0.75rem;
   border: 0;
   border-radius: 9999px;
-  color: #fff;
+  color: var(--moa-liquid-readable-color);
   font-size: 0.75rem;
   font-weight: 700;
   pointer-events: auto;
-  box-shadow: 0 0.45rem 1rem rgb(15 23 42 / 18%);
+  box-shadow: 0 .2rem .3rem #0f172a2e;
   transition:
+    color 0.16s ease,
     opacity 0.16s ease,
     transform 0.16s ease;
 }
@@ -32,8 +33,12 @@
   flex: none;
   font-size: 0.6rem;
   opacity: 0.85;
-  filter: drop-shadow(0 1px 2px rgb(15 23 42 / 45%));
   transition: transform 0.18s ease;
+}
+
+.generated-app-owner-caret i,
+.generated-app-owner-caret svg {
+  color: currentColor;
 }
 
 .generated-app-owner-button.is-open .generated-app-owner-caret {
@@ -66,7 +71,6 @@
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
-  filter: drop-shadow(0 1px 2px rgb(15 23 42 / 45%));
 }
 
 .generated-app-action-menu {
@@ -102,8 +106,13 @@
 }
 
 .generated-app-action-button {
-  --moa-btn-color: #fff;
-  --moa-btn-border: #ffffff73;
+  --generated-app-action-accent: var(--moa-liquid-readable-color);
+  --moa-btn-color: var(--moa-liquid-readable-color);
+  --moa-btn-hover-color: var(--moa-liquid-readable-color);
+  --moa-btn-bg: color-mix(in srgb, var(--generated-app-action-accent) 14%, transparent);
+  --moa-btn-hover-bg: color-mix(in srgb, var(--generated-app-action-accent) 22%, transparent);
+  --moa-btn-border: color-mix(in srgb, var(--moa-liquid-readable-border) 72%, var(--generated-app-action-accent));
+  --moa-btn-hover-border: color-mix(in srgb, var(--moa-liquid-readable-border) 56%, var(--generated-app-action-accent));
   --moa-btn-shadow: 0 0.35rem 0.9rem #0f172a29;
   --moa-btn-hover-shadow: 0 0.5rem 1.1rem #0f172a38;
   border-radius: 9999px;
@@ -112,28 +121,24 @@
 }
 
 .generated-app-action-button.is-edit {
-  --moa-btn-bg: linear-gradient(135deg, rgb(59 130 246 / 88%), rgb(99 102 241 / 78%));
-  --moa-btn-hover-bg: linear-gradient(135deg, rgb(59 130 246 / 96%), rgb(99 102 241 / 86%));
+  --generated-app-action-accent: #60a5fa;
 }
 
 .generated-app-action-button i,
 .generated-app-action-button svg {
-  color: #fff;
+  color: currentColor;
 }
 
 .generated-app-action-button.is-share {
-  --moa-btn-bg: linear-gradient(135deg, rgb(16 185 129 / 88%), rgb(20 184 166 / 78%));
-  --moa-btn-hover-bg: linear-gradient(135deg, rgb(16 185 129 / 96%), rgb(20 184 166 / 86%));
+  --generated-app-action-accent: #34d399;
 }
 
 .generated-app-action-button.is-danger {
-  --moa-btn-bg: linear-gradient(135deg, rgb(244 63 94 / 88%), rgb(190 18 60 / 78%));
-  --moa-btn-hover-bg: linear-gradient(135deg, rgb(244 63 94 / 96%), rgb(190 18 60 / 86%));
+  --generated-app-action-accent: #fb7185;
 }
 
 .generated-app-action-button.is-community {
-  --moa-btn-bg: linear-gradient(135deg, rgb(var(--moa-point-rgb) / 88%), color-mix(in srgb, var(--moa-point-color) 78%, rgb(15 23 42)));
-  --moa-btn-hover-bg: linear-gradient(135deg, rgb(var(--moa-point-rgb) / 96%), color-mix(in srgb, var(--moa-point-color) 86%, rgb(15 23 42)));
+  --generated-app-action-accent: var(--moa-point-color);
 }
 
 .generated-app-preview-frame {

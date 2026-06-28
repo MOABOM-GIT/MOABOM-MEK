@@ -64,6 +64,7 @@ import type { GeneratedLibraryHydration } from '../../apps/generatedAppLibraryAu
 import type { MoaCurrentUser, AuthUserLike } from '../../shell/moaShellTypes';
 import type { MoabomSystemDefaults, MoabomSystemLanguage, MoabomSystemState } from '../../types/moabomSystem';
 import type { EffectiveSystemOptions } from '../../runtime/types';
+import { MoabomPresenceProvider } from '../../hooks/MoabomPresenceProvider';
 import type { Dispatch, SetStateAction } from 'react';
 
 export interface Moa_HomeShellViewProps {
@@ -142,6 +143,153 @@ export interface Moa_HomeShellViewProps {
   updateUserProfileWindowTitle: (windowId: string, title: string) => void;
   switchUserProfileWindowView: (windowId: string, view: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
   updateErrorWindowTitle: (windowId: string, title: string) => void;
+}
+
+type RenderWindowContent = (win: WindowState) => React.ReactNode;
+
+interface ShellWindowFrameProps {
+  win: WindowState;
+  title: string;
+  isFavorite: boolean;
+  compactWindow: boolean;
+  renderWindowContent: RenderWindowContent;
+  onCloseWindow: (win: WindowState) => void;
+  onMinimizeWindow: (id: string) => void;
+  onToggleMaximize: (id: string) => void;
+  onFocusWindow: (id: string) => void;
+  onToggleFavoriteApp: (appId: string) => void;
+}
+
+const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
+  win,
+  title,
+  isFavorite,
+  compactWindow,
+  renderWindowContent,
+  onCloseWindow,
+  onMinimizeWindow,
+  onToggleMaximize,
+  onFocusWindow,
+  onToggleFavoriteApp,
+}) => {
+  const isAuthWin = (AUTH_WINDOW_APP_IDS as readonly string[]).includes(win.appId);
+  const isLegalPageWin = isMoaShellLegalPageAppId(win.appId);
+  const isBoardWin = isMoaShellBoardAppId(win.appId);
+  const isUserProfileWin = isMoaShellUserProfileAppId(win.appId);
+  const isErrorWin = isMoaShellErrorAppId(win.appId);
+  const isAppCommunityWin = isMoaShellAppCommunityAppId(win.appId);
+  const isCreateAppShellWin = win.appId === createAppShellMetadata.id;
+  const canToggleFavorite = !(
+    isAuthWin
+    || isLegalPageWin
+    || isBoardWin
+    || isUserProfileWin
+    || isErrorWin
+    || isAppCommunityWin
+    || isCreateAppShellWin
+  );
+  const titleBarExtraStyle = useMemo(
+    () => (isCreateAppShellWin ? getCreateAppShellCssVars() : undefined),
+    [isCreateAppShellWin],
+  );
+  const handleClose = useCallback(() => onCloseWindow(win), [onCloseWindow, win]);
+  const handleMinimize = useCallback(() => onMinimizeWindow(win.id), [onMinimizeWindow, win.id]);
+  const handleMaximize = useCallback(() => onToggleMaximize(win.id), [onToggleMaximize, win.id]);
+  const handleFocus = useCallback(() => onFocusWindow(win.id), [onFocusWindow, win.id]);
+  const handleToggleFavorite = useCallback(
+    () => onToggleFavoriteApp(win.appId),
+    [onToggleFavoriteApp, win.appId],
+  );
+
+  return (
+    <Window
+      id={win.id}
+      title={title}
+      icon={win.icon}
+      gradient={win.gradient}
+      zIndex={win.zIndex}
+      isFavorite={isFavorite}
+      initialX={isAuthWin ? undefined : win.initialX}
+      initialY={isAuthWin ? undefined : win.initialY}
+      isMaximized={win.isMaximized}
+      isMinimized={win.isMinimized}
+      onClose={handleClose}
+      onMinimize={handleMinimize}
+      onMaximize={handleMaximize}
+      onFocus={handleFocus}
+      titleBarVariant={isCreateAppShellWin ? 'create-app' : 'default'}
+      titleBarExtraStyle={titleBarExtraStyle}
+      onToggleFavorite={canToggleFavorite ? handleToggleFavorite : undefined}
+      compact={compactWindow}
+      {...(isAuthWin
+        ? {
+            initialWidth: AUTH_WINDOW_WIDTH,
+            initialHeight: AUTH_WINDOW_HEIGHT,
+            minWidth: 360,
+            minHeight: 260,
+            fitContent: !compactWindow,
+            fitContentWidth: 440,
+            fitContentRemeasureKey: win.appId,
+          }
+        : isLegalPageWin
+          ? {
+              initialWidth: LEGAL_PAGE_WINDOW_WIDTH,
+              initialHeight: LEGAL_PAGE_WINDOW_HEIGHT,
+              minWidth: 360,
+              minHeight: 280,
+            }
+          : isBoardWin
+            ? {
+                initialWidth: BOARD_WINDOW_WIDTH,
+                initialHeight: BOARD_WINDOW_HEIGHT,
+                minWidth: 360,
+                minHeight: 320,
+              }
+            : isUserProfileWin
+              ? {
+                  initialWidth: USER_PROFILE_WINDOW_WIDTH,
+                  initialHeight: USER_PROFILE_WINDOW_HEIGHT,
+                  minWidth: 360,
+                  minHeight: 320,
+                }
+              : isErrorWin
+                ? {
+                    initialWidth: ERROR_WINDOW_WIDTH,
+                    initialHeight: ERROR_WINDOW_HEIGHT,
+                    minWidth: 320,
+                    minHeight: 240,
+                  }
+                : isAppCommunityWin
+                  ? {
+                      initialWidth: APP_COMMUNITY_WINDOW_WIDTH,
+                      initialHeight: APP_COMMUNITY_WINDOW_HEIGHT,
+                      minWidth: 360,
+                      minHeight: 400,
+                    }
+                  : {
+                      initialWidth: DEFAULT_WINDOW_WIDTH,
+                      initialHeight: DEFAULT_WINDOW_HEIGHT,
+                    })}
+    >
+      {renderWindowContent(win)}
+    </Window>
+  );
+}, areShellWindowFramePropsEqual);
+
+function areShellWindowFramePropsEqual(
+  prev: ShellWindowFrameProps,
+  next: ShellWindowFrameProps,
+): boolean {
+  return prev.win === next.win
+    && prev.title === next.title
+    && prev.isFavorite === next.isFavorite
+    && prev.compactWindow === next.compactWindow
+    && prev.renderWindowContent === next.renderWindowContent
+    && prev.onCloseWindow === next.onCloseWindow
+    && prev.onMinimizeWindow === next.onMinimizeWindow
+    && prev.onToggleMaximize === next.onToggleMaximize
+    && prev.onFocusWindow === next.onFocusWindow
+    && prev.onToggleFavoriteApp === next.onToggleFavoriteApp;
 }
 
 export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
@@ -444,87 +592,31 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
         />
       )}
 
-      <RightPanel width={overlayPanelWidth} rightOffset={rightOffset} isLoggedIn={isLoggedIn} currentUser={currentUser} onOpenMyPage={openMyPage}
-        onOpenAuth={openAuthWindow}
-        onOpenShellSurface={openShellSurface}
-        isOverlay={isRightOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
-          setRightOpen(false);
-          updateSystemState({ layout: { rightPanelOpen: false } });
-        }} />
+      <MoabomPresenceProvider isLoggedIn={isLoggedIn}>
+        <RightPanel width={overlayPanelWidth} rightOffset={rightOffset} isLoggedIn={isLoggedIn} currentUser={currentUser} onOpenMyPage={openMyPage}
+          onOpenAuth={openAuthWindow}
+          onOpenShellSurface={openShellSurface}
+          isOverlay={isRightOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
+            setRightOpen(false);
+            updateSystemState({ layout: { rightPanelOpen: false } });
+          }} />
 
-      {windows.map(win => {
-        const isAuthWin = (AUTH_WINDOW_APP_IDS as readonly string[]).includes(win.appId);
-        const isLegalPageWin = isMoaShellLegalPageAppId(win.appId);
-        const isBoardWin = isMoaShellBoardAppId(win.appId);
-        const isUserProfileWin = isMoaShellUserProfileAppId(win.appId);
-        const isErrorWin = isMoaShellErrorAppId(win.appId);
-        const isAppCommunityWin = isMoaShellAppCommunityAppId(win.appId);
-        const isCreateAppShellWin = win.appId === createAppShellMetadata.id;
-        return (
-        <Window key={win.id} id={win.id} title={resolveWinTitle(win)} icon={win.icon} gradient={win.gradient} zIndex={win.zIndex}
-          isFavorite={favoriteIdsRef.current.includes(win.appId)}
-          initialX={isAuthWin ? undefined : win.initialX}
-          initialY={isAuthWin ? undefined : win.initialY}
-          isMaximized={win.isMaximized} isMinimized={win.isMinimized}
-          onClose={() => closeWindow(win)} onMinimize={() => minimizeWindow(win.id)}
-          onMaximize={() => toggleMaximize(win.id)} onFocus={() => focusWindow(win.id)}
-          titleBarVariant={isCreateAppShellWin ? 'create-app' : 'default'}
-          titleBarExtraStyle={isCreateAppShellWin ? getCreateAppShellCssVars() : undefined}
-          onToggleFavorite={isAuthWin || isLegalPageWin || isBoardWin || isUserProfileWin || isErrorWin || isAppCommunityWin || isCreateAppShellWin ? undefined : () => toggleFavoriteApp(win.appId)}
-          compact={compactWindow}
-          {...(isAuthWin
-            ? {
-                initialWidth: AUTH_WINDOW_WIDTH,
-                initialHeight: AUTH_WINDOW_HEIGHT,
-                minWidth: 360,
-                minHeight: 260,
-                fitContent: !compactWindow,
-                fitContentWidth: 440,
-                fitContentRemeasureKey: win.appId,
-              }
-            : isLegalPageWin
-              ? {
-                  initialWidth: LEGAL_PAGE_WINDOW_WIDTH,
-                  initialHeight: LEGAL_PAGE_WINDOW_HEIGHT,
-                  minWidth: 360,
-                  minHeight: 280,
-                }
-              : isBoardWin
-                ? {
-                    initialWidth: BOARD_WINDOW_WIDTH,
-                    initialHeight: BOARD_WINDOW_HEIGHT,
-                    minWidth: 360,
-                    minHeight: 320,
-                  }
-                : isUserProfileWin
-                  ? {
-                      initialWidth: USER_PROFILE_WINDOW_WIDTH,
-                      initialHeight: USER_PROFILE_WINDOW_HEIGHT,
-                      minWidth: 360,
-                      minHeight: 320,
-                    }
-                : isErrorWin
-                  ? {
-                      initialWidth: ERROR_WINDOW_WIDTH,
-                      initialHeight: ERROR_WINDOW_HEIGHT,
-                      minWidth: 320,
-                      minHeight: 240,
-                    }
-                : isAppCommunityWin
-                  ? {
-                      initialWidth: APP_COMMUNITY_WINDOW_WIDTH,
-                      initialHeight: APP_COMMUNITY_WINDOW_HEIGHT,
-                      minWidth: 360,
-                      minHeight: 400,
-                    }
-              : {
-                  initialWidth: DEFAULT_WINDOW_WIDTH,
-                  initialHeight: DEFAULT_WINDOW_HEIGHT,
-                })}>
-          {renderWindowContent(win)}
-        </Window>
-      );
-      })}
+        {windows.map(win => (
+          <ShellWindowFrame
+            key={win.id}
+            win={win}
+            title={resolveWinTitle(win)}
+            isFavorite={favoriteIdsRef.current.includes(win.appId)}
+            compactWindow={compactWindow}
+            renderWindowContent={renderWindowContent}
+            onCloseWindow={closeWindow}
+            onMinimizeWindow={minimizeWindow}
+            onToggleMaximize={toggleMaximize}
+            onFocusWindow={focusWindow}
+            onToggleFavoriteApp={toggleFavoriteApp}
+          />
+        ))}
+      </MoabomPresenceProvider>
 
       <Toast toasts={toasts} position="bottom-center" duration={4000} />
     </Div>

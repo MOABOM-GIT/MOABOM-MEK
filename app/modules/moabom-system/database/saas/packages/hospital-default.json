@@ -1,6 +1,6 @@
 {
   "id": "hospital-default",
-  "label": "병원 기본 패키지 (Moabom SaaS)",
+  "label": "업체 기본 패키지 (Moabom SaaS)",
   "templates": [
     "moabom-basic",
     "moabom-admin_basic"

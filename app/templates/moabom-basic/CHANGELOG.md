@@ -9,10 +9,13 @@
 
 ### Changed
 
+- **실시간 REST 동기화** — 접속자·친구·알림·채팅 catch-up 요청을 key 단위로 합쳐 WS 재연결·포커스 복귀·폴링이 겹칠 때 중복 네트워크 요청을 줄였습니다.
 - **날씨 마이페이지 상태** — 15초 상시 폴링 제거, 이벤트 + bounded 재시도(800ms/2.5s/6s)로 전환.
 
 ### Fixed
 
+- **접속자 실시간 갱신** — presence revision invalidate 구독이 하나만 유지되어 프로필·우측 패널 중 마지막 구독만 동작할 수 있던 문제를 다중 구독으로 수정했습니다.
+- **WebSocket 연결 감시** — Echo/Pusher 초기화 지연 시 200ms 무한 재시도하던 감시 루프를 bounded backoff와 auth 재동기화 복구 경로로 안정화했습니다.
 - **생성앱 타이틀바** — 새로고침·딥링크 시 `App #n` placeholder 제목으로 그라데이션 해시가 달라지던 문제. `serverId` 단일 SSOT + 카탈로그 로드 후 윈도우 chrome 동기화.
 - **접속자 활동(앱)** — 생성앱 이용 시 우측 접속 목록에 `App #n 이용 중` placeholder가 남던 문제. presence foreground·카탈로그·API 로드 후 실제 앱 이름으로 동기화.
 - **앱 이야기** 툴바 버튼 — 포인트 컬러 그라데이션 배경·흰색 라벨(편집·등록·삭제 pill과 동일 구조).
@@ -61,7 +64,7 @@
 
 ### Fixed
 
-- 홈 메인 패널 앱 삭제 후 새로고침 시 병원소개·AI 생성 앱이 되살아나던 문제 — 빈 `mainAppOrder` 를 “기본 전체 그리드”와 “사용자가 비운 그리드”로 구분하는 `customized` SSOT 도입, `hospital-info` 강제 삽입 제거, 생성 앱은 order 에 고정된 id 만 표시.
+- 홈 메인 패널 앱 삭제 후 새로고침 시 소개·AI 생성 앱이 되살아나던 문제 — 빈 `mainAppOrder` 를 “기본 전체 그리드”와 “사용자가 비운 그리드”로 구분하는 `customized` SSOT 도입, `hospital-info` 강제 삽입 제거, 생성 앱은 order 에 고정된 id 만 표시.
 - 메인 order 변경 경로 `commitMainAppOrder` 통합 — DnD·삭제·AI 저장 후 카탈로그 재조립 일관성, `createdAppsRef` 동기 갱신, pull 시 `customized=false` 이면 localStorage order 키 제거.
 
 ### Added

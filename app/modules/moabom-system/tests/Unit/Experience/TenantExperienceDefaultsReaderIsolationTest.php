@@ -65,13 +65,13 @@ class TenantExperienceDefaultsReaderIsolationTest extends ModuleTestCase
         $this->assertNotSame($platformRepo, $tenantRepo);
 
         $tenantRepo->saveCategory('general', [
-            'site_name' => 'E2E테스트병원',
+            'site_name' => 'E2E테스트업체',
             'site_url' => 'https://e2etest.mek360.com',
         ]);
         app(SaasCoreSettingsHydrator::class)->hydrate();
 
         $tenantMeta = app(TenantExperienceDefaultsReader::class)->siteMeta();
-        $this->assertSame('E2E테스트병원', $tenantMeta['site_name']);
+        $this->assertSame('E2E테스트업체', $tenantMeta['site_name']);
         $this->assertFalse($tenantMeta['is_platform']);
     }
 
@@ -95,10 +95,10 @@ class TenantExperienceDefaultsReaderIsolationTest extends ModuleTestCase
         );
 
         $bootstrap->bootstrapTenant($request, ['type' => 'tenant', 'host' => 'e2etest.mek360.com', 'slug' => 'e2etest'], $tenant);
-        app(ConfigRepositoryInterface::class)->saveCategory('general', ['site_name' => 'E2E테스트병원']);
+        app(ConfigRepositoryInterface::class)->saveCategory('general', ['site_name' => 'E2E테스트업체']);
 
         $this->assertSame(
-            'E2E테스트병원',
+            'E2E테스트업체',
             app(TenantExperienceDefaultsReader::class)->siteMeta()['site_name'],
         );
     }
@@ -132,11 +132,11 @@ class TenantExperienceDefaultsReaderIsolationTest extends ModuleTestCase
             ['type' => 'tenant', 'host' => 'e2etest.mek360.com', 'slug' => 'e2etest'],
             $tenant,
         );
-        app(ConfigRepositoryInterface::class)->saveCategory('general', ['site_name' => 'E2E테스트병원']);
+        app(ConfigRepositoryInterface::class)->saveCategory('general', ['site_name' => 'E2E테스트업체']);
 
         $this->assertFalse(app(TenantContext::class)->isPlatformRequest());
         $this->assertSame(
-            'E2E테스트병원',
+            'E2E테스트업체',
             app(TenantExperienceDefaultsReader::class)->siteMeta()['site_name'],
         );
     }

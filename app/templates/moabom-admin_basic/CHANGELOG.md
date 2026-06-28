@@ -4,6 +4,12 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.0-beta.14] - 2026-06-28
+
+### Changed
+
+- 환경설정 > 드라이버 탭에 Cloud Run 운영 env 고정값 안내를 추가하고 runtime-locked 드라이버 선택·접속값을 읽기 전용으로 표시.
+
 ## [1.0.0-beta.13] - 2026-05-14
 
 ### Changed

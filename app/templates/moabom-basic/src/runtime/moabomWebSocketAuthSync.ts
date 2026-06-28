@@ -1,5 +1,8 @@
 import { hasShellAccessToken } from '../api/moabomShellAccess';
-import { isMoabomWebSocketConnected } from './moabomWebSocketConnection';
+import {
+  isMoabomWebSocketConnected,
+  refreshMoabomWebSocketConnectionWatch,
+} from './moabomWebSocketConnection';
 
 export const MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT = 'moabom-websocket-auth-synced';
 
@@ -31,6 +34,7 @@ let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSyncedAuth: boolean | null = null;
 
 function dispatchAuthSyncedEvent(): void {
+  refreshMoabomWebSocketConnectionWatch();
   window.dispatchEvent(new CustomEvent(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT));
 }
 
@@ -46,6 +50,7 @@ function dispatchAuthSyncedWhenReady(shouldConnect: boolean): void {
       return;
     }
     if (attempt >= 50) {
+      dispatchAuthSyncedEvent();
       return;
     }
     window.setTimeout(() => waitForConnected(attempt + 1), 100);
@@ -69,6 +74,7 @@ export function syncMoabomWebSocketAuth(isAuthenticated?: boolean): void {
     syncTimer = null;
 
     if (lastSyncedAuth === shouldConnect) {
+      dispatchAuthSyncedWhenReady(shouldConnect);
       return;
     }
     lastSyncedAuth = shouldConnect;

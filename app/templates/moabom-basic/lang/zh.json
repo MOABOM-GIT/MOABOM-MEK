@@ -502,15 +502,15 @@
     },
     "consulting": {
       "name": "智能咨询",
-      "description": "医院盈利能力模拟与电子合同"
+      "description": "企业盈利能力模拟与电子合同"
     },
     "global-search": {
       "name": "全局搜索",
       "description": "搜索公告板与应用"
     },
     "hospital-info": {
-      "name": "医院",
-      "description": "医院介绍与路线"
+      "name": "企业名",
+      "description": "介绍与路线"
     },
     "cpap-rental": {
       "name": "呼吸机租赁",

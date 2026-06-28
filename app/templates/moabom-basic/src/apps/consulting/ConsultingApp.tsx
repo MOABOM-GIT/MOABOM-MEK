@@ -30,7 +30,7 @@ const STEPS: StepDef[] = [
 ];
 
 export function ConsultingApp() {
-  const hospitalName = useMoabomSiteDisplayName();
+  const companyName = useMoabomSiteDisplayName();
   const [activeStep, setActiveStep] = useState<ConsultingStep>('intro');
   const [simInput, setSimInput] = useState<SimulationInput>({ ...SIMULATION_DEFAULTS });
 
@@ -53,24 +53,24 @@ export function ConsultingApp() {
       case 'simulation':
         return (
           <SimulationTab
-            hospitalName={hospitalName}
+            hospitalName={companyName}
             input={simInput}
             onInputChange={setSimInput}
             onProceedToContract={() => setActiveStep('contract')}
           />
         );
       case 'contract':
-        return <ContractTab hospitalName={hospitalName} simInput={simInput} />;
+        return <ContractTab hospitalName={companyName} simInput={simInput} />;
       default:
         return null;
     }
-  }, [activeStep, hospitalName, simInput]);
+  }, [activeStep, companyName, simInput]);
 
   return (
     <Div className={`${APP_WINDOW_BODY_CLASS} moa-consulting-app`}>
       <AppWindowHeader
         title="스마트 컨설팅"
-        subtitle={`${hospitalName} — 번거로운 운영은 맡기고, 환자 케어와 수익에 집중하세요`}
+        subtitle={`${companyName} — 번거로운 운영은 맡기고, 환자 케어와 수익에 집중하세요`}
         icon={consultingAppMetadata.icon}
         gradient={consultingAppMetadata.gradient}
       />

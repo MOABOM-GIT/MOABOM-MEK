@@ -7,6 +7,7 @@ namespace Modules\Moabom\System\Http\Controllers;
 use App\Extension\HookManager;
 use App\Helpers\ResponseHelper;
 use App\Services\TemplateService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Modules\Moabom\System\Experience\TenantExperienceDefaultsReader;
@@ -35,44 +36,54 @@ final class PublicShellBootController extends Controller
         $scope = $request->resolvedScope();
         $revision = $defaultsReader->combinedRevision();
 
-        $routesPayload = $this->resolveShellRoutesPayload(
-            $identifier,
-            $templateService,
-            $shellRoutesFilter,
-        );
+        try {
+            /** @var array<string, mixed> $payload */
+            $payload = MoabomPublicApiCache::remember(
+                MoabomPublicApiCacheKeys::shellBoot($identifier, $scope, $revision),
+                function () use (
+                    $identifier,
+                    $defaultsReader,
+                    $revision,
+                    $templateService,
+                    $shellRoutesFilter,
+                ): array {
+                    $routesPayload = $this->resolveShellRoutesPayload(
+                        $identifier,
+                        $templateService,
+                        $shellRoutesFilter,
+                    );
 
-        if ($routesPayload instanceof JsonResponse) {
-            return $routesPayload;
+                    if ($routesPayload instanceof JsonResponse) {
+                        throw new HttpResponseException($routesPayload);
+                    }
+
+                    return [
+                        'defaults' => $defaultsReader->frontendDefaults(),
+                        'defaults_revision' => $revision,
+                        'site' => $defaultsReader->siteMeta(),
+                        'locale_catalog' => MoabomUiLocales::catalog(),
+                        'shell_routes' => $routesPayload,
+                        'social_providers' => array_values((array) HookManager::applyFilters(
+                            'moabom.shell_boot.social_providers',
+                            [],
+                            $identifier,
+                        )),
+                        'apps' => array_values((array) HookManager::applyFilters(
+                            'moabom.shell_boot.apps',
+                            [],
+                            $identifier,
+                        )),
+                    ];
+                },
+            );
+        } catch (HttpResponseException $exception) {
+            $response = $exception->getResponse();
+            if ($response instanceof JsonResponse) {
+                return $response;
+            }
+
+            throw $exception;
         }
-
-        /** @var array<string, mixed> $payload */
-        $payload = MoabomPublicApiCache::remember(
-            MoabomPublicApiCacheKeys::shellBoot($identifier, $scope, $revision),
-            function () use (
-                $identifier,
-                $defaultsReader,
-                $revision,
-                $routesPayload,
-            ): array {
-                return [
-                    'defaults' => $defaultsReader->frontendDefaults(),
-                    'defaults_revision' => $revision,
-                    'site' => $defaultsReader->siteMeta(),
-                    'locale_catalog' => MoabomUiLocales::catalog(),
-                    'shell_routes' => $routesPayload,
-                    'social_providers' => array_values((array) HookManager::applyFilters(
-                        'moabom.shell_boot.social_providers',
-                        [],
-                        $identifier,
-                    )),
-                    'apps' => array_values((array) HookManager::applyFilters(
-                        'moabom.shell_boot.apps',
-                        [],
-                        $identifier,
-                    )),
-                ];
-            },
-        );
 
         $payload['shell_rankings'] = $usageIngestGuard->bootPayload();
 

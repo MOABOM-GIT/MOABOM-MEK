@@ -135,16 +135,16 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
             // GCS unique key (module, category) → 다중 워커 동시 hydrate race 안전.
             $hydrated = $this->hydrateFromGcs($category);
             if ($hydrated !== null) {
-                return array_merge($defaults, $hydrated);
+                return $this->normalizeCategory($category, array_merge($defaults, $hydrated));
             }
 
-            return $defaults;
+            return $this->normalizeCategory($category, $defaults);
         }
 
         $payload = is_array($row->payload) ? $row->payload : [];
         unset($payload['_meta']);
 
-        return array_merge($defaults, $payload);
+        return $this->normalizeCategory($category, array_merge($defaults, $payload));
     }
 
     /**
@@ -259,6 +259,8 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
         if (! $this->categoryExists($category)) {
             return false;
         }
+
+        $settings = $this->normalizeCategory($category, $settings);
 
         $payload = [
             '_meta' => [
@@ -408,5 +410,18 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
         $defaults = $this->getDefaults();
 
         return is_array($defaults[$category] ?? null) ? $defaults[$category] : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function normalizeCategory(string $category, array $settings): array
+    {
+        if ($category !== 'drivers') {
+            return $settings;
+        }
+
+        return MoabomRuntimeDriverSettings::normalize($settings);
     }
 }

@@ -12,7 +12,7 @@ class AppsRepairLegacyGlobalVisibilityCommand extends Command
                             {--dry-run : 변경 없이 대상 건수만 출력}
                             {--force : 운영 환경에서도 실행}';
 
-    protected $description = '레거시 visibility=global(구 is_shared) 을 tenant_slug 병원 범위로 1회 정리';
+    protected $description = '레거시 visibility=global(구 is_shared) 을 tenant_slug 업체 범위로 1회 정리';
 
     public function handle(GeneratedAppLegacyVisibilityRepair $repair): int
     {

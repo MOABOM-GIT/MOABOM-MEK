@@ -97,7 +97,7 @@ export function SimulationTab({ hospitalName, input, onInputChange, onProceedToC
         <ScenarioCard
           tone="self"
           title="직접 운영"
-          subtitle="인력·장비·청구를 병원에서 직접 챙기는 경우"
+          subtitle="인력·장비·청구를 업체에서 직접 챙기는 경우"
           scenario={result.self}
         />
         <ScenarioCard

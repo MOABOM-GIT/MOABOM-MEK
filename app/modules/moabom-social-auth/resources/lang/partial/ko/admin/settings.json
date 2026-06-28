@@ -12,7 +12,7 @@
   "fields": {
     "client_id": "Client ID",
     "client_secret": "Client Secret",
-    "use_master_defaults": "마스터 키 사용 (기본). 해제하면 이 병원 전용 키를 저장합니다.",
+    "use_master_defaults": "마스터 키 사용 (기본). 해제하면 이 업체 전용 키를 저장합니다.",
     "redirect_uri": "Redirect URI",
     "provider_callback_url": "Provider 등록용 Callback/Redirect URI",
     "google_request_auth_time": "Google 보안 번들의 auth_time 클레임을 요청합니다. Google 인증 플랫폼에서 보안 번들이 사용 설정된 경우에만 켜세요.",

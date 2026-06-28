@@ -2,7 +2,7 @@
     "name": "modules/moabom-system",
     "description": "Moabom system settings module for Gnuboard7",
     "type": "library",
-    "version": "0.7.7",
+    "version": "0.8.12",
     "license": "MIT",
     "autoload": {
         "psr-4": {

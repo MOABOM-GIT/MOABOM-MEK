@@ -12,8 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * 테넌트 Host — 플랫폼 전용 admin SPA 차단.
  *
- * - `/admin/saas/*` 병원 목록·생성 (mek360.com 전용)
- * - `/admin/platform/settings/tenant` 레거시 병원 운영 설정 (제거 → 마이페이지 설정으로 유도)
+ * - `/admin/saas/*` 업체 목록·추가 (mek360.com 전용)
+ * - `/admin/platform/settings/tenant` 레거시 업체 운영 설정 (제거 → 마이페이지 설정으로 유도)
  */
 final class RestrictTenantHostPlatformAdminRoutes
 {

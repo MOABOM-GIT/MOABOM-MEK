@@ -11,7 +11,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-JS_DIR="${ROOT}/app/templates/moabom-basic/dist/js"
+APP_ROOT="${MOABOM_APP_ROOT:-${ROOT}/app}"
+JS_DIR="${APP_ROOT}/templates/moabom-basic/dist/js"
 
 DEFAULT_BUDGET_KB=200
 FAIL=0

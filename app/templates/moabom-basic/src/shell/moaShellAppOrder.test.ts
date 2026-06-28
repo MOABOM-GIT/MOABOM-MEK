@@ -113,7 +113,7 @@ describe('moaShellAppOrder', () => {
   it('resolveMainAppsFromOrder roundtrips empty customized grid after drag-add', () => {
     const afterAdd = resolveMainAppsFromOrder(['hospital-info'], [], [], true);
     expect(afterAdd.map(app => app.id)).toEqual(['hospital-info']);
-    expect(afterAdd[0]?.description).toContain('병원');
+    expect(afterAdd[0]?.description).toContain('소개');
   });
 
   it('resolveMainAppsFromOrder shows empty grid when customized with empty order', () => {

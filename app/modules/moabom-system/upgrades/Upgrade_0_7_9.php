@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\System\Saas\TenantAdminMenuSynchronizer;
 
 /**
- * 플랫폼 메뉴 재구성 — 부모 order 0, 병원 관리 하위 배치, 형제 메뉴 order 정규화.
+ * 플랫폼 메뉴 재구성 — 부모 order 0, 업체 관리 하위 배치, 형제 메뉴 order 정규화.
  */
 class Upgrade_0_7_9 implements UpgradeStepInterface
 {

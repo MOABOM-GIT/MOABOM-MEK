@@ -43,28 +43,28 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
 
 | Host | 이유 |
 |------|------|
-| `app.mek360.com` | slug `app` → 병원 tenant와 혼동 (`platform_hosts`로 완화 가능하나 **채택 안 함**) |
-| `app{id}.mek360.com` | slug `app43` 등 → 병원 tenant 충돌 |
+| `app.mek360.com` | slug `app` → 업체 tenant와 혼동 (`platform_hosts`로 완화 가능하나 **채택 안 함**) |
+| `app{id}.mek360.com` | slug `app43` 등 → 업체 tenant 충돌 |
 | `tenant_path` (`{hospital}/modules/.../preview/...`) | 셸과 동일 Host → 오리진 분리·해시 의도 불충족. **장기 SSOT 아님** |
 | `aa.00.mek360.com` 등 | tenant 비충돌이나 TLS(`*.mek360.com` 미커버)·가독성 불리 |
 
 ---
 
-## 3. 병원 SaaS와 Host 분리
+## 3. 업체 SaaS와 Host 분리
 
 `TenantHostParser` (`moabom-system`):
 
 | 규칙 | 결과 |
 |------|------|
 | `platform_hosts` 목록 | **platform** |
-| `{한 단어}.mek360.com` + `[a-z0-9-]+` | **병원 tenant** (`smoke.mek360.com`) |
+| `{한 단어}.mek360.com` + `[a-z0-9-]+` | **업체 tenant** (`smoke.mek360.com`) |
 | 서브도메인에 `.` 포함 | **unknown** (tenant 아님) |
 
 | Host | 파서 | 채택 |
 |------|------|------|
 | `apps.mek360.com` | platform_hosts 등록 → **platform** | Standard ✅ |
 | `43.apps.mek360.com` | **unknown** → 전용 `GeneratedAppHostParser` | Hosted ✅ |
-| `smoke.mek360.com` | tenant `smoke` | 병원 셸 (기존) |
+| `smoke.mek360.com` | tenant `smoke` | 업체 셸 (기존) |
 
 **TLS**
 
@@ -86,7 +86,7 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
   moabom_system_generated_apps   id, tenant_slug, user_id, tier, html, visibility, …
   moabom_generated_app_rows      generated_app_id, tenant_slug, user_id, table_key, payload
 
-[tenant DB — 병원별]
+[tenant DB — 업체별]
   users
   moabom_ai_generation_sessions   user_id, generated_app_id → platform 앱 ID (논리 참조, FK 없음)
 ```
@@ -95,17 +95,17 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
 |--------|--------|---------|
 | platform | `moabom_system_generated_apps` | `tenant_slug` + `user_id` + `visibility` |
 | platform | `moabom_generated_app_rows` | `generated_app_id` + `tenant_slug` + `user_id` |
-| tenant | `users` | 병원별 독립 ID 공간 |
+| tenant | `users` | 업체별 독립 ID 공간 |
 | tenant | `moabom_ai_generation_sessions` | `user_id` · `generated_app_id`는 platform ID |
 
-> **레거시:** tenant DB 에도 `moabom_system_generated_apps` 가 baseline 으로 남아 있을 수 있음(이관 전·신규 병원).  
+> **레거시:** tenant DB 에도 `moabom_system_generated_apps` 가 baseline 으로 남아 있을 수 있음(이관 전·신규 업체).  
 > **쓰기 SSOT** 는 platform (`GeneratedAppsConnection::usesPlatformStore()`).  
 > `findLegacyTenantRow` 는 이관 과도기 dual-read 용 — Phase H 에서 제거 예정.
 
 | visibility | 의미 | 회원 API | admin API |
 |------------|------|----------|-----------|
 | `private` | 소유자만 | ✅ 설정 | ✅ |
-| `tenant` | 생성 병원 내 등록 | ✅ 설정 (「앱 등록」) | ✅ |
+| `tenant` | 생성 업체 내 등록 | ✅ 설정 (「앱 등록」) | ✅ |
 | `global` | 전체 테넌트 공개 | ❌ **금지** | ✅ |
 
 | 질문 | 답 |
@@ -125,7 +125,7 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
 ## 5. 요청 흐름
 
 ```
-[병원 셸 smoke.mek360.com]
+[업체 셸 smoke.mek360.com]
   │ API 생성·저장 → apps DB (tenant_slug=smoke)
   │ preview_url: https://apps.mek360.com/g/{id}?token=…
   └─ iframe → apps.mek360.com (HTML, frame-ancestors)
@@ -185,14 +185,14 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
 
 ---
 
-## 9. 관리자 plane (마스터 · 병원)
+## 9. 관리자 plane (마스터 · 업체)
 
 > **상태: 구현 반영 (Phase G)**  
 > 탈퇴 회원 앱은 **자동 삭제하지 않음**. 미등록(`private`)은 회원 편집 불가 → 관리자가 공개 범위만 올려 활성화.
 
 ### 9.1 제품 합의
 
-| 주체 | 회원(셸) | 마스터 admin | 병원 admin |
+| 주체 | 회원(셸) | 마스터 admin | 업체 admin |
 |------|----------|--------------|------------|
 | 등록·공개 앱 + 탈퇴 소유자 | 리믹스 → **내 앱으로 새로 저장** | 목록·공개·삭제 | 동일 (본원 앱만) |
 | 미등록(`private`) + 탈퇴 | 편집 불가 (정상) | 공개 범위 변경 가능 | 동일 |
@@ -202,27 +202,27 @@ API:    https://{id}.apps.mek360.com/api/data/{table_key}
 ### 9.2 설계 원칙 — 표면은 하나, 스코프만 Host 로 갈림
 
 운영·유지보수 SSOT: **화면 1벌 · API 계약 1벌 · 서비스 1벌**.  
-마스터/병원 차이는 **“어디까지 보이나”(scope)** 뿐이며, 병원 화면은 마스터 목록에 `tenant_slug` 필터를 고정한 것과 동일하다.
+마스터/업체 차이는 **“어디까지 보이나”(scope)** 뿐이며, 업체 화면은 마스터 목록에 `tenant_slug` 필터를 고정한 것과 동일하다.
 
 | 계층 | 채택 | 비채택 (복잡도만 증가) |
 |------|------|------------------------|
-| **Domain** | `GeneratedAppAdminService` · `GeneratedAppPurgeService` · `GeneratedAppAdminScope` 각 1개 | 마스터/병원 서비스 이중 구현 |
+| **Domain** | `GeneratedAppAdminService` · `GeneratedAppPurgeService` · `GeneratedAppAdminScope` 각 1개 | 마스터/업체 서비스 이중 구현 |
 | **HTTP** | 컨트롤러 1개, 라우트 prefix 1개 | prefix·컨트롤러·Request DTO 2벌 |
 | **Admin UI** | layout JSON **1개** (`admin_generated_apps`) | layout 2벌 |
 | **보안** | Host → scope 해석 후 쿼리·변경 강제 (§9.4) | 클라이언트 `tenant_slug` 신뢰 |
 
-**라우트를 2개로 나누지 않는 이유:** 병원 API는 마스터 API + `tenant_slug={현재}` 와 동일. prefix 를 쪼개면 스모크·문서·layout endpoint 가 2배가 된다.
+**라우트를 2개로 나누지 않는 이유:** 업체 API는 마스터 API + `tenant_slug={현재}` 와 동일. prefix 를 쪼개면 스모크·문서·layout endpoint 가 2배가 된다.
 
 **Host 별 URL 은 2개 유지 (라우팅 제약만):**
 
-| | 마스터 | 병원 |
+| | 마스터 | 업체 |
 |--|--------|------|
 | Admin SPA | `/admin/apps/generated` | `/admin/apps/generated` (동일 path) |
 | Admin API | `/api/modules/moabom-apps/admin/generated-apps` | 동일 |
 | 메뉴 | top-level 「AI 생성앱」 | top-level 「AI 생성앱」 |
 
 > `admin/saas/*` 는 테넌트 Host 에서 404 (`RestrictTenantHostPlatformAdminRoutes`).  
-> 생성앱 관리는 **`/admin/apps/…`** 로 마스터·병원 **공통** — `saas` 하위에 두지 않는다.
+> 생성앱 관리는 **`/admin/apps/…`** 로 마스터·업체 **공통** — `saas` 하위에 두지 않는다.
 
 ### 9.3 요청 흐름 (통합)
 
@@ -265,7 +265,7 @@ Host 파싱은 `TenantHostParser` / `TenantContext` 와 동일 SSOT.
 | `mek360.com` (platform) | `platform` | 전 테넌트 · `?tenant_slug=` 선택 필터 | 앱 존재만 검증 |
 | `{slug}.mek360.com` | `tenant` | `WHERE tenant_slug = {slug}` **강제** | 앱 `tenant_slug` 불일치 → **404** |
 
-**테넌트 Host 에서 `?tenant_slug=` 쿼리는 무시** (다른 병원 열람·변경 사고 방지).
+**테넌트 Host 에서 `?tenant_slug=` 쿼리는 무시** (다른 업체 열람·변경 사고 방지).
 
 ```php
 // 의사 코드 — 유일한 스코프 분기 지점
@@ -301,7 +301,7 @@ GeneratedAppAdminScope::fromRequest():
 
 ### 9.6 완전 삭제 SSOT (`GeneratedAppPurgeService`)
 
-마스터·병원 admin 공용. 호출 전 `scope->assertCanManage($app)` 만 수행.
+마스터·업체 admin 공용. 호출 전 `scope->assertCanManage($app)` 만 수행.
 
 ```
 1. scope 검증 (tenant: tenant_slug 일치)
@@ -334,11 +334,11 @@ resources/
   lang/ko.json, en.json
 ```
 
-**메뉴** (`MoabomAppsAdminMenus` — 마스터·병원 동일 선언, sync 시 Host 별 reconcile):
+**메뉴** (`MoabomAppsAdminMenus` — 마스터·업체 동일 선언, sync 시 Host 별 reconcile):
 
 | slug | url | permission | order |
 |------|-----|------------|-------|
-| `moabom-apps-generated` | `/admin/apps/generated` | `moabom-apps.generated.read` | 3 (마스터: 병원 관리 다음) |
+| `moabom-apps-generated` | `/admin/apps/generated` | `moabom-apps.generated.read` | 3 (마스터: 업체 관리 다음) |
 
 `TenantAdminMenuPolicy::FORBIDDEN_SLUGS` 에 **포함하지 않음**.
 
@@ -355,7 +355,7 @@ resources/
 - 탈퇴 자동 삭제·담당자 위임  
 - 리믹스 자식 연쇄 삭제  
 - layout·서비스·API prefix 이중화  
-- 테넌트 admin 의 타 병원 앱 접근  
+- 테넌트 admin 의 타 업체 앱 접근  
 
 ---
 
@@ -369,7 +369,7 @@ resources/
 | **D** | Hosted: `{id}.apps.mek360.com` provision + data API + GCS |
 | **E** | tenant DB 기존 데이터 → platform 이관 (또는 dual-read) |
 | **F** | 라이브러리 tier 배지, GCS upload, 스모크 |
-| **G** | 관리자 plane: 통합 admin API/UI + scope (마스터·병원) | ✅ |
+| **G** | 관리자 plane: 통합 admin API/UI + scope (마스터·업체) | ✅ |
 | **H** | Cross-DB 구조 강화: 세션 FK 제거 · scope fail-closed · dual-read 정리 | ⏳ |
 
 ---
@@ -384,7 +384,7 @@ resources/
 | **D** Hosted provision + data API | ✅ |
 | **E** tenant DB → platform 이관 | ✅ 1회성 `moabom:apps:migrate-to-platform` (수동만, 배포 post-deploy **제외**) |
 | **F** 라이브러리 tier 배지, GCS upload, 스모크 | ⏳ |
-| **G** 마스터·병원 admin 생성앱 관리 | ✅ |
+| **G** 마스터·업체 admin 생성앱 관리 | ✅ |
 | **H** Cross-DB 감사 후속 (§12) | ⏳ FK 제거·fail-closed·회원 global 금지 반영, baseline 정리 잔여 |
 
 **운영 전 필수:** DNS/TLS `apps.mek360.com`, `*.apps.mek360.com` · `MOABOM_SAAS_PLATFORM_HOSTS`에 `apps.mek360.com` · `php artisan moabom:apps:platform-migrate` · tenant DB 에 `2026_06_21_000001_drop_generated_app_fk_from_ai_sessions` 적용
@@ -411,22 +411,22 @@ apps.mek360.com    → platform apps + preview (TenantContext=platform)
 | **CD-02** | P0 | `tenantScopeKey()===unknown` 일 때 `scopeTenant` 필터 생략 → **cross-tenant user_id 충돌** | `whereRaw('1=0')` fail-closed · `GeneratedAppRepositoryTenantScopeTest` | ✅ 코드 |
 | **CD-03** | P1 | 회원 share API 에서 `global` visibility 허용 | `ShareGeneratedAppRequest` 에서 `global` 제거 · §4 표 | ✅ 코드 |
 | **CD-04** | P1 | tenant/platform **이중 plane** — `findLegacyTenantRow`, baseline tenant 앱 테이블 | 이관 완료 tenant 에서 legacy read 제거 · baseline manifest 정리 | ⏳ Phase H |
-| **CD-05** | P2 | platform Host 회원 API — `tenant_slug=platform` 만 조회, 병원 앱 미노출 | 문서화(의도). 회원 API는 **병원 Host 전용** 운영 | ✅ 문서 |
+| **CD-05** | P2 | platform Host 회원 API — `tenant_slug=platform` 만 조회, 업체 앱 미노출 | 문서화(의도). 회원 API는 **업체 Host 전용** 운영 | ✅ 문서 |
 | **CD-06** | P2 | `AiGenerationSession::generatedApp()` cross-DB Eloquent | FK 제거 후에도 관계 사용 금지 — repository·service 직접 조회 | ✅ 문서 |
 | **CD-07** | P2 | GCS 경로 문서(`tenant_slug` 세그먼트)와 코드 불일치 | §4 prefix SSOT `generated-apps/{app_id}/` | ✅ 문서 |
 
 ### 12.3 Phase H 잔여 (배포·운영)
 
-1. **tenant 마이그레이션** — 모든 병원 DB 에 `2026_06_21_000001_*` 실행 (post-deploy 또는 `migrate` 롤링)
-2. **baseline manifest** — `moabom_system_generated_apps` / `moabom_generated_app_rows` tenant baseline 에서 제외 검토 (신규 병원 혼선 방지)
+1. **tenant 마이그레이션** — 모든 업체 DB 에 `2026_06_21_000001_*` 실행 (post-deploy 또는 `migrate` 롤링)
+2. **baseline manifest** — `moabom_system_generated_apps` / `moabom_generated_app_rows` tenant baseline 에서 제외 검토 (신규 업체 혼선 방지)
 3. **`findLegacyTenantRow` 제거** — platform 이관 100% 후 dual-read 삭제
 4. **스모크** — 저장 → `linkGeneratedApp` → 세션 FK 없이 성공 확인
 
 ### 12.4 정상 동작 (재확인)
 
-- 프리뷰: `viewerCanSeePublished` + `preview_token` + `tenantScopeMatches` (병원 셸 → `apps.mek360.com`)
+- 프리뷰: `viewerCanSeePublished` + `preview_token` + `tenantScopeMatches` (업체 셸 → `apps.mek360.com`)
 - Hosted data API: 공개 HTML 과 달리 **항상 token 필수**
-- Admin scope: tenant Host 타 병원 PATCH/DELETE → 404
+- Admin scope: tenant Host 타 업체 PATCH/DELETE → 404
 - 회원 삭제: 세션 + 앱 transaction (`AiAppController::destroy`)
 - Admin purge: Hosted + GCS + tenant 세션 + platform 행 (`GeneratedAppPurgeService`)
 

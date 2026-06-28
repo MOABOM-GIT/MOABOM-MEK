@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Saas;
 
 /**
- * 병원 테넌트 프로비저닝 계약 — Platform API·CLI·Job 공용.
+ * 업체 테넌트 프로비저닝 계약 — Platform API·CLI·Job 공용.
  */
 interface TenantProvisionerInterface
 {

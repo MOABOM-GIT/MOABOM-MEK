@@ -108,7 +108,7 @@ class TenantSettingsSeederTest extends ModuleTestCase
 
         $seeder = new TenantSettingsSeeder(new TenantFilesystemConfigurator);
         $seeder->seed($tenant, [
-            'name' => '비고병원',
+            'name' => '비고업체',
             'region' => 'legacy-region',
             'note' => '비고 메모',
             'address' => '서울시',

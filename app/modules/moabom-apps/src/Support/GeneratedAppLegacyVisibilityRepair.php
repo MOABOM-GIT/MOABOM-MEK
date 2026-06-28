@@ -7,7 +7,7 @@ namespace Modules\Moabom\Apps\Support;
 use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 
 /**
- * 레거시 is_shared=true → visibility=global 백필을 병원(tenant) 범위로 1회 정리.
+ * 레거시 is_shared=true → visibility=global 백필을 업체(tenant) 범위로 1회 정리.
  */
 final class GeneratedAppLegacyVisibilityRepair
 {

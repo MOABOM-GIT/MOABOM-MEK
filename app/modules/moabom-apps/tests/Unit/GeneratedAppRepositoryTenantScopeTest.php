@@ -83,7 +83,7 @@ class GeneratedAppRepositoryTenantScopeTest extends ModuleTestCase
         GeneratedAppsConnection::apps()->create([
             'tenant_slug' => 'freshent',
             'user_id' => $owner->id,
-            'title' => '다른 병원',
+            'title' => '다른 업체',
             'app_type' => 'general',
             'tier' => 'standard',
             'html' => '<!DOCTYPE html><html><body>other</body></html>',

@@ -59,6 +59,7 @@ WORKDIR /app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci
 COPY app/ ./
+COPY deploy/check-bundle-budget.sh ./deploy/check-bundle-budget.sh
 # 코어 번들 (public/build/core)
 RUN npm run build:core 2>/dev/null || npm run build 2>/dev/null || true
 # 활성 템플릿/모듈 dist — 모든 빌드는 Cloud Build 안에서 (호스트 빌드 금지 SSOT)
@@ -69,6 +70,7 @@ RUN cd plugins/sirsoft-ckeditor5 && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM
 RUN cd plugins/sirsoft-daum_postcode && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd plugins/sirsoft-tosspayments && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd plugins/moabom-auth-hardening && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
+RUN MOABOM_APP_ROOT=/app bash deploy/check-bundle-budget.sh
 
 # --- 3) Runtime ---
 FROM php:8.4-fpm-bookworm

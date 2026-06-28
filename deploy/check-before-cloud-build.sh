@@ -139,6 +139,36 @@ grep -q 'DB_SOCKET:' "${ENV}" || fail "DB_SOCKET 없음 (compose DB_HOST=db 금�
 grep -q 'SESSION_DRIVER: cookie' "${ENV}" || fail "SESSION_DRIVER: cookie 필요"
 grep -q 'G7_JSON_SETTINGS_CACHE_TTL:' "${ENV}" || fail "G7_JSON_SETTINGS_CACHE_TTL 없음"
 grep -qE 'DB_WRITE_HOST: db$' "${ENV}" && fail "DB_WRITE_HOST: db 는 Cloud Run 에서 실패"
+grep -q '^LOG_LEVEL: debug$' "${ENV}" && fail "운영 LOG_LEVEL=debug 금지 — 장애 조사 시 env-only 로만 임시 적용"
+grep -q '^QUEUE_CONNECTION: database$' "${ENV}" || fail "QUEUE_CONNECTION: database 필요"
+grep -q '^DB_QUEUE_RETRY_AFTER: "120"$' "${ENV}" || fail "DB_QUEUE_RETRY_AFTER: \"120\" 필요 (queue worker timeout 보다 커야 함)"
+grep -q '^BROADCAST_CONNECTION: reverb$' "${ENV}" || fail "BROADCAST_CONNECTION: reverb 필요"
+grep -q '^REVERB_HOST: realtime\.mek360\.com$' "${ENV}" || fail "REVERB_HOST 는 realtime.mek360.com 이어야 함"
+grep -q '^REVERB_PORT: "443"$' "${ENV}" || fail "REVERB_PORT: \"443\" 필요"
+grep -q '^REVERB_SCHEME: https$' "${ENV}" || fail "REVERB_SCHEME: https 필요"
+grep -q '^REVERB_SERVER_HOST: realtime\.mek360\.com$' "${ENV}" || fail "REVERB_SERVER_HOST 는 realtime.mek360.com 이어야 함"
+grep -q '^REVERB_SERVER_PORT: "443"$' "${ENV}" || fail "REVERB_SERVER_PORT: \"443\" 필요"
+grep -q '^REVERB_SERVER_SCHEME: https$' "${ENV}" || fail "REVERB_SERVER_SCHEME: https 필요"
+grep -q 'reverb:start' "${ROOT}/deploy/supervisord.conf" \
+  && fail "Cloud Run supervisord 에 reverb:start sidecar 잔존 — Realtime VM SSOT"
+grep -q 'proxy_pass http://127\.0\.0\.1:6001' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  && fail "Cloud Run nginx 가 로컬 Reverb(127.0.0.1:6001)에 의존"
+grep -q -- '--timeout=60' "${ROOT}/deploy/supervisord.conf" \
+  || fail "queue-worker timeout 가드 누락"
+grep -q -- '--max-jobs=500' "${ROOT}/deploy/supervisord.conf" \
+  || fail "queue-worker max-jobs 가드 누락"
+grep -q -- '--memory=192' "${ROOT}/deploy/supervisord.conf" \
+  || fail "queue-worker memory 가드 누락"
+grep -q 'MoabomRuntimeDriverSettings::normalize' "${ROOT}/app/modules/moabom-system/src/Saas/MoabomDbConfigRepository.php" \
+  || fail "관리자 drivers 설정이 운영 runtime driver 와 정규화되지 않음"
+grep -q 'available_session_drivers' "${ROOT}/app/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
+  || fail "관리자 session driver 옵션 확장(cookie) 누락"
+grep -q 'available_log_drivers' "${ROOT}/app/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
+  || fail "관리자 log driver 옵션 확장(stderr) 누락"
+grep -q 'SaasNormalizeDriverSettingsCommand::class' "${ROOT}/app/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
+  || fail "drivers DB/GCS 1회 정규화 커맨드 등록 누락"
+grep -q 'drivers_runtime_lock_notice' "${ROOT}/app/templates/moabom-admin_basic/layouts/partials/admin_settings/_tab_drivers.json" \
+  || fail "관리자 drivers 운영 고정값 안내 UI 누락"
 # Secret Manager SSOT — 시크릿 키가 production.env.yaml 에 평문 잔존하면 gcloud --set-secrets 와 충돌
 if [[ -f "${ROOT}/deploy/lib/gcp-env.sh" ]]; then
   # shellcheck source=lib/gcp-env.sh
@@ -150,7 +180,7 @@ if [[ -f "${ROOT}/deploy/lib/gcp-env.sh" ]]; then
     fi
   done < <(moabom_gcp_secret_env_keys)
 fi
-ok "DB_SOCKET, SESSION cookie, settings TTL, Secret Manager 충돌 없음"
+ok "DB_SOCKET, SESSION cookie, settings TTL, queue/log, Reverb VM env/sidecar, Secret Manager 충돌 없음"
 
 echo "==> [v7-6] .gcloudignore (업로드 병목)"
 [[ -f "${GCLOUDIGNORE}" ]] || fail ".gcloudignore 없음"
@@ -201,8 +231,11 @@ if [[ -f "${DIST_JS}" ]]; then
 fi
 ok "moabom-basic src 존재 (Cloud Build 빌드 대상)"
 
-echo "==> [v7-7b] 번들 예산 가드 (Cloud Build 산출 후 검사용 — 사전 단계는 정보성)"
+echo "==> [v7-7b] 번들 예산 가드 (Cloud Build 산출 hard gate)"
 chmod +x "${ROOT}/deploy/check-bundle-budget.sh" 2>/dev/null || true
+grep -q "COPY deploy/check-bundle-budget.sh" "${ROOT}/deploy/Dockerfile" \
+  && grep -q "MOABOM_APP_ROOT=/app bash deploy/check-bundle-budget.sh" "${ROOT}/deploy/Dockerfile" \
+  || fail "Dockerfile assets stage 에 번들 예산 hard gate 누락"
 if [[ -f "${DIST_JS}" ]]; then
   if ! "${ROOT}/deploy/check-bundle-budget.sh" 2>&1 | sed 's/^/    /'; then
     echo "    info: repo 캐시 dist 가 예산 초과 — Cloud Build 산출이 동일 기준 통과해야 함"
@@ -210,7 +243,7 @@ if [[ -f "${DIST_JS}" ]]; then
 else
   echo "    info: repo dist 없음 — Cloud Build 산출 후 동일 검사가 이미지 빌드 단계에서 적용됨"
 fi
-ok "번들 예산 사전 정보 (실제 게이트는 Cloud Build 산출 기준)"
+ok "번들 예산 hard gate 연결 (실제 검사는 Cloud Build 산출 기준)"
 
 echo "==> [v7-8] 업로드 추정 (삭제 없음, .gcloudignore 반영)"
 PRUNE='\( -path ./.git -o -path "*/node_modules" -o -path "*/_bundled" -o -path ./deploy/backups -o -path ./app/vendor \) -prune'

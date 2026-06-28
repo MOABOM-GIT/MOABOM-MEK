@@ -17,6 +17,21 @@
 .liquid-glass {
   position: relative;
   isolation: isolate;
+  --moa-liquid-active-border: var(--moa-liquid-border);
+  --moa-liquid-readable-color: var(--moa-liquid-readable-color-on-light);
+  --moa-liquid-readable-border: var(--moa-liquid-readable-border-on-light);
+}
+
+.liquid-glass--on-light {
+  --moa-liquid-active-border: var(--moa-liquid-readable-border-on-light);
+  --moa-liquid-readable-color: var(--moa-liquid-readable-color-on-light);
+  --moa-liquid-readable-border: var(--moa-liquid-readable-border-on-light);
+}
+
+.liquid-glass--on-dark {
+  --moa-liquid-active-border: var(--moa-liquid-readable-border-on-dark);
+  --moa-liquid-readable-color: var(--moa-liquid-readable-color-on-dark);
+  --moa-liquid-readable-border: var(--moa-liquid-readable-border-on-dark);
 }
 
 .liquid-glass::after {
@@ -39,7 +54,7 @@
   border-radius: inherit;
   pointer-events: none;
 
-  border: 1px solid var(--moa-liquid-border);
+  border: 1px solid var(--moa-liquid-active-border);
 
   -webkit-backdrop-filter: blur(var(--moa-liquid-blur)) saturate(var(--moa-liquid-saturation)) brightness(var(--moa-liquid-brightness));
   backdrop-filter: blur(var(--moa-liquid-blur)) saturate(var(--moa-liquid-saturation)) brightness(var(--moa-liquid-brightness));

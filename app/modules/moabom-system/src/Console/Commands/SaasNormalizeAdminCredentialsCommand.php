@@ -23,7 +23,7 @@ final class SaasNormalizeAdminCredentialsCommand extends Command
         {--password=mek360 : 통일할 관리자 password}
         {--old-email=admin@moabom.com : 기존 관리자 email}
         {--name=관리자 : 관리자 표시 이름}
-        {--nickname= : 관리자 nickname (테넌트는 미지정 시 병원명)}
+        {--nickname= : 관리자 nickname (테넌트는 미지정 시 업체명)}
         {--dry-run : 변경하지 않고 대상만 출력}';
 
     protected $description = 'SaaS platform 및 tenant 관리자 계정 email/password 통일';

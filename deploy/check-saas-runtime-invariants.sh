@@ -210,7 +210,7 @@ ok "platform-migrate + display columns + backfill"
 echo "==> [v8-10] hospitals 목록 UI — display_name + freshent 표시 흐름"
 LIST_LAYOUT="${ACTIVE_SYS}/resources/layouts/admin/admin_saas_hospitals.json"
 grep -q "item.display_name" "${LIST_LAYOUT}" \
-  || fail "admin_saas_hospitals.json 이 item.display_name 미사용 (병원명 컬럼 누락)"
+  || fail "admin_saas_hospitals.json 이 item.display_name 미사용 (업체명 컬럼 누락)"
 grep -q "item.is_platform_host" "${LIST_LAYOUT}" \
   || fail "admin_saas_hospitals.json 이 is_platform_host 미사용 (platform/tenant 구분 누락)"
 grep -q "_computed.hospitalsTotal === 0" "${LIST_LAYOUT}" \
@@ -260,7 +260,7 @@ grep -q 'moabom-tenant-settings' "${MENU_POLICY}" \
 LEGAL_API="${APP}/modules/moabom-system/src/routes/api.php"
 TENANT_LAYOUT="${APP}/modules/moabom-system/resources/layouts/admin/admin_tenant_settings.json"
 [[ ! -f "${TENANT_LAYOUT}" ]] \
-  || fail "admin_tenant_settings.json 제거됨 — 병원 운영 전용 레이아웃 금지"
+  || fail "admin_tenant_settings.json 제거됨 — 업체 운영 전용 레이아웃 금지"
 [[ -f "${APP}/modules/moabom-system/src/routes/legacy-tenant-settings-compat.php" ]] \
   || fail "legacy-tenant-settings-compat.php 없음 (DB 레이아웃 전환기)"
 grep -q 'SaasSyncModuleLayoutsCommand' "${APP}/modules/moabom-system/src/Providers/SystemServiceProvider.php" \

@@ -3,7 +3,7 @@
 namespace Modules\Moabom\Apps\Support;
 
 /**
- * 생성앱 프리뷰 Host 판별 — TenantHostParser 와 분리 (병원 slug 비충돌).
+ * 생성앱 프리뷰 Host 판별 — TenantHostParser 와 분리 (업체 slug 비충돌).
  *
  * @see docs/GENERATED-APP-TIERS.md
  */

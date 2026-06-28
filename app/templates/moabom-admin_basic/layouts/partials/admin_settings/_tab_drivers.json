@@ -12,6 +12,47 @@
   },
   "children": [
     {
+      "id": "drivers_runtime_lock_notice",
+      "type": "basic",
+      "name": "Div",
+      "if": "{{_local.form?.drivers?._runtime?.locked}}",
+      "props": {
+        "className": "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Icon",
+          "props": {
+            "name": "lock",
+            "className": "mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-300"
+          }
+        },
+        {
+          "type": "basic",
+          "name": "Div",
+          "children": [
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "text-sm font-medium"
+              },
+              "text": "$t:admin.settings.drivers.runtime_locked.title"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-1 text-sm text-blue-800 dark:text-blue-200"
+              },
+              "text": "$t:admin.settings.drivers.runtime_locked.desc"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "card_storage_settings",
       "type": "basic",
       "name": "Div",
@@ -68,7 +109,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.storage_driver",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.storage_driver']?.[0] ?? ''}}",
                         "options": "{{(_local.form?.available_drivers?.storage ?? []).map(d => ({value: d.id, label: $localized(d.label)}))}}"
@@ -470,7 +511,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.cache_driver",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.cache_driver']?.[0] ?? ''}}",
                         "options": "{{(_local.form?.available_drivers?.cache ?? []).map(d => ({value: d.id, label: $localized(d.label)}))}}"
@@ -527,7 +568,7 @@
                             "type": "text",
                             "name": "drivers.redis_host",
                             "placeholder": "127.0.0.1",
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.redis_host'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -566,7 +607,7 @@
                             "placeholder": "6379",
                             "min": 1,
                             "max": 65535,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.redis_port'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -612,7 +653,7 @@
                             "type": "password",
                             "name": "drivers.redis_password",
                             "placeholder": "$t:admin.settings.drivers.common.optional",
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.redis_password'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -651,7 +692,7 @@
                             "placeholder": "0",
                             "min": 0,
                             "max": 15,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.redis_database'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -1150,7 +1191,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.session_driver",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.session_driver']?.[0] ?? ''}}",
                         "options": "{{(_local.form?.available_drivers?.session ?? []).map(d => ({value: d.id, label: $localized(d.label)}))}}"
@@ -1310,7 +1351,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.queue_driver",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.queue_driver']?.[0] ?? ''}}",
                         "options": "{{(_local.form?.available_drivers?.queue ?? []).map(d => ({value: d.id, label: $localized(d.label)}))}}"
@@ -1462,7 +1503,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.log_driver",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.log_driver']?.[0] ?? ''}}",
                         "options": "{{(_local.form?.available_drivers?.log ?? []).map(d => ({value: d.id, label: $localized(d.label)}))}}"
@@ -1507,7 +1548,7 @@
                       "name": "Select",
                       "props": {
                         "name": "drivers.log_level",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "w-full",
                         "error": "{{_local.errors?.['drivers.log_level']?.[0] ?? ''}}",
                         "options": [
@@ -1720,7 +1761,7 @@
                   "props": {
                     "name": "drivers.websocket_enabled",
                     "size": "md",
-                    "disabled": "{{_computed.isReadOnly}}"
+                    "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}"
                   }
                 }
               ]
@@ -1776,7 +1817,7 @@
                             "name": "drivers.websocket_app_id",
                             "placeholder": "my-app-id",
                             "required": true,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.websocket_app_id'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono'}}"
                           }
                         },
@@ -1826,7 +1867,7 @@
                             "name": "drivers.websocket_app_key",
                             "placeholder": "my-app-key",
                             "required": true,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.websocket_app_key'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono'}}"
                           }
                         },
@@ -1876,7 +1917,7 @@
                             "name": "drivers.websocket_app_secret",
                             "placeholder": "my-app-secret",
                             "required": true,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.websocket_app_secret'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed font-mono'}}"
                           }
                         },
@@ -1922,7 +1963,7 @@
                             "type": "text",
                             "name": "drivers.websocket_host",
                             "placeholder": "localhost",
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.websocket_host'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -1961,7 +2002,7 @@
                             "placeholder": "8080",
                             "min": 1,
                             "max": 65535,
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "{{_local.errors?.['drivers.websocket_port'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                           }
                         },
@@ -1996,7 +2037,7 @@
                           "name": "Select",
                           "props": {
                             "name": "drivers.websocket_scheme",
-                            "disabled": "{{_computed.isReadOnly}}",
+                            "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                             "className": "w-full",
                             "error": "{{_local.errors?.['drivers.websocket_scheme']?.[0] ?? ''}}",
                             "options": [
@@ -2033,7 +2074,7 @@
                         "id": "input_websocket_verify_ssl",
                         "type": "checkbox",
                         "name": "drivers.websocket_verify_ssl",
-                        "disabled": "{{_computed.isReadOnly}}",
+                        "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                         "className": "h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                       }
                     },
@@ -2115,7 +2156,7 @@
                                 "type": "text",
                                 "name": "drivers.websocket_server_host",
                                 "placeholder": "127.0.0.1",
-                                "disabled": "{{_computed.isReadOnly}}",
+                                "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                                 "className": "{{_local.errors?.['drivers.websocket_server_host'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                               }
                             },
@@ -2154,7 +2195,7 @@
                                 "placeholder": "8080",
                                 "min": 1,
                                 "max": 65535,
-                                "disabled": "{{_computed.isReadOnly}}",
+                                "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                                 "className": "{{_local.errors?.['drivers.websocket_server_port'] ? 'w-full px-3 py-2 border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed'}}"
                               }
                             },
@@ -2189,7 +2230,7 @@
                               "name": "Select",
                               "props": {
                                 "name": "drivers.websocket_server_scheme",
-                                "disabled": "{{_computed.isReadOnly}}",
+                                "disabled": "{{_computed.isReadOnly || _local.form?.drivers?._runtime?.locked}}",
                                 "className": "w-full",
                                 "error": "{{_local.errors?.['drivers.websocket_server_scheme']?.[0] ?? ''}}",
                                 "options": [

@@ -7,6 +7,7 @@ use App\Contracts\Repositories\ConfigRepositoryInterface;
 use App\Contracts\Repositories\MenuRepositoryInterface;
 use App\Contracts\Repositories\RoleRepositoryInterface;
 use App\Extension\BaseModuleServiceProvider;
+use App\Extension\HookManager;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
 use App\Http\View\Composers\TemplateComposer;
 use App\Http\View\Composers\UserTemplateComposer;
@@ -25,6 +26,7 @@ use Modules\Moabom\System\Console\Commands\SaasDiffTenantCommand;
 use Modules\Moabom\System\Console\Commands\SaasInspectDbCommand;
 use Modules\Moabom\System\Console\Commands\SaasMeasureSplitBrainCommand;
 use Modules\Moabom\System\Console\Commands\SaasHydratePlatformSettingsCommand;
+use Modules\Moabom\System\Console\Commands\SaasNormalizeDriverSettingsCommand;
 use Modules\Moabom\System\Console\Commands\SaasNormalizeAdminCredentialsCommand;
 use Modules\Moabom\System\Console\Commands\SaasBackfillTenantDisplayCommand;
 use Modules\Moabom\System\Console\Commands\SaasCaptureProvisionAppearanceDefaultsCommand;
@@ -71,6 +73,7 @@ use Modules\Moabom\System\Saas\TenantPackageCatalog;
 use Modules\Moabom\System\Saas\TenantPackageDatabaseSeeder;
 use Modules\Moabom\System\Saas\TenantModuleCategoryJsonStore;
 use Modules\Moabom\System\Saas\MoabomDbConfigRepository;
+use Modules\Moabom\System\Saas\MoabomRuntimeDriverSettings;
 use Modules\Moabom\System\Saas\TenantModuleStorageScope;
 use Modules\Moabom\System\Saas\TenantProvisionArtisanRunner;
 use Modules\Moabom\System\Saas\TenantProvisionAppearanceDefaultsApplier;
@@ -141,6 +144,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasDiffTenantCommand::class,
         SaasMeasureSplitBrainCommand::class,
         SaasHydratePlatformSettingsCommand::class,
+        SaasNormalizeDriverSettingsCommand::class,
         SaasCaptureProvisionAppearanceDefaultsCommand::class,
         SaasTenantReapplyAppearanceDefaultsCommand::class,
         SaasSetTenantFontSizeDefaultCommand::class,
@@ -285,6 +289,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         parent::boot();
 
         PlatformFilesystemSnapshot::capture();
+        $this->registerRuntimeDriverSettingsHooks();
 
         // 코어 UserTemplateComposer 이후에 실행되어 지연 확장 에셋 맵만 축소한다.
         View::composer('app', MoabomUserBootDeferredAssetsGhostComposer::class);
@@ -343,6 +348,62 @@ class SystemServiceProvider extends BaseModuleServiceProvider
             ],
         )));
         config(['core.identity_policy_middleware.skip_route_names' => $identitySkipRouteNames]);
+    }
+
+    private function registerRuntimeDriverSettingsHooks(): void
+    {
+        HookManager::addFilter('core.settings.available_session_drivers', static function (array $drivers): array {
+            foreach ($drivers as $driver) {
+                if (($driver['id'] ?? null) === 'cookie') {
+                    return $drivers;
+                }
+            }
+
+            $drivers[] = [
+                'id' => 'cookie',
+                'label' => [
+                    'ko' => '쿠키 (Cloud Run 운영)',
+                    'en' => 'Cookie (Cloud Run)',
+                ],
+                'provider' => 'moabom-system',
+            ];
+
+            return $drivers;
+        });
+
+        HookManager::addFilter('core.settings.available_log_drivers', static function (array $drivers): array {
+            foreach ($drivers as $driver) {
+                if (($driver['id'] ?? null) === 'stderr') {
+                    return $drivers;
+                }
+            }
+
+            $drivers[] = [
+                'id' => 'stderr',
+                'label' => [
+                    'ko' => '표준 오류 (Cloud Logging)',
+                    'en' => 'Stderr (Cloud Logging)',
+                ],
+                'provider' => 'moabom-system',
+            ];
+
+            return $drivers;
+        });
+
+        HookManager::addFilter('core.settings.save_validation_rules', static function (array $rules, $request): array {
+            $baseRule = method_exists($request, 'input') && $request->input('tab') === 'drivers'
+                ? 'required'
+                : 'nullable';
+
+            $rules['drivers.session_driver'] = [$baseRule, \Illuminate\Validation\Rule::in(['file', 'database', 'redis', 'cookie'])];
+            $rules['drivers.log_driver'] = [$baseRule, \Illuminate\Validation\Rule::in(['single', 'daily', 'stderr'])];
+
+            return $rules;
+        });
+
+        HookManager::addFilter('moabom.saas.drivers.seed_defaults', static function (array $drivers): array {
+            return MoabomRuntimeDriverSettings::normalize($drivers);
+        }, priority: 50);
     }
 
     /**

@@ -75,7 +75,7 @@ export function mainPanelGeneratedExtras(
 
 /**
  * 메인 그리드 앱 목록 생성.
- * - customized=false: 전체 기본 앱(정적 + 부트 매니페스트 + extras). `APPS[0]` 병원소개 포함.
+ * - customized=false: 전체 기본 앱(정적 + 부트 매니페스트 + extras). `APPS[0]` 소개 앱 포함.
  * - customized=true: order 에 명시된 id 만 (빈 order → 빈 그리드). 삭제한 앱은 재삽입하지 않음.
  */
 export function buildMainApps(

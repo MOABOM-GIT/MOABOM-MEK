@@ -60,7 +60,7 @@ final class MoabomSystemAdminMenus
      * 플랫폼 메뉴 그룹 — 마스터·테넌트 공통.
      *
      * 부모는 대시보드(core order 1) 위(order 0)에 둔다.
-     * 병원 관리는 마스터 Host 전용 자식(order 10)이며 tenant DB 에는 금지(TenantAdminMenuPolicy).
+     * 업체 관리는 마스터 Host 전용 자식(order 10)이며 tenant DB 에는 금지(TenantAdminMenuPolicy).
      *
      * @return list<array<string, mixed>>
      */
@@ -78,7 +78,7 @@ final class MoabomSystemAdminMenus
 
         if ($includeHospital) {
             $menus[] = [
-                'name' => ['ko' => '병원 관리', 'en' => 'Hospitals'],
+                'name' => ['ko' => '업체 관리', 'en' => 'Companies'],
                 'slug' => 'moabom-saas-hospitals',
                 'parent_slug' => 'platform-settings',
                 'url' => '/admin/saas/hospitals',

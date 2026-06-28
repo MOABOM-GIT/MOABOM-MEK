@@ -307,7 +307,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | | |
 |---|---|
-| **증상** | 헤더·버튼은 보이나 **병원 행 없음** — API list 200 |
+| **증상** | 헤더·버튼은 보이나 **업체 행 없음** — API list 200 |
 | **원인** | `"forEach"` — G7 미지원; **`iteration`** 만 유효 |
 | **착각** | 생성 폼 `iteration` 정상 → 목록도 완료로 간주 |
 | **조치** | `Tr` → `iteration: { source, item_var: "item" }` |

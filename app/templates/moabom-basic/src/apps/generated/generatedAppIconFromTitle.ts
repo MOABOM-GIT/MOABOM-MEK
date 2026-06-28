@@ -5,7 +5,7 @@ export const GENERATED_APP_ICON_RULES: GeneratedAppIconRule[] = [
   { icon: 'chart-line', keywords: ['차트', '그래프', '통계', '분석', '리포트', 'dashboard', 'chart', 'graph', 'report', 'analytics'] },
   { icon: 'calendar-alt', keywords: ['일정', '달력', '예약', 'calendar', 'schedule', 'booking'] },
   { icon: 'tasks', keywords: ['할일', '체크', '작업', 'todo', 'task', 'checklist'] },
-  { icon: 'notes-medical', keywords: ['건강', '수면', '의료', '병원', '보험', '공단', 'health', 'sleep', 'medical', 'hospital', 'insurance', 'nhis'] },
+  { icon: 'notes-medical', keywords: ['건강', '수면', '의료', '업체', '보험', '공단', 'health', 'sleep', 'medical', 'company', 'insurance', 'nhis'] },
   { icon: 'dumbbell', keywords: ['운동', '피트니스', 'fitness', 'workout', 'exercise'] },
   { icon: 'utensils', keywords: ['식단', '음식', '레시피', 'food', 'meal', 'recipe'] },
   { icon: 'wallet', keywords: ['가계부', '예산', '비용', 'budget', 'money', 'expense', 'finance'] },

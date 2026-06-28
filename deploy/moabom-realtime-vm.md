@@ -57,7 +57,7 @@
 ┌───────────────────────────────┴─────────────────────────────────────────┐
 │  Cloud Run mobaom-container (asia-northeast3) — 변경 없음               │
 │  Laravel broadcast → websocket_server_* (VM endpoint)                   │
-│  Reverb sidecar supervisord — **컷오버 후 비활성화 예정** (Run 플래그 무변경) │
+│  Reverb sidecar supervisord — **비활성화 완료** (Run 플래그 무변경)        │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -131,7 +131,39 @@ VM WS handshake 성공 후:
 4. [ ] `deploy/production.env.yaml` — `REVERB_HOST=realtime.mek360.com`, `REVERB_SERVER_HOST=realtime.mek360.com`, `REVERB_SERVER_PORT=443`, `REVERB_SERVER_SCHEME=https`
 5. [ ] `_IMAGE_TAG` 증가 → `check-before-cloud-build.sh` → `build-and-deploy.sh`
 6. [ ] E2E: 친구요청·채팅·알림·presence revision
-7. [ ] (선택) Cloud Run sidecar Reverb 중지 — **supervisord 변경은 이미지 재빌드 필요**. 컷오버 검증 후 별도 PR
+7. [x] Cloud Run sidecar Reverb 중지 — `deploy/supervisord.conf` 에서 `reverb:start` 제거, `nginx-cloudrun.conf` 로컬 Reverb 프록시 제거
+
+---
+
+## 6-1. 운영 health / 단일 장애점 관리
+
+현재 Realtime plane 은 `moabom-realtime-prod` 단일 VM 이 SSOT 입니다. Cloud Run 내부 sidecar 는 제거했으므로, VM 장애 시 브라우저는 REST catch-up 으로 degrade 하지만 WebSocket 실시간성은 중단됩니다.
+
+상시 확인:
+
+```bash
+bash deploy/check-realtime-vm-health.sh
+MOABOM_REALTIME_VM_SSH=1 bash deploy/check-realtime-vm-health.sh
+```
+
+장애 시 1차 확인:
+
+```bash
+ssh moabom-realtime-prod
+systemctl status nginx --no-pager
+sudo docker compose -f /opt/moabom-realtime/docker-compose.yml ps
+sudo docker compose -f /opt/moabom-realtime/docker-compose.yml logs --tail=120 reverb
+sudo docker compose -f /opt/moabom-realtime/docker-compose.yml logs --tail=120 redis
+```
+
+복구 우선순위:
+
+1. nginx TLS/프록시 정상화
+2. Reverb 컨테이너 재기동
+3. Redis health 확인
+4. `deploy/check-realtime-vm-health.sh` 통과 확인
+
+다중 VM/Managed Redis 전환은 별도 인프라 작업입니다. 그 전까지는 Cloud Run smoke 와 위 health 스크립트로 VM 경로를 배포 전후 확인합니다.
 
 ---
 

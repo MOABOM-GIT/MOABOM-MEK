@@ -50,6 +50,7 @@ import {
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
 import { requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
+import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 import type { ChatMessageCreatedPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
 import {
   hasChatAutoStartBeenAttempted,
@@ -224,7 +225,11 @@ export function useMoabomChat(
       return;
     }
     try {
-      const result = await fetchChatMessages(active.uuid);
+      const result = await runMoabomShellRealtimeTask(
+        `chat:messages:${active.uuid}`,
+        () => fetchChatMessages(active.uuid),
+        { minIntervalMs: 500 },
+      );
       if (activeConversationRef.current?.uuid !== active.uuid) {
         return;
       }

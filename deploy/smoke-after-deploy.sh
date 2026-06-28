@@ -102,18 +102,28 @@ check_delete_auth_or_ok "/api/modules/moabom-chat/user/blocks/a20eac3b-22e5-48fb
 check_delete_auth_or_ok "/api/modules/moabom-chat/user/conversations/a20eac3b-22e5-48fb-bcf2-50cf646baeb6" "moabom-chat conversations destroy" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-chat/user/conversations" "moabom-chat conversations index" || FAIL=1
 check_reverb_upgrade_probe() {
-  local code
-  code="$(curl -sS -o /dev/null -w "%{http_code}" \
+  local host scheme app_key ws_url response
+  host="$(awk -F': ' '/^REVERB_HOST:/{gsub(/"/, "", $2); print $2}' "${ENV_FILE}" 2>/dev/null || true)"
+  scheme="$(awk -F': ' '/^REVERB_SCHEME:/{gsub(/"/, "", $2); print $2}' "${ENV_FILE}" 2>/dev/null || true)"
+  app_key="$(awk -F': ' '/^REVERB_APP_KEY:/{gsub(/"/, "", $2); print $2}' "${ENV_FILE}" 2>/dev/null || true)"
+  host="${host:-realtime.mek360.com}"
+  scheme="${scheme:-https}"
+  app_key="${app_key:-moabom-laravel-key}"
+  ws_url="${scheme}://${host}/app/${app_key}?protocol=7&client=js&version=8.4.0&flash=false"
+
+  response="$(curl --http1.1 -sS -i -m 4 \
     -H "Connection: Upgrade" \
     -H "Upgrade: websocket" \
     -H "Sec-WebSocket-Version: 13" \
     -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-    "${URL}/app/moabom-laravel-key" 2>/dev/null || echo "000")"
-  if [[ "${code}" == "400" || "${code}" == "426" || "${code}" == "101" || "${code}" == "500" || "${code}" == "502" || "${code}" == "503" ]]; then
-    echo "OK   reverb websocket upgrade probe HTTP ${code} (route reachable; incomplete curl handshake is normal)"
+    "${ws_url}" 2>/dev/null || true)"
+  if grep -q '101 Switching Protocols' <<<"${response}" \
+    && grep -q 'pusher:connection_established' <<<"${response}"; then
+    echo "OK   reverb VM websocket upgrade probe HTTP 101 (${host})"
     return 0
   fi
-  echo "FAIL reverb websocket upgrade probe HTTP ${code} (expected 400/426/101/5xx, 404=nginx route missing)"
+  echo "FAIL reverb VM websocket upgrade probe (${host}) — expected HTTP 101 + pusher connection"
+  printf '%s\n' "${response}" | head -n 5
   return 1
 }
 check_reverb_upgrade_probe || FAIL=1

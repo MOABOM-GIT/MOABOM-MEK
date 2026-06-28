@@ -16,7 +16,7 @@ class SaasTenantRegisterCommand extends Command
         {--package=hospital-default : 시드 패키지 ID}
         {--status=active : active|suspended|provisioning}';
 
-    protected $description = '플랫폼 레지스트리에 병원 테넌트 1건 등록 (DB·GCS는 별도 생성)';
+    protected $description = '플랫폼 레지스트리에 업체 테넌트 1건 등록 (DB·GCS는 별도 생성)';
 
     public function handle(PlatformConnectionFactory $platformConnections): int
     {

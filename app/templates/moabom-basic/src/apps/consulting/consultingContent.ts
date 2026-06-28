@@ -17,10 +17,10 @@ export const COMPANY = {
     { label: '인력 규모', value: '99명 (2026년 5월 기준)' },
     { label: '본사', value: '서울시 마포구 모래내로 7길 12, MEK 빌딩' },
     { label: '관리 환자', value: '13,000+ 명' },
-    { label: '파트너 병원', value: '75+ 개소' },
+    { label: '파트너 업체', value: '75+ 개소' },
   ] as CompanyFact[],
   branches: ['서울 본사', '대전 지사', '광주 지사', '대구 지사', '부산 지사', '파주 SCM 센터'],
-  network: '전국 서울 본사를 기점으로 대전·광주·대구·부산 등 5개 주요 거점 지사를 운영하며, 국내 5대 병원을 포함한 다양한 병원과 파트너십을 보유하고 있습니다.',
+  network: '전국 서울 본사를 기점으로 대전·광주·대구·부산 등 5개 주요 거점 지사를 운영하며, 국내 주요 의료기관 및 관련 업체와 파트너십을 보유하고 있습니다.',
 };
 
 export interface Competency {
@@ -110,7 +110,7 @@ export interface ComparisonRow {
   toBe: string;
 }
 
-/** 서비스 비교 분석: 병원(AS IS) vs 360(TO BE) — 슬라이드 17 */
+/** 서비스 비교 분석: 업체(AS IS) vs 360(TO BE) — 슬라이드 17 */
 export const COMPARISON: ComparisonRow[] = [
   { category: '장비', asIs: '고가 구매 지출 / 감가상각 & 노후 리스크', toBe: '초기 비용 0원 / 멀티 브랜드 최신 장비 렌탈' },
   { category: '리퍼비시', asIs: '자체 세척 한계 / 위생 신뢰도 저하', toBe: 'ISO 13485 인증 센터 / 8단계 표준 공정' },

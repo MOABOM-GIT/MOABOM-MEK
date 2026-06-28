@@ -65,7 +65,7 @@ return [
             'delete_success' => '리뷰를 삭제했습니다.',
             'forbidden' => '앱 리뷰에 접근할 권한이 없습니다.',
             'review_exists' => '이미 이 앱에 리뷰를 작성했습니다.',
-            'author_tenant_unresolved' => '병원(테넌트) 정보를 확인할 수 없어 리뷰를 저장할 수 없습니다. 병원 사이트에서 다시 시도해주세요.',
+            'author_tenant_unresolved' => '업체(테넌트) 정보를 확인할 수 없어 리뷰를 저장할 수 없습니다. 업체 사이트에서 다시 시도해주세요.',
         ],
         'admin' => [
             'generated' => [

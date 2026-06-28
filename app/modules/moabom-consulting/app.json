@@ -6,8 +6,8 @@
         "en": "Smart Consulting"
     },
     "description": {
-        "ko": "병원 수익성 시뮬레이션 · 전자계약",
-        "en": "Hospital profitability simulation & e-contract"
+        "ko": "업체 수익성 시뮬레이션 · 전자계약",
+        "en": "Company profitability simulation & e-contract"
     },
     "icon": "handshake",
     "gradient": "linear-gradient(135deg,#27bfc1,#479ee2)",

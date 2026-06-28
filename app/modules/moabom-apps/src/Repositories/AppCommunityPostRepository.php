@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Enums\AppCommunityPostStatus;
 use Modules\Moabom\Apps\Enums\AppCommunityPostType;
@@ -103,10 +104,26 @@ class AppCommunityPostRepository implements AppCommunityPostRepositoryInterface
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return array{items: Collection<int, AppCommunityPost>, total: int}
+     * @return array{items: Collection<int, AppCommunityPost>, total: int, diagnostics: array<string, mixed>}
      */
     public function adminList(array $filters, ?string $tenantSlugScope, int $limit = 200): array
     {
+        $connectionName = $this->resolveConnectionName();
+
+        // 테이블 부재 시 500(base table not found) 대신 빈 목록 + 진단으로 graceful 처리.
+        // 운영 platform DB 에 community 테이블이 누락된 상태를 화면이 즉시 드러낸다.
+        if (! $this->communityTableExists($connectionName)) {
+            return [
+                'items' => new Collection,
+                'total' => 0,
+                'diagnostics' => [
+                    'connection' => $connectionName,
+                    'table_exists' => false,
+                    'unscoped_total' => 0,
+                ],
+            ];
+        }
+
         $query = $this->baseQuery()
             ->with(['generatedApp'])
             ->latest('created_at');
@@ -153,11 +170,22 @@ class AppCommunityPostRepository implements AppCommunityPostRepositoryInterface
 
         $limit = max(1, min(500, $limit));
         $total = (clone $query)->count();
-        $items = $query->limit($limit)->get();
+        $items = $total > 0 ? $query->limit($limit)->get() : new Collection;
+
+        // 결과가 비었을 때만 스코프 미적용 전체 수를 계산해 "데이터 자체가 없음"과
+        // "필터로 잘림"을 구분한다(정상 결과 시 추가 쿼리 비용 0).
+        $unscopedTotal = $total === 0
+            ? (int) $this->baseQuery()->count()
+            : $total;
 
         return [
             'items' => $items,
             'total' => $total,
+            'diagnostics' => [
+                'connection' => $connectionName,
+                'table_exists' => true,
+                'unscoped_total' => $unscopedTotal,
+            ],
         ];
     }
 
@@ -166,9 +194,15 @@ class AppCommunityPostRepository implements AppCommunityPostRepositoryInterface
      */
     public function aggregatePublishedStats(int $generatedAppId): array
     {
-        $connection = GeneratedAppsConnection::usesPlatformStore()
-            ? GeneratedAppsConnection::NAME
-            : config('database.default');
+        $connection = $this->resolveConnectionName();
+
+        if (! $this->communityTableExists($connection)) {
+            return [
+                'rating_avg' => null,
+                'rating_count' => 0,
+                'post_count' => 0,
+            ];
+        }
 
         $row = DB::connection($connection)
             ->table('moabom_app_community_posts')
@@ -230,6 +264,25 @@ class AppCommunityPostRepository implements AppCommunityPostRepositoryInterface
     private function baseQuery(): Builder
     {
         return GeneratedAppsConnection::communityPosts();
+    }
+
+    /**
+     * 사용자 작성·집계·관리자 조회가 모두 동일하게 해석하는 데이터 plane connection.
+     */
+    private function resolveConnectionName(): string
+    {
+        return GeneratedAppsConnection::usesPlatformStore()
+            ? GeneratedAppsConnection::NAME
+            : (string) config('database.default');
+    }
+
+    private function communityTableExists(string $connection): bool
+    {
+        try {
+            return Schema::connection($connection)->hasTable('moabom_app_community_posts');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

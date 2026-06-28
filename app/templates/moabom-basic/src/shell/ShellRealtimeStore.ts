@@ -20,26 +20,22 @@ let lastKnownTenantRevision = 0;
 let lastKnownPlatformRevision = 0;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let platformDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-let invalidateHandler: InvalidateHandler | null = null;
-let platformSummaryHandler: SummaryOnlyHandler | null = null;
+const invalidateHandlers = new Set<InvalidateHandler>();
+const platformSummaryHandlers = new Set<SummaryOnlyHandler>();
 let notificationHandlers = new Set<NotificationHandler>();
 const chatInboxHandlers = new Set<ChatInboxHandler>();
 
 export function registerShellPresenceInvalidate(handler: InvalidateHandler): () => void {
-  invalidateHandler = handler;
+  invalidateHandlers.add(handler);
   return () => {
-    if (invalidateHandler === handler) {
-      invalidateHandler = null;
-    }
+    invalidateHandlers.delete(handler);
   };
 }
 
 export function registerShellPlatformSummaryInvalidate(handler: SummaryOnlyHandler): () => void {
-  platformSummaryHandler = handler;
+  platformSummaryHandlers.add(handler);
   return () => {
-    if (platformSummaryHandler === handler) {
-      platformSummaryHandler = null;
-    }
+    platformSummaryHandlers.delete(handler);
   };
 }
 
@@ -53,7 +49,7 @@ export function noteShellPresenceRevision(revision: number | undefined | null): 
 }
 
 function schedulePresenceInvalidate(): void {
-  if (!invalidateHandler) {
+  if (invalidateHandlers.size === 0) {
     return;
   }
   if (debounceTimer) {
@@ -61,12 +57,12 @@ function schedulePresenceInvalidate(): void {
   }
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
-    invalidateHandler?.();
+    invalidateHandlers.forEach(handler => handler());
   }, DEBOUNCE_MS);
 }
 
 function schedulePlatformSummaryInvalidate(): void {
-  if (!platformSummaryHandler) {
+  if (platformSummaryHandlers.size === 0) {
     return;
   }
   if (platformDebounceTimer) {
@@ -74,7 +70,7 @@ function schedulePlatformSummaryInvalidate(): void {
   }
   platformDebounceTimer = setTimeout(() => {
     platformDebounceTimer = null;
-    platformSummaryHandler?.();
+    platformSummaryHandlers.forEach(handler => handler());
   }, DEBOUNCE_MS);
 }
 
@@ -152,8 +148,8 @@ export function resetShellRealtimeStoreForTest(): void {
     clearTimeout(platformDebounceTimer);
     platformDebounceTimer = null;
   }
-  invalidateHandler = null;
-  platformSummaryHandler = null;
+  invalidateHandlers.clear();
+  platformSummaryHandlers.clear();
   notificationHandlers.clear();
   chatInboxHandlers.clear();
 }

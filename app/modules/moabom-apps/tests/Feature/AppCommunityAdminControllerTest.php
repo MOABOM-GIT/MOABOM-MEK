@@ -132,7 +132,7 @@ class AppCommunityAdminControllerTest extends ModuleTestCase
         $app = GeneratedAppsConnection::apps()->create([
             'tenant_slug' => 'mosan',
             'user_id' => $owner->id,
-            'title' => '병원 앱',
+            'title' => '업체 앱',
             'app_type' => 'general',
             'tier' => 'standard',
             'html' => '<!DOCTYPE html><html><body>x</body></html>',
@@ -146,7 +146,7 @@ class AppCommunityAdminControllerTest extends ModuleTestCase
             'user_id' => $author->id,
             'post_type' => AppCommunityPostType::Review->value,
             'rating' => 5,
-            'title' => '병원 앱 리뷰',
+            'title' => '업체 앱 리뷰',
             'body' => '작성자 tenant 와 다를 수 있음',
             'status' => AppCommunityPostStatus::Published->value,
         ]);
@@ -202,7 +202,7 @@ class AppCommunityAdminControllerTest extends ModuleTestCase
             'post_type' => AppCommunityPostType::Review->value,
             'rating' => 4,
             'title' => '프레시 리뷰',
-            'body' => '다른 병원 리뷰',
+            'body' => '다른 업체 리뷰',
             'status' => AppCommunityPostStatus::Published->value,
         ]);
 

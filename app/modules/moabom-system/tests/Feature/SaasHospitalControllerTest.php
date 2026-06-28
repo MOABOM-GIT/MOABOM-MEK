@@ -66,7 +66,7 @@ class SaasHospitalControllerTest extends ModuleTestCase
         DB::connection('moabom_platform')->table('moabom_saas_tenants')->insert([
             'slug' => 'e2etest',
             'host' => 'e2etest.mek360.com',
-            'display_name' => '테스트병원',
+            'display_name' => '테스트업체',
             'region' => '서울',
             'address' => '강남구 테헤란로 100',
             'db_database' => 'hospital_e2etest',
@@ -83,7 +83,7 @@ class SaasHospitalControllerTest extends ModuleTestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.hospitals.0.slug', 'e2etest')
-            ->assertJsonPath('data.hospitals.0.display_name', '테스트병원')
+            ->assertJsonPath('data.hospitals.0.display_name', '테스트업체')
             ->assertJsonPath('data.hospitals.0.region', '서울')
             ->assertJsonPath('data.hospitals.0.note', '서울')
             ->assertJsonPath('data.hospitals.0.is_platform_host', false)
@@ -173,13 +173,13 @@ class SaasHospitalControllerTest extends ModuleTestCase
         $this->actingAs($this->adminUser)
             ->postJson(self::ENDPOINT, [
                 'slug' => 'clinic99',
-                'name' => '테스트병원99',
+                'name' => '테스트업체99',
                 'region' => '대구',
             ])
             ->assertCreated()
             ->assertJsonPath('data.hospital.slug', 'clinic99')
             ->assertJsonPath('data.hospital.mode', 'package')
-            ->assertJsonPath('data.hospital.display_name', '테스트병원99')
+            ->assertJsonPath('data.hospital.display_name', '테스트업체99')
             ->assertJsonPath('data.hospital.region', '대구');
 
         $this->assertSame('대구', $fake->lastInput['note']);
@@ -217,7 +217,7 @@ class SaasHospitalControllerTest extends ModuleTestCase
         $this->actingAs($this->adminUser)
             ->post(self::ENDPOINT, [
                 'slug' => 'clinic88',
-                'name' => '테스트병원88',
+                'name' => '테스트업체88',
                 'address' => '서울시 강남구',
                 'note' => '원장 메모',
                 'logo_light' => UploadedFile::fake()->image('light.png'),

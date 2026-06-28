@@ -112,11 +112,11 @@ class MoabomJsonConfigRepositoryTest extends ModuleTestCase
         app(\Modules\Moabom\System\Saas\TenantContext::class)->setTenant($tenant, 'e2etest.mek360.com');
 
         $repo = $this->app->make(ConfigRepositoryInterface::class);
-        $repo->saveCategory('general', ['site_name' => 'E2E테스트병원']);
+        $repo->saveCategory('general', ['site_name' => 'E2E테스트업체']);
 
-        $this->assertSame('E2E테스트병원', $repo->getCategory('general')['site_name']);
+        $this->assertSame('E2E테스트업체', $repo->getCategory('general')['site_name']);
         $this->assertSame(
-            'E2E테스트병원',
+            'E2E테스트업체',
             Cache::get('g7_json_settings:e2etest:general')['site_name'] ?? null,
         );
         $this->assertNotSame(

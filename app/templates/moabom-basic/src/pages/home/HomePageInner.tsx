@@ -10,7 +10,6 @@ import { useMoaHomeAppCatalog } from './useMoaHomeAppCatalog';
 import { useMoaShellWindows } from './useMoaShellWindows';
 import { useMoaShellRouteSync } from './useMoaShellRouteSync';
 import { useMoaShellSocialAuth } from './useMoaShellSocialAuth';
-import { MoabomPresenceProvider } from '../../hooks/MoabomPresenceProvider';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 
 export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
@@ -100,7 +99,6 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
   );
 
   return (
-    <MoabomPresenceProvider isLoggedIn={isLoggedIn}>
     <Moa_HomeShellView
       t={t}
       language={language}
@@ -178,6 +176,5 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       switchUserProfileWindowView={windows.switchUserProfileWindowView}
       updateErrorWindowTitle={windows.updateErrorWindowTitle}
     />
-    </MoabomPresenceProvider>
   );
 };

@@ -23,7 +23,7 @@ function buildGoogleMapsSearchUrl(address: string): string {
 }
 
 export function HospitalInfoApp() {
-  const hospitalName = useMoabomSiteDisplayName();
+  const companyName = useMoabomSiteDisplayName();
   const site = getMoabomShellBootData()?.site;
   const description = typeof site?.site_description === 'string' ? site.site_description : '';
   const fallback = splitDescription(description);
@@ -34,7 +34,7 @@ export function HospitalInfoApp() {
     ? site.site_address.trim()
     : fallback.address;
   const siteUrl = typeof site?.site_url === 'string' ? site.site_url.trim() : '';
-  const displayIntro = intro || '병원소개 정보가 아직 입력되지 않았습니다.';
+  const displayIntro = intro || '소개 정보가 아직 입력되지 않았습니다.';
   const displayAddress = address || '찾아오시는길 정보가 아직 입력되지 않았습니다.';
   const mapsUrl = address ? buildGoogleMapsSearchUrl(address) : '';
   const mapsEmbedUrl = mapsUrl ? `${mapsUrl}&output=embed` : '';
@@ -42,8 +42,8 @@ export function HospitalInfoApp() {
   return (
     <Div className={`${APP_WINDOW_BODY_CLASS} hospital-info-app`}>
       <AppWindowHeader
-        title={hospitalName}
-        subtitle="병원소개 및 찾아오시는길"
+        title={companyName}
+        subtitle="소개 및 찾아오시는길"
         icon={hospitalInfoAppMetadata.icon}
         gradient={hospitalInfoAppMetadata.gradient}
       />
@@ -52,9 +52,9 @@ export function HospitalInfoApp() {
         <Div className={`${APP_SHELL_PANEL_BODY_CLASS} ${APP_STACK_CLASS}`}>
           <Span className={`${APP_SHELL_SECTION_TITLE_CLASS} flex items-center gap-2`}>
             <Icon name="building" />
-            병원소개
+            {companyName} 소개
           </Span>
-          <Div className="hospital-info-name">{hospitalName}</Div>
+          <Div className="hospital-info-name">{companyName}</Div>
           <Div className="hospital-info-text">{displayIntro}</Div>
         </Div>
 
@@ -71,7 +71,7 @@ export function HospitalInfoApp() {
             <>
               <Div className="hospital-info-map-frame">
                 <iframe
-                  title={`${hospitalName} Google Maps`}
+                  title={`${companyName} Google Maps`}
                   src={mapsEmbedUrl}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"

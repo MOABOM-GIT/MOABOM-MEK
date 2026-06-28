@@ -25,7 +25,7 @@ use Modules\Moabom\System\Saas\TenantRegistry;
 use Modules\Moabom\System\Saas\Usage\TenantUsageReporter;
 
 /**
- * mek360.com 전용 — 병원 SaaS 프로비저닝·정리 API.
+ * mek360.com 전용 — 업체 SaaS 프로비저닝·정리 API.
  */
 final class SaasHospitalController extends Controller
 {

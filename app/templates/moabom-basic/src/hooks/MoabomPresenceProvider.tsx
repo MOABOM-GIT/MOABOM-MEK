@@ -66,6 +66,7 @@ import {
 } from '../shell/moaShellPresenceActivity';
 import { deferShellSecondaryWork } from '../shell/moaShellDeferredWork';
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
+import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 import { resolveClientFormFactor } from '../utils/clientFormFactor';
 import {
   normalizePresenceConnectList,
@@ -251,7 +252,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
 
   const refreshSummary = useCallback(async () => {
     try {
-      const next = await fetchPresenceSummary();
+      const next = await runMoabomShellRealtimeTask(
+        'presence:summary',
+        () => fetchPresenceSummary(),
+        { minIntervalMs: 500 },
+      );
       noteShellPresenceRevision(next.revision);
       setSummary(next);
     } catch {
@@ -262,7 +267,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   const refreshOnline = useCallback(async () => {
     setLoadingOnline(true);
     try {
-      const payload = await fetchPresenceOnlineUsers();
+      const payload = await runMoabomShellRealtimeTask(
+        'presence:online',
+        () => fetchPresenceOnlineUsers(),
+        { minIntervalMs: 500 },
+      );
       noteShellPresenceRevision(payload.revision);
       setOnlineUsers(applyPendingSelfPresenceToOnlineUsers(
         normalizePresenceConnectList(payload.users),
@@ -284,7 +293,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     }
     setLoadingFriends(true);
     try {
-      const rows = await fetchPresenceFriends();
+      const rows = await runMoabomShellRealtimeTask(
+        'presence:friends',
+        () => fetchPresenceFriends(),
+        { minIntervalMs: 500 },
+      );
       setFriends(applyPendingSelfPresenceToFriends(
         rows,
         getShellAuthUserUuid(),

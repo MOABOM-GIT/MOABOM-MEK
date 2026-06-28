@@ -502,15 +502,15 @@
     },
     "consulting": {
       "name": "スマートコンサルティング",
-      "description": "病院収益性シミュレーション・電子契約"
+      "description": "企業収益性シミュレーション・電子契約"
     },
     "global-search": {
       "name": "全体検索",
       "description": "掲示板とアプリ検索"
     },
     "hospital-info": {
-      "name": "病院",
-      "description": "病院紹介とアクセス"
+      "name": "企業名",
+      "description": "紹介とアクセス"
     },
     "cpap-rental": {
       "name": "CPAPレンタル",

@@ -13,6 +13,7 @@ use Modules\Moabom\Presence\Contracts\TenantPresenceSessionRepositoryInterface;
 use Modules\Moabom\Presence\Support\PresenceChannelNames;
 use Modules\Moabom\Presence\Support\PresenceClientIpMasker;
 use Modules\Moabom\Presence\Support\PresenceSessionKeyResolver;
+use Modules\Moabom\Presence\Models\TenantPresenceSession;
 
 final class PresenceHeartbeatService
 {
@@ -105,10 +106,11 @@ final class PresenceHeartbeatService
         $sessionKey = $this->sessionKeyResolver->resolveSessionKeyFromVisitorId($visitorId);
         $now = now();
         $tenantSlug = $this->channelNames->tenantSlug();
+        $releasedAuthenticatedSession = false;
 
         if ($touch === 'logout') {
             $user = null;
-            $this->tenantSessions->releaseAuthenticatedSessionForVisitor($visitorId, [
+            $releasedAuthenticatedSession = $this->tenantSessions->releaseAuthenticatedSessionForVisitor($visitorId, [
                 'session_key' => $sessionKey,
                 'display_name' => (string) __('moabom-presence::messages.guest_display_name'),
                 'status_text' => null,
@@ -165,11 +167,14 @@ final class PresenceHeartbeatService
             $tenantSlug,
         );
 
-        $this->maybePruneStaleSessions($now);
+        $tenantPruned = $this->maybePruneStaleSessions($now);
 
-        $revision = $this->revisionService->bump(
-            $this->promotionService->resolveRevisionReason($touch),
-        );
+        $revisionReason = $tenantPruned
+            ? 'prune'
+            : $this->promotionService->resolveRevisionReason($touch);
+        $revision = $this->shouldBumpTenantRevision($session, $touch, $releasedAuthenticatedSession, $tenantPruned)
+            ? $this->revisionService->bump($revisionReason)
+            : $this->revisionService->current();
 
         $response = [
             'accepted' => true,
@@ -190,14 +195,38 @@ final class PresenceHeartbeatService
         return $response;
     }
 
-    private function maybePruneStaleSessions(\DateTimeInterface $now): void
+    private function shouldBumpTenantRevision(
+        TenantPresenceSession $session,
+        ?string $touch,
+        bool $releasedAuthenticatedSession,
+        bool $tenantPruned,
+    ): bool {
+        if ($touch === 'login' || $touch === 'logout' || $releasedAuthenticatedSession || $tenantPruned) {
+            return true;
+        }
+
+        if ($session->wasRecentlyCreated) {
+            return true;
+        }
+
+        return $session->wasChanged([
+            'user_id',
+            'display_name',
+            'status_text',
+            'avatar',
+            'is_authenticated',
+            'client_form_factor',
+        ]);
+    }
+
+    private function maybePruneStaleSessions(\DateTimeInterface $now): bool
     {
         if (! Cache::add('moabom-presence:session-prune', 1, 300)) {
-            return;
+            return false;
         }
 
         $before = now()->subSeconds(self::ACTIVE_TTL_SECONDS * 2);
-        $this->tenantSessions->pruneStale($before);
+        $tenantDeleted = $this->tenantSessions->pruneStale($before);
 
         try {
             $deleted = $this->platformSessions->pruneStale($before);
@@ -206,5 +235,7 @@ final class PresenceHeartbeatService
             }
         } catch (\Throwable) {
         }
+
+        return $tenantDeleted > 0;
     }
 }

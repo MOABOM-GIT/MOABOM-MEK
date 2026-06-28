@@ -12,6 +12,7 @@ import { setShellChatInboxCache } from '../shell/moabomShellChatInboxCache';
 import { dispatchShellNotificationReceived } from '../shell/ShellRealtimeStore';
 import type { ShellNotificationReceivedPayload } from './moabomShellNotificationSocket';
 import { isMoabomWebSocketConnected, subscribeMoabomWebSocketConnectionChange } from './moabomWebSocketConnection';
+import { runMoabomShellRealtimeTask } from './moabomShellRealtimeRequestCoalescer';
 
 /** WS 끊김 시 인박스 REST 동기화 간격 */
 export const MOABOM_CHAT_INBOX_SYNC_FAST_MS = 8_000;
@@ -61,7 +62,11 @@ async function syncInboxFromRest(): Promise<void> {
   }
   inboxSyncInFlight = true;
   try {
-    const rows = await fetchChatConversations();
+    const rows = await runMoabomShellRealtimeTask(
+      'chat:inbox',
+      () => fetchChatConversations(),
+      { minIntervalMs: 750 },
+    );
     setShellChatInboxCache(rows);
   } catch {
     // REST 실패 시 기존 캐시 유지
@@ -76,12 +81,20 @@ async function syncNotificationsFromRest(): Promise<void> {
   }
   notificationSyncInFlight = true;
   try {
-    const count = await fetchShellUnreadCount();
+    const count = await runMoabomShellRealtimeTask(
+      'notifications:unread-count',
+      () => fetchShellUnreadCount(),
+      { minIntervalMs: 750 },
+    );
     const previousCount = lastUnreadCount;
     dispatchUnreadSynced(count);
 
     if (!isMoabomWebSocketConnected() || count > previousCount) {
-      const result = await fetchShellNotifications(1, 20);
+      const result = await runMoabomShellRealtimeTask(
+        'notifications:list:first-page',
+        () => fetchShellNotifications(1, 20),
+        { minIntervalMs: 750 },
+      );
       if (!result.ok || !result.page) {
         return;
       }

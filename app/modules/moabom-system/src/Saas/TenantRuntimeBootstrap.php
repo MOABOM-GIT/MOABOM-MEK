@@ -156,7 +156,7 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
         }
 
         return response(
-            '병원 사이트를 찾을 수 없습니다. 주소를 확인해 주세요.',
+            '업체 사이트를 찾을 수 없습니다. 주소를 확인해 주세요.',
             404
         );
     }

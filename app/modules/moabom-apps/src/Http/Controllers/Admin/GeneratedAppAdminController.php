@@ -15,7 +15,7 @@ use Modules\Moabom\Apps\Services\GeneratedAppPurgeService;
 use Modules\Moabom\Apps\Support\GeneratedAppAdminScope;
 
 /**
- * AI 생성앱 admin API — 마스터·병원 Host 공통, scope 만 분기.
+ * AI 생성앱 admin API — 마스터·업체 Host 공통, scope 만 분기.
  */
 final class GeneratedAppAdminController extends AdminBaseController
 {

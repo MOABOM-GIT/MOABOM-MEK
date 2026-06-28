@@ -14,6 +14,41 @@ function clampWindowPosition(x: number, y: number, w: number, h: number): { x: n
   return { x: Math.max(0, Math.min(x, maxX)), y: Math.max(0, Math.min(y, maxY)) };
 }
 
+type ViewportResizeCallback = () => void;
+
+const viewportResizeCallbacks = new Set<ViewportResizeCallback>();
+let viewportResizeRaf = 0;
+
+function flushViewportResizeCallbacks(): void {
+  viewportResizeRaf = 0;
+  Array.from(viewportResizeCallbacks).forEach(callback => callback());
+}
+
+function handleSharedViewportResize(): void {
+  if (viewportResizeRaf !== 0) {
+    return;
+  }
+  viewportResizeRaf = window.requestAnimationFrame(flushViewportResizeCallbacks);
+}
+
+function subscribeViewportResize(callback: ViewportResizeCallback): () => void {
+  viewportResizeCallbacks.add(callback);
+  if (viewportResizeCallbacks.size === 1) {
+    window.addEventListener('resize', handleSharedViewportResize);
+  }
+
+  return () => {
+    viewportResizeCallbacks.delete(callback);
+    if (viewportResizeCallbacks.size === 0) {
+      window.removeEventListener('resize', handleSharedViewportResize);
+      if (viewportResizeRaf !== 0) {
+        window.cancelAnimationFrame(viewportResizeRaf);
+        viewportResizeRaf = 0;
+      }
+    }
+  };
+}
+
 export interface WindowProps {
   id: string;
   title: string;
@@ -50,7 +85,7 @@ export interface WindowProps {
   titleBarExtraStyle?: React.CSSProperties;
 }
 
-export const Window: React.FC<WindowProps> = ({
+const WindowComponent: React.FC<WindowProps> = ({
   id,
   title,
   icon,
@@ -186,8 +221,7 @@ export const Window: React.FC<WindowProps> = ({
       setPosition(nextPos);
     };
 
-    window.addEventListener('resize', syncViewport);
-    return () => window.removeEventListener('resize', syncViewport);
+    return subscribeViewportResize(syncViewport);
   }, [compact, fitContent, isMaximized, isMinimized, minHeight, minWidth]);
 
   const wasCompactRef = useRef(compact);
@@ -235,10 +269,9 @@ export const Window: React.FC<WindowProps> = ({
       compactRestorePendingRef.current = nextFrame.size.width < initialWidth || nextFrame.size.height < initialHeight;
     };
 
-    window.addEventListener('resize', restoreDefaultFrame);
     restoreDefaultFrame();
 
-    return () => window.removeEventListener('resize', restoreDefaultFrame);
+    return subscribeViewportResize(restoreDefaultFrame);
   }, [compact, fitContent, initialHeight, initialWidth, initialX, initialY, minHeight, minWidth]);
 
   /** 새 창·인증 탭 변경 시 사용자 리사이즈 잠금 해제 후 다시 맞춤 */
@@ -331,14 +364,14 @@ export const Window: React.FC<WindowProps> = ({
       queueTwoFrameFit();
     };
 
-    window.addEventListener('resize', handleViewportResize);
+    const unsubscribeViewportResize = subscribeViewportResize(handleViewportResize);
 
     return (): void => {
       cancelled = true;
       cancelAnimationFrame(rafOuter);
       cancelAnimationFrame(rafInner);
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', handleViewportResize);
+      unsubscribeViewportResize();
     };
   }, [compact, fitContent, fitContentRemeasureKey, fitContentWidth, id, initialX, initialY, isMaximized, minHeight, minWidth]);
 
@@ -348,7 +381,6 @@ export const Window: React.FC<WindowProps> = ({
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    if (onFocus) onFocus();
   };
 
   const handlePointerDownResize = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -423,7 +455,7 @@ export const Window: React.FC<WindowProps> = ({
       data-window-id={id}
       className={`${isDragging ? 'cursor-move' : ''} ${className}`.trim()}
       style={containerStyle}
-      onClick={() => onFocus && onFocus()}
+      onPointerDownCapture={() => onFocus && onFocus()}
     >
       <Div
         className={`moa-window-frame absolute inset-0 flex flex-col h-full w-full min-h-0 ${
@@ -560,3 +592,35 @@ export const Window: React.FC<WindowProps> = ({
     </Div>
   );
 };
+
+function areWindowPropsEqual(prev: WindowProps, next: WindowProps): boolean {
+  return prev.id === next.id
+    && prev.title === next.title
+    && prev.icon === next.icon
+    && prev.gradient === next.gradient
+    && prev.isFavorite === next.isFavorite
+    && prev.initialX === next.initialX
+    && prev.initialY === next.initialY
+    && prev.initialWidth === next.initialWidth
+    && prev.initialHeight === next.initialHeight
+    && prev.minWidth === next.minWidth
+    && prev.minHeight === next.minHeight
+    && prev.isMaximized === next.isMaximized
+    && prev.isMinimized === next.isMinimized
+    && prev.zIndex === next.zIndex
+    && prev.onClose === next.onClose
+    && prev.onMinimize === next.onMinimize
+    && prev.onMaximize === next.onMaximize
+    && prev.onToggleFavorite === next.onToggleFavorite
+    && prev.onFocus === next.onFocus
+    && prev.children === next.children
+    && prev.className === next.className
+    && prev.compact === next.compact
+    && prev.fitContent === next.fitContent
+    && prev.fitContentWidth === next.fitContentWidth
+    && prev.fitContentRemeasureKey === next.fitContentRemeasureKey
+    && prev.titleBarVariant === next.titleBarVariant
+    && prev.titleBarExtraStyle === next.titleBarExtraStyle;
+}
+
+export const Window = React.memo(WindowComponent, areWindowPropsEqual);

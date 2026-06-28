@@ -81,7 +81,7 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
   const submit = async () => {
     setMessage(null);
     if (!form.hospitalName.trim()) {
-      setMessage({ type: 'err', text: '병원명을 입력해 주세요.' });
+      setMessage({ type: 'err', text: '업체명을 입력해 주세요.' });
       return;
     }
     if (!hasSignature) {
@@ -159,8 +159,8 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
           계약 정보
         </Div>
         <Div className="moa-consult-form-grid">
-          {field('hospitalName', '병원명', hospitalName || '병원명', true)}
-          {field('representativeName', '대표자/원장명', '예) 홍길동')}
+          {field('hospitalName', '업체명', hospitalName || '업체명', true)}
+          {field('representativeName', '대표자명', '예) 홍길동')}
           {field('contact', '연락처', '예) 02-1234-5678')}
           {field('businessNumber', '사업자등록번호', '예) 123-45-67890')}
           {field('plan', '요금제/플랜', '스마트케어360 통합 렌탈')}

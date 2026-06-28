@@ -72,7 +72,7 @@ flowchart LR
 | `check-bundle-budget.sh` | moabom-basic 번들 크기 (repo dist 있을 때) |
 | `check-deploy-recurring-guards.sh` | RF-01~23 정적 가드 |
 | `check-saas-runtime-invariants.sh` | SaaS·분리 모듈·entrypoint 배선 (대형) |
-| `saas-hospitals-admin-gate.sh` | 병원 admin 레이아웃·i18n |
+| `saas-hospitals-admin-gate.sh` | 업체 admin 레이아웃·i18n |
 | `check-moabom-admin-basic-ssot.sh` | admin 템플릿 SSOT |
 | `check-moabom-refactor-invariants.sh` | 리팩토링 불변식 |
 | `smoke-social-auth.sh` | SNS OAuth 정적·구성 검증 |

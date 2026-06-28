@@ -9,7 +9,7 @@ class SaasTenantProvisionCommand extends Command
 {
     protected $signature = 'moabom:saas:tenant-provision
         {slug : 서브도메인 라벨 (예: miso)}
-        {--name= : 병원명 (필수)}
+        {--name= : 업체명 (필수)}
         {--region= : 지역 (예: 대구)}
         {--address= : 주소}
         {--host= : FQDN (기본 slug.mek360.com)}
@@ -21,7 +21,7 @@ class SaasTenantProvisionCommand extends Command
         {--skip-clone : DB 작업 생략 (기존 DB + registry/GCS만, v1 호환)}
         {--force : 기존 active 테넌트 덮어쓰기}';
 
-    protected $description = '병원 테넌트 1건 프로비저닝: package bootstrap(기본) → GCS settings → registry';
+    protected $description = '업체 테넌트 1건 프로비저닝: package bootstrap(기본) → GCS settings → registry';
 
     public function handle(TenantProvisioner $provisioner): int
     {

@@ -50,7 +50,9 @@ final class PresenceUserPreferencesService
         }
 
         $updated = $this->preferences->upsertForUser($user->id, $attributes);
-        $this->revisionService->bump('preference');
+        if ($updated->wasRecentlyCreated || $updated->wasChanged(array_keys($attributes))) {
+            $this->revisionService->bump('preference');
+        }
 
         return $updated;
     }

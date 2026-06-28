@@ -87,7 +87,7 @@ export async function resolveMoabomSiteLogoUrlsWithPreload(): Promise<MoabomSite
   return { lightUrl, darkUrl };
 }
 
-/** shell-boot site_name — 테넌트 병원명, 플랫폼(mek360)은 스마트케어360 */
+/** shell-boot site_name — 테넌트 업체명, 플랫폼(mek360)은 스마트케어360 */
 export function resolveMoabomSiteDisplayName(): string {
   const site = getMoabomShellBootData()?.site;
   if (site?.is_platform === true) {

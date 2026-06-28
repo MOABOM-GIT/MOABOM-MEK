@@ -546,8 +546,8 @@
       "toast_main_grid_saved": "Home app layout saved.",
       "confirm_delete_generated": "Permanently delete \"{name}\"?",
       "toast_delete_generated_failed": "Failed to delete the generated app. Please try again shortly.",
-      "toast_share_generated_on": "Registered on this hospital's app list.",
-      "toast_share_generated_off": "Removed from the hospital app list.",
+      "toast_share_generated_on": "Registered on this company's app list.",
+      "toast_share_generated_off": "Removed from the company app list.",
       "toast_share_generated_failed": "Failed to update sharing. Please try again shortly.",
       "sns_login_success": "Signed in with social account.",
       "sns_login_failed": "Social sign-in failed.",
@@ -576,15 +576,15 @@
     },
     "consulting": {
       "name": "Smart Consulting",
-      "description": "Hospital profitability simulation & e-contract"
+      "description": "Company profitability simulation & e-contract"
     },
     "global-search": {
       "name": "Global Search",
       "description": "Search boards and apps"
     },
     "hospital-info": {
-      "name": "Hospital",
-      "description": "About the hospital and directions"
+      "name": "Company",
+      "description": "About and directions"
     },
     "cpap-rental": {
       "name": "CPAP Rental",

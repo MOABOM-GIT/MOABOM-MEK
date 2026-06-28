@@ -4,6 +4,7 @@ namespace Modules\Moabom\Apps\Providers;
 
 use App\Extension\BaseModuleServiceProvider;
 use App\Extension\HookManager;
+use App\Extension\ModuleManager;
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Apps\Apps\AppRegistry;
 use Modules\Moabom\Apps\Apps\AppRegistryInterface;
@@ -22,6 +23,7 @@ use Modules\Moabom\Apps\Repositories\AppCommunityPostRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Services\AppCommunityNotificationDataService;
 use Modules\Moabom\Apps\Services\GeneratedAppHostingService;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
 use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
@@ -79,6 +81,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
 
         $this->registerGeneratedAppHostHooks();
         $this->registerShellRankingScopeHooks();
+        $this->registerAppCommunityNotificationHooks();
 
         HookManager::addFilter(
             'moabom.shell_boot.apps',
@@ -137,6 +140,39 @@ class AppsServiceProvider extends BaseModuleServiceProvider
 
         HookManager::addFilter('moabom.shell_rankings.filter_app_scores', $filterScores, 10, 1);
         HookManager::addFilter('moabom.shell_rankings.allow_app_usage_ingest', $allowIngest, 10, 2);
+    }
+
+    private function registerAppCommunityNotificationHooks(): void
+    {
+        HookManager::addFilter(
+            'moabom-apps.notification.extract_data',
+            static fn (array $default, string $type, array $args): array => app(AppCommunityNotificationDataService::class)
+                ->extractData($default, $type, $args),
+            20,
+            3,
+        );
+
+        HookManager::addFilter(
+            'core.notification.filter_default_definitions',
+            function (array $definitions): array {
+                /** @var \Modules\Moabom\Apps\Module|null $module */
+                $module = app(ModuleManager::class)->getModule($this->moduleIdentifier);
+                if ($module === null) {
+                    return $definitions;
+                }
+
+                foreach ($module->getNotificationDefinitions() as $definition) {
+                    $definitions[] = array_merge($definition, [
+                        'extension_type' => 'module',
+                        'extension_identifier' => $module->getIdentifier(),
+                    ]);
+                }
+
+                return $definitions;
+            },
+            20,
+            1,
+        );
     }
 
     private function registerGeneratedAppHostHooks(): void

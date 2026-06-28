@@ -16,8 +16,9 @@ moabom_layout_sync_collect_files() {
     find "${root}/app/templates/moabom-admin_basic/layouts" -type f -name '*.json' 2>/dev/null || true
     find "${root}/app/templates/moabom-basic/layouts" -type f -name '*.json' 2>/dev/null || true
     find "${root}/app/modules" -path '*/resources/layouts/*.json' -type f 2>/dev/null || true
-    [[ -f "${root}/app/modules/moabom-system/module.php" ]] && printf '%s\n' "${root}/app/modules/moabom-system/module.php"
-    [[ -f "${root}/app/modules/moabom-presence/module.php" ]] && printf '%s\n' "${root}/app/modules/moabom-presence/module.php"
+    # module.php 는 권한·메뉴·역할 선언 SSOT — 변경 시 sync-module-declarations 가 돌아야
+    # admin 권한 grant 가 운영 DB 에 반영된다. 특정 모듈만 넣으면 신규 권한이 영구 skip 된다.
+    find "${root}/app/modules" -maxdepth 2 -name 'module.php' -type f 2>/dev/null || true
     find "${root}/app/lang-packs" -type f \
       \( -path '*/g7-module-moabom-*/*' -o -path '*/g7-template-moabom-*/*' \) 2>/dev/null || true
   } | sort -u > "${list}"

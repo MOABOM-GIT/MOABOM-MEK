@@ -19,7 +19,7 @@
 | Tenant | `AppCommunityTenantScope` | `GeneratedAppAdminScope` |
 
 **원칙:** Admin 숨김·복구·삭제는 DB `status` 변경 + 집계 재계산만 — 사용자 API는 `published`만 노출.
-리뷰는 별도 공개 범위 컬럼을 갖지 않고 대상 앱의 `visibility`를 상속한다. 즉 `global` 앱 리뷰는 전체 공개, `tenant` 앱 리뷰는 앱 소유 병원 안에서만 공개, `private` 앱 리뷰는 앱 소유자에게만 공개된다.
+리뷰는 별도 공개 범위 컬럼을 갖지 않고 대상 앱의 `visibility`를 상속한다. 즉 `global` 앱 리뷰는 전체 공개, `tenant` 앱 리뷰는 앱 소유 업체 안에서만 공개, `private` 앱 리뷰는 앱 소유자에게만 공개된다.
 
 ### 0.2 실시간 동기화 (Reverb revision)
 
@@ -48,7 +48,7 @@ Broadcast 실패는 로그만 — HTTP·DB 정합성은 mutation 트랜잭션으
 
 - 목록·라이브러리: `community_*` 집계 컬럼 (N+1 없음)
 - 사용자 목록: `paginatePublishedForApp` + 인덱스 `(generated_app_id, created_at)`
-- Admin 목록: 앱 소유 병원 필터는 `moabom_system_generated_apps` subquery로 적용 — 앱 ID 전체 `pluck()` 없음
+- Admin 목록: 앱 소유 업체 필터는 `moabom_system_generated_apps` subquery로 적용 — 앱 ID 전체 `pluck()` 없음
 - WebSocket: revision 정수만 — 글 본문 push 없음 (대역폭·보안)
 - 세션 캐시: `appCommunitySessionCache` + revision 시 invalidate
 
@@ -129,13 +129,13 @@ Broadcast 실패는 로그만 — HTTP·DB 정합성은 mutation 트랜잭션으
 
 | 화면 | URL (admin) | 용도 |
 |------|-------------|------|
-| **앱 이야기 전체 목록** | `/admin/apps/community/posts` | 플랫폼·병원 admin — 앱명·작성자·별점·상태 필터, 블라인드·삭제 |
+| **앱 이야기 전체 목록** | `/admin/apps/community/posts` | 플랫폼·업체 admin — 앱명·작성자·별점·상태 필터, 블라인드·삭제 |
 | **앱 상세에서 바로가기** | 생성앱 관리 목록 행 액션 → 해당 앱 글만 필터 | `admin_generated_apps` 연동 |
 
 ### 3.2 설계 원칙 (생성앱 admin 과 동일)
 
 - **API·서비스·layout 1벌**, `GeneratedAppAdminScope`로 platform/tenant 스코프만 분기.
-- Host: 마스터 = 전체, 병원 = `tenant_slug` 고정.
+- Host: 마스터 = 전체, 업체 = `tenant_slug` 고정.
 - 권한: `moabom-apps.community.read` / `moabom-apps.community.manage`.
 
 ### 3.3 소유자(회원) 중간 권한 (Phase 2)
@@ -284,10 +284,10 @@ Base: `/api/modules/moabom-apps`
 | PATCH | `admin/app-community/posts/{id}/status` | `moabom-apps.community.manage` |
 | DELETE | `admin/app-community/posts/{id}` | manage |
 
-**목록 필터:** `generated_app_id`, `tenant_slug`(앱 소유 병원), `author_tenant_slug`(작성자 병원), `user_id`, `status`, `rating`, `q` (제목·본문), `created_from`, `created_to`.
+**목록 필터:** `generated_app_id`, `tenant_slug`(앱 소유 업체), `author_tenant_slug`(작성자 업체), `user_id`, `status`, `rating`, `q` (제목·본문), `created_from`, `created_to`.
 
 > **SSOT (0.4.0+):** platform admin 의 `tenant_slug` 는 생성앱 admin 과 동일하게 **앱 소유 tenant** 를 필터한다. 작성자 tenant 는 `author_tenant_slug` 를 사용한다.
-> tenant host admin 에서는 요청 query 의 `tenant_slug`를 신뢰하지 않고 Host 에서 해석한 앱 소유 병원 slug로 고정한다. 응답 `meta.applied_filters`와 `meta.filter_semantics`는 운영 중 빈 목록 원인을 확인하는 추적 정보다.
+> tenant host admin 에서는 요청 query 의 `tenant_slug`를 신뢰하지 않고 Host 에서 해석한 앱 소유 업체 slug로 고정한다. 응답 `meta.applied_filters`와 `meta.filter_semantics`는 운영 중 빈 목록 원인을 확인하는 추적 정보다.
 
 **PATCH body**
 
@@ -454,8 +454,8 @@ i18n: `moa_apps_ai.community.open` = "앱 이야기"
 | 앱당 1인 1리뷰 | 예 (수정은 PUT) |
 | 별점 | 1~5 정수, review 필수 |
 | 비공개 앱 | 소유자만 읽기/쓰기 |
-| 병원 공개 앱 | 같은 앱 소유 병원 사용자만 읽기, 로그인 사용자 쓰기 |
-| 전체 공개 앱 | 모든 병원에서 읽기, 로그인 사용자 쓰기 |
+| 업체 공개 앱 | 같은 앱 소유 업체 사용자만 읽기, 로그인 사용자 쓰기 |
+| 전체 공개 앱 | 모든 업체에서 읽기, 로그인 사용자 쓰기 |
 | 삭제 | 작성자 soft delete; admin hard/hidden |
 | 앱 삭제 | 글 cascade purge |
 

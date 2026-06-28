@@ -112,6 +112,12 @@
   --moa-liquid-outer-glow-blur: 20px;
   --moa-liquid-outer-glow-spread: 1px;
   --moa-liquid-distort-filter: url(#moa-liquid-glass-distort);
+  --moa-liquid-readable-color-on-light: #0f172a;
+  --moa-liquid-readable-border-on-light: rgb(15 23 42 / 28%);
+  --moa-liquid-readable-color-on-dark: #fff;
+  --moa-liquid-readable-border-on-dark: rgb(255 255 255 / 45%);
+  --moa-liquid-readable-color: var(--moa-liquid-readable-color-on-light);
+  --moa-liquid-readable-border: var(--moa-liquid-readable-border-on-light);
 }
 
 /** 다크 모드 글래스 토큰 (#1b1a1d 베이스) */

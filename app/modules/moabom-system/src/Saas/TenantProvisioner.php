@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 병원 테넌트 프로비저닝 (CLI · Platform API 공용).
+ * 업체 테넌트 프로비저닝 (CLI · Platform API 공용).
  */
 final class TenantProvisioner implements TenantProvisionerInterface
 {
@@ -60,7 +60,7 @@ final class TenantProvisioner implements TenantProvisionerInterface
 
         $name = trim((string) ($input['name'] ?? ''));
         if ($name === '') {
-            throw new \InvalidArgumentException('--name= 병원명은 필수입니다.');
+            throw new \InvalidArgumentException('--name= 업체명은 필수입니다.');
         }
 
         $base = (string) config('moabom-system.saas.base_domain', 'mek360.com');

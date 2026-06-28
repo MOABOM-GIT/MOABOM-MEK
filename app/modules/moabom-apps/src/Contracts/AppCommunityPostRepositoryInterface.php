@@ -39,7 +39,7 @@ interface AppCommunityPostRepositoryInterface
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return array{items: Collection<int, AppCommunityPost>, total: int}
+     * @return array{items: Collection<int, AppCommunityPost>, total: int, diagnostics: array<string, mixed>}
      */
     public function adminList(array $filters, ?string $tenantSlugScope, int $limit = 200): array;
 

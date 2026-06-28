@@ -55,7 +55,7 @@ final class TenantAdminMenuPolicyTest extends ModuleTestCase
 
         $forbiddenId = DB::table('menus')->insertGetId([
             'slug' => 'moabom-saas-hospitals',
-            'name' => json_encode(['ko' => '병원 관리'], JSON_UNESCAPED_UNICODE),
+            'name' => json_encode(['ko' => '업체 관리'], JSON_UNESCAPED_UNICODE),
             'url' => '/admin/saas/hospitals',
             'parent_id' => null,
             'order' => 1,
@@ -68,7 +68,7 @@ final class TenantAdminMenuPolicyTest extends ModuleTestCase
 
         $deprecatedId = DB::table('menus')->insertGetId([
             'slug' => 'hospital-settings',
-            'name' => json_encode(['ko' => '병원 설정'], JSON_UNESCAPED_UNICODE),
+            'name' => json_encode(['ko' => '업체 설정'], JSON_UNESCAPED_UNICODE),
             'url' => null,
             'parent_id' => null,
             'order' => 5,
@@ -81,7 +81,7 @@ final class TenantAdminMenuPolicyTest extends ModuleTestCase
 
         $childId = DB::table('menus')->insertGetId([
             'slug' => 'moabom-tenant-settings',
-            'name' => json_encode(['ko' => '병원 운영 설정'], JSON_UNESCAPED_UNICODE),
+            'name' => json_encode(['ko' => '업체 운영 설정'], JSON_UNESCAPED_UNICODE),
             'url' => '/admin/platform/settings/tenant',
             'parent_id' => null,
             'order' => 10,
