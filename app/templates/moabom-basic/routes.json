@@ -93,12 +93,12 @@
       }
     },
     {
-      "_comment": "작성글 보기 — 셸 윈도우 내 G7 users/posts JSON (Pagination)",
+      "_comment": "유저 활동 — 셸 윈도우 내 G7 users/posts JSON + 제작앱 목록",
       "path": "/users/:uuid/posts",
       "layout": "home",
       "auth_required": false,
       "meta": {
-        "title": "사용자 작성글"
+        "title": "유저 활동"
       }
     },
     {

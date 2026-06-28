@@ -170,6 +170,11 @@
     "weather_status": {
       "format": "{condition} · {temp}°C",
       "loading": "天気情報を取得中…",
+      "api_checking": "天気API点検中",
+      "error_network": "天気の接続が不安定です",
+      "error_http_5xx": "天気サーバーの応答が遅れています",
+      "error_parse": "天気応答の確認が必要です",
+      "error_location_unreliable": "現在地の確認が必要です",
       "clear": "晴れ",
       "partly_cloudy": "晴れ時々曇り",
       "overcast": "曇り",
@@ -404,7 +409,7 @@
       "board_loading": "掲示板を読み込み中…",
       "user_profile_window": "ユーザープロフィール",
       "user_profile_tab_profile": "プロフィール",
-      "user_profile_tab_posts": "投稿",
+      "user_profile_tab_posts": "アクティビティ",
       "user_profile_tab_chat": "チャット",
       "user_profile_loading": "プロフィールを読み込み中…",
       "user_profile_error": "プロフィールを読み込めません",
@@ -602,6 +607,7 @@
     "notice_fallback": "AI provider設定前は基本プレビューを表示します。",
     "notice_truncated": "トークン制限で生成が途中で止まりました。「続きから完成」で続行できます。",
     "stream_title": "生成コード",
+    "stream_title_editable": "生成コード（直接編集可）",
     "stream_title_loading": "AIがコードを書いています…",
     "stream_title_partial": "未完成の下書きコード",
     "continue_generate": "続きから完成",
@@ -638,6 +644,17 @@
       "save_draft_success": "未完成の下書きを保存しました。後から続きを完成できます。",
       "hosted_hint": "Hostedアプリは保存後にのみ専用サブドメインが作成されます。",
       "badge_partial": "下書き"
+    },
+    "security": {
+      "save_blocked": "セキュリティ検査に失敗したため保存できません。",
+      "more": "他に {count} 件のセキュリティ違反があります。",
+      "parent_shell_escape": "親ウィンドウ（シェル）へのアクセスコードは許可されていません。",
+      "cookie_exfiltration": "Cookie の窃取・外部送信パターンは許可されていません。",
+      "javascript_protocol": "javascript: URL は許可されていません。",
+      "insecure_remote_script": "HTTP など安全でない外部スクリプト URL は許可されていません。",
+      "obfuscated_eval": "難読化された eval 実行パターンは許可されていません。",
+      "meta_refresh": "meta refresh リダイレクトは許可されていません。",
+      "data_html_iframe": "data: URL の iframe は許可されていません。"
     }
   },
   "moa_apps_cpap": {

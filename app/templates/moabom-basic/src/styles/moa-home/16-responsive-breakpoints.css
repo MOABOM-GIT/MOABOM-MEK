@@ -8,7 +8,7 @@
   .moa-main-app-grid {
     --moa-main-cell-min: 118px;
     --moa-main-grid-gap: 24px;
-    --moa-main-app-size: 92px;
+    --moa-main-app-size: 108px;
     --moa-main-icon-size: 80px;
     --moa-main-symbol-size: 1.65rem;
     --moa-main-title-size: 0.92rem;
@@ -55,7 +55,7 @@
   .moa-main-app-grid {
     --moa-main-cell-min: 96px;
     --moa-main-grid-gap: 18px;
-    --moa-main-app-size: 82px;
+    --moa-main-app-size: 90px;
     --moa-main-icon-size: 70px;
     --moa-main-symbol-size: 1.45rem;
     --moa-main-title-size: 0.87rem;
@@ -81,7 +81,7 @@
 
   .moa-main-app-grid {
     --moa-main-grid-gap: 12px;
-    --moa-main-app-size: 72px;
+    --moa-main-app-size: 78px;
     --moa-main-icon-size: 60px;
     --moa-main-symbol-size: 1.2rem;
     --moa-main-title-size: 0.77rem;

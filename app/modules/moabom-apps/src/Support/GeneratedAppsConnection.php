@@ -4,6 +4,7 @@ namespace Modules\Moabom\Apps\Support;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Config;
+use Modules\Moabom\Apps\Models\AppCommunityPost;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Models\GeneratedAppRow;
 use Modules\Moabom\System\Saas\PlatformConnectionFactory;
@@ -61,6 +62,18 @@ final class GeneratedAppsConnection
         return $connection !== null
             ? GeneratedAppRow::on($connection)->newQuery()
             : GeneratedAppRow::query();
+    }
+
+    /**
+     * @return Builder<AppCommunityPost>
+     */
+    public static function communityPosts(): Builder
+    {
+        $connection = self::usesPlatformStore() ? self::NAME : null;
+
+        return $connection !== null
+            ? AppCommunityPost::on($connection)->newQuery()
+            : AppCommunityPost::query();
     }
 
     public static function tenantSlugForWrite(): string

@@ -11,12 +11,21 @@ describe('AI 앱 HTML 유틸', () => {
     expect(html).toContain('moabom-ai-preview-safety');
   });
 
-  it('이미 safety block이 있으면 중복 주입하지 않는다', () => {
+  it('safety block만 있고 CSP가 없으면 CSP만 멱등 추가한다', () => {
     const html = '<html><head><style id="moabom-ai-preview-safety">html,body{margin:0}</style></head><body></body></html>';
     const out = injectAiPreviewSafety(html);
 
-    expect(out).toBe(html);
+    expect(out).toContain('moabom-ai-preview-safety');
     expect(out.match(/moabom-ai-preview-safety/g)?.length).toBe(1);
+    expect(out.match(/http-equiv="Content-Security-Policy"/g)?.length).toBe(1);
+  });
+
+  it('CSP만 있는 레거시 문서에는 safety 스타일만 멱등 추가한다', () => {
+    const html = '<html><head><meta http-equiv="Content-Security-Policy" content="default-src https:"></head><body></body></html>';
+    const out = injectAiPreviewSafety(html);
+
+    expect(out.match(/http-equiv="Content-Security-Policy"/g)?.length).toBe(1);
+    expect(out).toContain('moabom-ai-preview-safety');
   });
 
   it('이미 주입된 preview runtime shim 은 제거한다', () => {

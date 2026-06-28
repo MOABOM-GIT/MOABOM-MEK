@@ -100,8 +100,9 @@ fi
 
 if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ] \
   && [ "${MOABOM_SYNC_TENANT_ADMIN_MENUS:-true}" = "true" ]; then
+  echo "[deferred-sync] Syncing module declarations (hospital-default SSOT)..."
+  php artisan moabom:saas:sync-module-declarations --no-interaction || true
   echo "[deferred-sync] Syncing tenant admin menus..."
-  php artisan moabom:module-sync-declarations moabom-system --no-interaction || true
   php artisan moabom:saas:sync-tenant-admin-menus --no-interaction || true
 fi
 

@@ -60,6 +60,17 @@ function generatedAppGradient(seed: string): string {
   return `linear-gradient(135deg,${palette[0]},${palette[1]})`;
 }
 
+/** 생성앱 타이틀바·아이콘 그라데이션 SSOT — serverId만으로 해시(새로고침·딥링크와 라이브러리 동일) */
+export function resolveGeneratedAppTitleBarGradient(serverId: number, appType = 'general', metadata?: Record<string, unknown>): string {
+  if (isWebsiteLinkAppType(appType)) {
+    const iconImageUrl = readWebsiteIconFromMetadata(metadata ?? {});
+
+    return resolveWebsiteLinkAppGradient(metadata ?? {}, Boolean(iconImageUrl));
+  }
+
+  return generatedAppGradient(String(serverId));
+}
+
 /** API 생성 앱 목록 항목 → 마이페이지 library `App` 카드 */
 export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummary): App {
   const appType = item.app_type ?? 'general';
@@ -81,7 +92,7 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
     iconImageUrl: iconImageUrl || undefined,
     gradient: isWebsiteLink
       ? resolveWebsiteLinkAppGradient(metadata, Boolean(iconImageUrl))
-      : generatedAppGradient(`${item.id}:${title}`),
+      : resolveGeneratedAppTitleBarGradient(item.id, appType, metadata),
     category: 'user',
     source: 'user-created',
     defaultLocale: 'ko',
@@ -92,6 +103,7 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
       visibility: item.visibility ?? (item.is_shared ? 'tenant' : 'private'),
       owner: item.owner,
       permissions: item.permissions,
+      community: item.community,
       appType,
       websiteUrl: readWebsiteUrlFromMetadata(metadata) || undefined,
       iconImageUrl: iconImageUrl || undefined,

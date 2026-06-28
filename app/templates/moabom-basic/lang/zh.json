@@ -170,6 +170,11 @@
     "weather_status": {
       "format": "{condition} · {temp}°C",
       "loading": "正在获取天气…",
+      "api_checking": "天气API检查中",
+      "error_network": "天气连接不稳定",
+      "error_http_5xx": "天气服务器响应延迟",
+      "error_parse": "天气响应需要检查",
+      "error_location_unreliable": "请检查当前位置",
       "clear": "晴",
       "partly_cloudy": "多云",
       "overcast": "阴",
@@ -404,7 +409,7 @@
       "board_loading": "正在加载论坛…",
       "user_profile_window": "用户资料",
       "user_profile_tab_profile": "资料",
-      "user_profile_tab_posts": "帖子",
+      "user_profile_tab_posts": "动态",
       "user_profile_tab_chat": "聊天",
       "user_profile_loading": "正在加载资料…",
       "user_profile_error": "无法加载资料",
@@ -602,6 +607,7 @@
     "notice_fallback": "在配置 AI provider 前将显示默认预览。",
     "notice_truncated": "因令牌限制生成中断。可使用「继续完成」继续。",
     "stream_title": "生成代码",
+    "stream_title_editable": "生成代码（可直接编辑）",
     "stream_title_loading": "AI 正在编写代码…",
     "stream_title_partial": "未完成草稿代码",
     "continue_generate": "继续完成",
@@ -638,6 +644,17 @@
       "save_draft_success": "已保存未完成草稿。稍后可继续完成。",
       "hosted_hint": "Hosted 应用仅在保存后才会创建专用子域名。",
       "badge_partial": "草稿"
+    },
+    "security": {
+      "save_blocked": "安全检测未通过，无法保存。",
+      "more": "另有 {count} 项安全规则违规。",
+      "parent_shell_escape": "不允许访问父窗口（壳层）的代码。",
+      "cookie_exfiltration": "不允许 Cookie 窃取或外传模式。",
+      "javascript_protocol": "不允许 javascript: URL。",
+      "insecure_remote_script": "不允许 HTTP 等不安全的外部脚本地址。",
+      "obfuscated_eval": "不允许混淆的 eval 执行模式。",
+      "meta_refresh": "不允许 meta refresh 重定向。",
+      "data_html_iframe": "不允许 data: URL 的 iframe。"
     }
   },
   "moa_apps_cpap": {

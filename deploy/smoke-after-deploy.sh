@@ -80,6 +80,7 @@ check_auth_or_ok() {
 }
 check_auth_or_ok "/api/modules/moabom-apps/apps/generated" "moabom-apps generated list" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-apps/apps/generated/shared" "moabom-apps shared generated list" || FAIL=1
+check_auth_or_ok "/api/modules/moabom-apps/admin/app-community/posts" "moabom-apps app community admin" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-cpap/apps/cpap-mask/measurements/latest" "cpap latest" || FAIL=1
 check_auth_or_ok "/api/modules/moabom-personalization/user/activities?type=all&limit=1" "personalization activities" || FAIL=1
 # moabom-chat — 프로필 대화·차단·eligibility 라우트 등록 (404 = 미배포·api.php 누락)

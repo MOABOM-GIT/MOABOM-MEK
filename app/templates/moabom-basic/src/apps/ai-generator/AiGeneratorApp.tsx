@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import {
-  fetchVisibleGeneratedApp,
-  resolveWebsiteLink,
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useCallback } from 'react';
+import { resolveWebsiteLink,
   storeGeneratedApp,
   updateGeneratedApp,
   type AiAppType,
@@ -14,7 +12,15 @@ import {
   subscribeCreateAppEditServerId,
 } from 'moabom-create-app-edit';
 import { notifyGeneratedAppSaved } from '../generatedAppEvents';
+import {
+  formatGeneratedAppSecurityToast,
+  scanGeneratedAppHtmlSecurity,
+} from './generatedAppHtmlSecurity';
 import { generatedAppFrameSandbox } from '../generated/generatedAppPreviewUrl';
+import { useShellWindowAuthStateKey } from '../../shell/ShellWindowAuthContext';
+import { loadVisibleGeneratedAppSession, invalidateVisibleGeneratedAppSession } from '../generated/generatedAppVisibleSessionCache';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { pushWarningToast } from '../../runtime/moaShellToasts';
 import { Button } from '../../components/basic/Button';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 import { Div } from '../../components/basic/Div';
@@ -33,10 +39,14 @@ import {
   APP_STACK_GRID_CLASS,
   APP_WINDOW_BODY_CLASS,
 } from '../appShellTypography';
-import { injectAiPreviewSafety } from './aiHtmlUtils';
 import { buildGenerationDraftView, resolveGenerationSource } from './aiGenerationDraft';
+import {
+  prepareGeneratedAppHtmlForPersist,
+  toEditorHtmlFromStored,
+} from './generatedAppHtmlPipeline';
 import { AiGenerationQueuePanel } from './AiGenerationQueuePanel';
 import { AiGenerationRecoveryBanner } from './AiGenerationRecoveryBanner';
+import { AiGenerationCodePanel } from './AiGenerationCodePanel';
 import { useAiAppStream } from './useAiAppStream';
 import {
   buildWebsiteLinkStoredHtml,
@@ -68,9 +78,21 @@ const modelOptions = [
 ];
 
 const inputClassName = APP_SHELL_INPUT_CLASS;
+const CODE_PREVIEW_DEBOUNCE_MS = 280;
+
+function mergeGeneratedAppMetadata(
+  base: Record<string, unknown> | null | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...(base && typeof base === 'object' ? base : {}),
+    ...patch,
+  };
+}
 
 export function AiGeneratorApp() {
   const { t } = useMoabomShellT();
+  const authStateKey = useShellWindowAuthStateKey();
   const editServerId = useSyncExternalStore(
     subscribeCreateAppEditServerId,
     getCreateAppEditServerId,
@@ -96,6 +118,7 @@ export function AiGeneratorApp() {
   const [resolvedIconFromTitle, setResolvedIconFromTitle] = useState(false);
   const [isResolvingWebsite, setIsResolvingWebsite] = useState(false);
   const codePanelRef = useRef<HTMLDivElement>(null);
+  const prevEditServerIdRef = useRef<number | null>(null);
   const isWebsiteLink = isWebsiteLinkAppType(appType);
 
   const {
@@ -120,8 +143,10 @@ export function AiGeneratorApp() {
     generatedAppId: loadedEditId,
     onDraftFinalize: (draft) => {
       if (draft.source.trim()) {
-        const view = buildGenerationDraftView(draft.source);
-        setDraftHtml(view.saveHtml);
+        const prepared = prepareGeneratedAppHtmlForPersist(draft.source);
+        if (prepared.html) {
+          setDraftHtml(prepared.html);
+        }
         clearStreamedBuffer();
       }
 
@@ -145,17 +170,38 @@ export function AiGeneratorApp() {
         return;
       }
 
-      if (buildGenerationDraftView(draft.source).completeness === 'complete') {
+      if (prepareGeneratedAppHtmlForPersist(draft.source).completeness === 'complete') {
         setNotice('');
       }
     },
   });
 
+  const resetCreateForm = useCallback(() => {
+    setTitle('');
+    setPrompt('');
+    setAppType('general');
+    setAppTier('standard');
+    setModelId('claude-sonnet');
+    setDraftHtml('');
+    setNotice('');
+    setError('');
+    setSavedMessage('');
+    setWebsiteUrl('');
+    setResolvedIconUrl('');
+    setResolvedThemeColor('');
+    setResolvedIconFromTitle(false);
+    clearStreamedBuffer();
+  }, [clearStreamedBuffer]);
+
   useEffect(() => {
     if (!editServerId) {
+      if (prevEditServerIdRef.current != null) {
+        resetCreateForm();
+      }
       setLoadedEditId(null);
       setRemixSourceId(null);
       setLoadedSourceApp(null);
+      prevEditServerIdRef.current = null;
       return;
     }
 
@@ -166,7 +212,7 @@ export function AiGeneratorApp() {
 
     void (async () => {
       try {
-        const app = await fetchVisibleGeneratedApp(editServerId);
+        const app = await loadVisibleGeneratedAppSession(editServerId, authStateKey);
         if (cancelled) {
           return;
         }
@@ -180,10 +226,11 @@ export function AiGeneratorApp() {
         setResolvedIconUrl(readWebsiteIconFromMetadata(app.metadata));
         setResolvedThemeColor(readWebsitePointColorFromMetadata(app.metadata));
         setResolvedIconFromTitle(isWebsiteTitleIconFromMetadata(app.metadata));
-        setDraftHtml(isWebsiteLinkAppType(app.app_type) ? '' : injectAiPreviewSafety(app.html ?? ''));
+        setDraftHtml(isWebsiteLinkAppType(app.app_type) ? '' : toEditorHtmlFromStored(app.html ?? ''));
         setLoadedEditId(editingOwnApp ? app.id : null);
         setRemixSourceId(editingOwnApp ? null : app.id);
         setLoadedSourceApp(app);
+        prevEditServerIdRef.current = editServerId;
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t('moa_apps_ai.viewer_error'));
@@ -201,7 +248,7 @@ export function AiGeneratorApp() {
     return () => {
       cancelled = true;
     };
-  }, [editServerId, t]);
+  }, [authStateKey, editServerId, resetCreateForm, t]);
 
   useEffect(() => {
     if (!isStreaming || !codePanelRef.current) {
@@ -211,14 +258,53 @@ export function AiGeneratorApp() {
   }, [streamedRaw, isStreaming]);
 
   const draftSource = resolveGenerationSource(draftHtml, streamedRaw, isStreaming);
-  const draftView = useMemo(() => buildGenerationDraftView(draftSource), [draftSource]);
+  const debouncedDraftHtml = useDebouncedValue(draftHtml, CODE_PREVIEW_DEBOUNCE_MS);
+
+  const streamingDraftView = useMemo(
+    () => buildGenerationDraftView(draftSource),
+    [draftSource],
+  );
+
+  const debouncedPrepared = useMemo(
+    () => prepareGeneratedAppHtmlForPersist(debouncedDraftHtml),
+    [debouncedDraftHtml],
+  );
+
+  const persistPrepared = useMemo(
+    () => prepareGeneratedAppHtmlForPersist(draftHtml),
+    [draftHtml],
+  );
+
+  const draftView = isStreaming
+    ? streamingDraftView
+    : {
+        source: debouncedDraftHtml,
+        completeness: debouncedPrepared.completeness,
+        previewHtml: debouncedPrepared.html,
+        saveHtml: debouncedPrepared.html,
+        canSave: debouncedPrepared.canSave,
+        canContinue: debouncedPrepared.canContinue,
+      };
+
   const previewHtml = draftView.previewHtml;
-  const codePreview = draftSource;
+  const codePreview = isStreaming ? draftSource : (draftHtml || debouncedPrepared.html);
   const isEditingExisting = loadedEditId != null;
   const isRemixingExisting = remixSourceId != null;
-  const needsRecovery = !isWebsiteLink && !isStreaming && draftView.canContinue;
+  const needsRecovery = !isWebsiteLink && !isStreaming && persistPrepared.canContinue;
   const websitePreviewUrl = isWebsiteLink ? normalizeWebsiteUrl(websiteUrl) : '';
   const canSaveWebsiteLink = Boolean(title.trim() && websiteUrl.trim() && prompt.trim());
+
+  const handleCodeChange = useCallback((nextCode: string) => {
+    clearStreamedBuffer();
+    setDraftHtml(nextCode);
+  }, [clearStreamedBuffer]);
+
+  const handleCodeCommit = useCallback(() => {
+    const prepared = prepareGeneratedAppHtmlForPersist(draftHtml);
+    if (prepared.html && prepared.html !== draftHtml) {
+      setDraftHtml(prepared.html);
+    }
+  }, [draftHtml]);
 
   const handleWebsiteLinkGenerate = async () => {
     setError('');
@@ -270,8 +356,8 @@ export function AiGeneratorApp() {
 
     try {
       const currentHtml = continueGeneration
-        ? draftView.saveHtml || draftSource
-        : draftView.saveHtml || '';
+        ? persistPrepared.html || draftSource
+        : persistPrepared.html || '';
 
       await runStream({
         prompt: prompt.trim(),
@@ -296,7 +382,8 @@ export function AiGeneratorApp() {
       return;
     }
 
-    let resolvedSaveHtml = draftView.saveHtml;
+    let resolvedSaveHtml = persistPrepared.html;
+    const saveCompleteness = persistPrepared.completeness;
     let nextWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
     let nextIconUrl = resolvedIconUrl;
     let nextThemeColor = resolvedThemeColor;
@@ -337,7 +424,23 @@ export function AiGeneratorApp() {
       return;
     }
 
-    const isDraftSave = !isWebsiteLink && draftView.completeness === 'partial';
+    if (!isWebsiteLink) {
+      const securityScan = scanGeneratedAppHtmlSecurity(resolvedSaveHtml);
+      if (!securityScan.ok) {
+        const toastMessage = formatGeneratedAppSecurityToast(securityScan.violations, t);
+        if (toastMessage) {
+          pushWarningToast(toastMessage, 4500);
+        }
+        setError(t('moa_apps_ai.security.save_blocked'));
+        return;
+      }
+    }
+
+    const isDraftSave = !isWebsiteLink && saveCompleteness === 'partial';
+    const metadataBase = isEditingExisting && loadedSourceApp?.metadata && typeof loadedSourceApp.metadata === 'object'
+      ? loadedSourceApp.metadata as Record<string, unknown>
+      : undefined;
+
     const payload = {
       title: title.trim(),
       app_type: appType,
@@ -345,10 +448,10 @@ export function AiGeneratorApp() {
       model_id: isWebsiteLink ? null : modelId,
       prompt: prompt.trim(),
       html: resolvedSaveHtml,
-      metadata: {
+      metadata: mergeGeneratedAppMetadata(metadataBase, {
         source: 'moabom-shell',
-        generation_status: isWebsiteLink ? 'complete' : draftView.completeness,
-        generation_complete: isWebsiteLink ? true : draftView.completeness === 'complete',
+        generation_status: isWebsiteLink ? 'complete' : saveCompleteness,
+        generation_complete: isWebsiteLink ? true : saveCompleteness === 'complete',
         ...(isWebsiteLink ? {
           website_url: nextWebsiteUrl,
           icon_url: nextIconUrl || undefined,
@@ -358,23 +461,27 @@ export function AiGeneratorApp() {
         ...(sessionId ? { ai_generation_session_id: sessionId } : {}),
         ...(isEditingExisting ? { updated: true } : {}),
         ...(isRemixingExisting ? { remix_source_id: remixSourceId } : {}),
-      },
+      }),
       ...(isRemixingExisting ? { parent_app_id: remixSourceId } : {}),
     };
 
     setIsSaving(true);
     try {
+      let savedAppId: number;
       if (loadedEditId != null) {
         const updated = await updateGeneratedApp(loadedEditId, payload);
+        savedAppId = updated.id;
         notifyGeneratedAppSaved(updated);
         setSavedMessage(isDraftSave ? t('moa_apps_ai.recovery.save_draft_success') : t('moa_apps_ai.update_success'));
       } else {
         const saved = await storeGeneratedApp(payload);
+        savedAppId = saved.id;
         setLoadedEditId(saved.id);
         setRemixSourceId(null);
         notifyGeneratedAppSaved(saved);
         setSavedMessage(isDraftSave ? t('moa_apps_ai.recovery.save_draft_success') : t('moa_apps_ai.save_success'));
       }
+      invalidateVisibleGeneratedAppSession(savedAppId);
       setDraftHtml(resolvedSaveHtml);
       clearStreamedBuffer();
     } catch (err) {
@@ -434,7 +541,7 @@ export function AiGeneratorApp() {
       {!isWebsiteLink ? (
         <AiGenerationRecoveryBanner
           phase={generationPhase}
-          completeness={draftView.completeness}
+          completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
           appTier={appTier}
           t={t}
           onContinue={() => void handleGenerate(true)}
@@ -559,11 +666,11 @@ export function AiGeneratorApp() {
               type="button"
               variant="primary"
               onClick={() => void handleSave()}
-              disabled={isSaving || isResolvingWebsite || (isWebsiteLink ? !canSaveWebsiteLink : !draftView.canSave) || isStreaming}
+              disabled={isSaving || isResolvingWebsite || (isWebsiteLink ? !canSaveWebsiteLink : !persistPrepared.canSave) || isStreaming}
             >
               {isSaving || isResolvingWebsite
                 ? t('moa_apps_ai.saving')
-                : draftView.completeness === 'partial'
+                : persistPrepared.completeness === 'partial'
                   ? t('moa_apps_ai.recovery.save_draft')
                   : isEditingExisting
                     ? t('moa_apps_ai.update')
@@ -584,27 +691,16 @@ export function AiGeneratorApp() {
           ) : null}
 
           {!isWebsiteLink && (isStreaming || codePreview) ? (
-            <Div className="min-h-0 shrink-0">
-              <Div className={`mb-2 flex items-center gap-2 ${APP_SHELL_BODY_CLASS}`}>
-                <Icon name={isStreaming ? 'spinner' : 'code-branch'} className={isStreaming ? 'animate-spin text-faint' : 'text-faint'} />
-                <span>
-                  {isStreaming
-                    ? t('moa_apps_ai.stream_title_loading')
-                    : draftView.completeness === 'partial'
-                      ? t('moa_apps_ai.stream_title_partial')
-                      : t('moa_apps_ai.stream_title')}
-                </span>
-                {draftView.completeness === 'partial' && !isStreaming ? (
-                  <span className="moa-ai-draft-badge">{t('moa_apps_ai.recovery.badge_partial')}</span>
-                ) : null}
-              </Div>
-              <Div
-                ref={codePanelRef}
-                className="max-h-36 overflow-auto rounded-2xl bg-black/5 p-3 dark:bg-white/5 @xl:max-h-40"
-              >
-                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-secondary">{codePreview}</pre>
-              </Div>
-            </Div>
+            <AiGenerationCodePanel
+              isStreaming={isStreaming}
+              codePreview={codePreview}
+              editableCode={draftHtml}
+              completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
+              onCodeChange={handleCodeChange}
+              onCodeCommit={handleCodeCommit}
+              codePanelRef={codePanelRef}
+              t={t}
+            />
           ) : null}
 
           {isWebsiteLink && websitePreviewUrl ? (

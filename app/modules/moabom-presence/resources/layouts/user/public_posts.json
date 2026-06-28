@@ -30,6 +30,29 @@
         "page": 1,
         "sort": "latest"
       }
+    },
+    {
+      "id": "user_generated_apps",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-apps/users/{{route.uuid}}/generated-apps",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "params": {
+        "per_page": 20,
+        "page": 1
+      }
+    },
+    {
+      "id": "user_frequent_apps",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-apps/users/{{route.uuid}}/frequent-apps",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": false,
+      "params": {
+        "limit": 5
+      }
     }
   ],
   "components": [
@@ -109,41 +132,136 @@
           ]
         },
         {
-          "id": "user_posts_empty",
-          "type": "basic",
-          "name": "Div",
-          "props": {
-            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 p-6 text-center"
-          },
-          "if": "{{!(user_posts?.data?.data?.length)}}",
-          "children": [
-            {
-              "id": "user_posts_empty_text",
-              "type": "basic",
-              "name": "P",
-              "props": {
-                "className": "text-sm text-muted"
-              },
-              "text": "$t:moabom-presence.user.profile_posts_empty"
-            }
-          ]
-        },
-        {
-          "id": "user_posts_list",
+          "id": "user_generated_apps_panel",
           "type": "basic",
           "name": "Div",
           "props": {
             "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0"
           },
-          "if": "{{user_posts?.data?.data?.length > 0}}",
           "children": [
+            {
+              "id": "user_generated_apps_title",
+              "type": "basic",
+              "name": "H2",
+              "props": {
+                "className": "px-4 pt-4 pb-2 text-sm font-semibold text-muted"
+              },
+              "text": "$t:moabom-presence.user.generated_apps_title"
+            },
+            {
+              "id": "user_generated_apps_empty",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "px-4 pb-4 text-sm text-muted text-center"
+              },
+              "if": "{{!(user_generated_apps?.data?.data?.length)}}",
+              "text": "$t:moabom-presence.user.generated_apps_empty"
+            },
+            {
+              "id": "user_generated_apps_list",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-user-profile-post-list min-w-0 pb-2"
+              },
+              "if": "{{user_generated_apps?.data?.data?.length > 0}}",
+              "iteration": {
+                "source": "{{user_generated_apps?.data?.data ?? []}}",
+                "item_var": "app",
+                "index_var": "appIndex"
+              },
+              "children": [
+                {
+                  "partial": "../partials/user/_user_generated_app_row.json"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "user_frequent_apps_panel",
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0"
+          },
+          "children": [
+            {
+              "id": "user_frequent_apps_title",
+              "type": "basic",
+              "name": "H2",
+              "props": {
+                "className": "px-4 pt-4 pb-2 text-sm font-semibold text-muted"
+              },
+              "text": "$t:moabom-presence.user.frequent_apps_title"
+            },
+            {
+              "id": "user_frequent_apps_empty",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "px-4 pb-4 text-sm text-muted text-center"
+              },
+              "if": "{{!(user_frequent_apps?.data?.data?.length)}}",
+              "text": "$t:moabom-presence.user.frequent_apps_empty"
+            },
+            {
+              "id": "user_frequent_apps_list",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "moa-user-profile-post-list min-w-0 pb-2"
+              },
+              "if": "{{user_frequent_apps?.data?.data?.length > 0}}",
+              "iteration": {
+                "source": "{{user_frequent_apps?.data?.data ?? []}}",
+                "item_var": "app",
+                "index_var": "frequentAppIndex"
+              },
+              "children": [
+                {
+                  "partial": "../partials/user/_user_generated_app_row.json"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "user_posts_panel",
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "moa-group rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0"
+          },
+          "children": [
+            {
+              "id": "user_posts_list_title",
+              "type": "basic",
+              "name": "H2",
+              "props": {
+                "className": "px-4 pt-4 pb-2 text-sm font-semibold text-muted"
+              },
+              "text": "$t:moabom-presence.user.profile_posts_title"
+            },
+            {
+              "id": "user_posts_empty",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "px-4 pb-6 text-sm text-muted text-center"
+              },
+              "if": "{{!(user_posts?.data?.data?.length)}}",
+              "text": "$t:moabom-presence.user.profile_posts_empty"
+            },
             {
               "id": "user_posts_list_body",
               "type": "basic",
               "name": "Div",
               "props": {
-                "className": "moa-user-profile-post-list min-w-0"
+                "className": "moa-user-profile-post-list min-w-0 pb-2"
               },
+              "if": "{{user_posts?.data?.data?.length > 0}}",
               "iteration": {
                 "source": "{{user_posts?.data?.data ?? []}}",
                 "item_var": "post",

@@ -119,6 +119,8 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
   const viewPayloadsRef = useRef(viewPayloads);
   viewPayloadsRef.current = viewPayloads;
   const prevUserUuidRef = useRef(userUuid);
+  const hostRootRef = useRef<HTMLDivElement>(null);
+  const slideViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (prevUserUuidRef.current === userUuid) {
@@ -265,6 +267,27 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
     onViewChange?.(view);
   }, [onViewChange, userProfileView]);
 
+  useEffect(() => {
+    const viewport = hostRootRef.current?.closest('.moa-app-window-viewport');
+    if (viewport instanceof HTMLElement) {
+      viewport.scrollTop = 0;
+    }
+
+    const track = slideViewportRef.current?.querySelector('.moa-user-profile-slide-track');
+    if (track instanceof HTMLElement) {
+      track.style.height = '';
+      void track.offsetHeight;
+    }
+
+    slideViewportRef.current
+      ?.querySelectorAll('.moa-user-profile-slide-pane__inner')
+      .forEach(element => {
+        if (element instanceof HTMLElement) {
+          element.scrollTop = 0;
+        }
+      });
+  }, [userProfileView]);
+
   const activePayload = userProfileView === 'chat'
     ? (viewPayloads.profile ?? viewPayloads.posts)
     : viewPayloads[userProfileView];
@@ -331,7 +354,10 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
   ].filter(Boolean).join(' ');
 
   return (
-    <Div className={`${APP_WINDOW_BODY_CLASS} relative flex min-h-0 min-w-0 flex-1 flex-col`}>
+    <Div
+      ref={hostRootRef}
+      className={`moa-user-profile-window-body ${APP_WINDOW_BODY_CLASS} relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden`}
+    >
       <Div
         className="moa-user-profile-window-chrome shrink-0"
         role="tablist"
@@ -344,7 +370,7 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
         />
       </Div>
 
-      <Div className="moa-user-profile-slide-viewport relative min-h-0 flex-1">
+      <Div ref={slideViewportRef} className="moa-user-profile-slide-viewport relative min-h-0 flex-1">
         {showRefetchOverlay ? (
           <Div
             className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[1px]"

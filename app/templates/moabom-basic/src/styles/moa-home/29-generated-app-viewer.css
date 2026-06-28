@@ -40,8 +40,25 @@
   transform: rotate(180deg);
 }
 
-.generated-app-owner-button.is-static {
-  cursor: default;
+.generated-app-owner-button.is-actionable,
+.generated-app-owner-button.is-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.generated-app-owner-button.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.generated-app-toolbar.is-dragging {
+  transition: none;
+}
+
+.generated-app-toolbar.is-dragging .generated-app-action-menu {
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
 }
 
 .generated-app-owner-label {
@@ -86,13 +103,9 @@
 
 .generated-app-action-button {
   --moa-btn-color: #fff;
-  --moa-btn-bg: linear-gradient(135deg, rgb(15 23 42 / 72%), rgb(15 23 42 / 50%));
-  --moa-btn-border: rgb(255 255 255 / 45%);
-  --moa-btn-hover-color: #fff;
-  --moa-btn-hover-bg: linear-gradient(135deg, rgb(15 23 42 / 82%), rgb(15 23 42 / 60%));
-  --moa-btn-hover-border: rgb(255 255 255 / 70%);
-  --moa-btn-shadow: 0 0.35rem 0.9rem rgb(15 23 42 / 16%);
-  --moa-btn-hover-shadow: 0 0.5rem 1.1rem rgb(15 23 42 / 22%);
+  --moa-btn-border: #ffffff73;
+  --moa-btn-shadow: 0 0.35rem 0.9rem #0f172a29;
+  --moa-btn-hover-shadow: 0 0.5rem 1.1rem #0f172a38;
   border-radius: 9999px;
   font-size: 0.7rem;
   font-weight: 800;
@@ -116,6 +129,11 @@
 .generated-app-action-button.is-danger {
   --moa-btn-bg: linear-gradient(135deg, rgb(244 63 94 / 88%), rgb(190 18 60 / 78%));
   --moa-btn-hover-bg: linear-gradient(135deg, rgb(244 63 94 / 96%), rgb(190 18 60 / 86%));
+}
+
+.generated-app-action-button.is-community {
+  --moa-btn-bg: linear-gradient(135deg, rgb(var(--moa-point-rgb) / 88%), color-mix(in srgb, var(--moa-point-color) 78%, rgb(15 23 42)));
+  --moa-btn-hover-bg: linear-gradient(135deg, rgb(var(--moa-point-rgb) / 96%), color-mix(in srgb, var(--moa-point-color) 86%, rgb(15 23 42)));
 }
 
 .generated-app-preview-frame {

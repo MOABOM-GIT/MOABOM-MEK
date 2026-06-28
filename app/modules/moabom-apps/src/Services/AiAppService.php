@@ -11,6 +11,7 @@ use Modules\Moabom\Apps\Enums\AppTier;
 use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Support\GeneratedAppOwnerResolver;
+use Modules\Moabom\Apps\Support\AppCommunityAccessPolicy;
 use Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy;
 
 class AiAppService
@@ -385,6 +386,34 @@ PROMPT;
             ->all();
     }
 
+    /**
+     * 공개 프로필용 — 특정 사용자의 등록·공개 생성 앱 목록(페이지네이션).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function paginatePublishedForUser(int $userId, int $perPage = 20, ?int $viewerUserId = null): array
+    {
+        $paginator = $this->appRepository->paginatePublishedForUser($userId, $perPage);
+
+        return [
+            'data' => collect($paginator->items())
+                ->map(function (GeneratedApp $app) use ($viewerUserId): array {
+                    $payload = $this->serializeForLibraryList($app, $viewerUserId);
+                    $payload['shell_id'] = 'generated-app-'.$app->id;
+
+                    return $payload;
+                })
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ];
+    }
+
     /** @deprecated use listPublished() */
     public function listShared(int $limit = 50, ?int $viewerUserId = null): array
     {
@@ -560,6 +589,13 @@ PROMPT;
                 'can_share' => $isOwner,
                 'can_delete' => $isOwner,
                 'edit_mode' => $isOwner ? 'owner' : ($canRemix ? 'remix' : 'none'),
+                'can_community_read' => AppCommunityAccessPolicy::canRead($viewerUserId, $app),
+                'can_community_write' => AppCommunityAccessPolicy::canWrite($viewerUserId, $app),
+            ],
+            'community' => [
+                'rating_avg' => $app->community_rating_avg !== null ? (float) $app->community_rating_avg : null,
+                'rating_count' => (int) ($app->community_rating_count ?? 0),
+                'post_count' => (int) ($app->community_post_count ?? 0),
             ],
             'created_at' => $app->created_at?->toISOString(),
         ];

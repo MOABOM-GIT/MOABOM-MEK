@@ -9,6 +9,15 @@
         "title": "$t:moabom-apps.admin.generated.title",
         "permission": "moabom-apps.generated.read"
       }
+    },
+    {
+      "path": "*/admin/apps/community/posts",
+      "layout": "admin_app_community_posts",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-apps.admin.community.title",
+        "permission": "moabom-apps.community.read"
+      }
     }
   ]
 }

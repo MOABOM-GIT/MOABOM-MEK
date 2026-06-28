@@ -55,5 +55,8 @@ export const APP_SHELL_INPUT_CLASS = moaFieldControlClass('medium');
 /** 멀티라인 프롬프트 등 — `min-h-*`는 화면별로 조합. */
 export const APP_SHELL_TEXTAREA_CLASS = moaFieldTextareaClass('medium', 'resize-none');
 
+/** 사용자가 세로 크기를 조절하는 멀티라인 필드 (AI 생성 코드 등). */
+export const APP_SHELL_TEXTAREA_RESIZABLE_CLASS = moaFieldTextareaClass('medium', 'moa-field--textarea-resizable');
+
 /** 셀렉트 트리거 — `Select`가 `bg-` 포함으로 커스텀 경로 타도록 동일 계열 유지. */
 export const APP_SHELL_SELECT_TRIGGER_CLASS = moaFieldSelectTriggerClass('medium');

@@ -7,6 +7,7 @@ import { Input } from '../../components/basic/Input';
 import { Span } from '../../components/basic/Span';
 import type { App } from '../../data/Moa_apps';
 import { resolveAppStrings } from '../../i18n/resolveAppStrings';
+import { useShellWindowAuthStateKey } from '../../shell/ShellWindowAuthContext';
 import { formatBoardShellPath, formatShellPath, pushShellPath } from '../../utils/moabomShellRoutes';
 import { AppWindowHeader } from '../_shared/AppWindowHeader';
 import { APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
@@ -27,38 +28,55 @@ const EMPTY_RESULTS: GlobalSearchResults = {
 
 export function GlobalSearchApp() {
   const { t, language } = useMoabomShellT();
+  const authStateKey = useShellWindowAuthStateKey();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<GlobalSearchResults>(EMPTY_RESULTS);
+  const lastFetchKeyRef = useRef('');
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const executeSearch = useCallback(async (raw: string) => {
-    const trimmed = raw.trim();
-    setSubmittedQuery(trimmed);
+  const handleSubmit = useCallback((event?: React.FormEvent) => {
+    event?.preventDefault();
+    setSubmittedQuery(query.trim());
+  }, [query]);
 
-    if (!hasSearchQuery(trimmed)) {
+  useEffect(() => {
+    if (!hasSearchQuery(submittedQuery)) {
+      lastFetchKeyRef.current = '';
       setResults(EMPTY_RESULTS);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    try {
-      const next = await runGlobalSearch(trimmed);
-      setResults(next);
-    } finally {
-      setLoading(false);
+    const fetchKey = `${authStateKey}\0${submittedQuery}`;
+    if (lastFetchKeyRef.current === fetchKey) {
+      return;
     }
-  }, []);
+    lastFetchKeyRef.current = fetchKey;
 
-  const handleSubmit = useCallback((event?: React.FormEvent) => {
-    event?.preventDefault();
-    void executeSearch(query);
-  }, [executeSearch, query]);
+    let cancelled = false;
+    setLoading(true);
+    void runGlobalSearch(submittedQuery)
+      .then(next => {
+        if (!cancelled) {
+          setResults(next);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authStateKey, submittedQuery]);
 
   const openSystemApp = useCallback((app: App) => {
     pushShellPath(formatShellPath({ kind: 'app', appId: app.id }));
@@ -128,8 +146,8 @@ export function GlobalSearchApp() {
                 onClick={() => {
                   setQuery('');
                   setSubmittedQuery('');
+                  lastFetchKeyRef.current = '';
                   setResults(EMPTY_RESULTS);
-                  inputRef.current?.focus();
                 }}
                 aria-label={t('moa_apps_search.clear')}
               >
@@ -140,14 +158,15 @@ export function GlobalSearchApp() {
           <Button
             type="submit"
             variant="primary"
+            size="medium"
             className="moa-global-search-submit"
-            disabled={!hasSearchQuery(query) || loading}
+            disabled={loading}
           >
-            {loading ? t('moa_apps_search.searching') : t('moa_apps_search.submit')}
+            {t('moa_apps_search.submit')}
           </Button>
         </form>
 
-        {!hasSubmitted ? (
+        {!showResults && !hasSubmitted ? (
           <Div className={`${APP_SHELL_PANEL_BODY_CLASS} moa-global-search-hint`}>
             <Icon name="magnifying-glass" className="text-3xl text-faint" />
             <p className="moa-global-search-hint__text">{t('moa_apps_search.hint')}</p>
@@ -165,9 +184,8 @@ export function GlobalSearchApp() {
             <p className="moa-global-search-summary">
               {loading
                 ? t('moa_apps_search.searching')
-                : t('moa_apps_search.result_count', { count: String(totalCount), query: submittedQuery })}
+                : t('moa_apps_search.result_count', { count: totalCount, query: submittedQuery })}
             </p>
-
             <SearchSection
               title={t('moa_apps_search.section_system_apps')}
               emptyLabel={t('moa_apps_search.empty_system_apps')}
@@ -175,7 +193,6 @@ export function GlobalSearchApp() {
             >
               {results.systemApps.map(app => renderAppResult(app, openSystemApp))}
             </SearchSection>
-
             <SearchSection
               title={t('moa_apps_search.section_generated_apps')}
               emptyLabel={t('moa_apps_search.empty_generated_apps')}
@@ -183,7 +200,6 @@ export function GlobalSearchApp() {
             >
               {results.generatedApps.map(app => renderAppResult(app, openGeneratedApp))}
             </SearchSection>
-
             <SearchSection
               title={t('moa_apps_search.section_boards')}
               emptyLabel={t('moa_apps_search.empty_boards')}
@@ -191,16 +207,19 @@ export function GlobalSearchApp() {
             >
               {results.boardPosts.map(post => (
                 <SearchResultRow key={`${post.boardSlug}-${post.id}`} onClick={() => openBoardPost(post)}>
+                  <Span className="moa-global-search-result__icon" aria-hidden>
+                    <Icon name="comments" size="sm" />
+                  </Span>
                   <Span className="moa-global-search-result__board">
-                    {post.boardName}
+                    <HighlightText text={post.boardName} query={submittedQuery} />
                   </Span>
                   <Span className="moa-global-search-result__divider" aria-hidden>—</Span>
                   <Span className="moa-global-search-result__label">
-                    <HighlightText
-                      text={post.title}
-                      query={submittedQuery}
-                      highlightedHtml={post.titleHighlighted}
-                    />
+                    {post.titleHighlighted ? (
+                      <Span className="moa-global-search-highlight" dangerouslySetInnerHTML={{ __html: post.titleHighlighted }} />
+                    ) : (
+                      <HighlightText text={post.title} query={submittedQuery} />
+                    )}
                   </Span>
                   <Icon name="chevron-right" size="sm" className="moa-global-search-result__arrow" />
                 </SearchResultRow>

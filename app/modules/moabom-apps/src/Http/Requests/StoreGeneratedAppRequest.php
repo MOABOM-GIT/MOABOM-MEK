@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Modules\Moabom\Apps\Enums\AppTier;
 use Modules\Moabom\Apps\Enums\AppType;
+use Modules\Moabom\Apps\Rules\GeneratedAppHtmlSecurityRule;
 
 class StoreGeneratedAppRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class StoreGeneratedAppRequest extends FormRequest
             'tier' => ['sometimes', Rule::in(AppTier::values())],
             'model_id' => ['nullable', Rule::in(['claude-sonnet', 'gpt-chat-latest', 'gpt-4o', 'gemini-flash-lite'])],
             'prompt' => ['nullable', 'string', 'max:8000'],
-            'html' => ['required', 'string', 'min:20', 'max:524288'],
+            'html' => ['required', 'string', 'min:20', 'max:524288', new GeneratedAppHtmlSecurityRule],
             'is_shared' => ['sometimes', 'boolean'],
             'parent_app_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'version' => ['sometimes', 'integer', 'min:1'],

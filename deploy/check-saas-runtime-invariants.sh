@@ -245,8 +245,10 @@ grep -q 'hospitals\?\.data\?\.hospitals' "${LIST_LAYOUT}" \
   || fail "admin_saas_hospitals.json — API data path hospitals.data.hospitals 누락"
 grep -q 'moabom:saas:sync-module-layouts' "${SYNC_JOB}" \
   || fail "run-layout-sync-job.sh 에 moabom:saas:sync-module-layouts 없음"
-grep -q 'moabom:module-sync-declarations moabom-system' "${SYNC_JOB}" \
-  || fail "run-layout-sync-job.sh 에 moabom:module-sync-declarations 없음"
+grep -q 'moabom:saas:sync-module-declarations' "${SYNC_JOB}" \
+  || fail "run-layout-sync-job.sh 에 moabom:saas:sync-module-declarations 없음"
+grep -q 'SaasSyncModuleDeclarationsCommand' "${APP}/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
+  || fail "SystemServiceProvider 에 SaasSyncModuleDeclarationsCommand 미등록"
 ADMIN_MENUS="${APP}/modules/moabom-system/src/Extension/MoabomSystemAdminMenus.php"
 MENU_POLICY="${APP}/modules/moabom-system/src/Saas/TenantAdminMenuPolicy.php"
 grep -q 'forTenantHost' "${ADMIN_MENUS}" \

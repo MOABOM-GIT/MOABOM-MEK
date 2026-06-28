@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { formatShellPath, formatShellPathForWindow, formatBoardShellPath, parseShellPathname, parseShellRoute } from './moabomShellRoutes';
 import { moaShellBoardAppId } from '../shell/moaShellBoardIds';
+import { resetShellBootAppsForTest, setShellBootApps } from '../apps/shellBootApps';
 
 describe('moabomShellRoutes', () => {
+  beforeEach(() => {
+    resetShellBootAppsForTest();
+  });
+
   it('홈 경로를 파싱한다', () => {
     expect(parseShellPathname('/')).toEqual({ kind: 'home' });
     expect(parseShellPathname('')).toEqual({ kind: 'home' });
@@ -54,6 +59,12 @@ describe('moabomShellRoutes', () => {
 
   it('저장 AI 앱 id 경로를 파싱한다', () => {
     expect(parseShellPathname('/app/generated-app-42')).toEqual({ kind: 'app', appId: 'generated-app-42' });
+  });
+
+  it('shell-boot 매니페스트 앱 id 경로를 파싱한다', () => {
+    setShellBootApps([{ id: 'moabom-consulting', frontend: { chunk: 'moabom-shell-consulting.iife.js' } }]);
+
+    expect(parseShellPathname('/app/moabom-consulting')).toEqual({ kind: 'app', appId: 'moabom-consulting' });
   });
 
   it('구 ai-generator 경로는 create-app 으로 정규화한다', () => {

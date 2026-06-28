@@ -13,10 +13,12 @@ use Modules\Moabom\Apps\Console\Commands\AppsPurgeTenantLegacyGeneratedAppsComma
 use Modules\Moabom\Apps\Console\Commands\AppsRepairLegacyGlobalVisibilityCommand;
 use Modules\Moabom\Apps\Console\Commands\MakeAppCommand;
 use Modules\Moabom\Apps\Contracts\AiGenerationSessionRepositoryInterface;
+use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 use Modules\Moabom\Apps\Http\Controllers\GeneratedAppPreviewController;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\AiGenerationSessionRepository;
+use Modules\Moabom\Apps\Repositories\AppCommunityPostRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
@@ -37,6 +39,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
     protected array $repositories = [
         GeneratedAppRepositoryInterface::class => GeneratedAppRepository::class,
         AiGenerationSessionRepositoryInterface::class => AiGenerationSessionRepository::class,
+        AppCommunityPostRepositoryInterface::class => AppCommunityPostRepository::class,
     ];
 
     /**

@@ -13,7 +13,6 @@ import {
 import { areMoabomSystemStatesEqual } from '../../utils/moabomSystemStore';
 import { applyMoabomAnimationRuntime } from '../../runtime/applyAnimationRuntime';
 import { useEffectiveSystemOptions } from '../../runtime/useEffectiveSystemOptions';
-import { useWeatherEffectRuntime } from '../../runtime/weather/useWeatherEffectRuntime';
 import {
   BREAKPOINT_COMPACT_CONTROLS,
   BREAKPOINT_MOBILE_OVERLAY,
@@ -37,7 +36,6 @@ function getResponsiveMode(width: number): ResponsiveMode {
 
 export function useMoaHomeShellState() {
   const initialSystemState = loadMoabomSystemState();
-  const weatherCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [viewportWidth, setViewportWidth] = useState(() => getViewportWidth());
   const [responsiveMode, setResponsiveMode] = useState<ResponsiveMode>(() => getResponsiveMode(getViewportWidth()));
@@ -76,12 +74,6 @@ export function useMoaHomeShellState() {
     applyMoabomAnimationRuntime(effectiveSystemOptions.animation !== false);
   }, [effectiveSystemOptions.animation]);
 
-  useWeatherEffectRuntime({
-    canvasRef: weatherCanvasRef,
-    effective: effectiveSystemOptions,
-    systemDefaults,
-  });
-
   useEffect(() => {
     applyMoabomSystemAppearance(systemState.appearance);
   }, [systemState.appearance]);
@@ -110,19 +102,6 @@ export function useMoaHomeShellState() {
     if (G7Core?.state?.subscribe) {
       return G7Core.state.subscribe(syncToasts);
     }
-  }, []);
-
-  useEffect(() => {
-    const resizeWeatherCanvas = () => {
-      const canvas = weatherCanvasRef.current;
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    resizeWeatherCanvas();
-    window.addEventListener('resize', resizeWeatherCanvas);
-    return () => window.removeEventListener('resize', resizeWeatherCanvas);
   }, []);
 
   const prevResponsiveModeRef = useRef<ResponsiveMode | null>(null);
@@ -197,7 +176,6 @@ export function useMoaHomeShellState() {
   }, []);
 
   return {
-    weatherCanvasRef,
     viewportWidth,
     responsiveMode,
     activeTab,

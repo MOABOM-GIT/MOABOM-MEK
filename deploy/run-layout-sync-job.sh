@@ -35,11 +35,9 @@ echo "[run-layout-sync-job] moabom:saas:sync-module-layouts (platform + tenants 
 moabom_run_artisan_job moabom-module-layout-sync "${TIMEOUT}" \
   moabom:saas:sync-module-layouts --no-interaction
 
-moabom_run_artisan_job moabom-module-sync-decl "${TIMEOUT}" \
-  moabom:module-sync-declarations moabom-system --no-interaction
-
-moabom_run_artisan_job moabom-module-sync-decl-presence "${TIMEOUT}" \
-  moabom:module-sync-declarations moabom-presence --no-interaction
+echo "[run-layout-sync-job] moabom:saas:sync-module-declarations (hospital-default SSOT — moabom-apps 권한·메뉴 포함)"
+moabom_run_artisan_job moabom-module-declarations-sync "${TIMEOUT}" \
+  moabom:saas:sync-module-declarations --no-interaction
 
 echo "[run-layout-sync-job] tenant admin menu hygiene (all active tenants)"
 moabom_run_artisan_job moabom-tenant-admin-menu-sync "${TIMEOUT}" \

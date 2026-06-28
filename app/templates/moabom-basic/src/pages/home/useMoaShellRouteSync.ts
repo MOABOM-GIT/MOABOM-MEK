@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { AuthWindowMode } from '../../components/composite/Moa_AuthWindowContent';
 import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import {
@@ -61,6 +61,7 @@ export function useMoaShellRouteSync({
 }: UseMoaShellRouteSyncOptions) {
   const shellRouteBootstrappedRef = useRef(false);
   const initialWindowOpenedRef = useRef<AuthWindowMode | null>(null);
+  const applyingShellRouteRef = useRef(false);
 
   const openBoardWindowRef = useRef(openBoardWindow);
   openBoardWindowRef.current = openBoardWindow;
@@ -72,6 +73,19 @@ export function useMoaShellRouteSync({
   openErrorWindowRef.current = openErrorWindow;
   const closeErrorWindowRef = useRef(closeErrorWindow);
   closeErrorWindowRef.current = closeErrorWindow;
+
+  const applyCurrentShellRoute = useCallback(() => {
+    if (applyingShellRouteRef.current) {
+      return;
+    }
+
+    applyingShellRouteRef.current = true;
+    try {
+      applyShellRoute(parseShellRoute(window.location.pathname, window.location.search));
+    } finally {
+      applyingShellRouteRef.current = false;
+    }
+  }, [applyShellRoute]);
 
   useEffect(() => {
     if (shellRouteBootstrappedRef.current) {
@@ -87,7 +101,12 @@ export function useMoaShellRouteSync({
       shellRouteBootstrappedRef.current = true;
       const route = parseShellRoute(window.location.pathname, window.location.search);
       if (route.kind !== 'home') {
-        applyShellRoute(route);
+        applyingShellRouteRef.current = true;
+        try {
+          applyShellRoute(route);
+        } finally {
+          applyingShellRouteRef.current = false;
+        }
       } else {
         const pending = takePendingShellError();
         if (pending) {
@@ -103,29 +122,29 @@ export function useMoaShellRouteSync({
 
   useEffect(() => {
     const onPathChanged = () => {
-      applyShellRoute(parseShellRoute(window.location.pathname, window.location.search));
+      applyCurrentShellRoute();
     };
     window.addEventListener('moabom-shell-path-changed', onPathChanged);
     return () => window.removeEventListener('moabom-shell-path-changed', onPathChanged);
-  }, [applyShellRoute]);
+  }, [applyCurrentShellRoute]);
 
   useEffect(() => {
     const onPop = () => {
-      applyShellRoute(parseShellRoute(window.location.pathname, window.location.search));
+      applyCurrentShellRoute();
     };
     window.addEventListener('popstate', onPop, true);
     return () => window.removeEventListener('popstate', onPop, true);
-  }, [applyShellRoute]);
+  }, [applyCurrentShellRoute]);
 
   useEffect(() => {
     const router = (window as { __templateApp?: { getRouter?: () => { on?: (e: string, h: () => void) => void } } })
       .__templateApp?.getRouter?.();
     if (!router?.on) return;
     const handler = () => {
-      applyShellRoute(parseShellRoute(window.location.pathname, window.location.search));
+      applyCurrentShellRoute();
     };
     router.on('routeChange', handler);
-  }, [applyShellRoute]);
+  }, [applyCurrentShellRoute]);
 
   useEffect(() => {
     markMoabomShellHomeMounted(true);

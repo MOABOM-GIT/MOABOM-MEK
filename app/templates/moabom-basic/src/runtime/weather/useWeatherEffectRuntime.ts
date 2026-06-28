@@ -7,7 +7,6 @@ import { loadMoabomSystemState, MOABOM_SYSTEM_STATE_CHANGED_EVENT } from '../../
 import { classifyWeatherEffects } from './classifyWeatherEffects';
 import {
   WEATHER_DEFAULT_PARTICLE_BUDGET,
-  WEATHER_SNAPSHOT_STALE_MAX_MS,
   WEATHER_VISIBLE_REFETCH_GATE_MS,
 } from './constants';
 import { isMobileUserAgent, resolveParticleBudget } from '../env';
@@ -18,6 +17,7 @@ import {
 } from './weatherApi';
 import { getCurrentPositionAsync } from './getCurrentPositionAsync';
 import { buildWeatherLocationKey } from './locationKey';
+import { isLocationConsistentWithBrowserTimezone, isServerIpLocationPlausible } from './locationPlausibility';
 import { loadLocationCache, saveLocationCache } from './locationCache';
 import { loadServerIpLocationCache, saveServerIpLocationCache } from './serverIpLocationCache';
 import {
@@ -29,7 +29,12 @@ import { readSessionGeoDenied, writeSessionGeoDenied } from './sessionGeoDenied'
 import { shouldRefetchOnVisible } from './shouldRefetchOnVisible';
 import { shouldRender } from './shouldRender';
 import {
-  isSnapshotCacheUsableAsStale,
+  clearWeatherFetchError,
+  isWeatherFetchErrorActive,
+  saveWeatherFetchError,
+  type WeatherFetchErrorReason,
+} from './fetchStatusCache';
+import {
   loadSnapshotCache,
   saveSnapshotCache,
   type SnapshotCacheEntry,
@@ -309,6 +314,16 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
       return;
     }
 
+    if (!isServerIpLocationPlausible(resolved.location, resolved.source)) {
+      saveWeatherFetchError({
+        at: new Date().toISOString(),
+        reason: 'location_unreliable',
+        locationKey: buildWeatherLocationKey(resolved.location, lang),
+      });
+      engine.stop();
+      return;
+    }
+
     const locationKey = buildWeatherLocationKey(resolved.location, lang);
 
     const cached = loadSnapshotCache();
@@ -319,10 +334,15 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
       && lastLocationKeyRef.current === locationKey
       && lastFetchAtRef.current !== null
       && Date.now() - lastFetchAtRef.current <= WEATHER_VISIBLE_REFETCH_GATE_MS
+      && !isWeatherFetchErrorActive()
     ) {
       if (!isActive()) {
         engine.stop();
         abortInFlight(abortRef);
+        return;
+      }
+      if (rejectUnreliableSnapshot(cached.data, locationKey)) {
+        engine.stop();
         return;
       }
       applyToEngine(engine, cached.data);
@@ -355,6 +375,7 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
     }
 
     if (result.kind === 'ok') {
+      clearWeatherFetchError();
       const entry: SnapshotCacheEntry = {
         data: result.snapshot,
         etag: result.etag,
@@ -364,11 +385,16 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
       };
       saveSnapshotCache(entry);
       lastFetchAtRef.current = Date.now();
+      if (rejectUnreliableSnapshot(result.snapshot, locationKey)) {
+        engine.stop();
+        return;
+      }
       applyToEngine(engine, result.snapshot);
       return;
     }
 
     if (result.kind === 'not_modified' && cached && cached.locationKey === locationKey) {
+      clearWeatherFetchError();
       const refreshed: SnapshotCacheEntry = {
         ...cached,
         fetchedAt: new Date().toISOString(),
@@ -377,20 +403,21 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
       };
       saveSnapshotCache(refreshed);
       lastFetchAtRef.current = Date.now();
-      applyToEngine(engine, cached.data);
-      return;
-    }
-
-    // 페치 실패 — stale-while-error 로 대체 가능 여부 판정(Req 3.5 / 3.6).
-    const usable = isSnapshotCacheUsableAsStale(cached, new Date(), locationKey, WEATHER_SNAPSHOT_STALE_MAX_MS);
-    if (usable && cached) {
-      if (!isActive()) {
+      if (rejectUnreliableSnapshot(cached.data, locationKey)) {
         engine.stop();
-        abortInFlight(abortRef);
         return;
       }
       applyToEngine(engine, cached.data);
       return;
+    }
+
+    if (result.kind === 'error' && result.reason !== 'aborted') {
+      // API 오류 시 오래된 localStorage 캐시(예: 뇌우)로 효과를 재생하지 않는다.
+      saveWeatherFetchError({
+        at: new Date().toISOString(),
+        reason: result.reason as WeatherFetchErrorReason,
+        locationKey,
+      });
     }
 
     engine.stop();
@@ -494,6 +521,19 @@ function abortInFlight(abortRef: { current: AbortController | null }): void {
 function readCurrentVisibility(): 'visible' | 'hidden' {
   if (typeof document === 'undefined') return 'visible';
   return document.visibilityState === 'hidden' ? 'hidden' : 'visible';
+}
+
+function rejectUnreliableSnapshot(snapshot: Weather_Snapshot, locationKey: string): boolean {
+  if (!snapshot.location || isLocationConsistentWithBrowserTimezone(snapshot.location)) {
+    return false;
+  }
+
+  saveWeatherFetchError({
+    at: new Date().toISOString(),
+    reason: 'location_unreliable',
+    locationKey,
+  });
+  return true;
 }
 
 function applyToEngine(engine: WeatherEffectEngine, snapshot: Weather_Snapshot): void {

@@ -161,6 +161,9 @@ export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowStat
         editGeneratedAppId: item.editGeneratedAppId,
         boardSlug: item.boardSlug,
         boardPostId: item.boardPostId,
+        appCommunityServerId: item.appCommunityServerId,
+        appCommunityTitle: item.appCommunityTitle,
+        appCommunityCanWrite: item.appCommunityCanWrite,
       };
     });
 }

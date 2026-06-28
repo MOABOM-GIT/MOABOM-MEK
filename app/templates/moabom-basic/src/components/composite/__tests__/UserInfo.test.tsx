@@ -19,7 +19,7 @@ const mockG7Core = {
     const translations: Record<string, string> = {
       'userinfo.guest_badge': '비회원',
       'userinfo.view_profile': '프로필 보기',
-      'userinfo.view_posts': '작성글 보기',
+      'userinfo.view_posts': '유저 활동',
       'userinfo.status_inactive': '휴면',
       'userinfo.status_blocked': '차단됨',
     };

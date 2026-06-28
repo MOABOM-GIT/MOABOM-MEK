@@ -1,5 +1,5 @@
 import { getMoaShellBoardBridge } from './moaShellBoardBridge';
-import { tryHandleBoardShellNavigate } from './moaShellBoardNavigate';
+import { safeTryHandleBoardShellNavigate } from './safeShellBoardNavigate';
 
 type RouterLike = {
   navigate: (path: string) => void;
@@ -23,7 +23,7 @@ export function installMoaShellBoardNavigateBridge(): void {
     originalNavigate = router.navigate.bind(router);
     router.navigate = (path: string) => {
       const bridge = getMoaShellBoardBridge();
-      if (bridge && tryHandleBoardShellNavigate(path, bridge)) {
+      if (bridge && safeTryHandleBoardShellNavigate(path, bridge)) {
         return;
       }
       originalNavigate?.(path);
@@ -36,7 +36,7 @@ export function installMoaShellBoardNavigateBridge(): void {
     originalUpdateQueryParams = G7Core.updateQueryParams.bind(G7Core);
     G7Core.updateQueryParams = async (newPath: string, options?: { transitionOverlayTarget?: string }) => {
       const bridge = getMoaShellBoardBridge();
-      if (bridge && tryHandleBoardShellNavigate(newPath, bridge, { replace: true })) {
+      if (bridge && safeTryHandleBoardShellNavigate(newPath, bridge, { replace: true })) {
         return;
       }
       return originalUpdateQueryParams?.(newPath, options);

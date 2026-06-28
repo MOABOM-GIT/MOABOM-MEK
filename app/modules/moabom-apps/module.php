@@ -65,6 +65,45 @@ class Module extends AbstractModule
                         ],
                     ],
                 ],
+                [
+                    'identifier' => 'community',
+                    'name' => [
+                        'ko' => '앱 리뷰',
+                        'en' => 'App Reviews',
+                    ],
+                    'description' => [
+                        'ko' => '앱 리뷰 관리 권한',
+                        'en' => 'App review management permissions',
+                    ],
+                    'permissions' => [
+                        [
+                            'action' => 'read',
+                            'name' => [
+                                'ko' => '앱 리뷰 조회',
+                                'en' => 'Read App Review Posts',
+                            ],
+                            'description' => [
+                                'ko' => '앱 리뷰 목록·상세 조회',
+                                'en' => 'List and view app review posts',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                        [
+                            'action' => 'manage',
+                            'name' => [
+                                'ko' => '앱 리뷰 관리',
+                                'en' => 'Manage App Review Posts',
+                            ],
+                            'description' => [
+                                'ko' => '블라인드·삭제',
+                                'en' => 'Hide and delete posts',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                    ],
+                ],
             ],
         ];
     }
@@ -83,6 +122,7 @@ class Module extends AbstractModule
         return [
             'moabom_system_generated_apps',
             'moabom_generated_app_rows',
+            'moabom_app_community_posts',
         ];
     }
 }

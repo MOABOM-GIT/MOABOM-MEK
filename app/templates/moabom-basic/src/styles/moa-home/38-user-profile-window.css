@@ -8,6 +8,64 @@
   overflow-x: hidden;
 }
 
+/* 프로필 창 본문 — 외부 viewport 스크롤 대신 pane 내부 스크롤만 사용 */
+.moa-user-profile-window-body.moa-app-window-body {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── 섹션 제목 (프로필 최근 게시글 · 유저 활동 패널) ── */
+.moa-user-profile-section-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+.dark .moa-user-profile-section-header {
+  border-bottom-color: rgb(55 65 81);
+}
+
+.moa-user-profile-section-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--moa-text-primary, #111827);
+}
+
+.moa-user-profile-section-title--bar {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+.dark .moa-user-profile-section-title--bar {
+  border-bottom-color: rgb(55 65 81);
+}
+
+.moa-user-profile-app-grid {
+  min-width: 0;
+}
+
+.moa-user-profile-app-strip {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.moa-user-profile-app-strip__item {
+  flex: 0 0 auto;
+  width: 78px;
+  min-width: 78px;
+  max-width: 78px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: auto;
+}
+
+.moa-user-profile-app-strip__item:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
 /* ── 탭 크롬 — 좌측 패널 SubTabBar 컨테이너와 동일한 glass 블러 레이어 ── */
 .moa-user-profile-window-chrome {
   position: sticky;
@@ -47,6 +105,9 @@
 .moa-user-profile-slide-pane {
   width: 33.3333%;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }

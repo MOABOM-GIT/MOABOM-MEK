@@ -65,4 +65,15 @@ class AiAppRequestsTest extends ModuleTestCase
 
         $this->assertTrue($passes);
     }
+
+    public function test_store_generated_app_request_rejects_parent_shell_escape(): void
+    {
+        $passes = Validator::make([
+            'title' => '테스트 앱',
+            'app_type' => 'general',
+            'html' => '<!DOCTYPE html><html><head></head><body><script>parent.document.body.innerHTML="x"</script></body></html>',
+        ], (new StoreGeneratedAppRequest)->rules())->passes();
+
+        $this->assertFalse($passes);
+    }
 }

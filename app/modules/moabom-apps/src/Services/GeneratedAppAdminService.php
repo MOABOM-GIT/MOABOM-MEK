@@ -146,6 +146,11 @@ class GeneratedAppAdminService
             'created_at' => $app->created_at?->toIso8601String(),
             'updated_at' => $app->updated_at?->toIso8601String(),
             'preview_url' => $this->previewService->buildPreviewUrl($app),
+            'community_rating_avg' => $app->community_rating_avg !== null
+                ? (float) $app->community_rating_avg
+                : null,
+            'community_rating_count' => (int) ($app->community_rating_count ?? 0),
+            'community_post_count' => (int) ($app->community_post_count ?? 0),
         ];
     }
 }

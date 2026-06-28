@@ -5,7 +5,7 @@
         "ko": "Moabom Weather",
         "en": "Moabom Weather"
     },
-    "version": "0.1.0",
+    "version": "0.1.1",
     "license": "MIT",
     "description": {
         "ko": "Open-Meteo Forecast/Air-Quality 기반의 공개 날씨 프록시와 Cloudflare/ipinfo 우선순위 IP geolocation 을 제공하는 플러그인. moabom-system 의 weather/geolocate API 를 이관해 책임을 분리한다.",

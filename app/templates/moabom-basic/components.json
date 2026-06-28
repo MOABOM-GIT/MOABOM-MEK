@@ -1158,6 +1158,29 @@
         }
       },
       {
+        "name": "UserProfileAppGrid",
+        "type": "composite",
+        "description": "공개 프로필 유저 활동 — 마이페이지 보관함과 동일한 아이콘 앱 그리드",
+        "path": "src/components/composite/Moa_UserProfileAppGrid.tsx",
+        "props": {
+          "apps": {
+            "type": "array",
+            "required": false,
+            "description": "제작앱·자주 쓰는 앱 API data 배열"
+          },
+          "className": {
+            "type": "string",
+            "required": false,
+            "description": "사용자 정의 클래스"
+          },
+          "maxItems": {
+            "type": "number",
+            "required": false,
+            "description": "표시 상한 (자주 쓰는 앱 등)"
+          }
+        }
+      },
+      {
         "name": "HtmlContent",
         "type": "composite",
         "description": "HTML 또는 일반 텍스트 콘텐츠 표시 (DOMPurify XSS 보호)",

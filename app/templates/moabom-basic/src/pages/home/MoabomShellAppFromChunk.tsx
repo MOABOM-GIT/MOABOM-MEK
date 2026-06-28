@@ -5,6 +5,7 @@ import { getShellAppDeferredExtensionLoad } from '../../apps/shellDeferredExtens
 import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import { setCreateAppEditServerId } from '../../apps/ai-generator/moabomCreateAppEditSession';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
+import { ShellWindowAuthProvider } from '../../shell/ShellWindowAuthContext';
 import { Div } from '../../components/basic/Div';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 
@@ -12,7 +13,8 @@ import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 export const MoabomShellAppFromChunk: React.FC<{
   appId: string;
   editGeneratedAppId?: number;
-}> = ({ appId, editGeneratedAppId }) => {
+  authStateKey?: string;
+}> = ({ appId, editGeneratedAppId, authStateKey = '' }) => {
   const { t } = useMoabomShellT();
   const [Comp, setComp] = useState<React.ComponentType | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -92,5 +94,9 @@ export const MoabomShellAppFromChunk: React.FC<{
       />
     );
   }
-  return <Comp />;
+  return (
+    <ShellWindowAuthProvider authStateKey={authStateKey}>
+      <Comp />
+    </ShellWindowAuthProvider>
+  );
 };

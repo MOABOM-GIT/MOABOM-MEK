@@ -50,6 +50,9 @@ class GeneratedApp extends Model
         'parent_app_id',
         'version',
         'metadata',
+        'community_rating_avg',
+        'community_rating_count',
+        'community_post_count',
     ];
 
     /**
@@ -62,6 +65,9 @@ class GeneratedApp extends Model
             'metadata' => 'array',
             'version' => 'integer',
             'provisioned_at' => 'datetime',
+            'community_rating_avg' => 'decimal:2',
+            'community_rating_count' => 'integer',
+            'community_post_count' => 'integer',
         ];
     }
 

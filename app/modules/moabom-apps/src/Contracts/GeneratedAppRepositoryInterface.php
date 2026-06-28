@@ -2,6 +2,7 @@
 
 namespace Modules\Moabom\Apps\Contracts;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 
@@ -27,6 +28,11 @@ interface GeneratedAppRepositoryInterface
      * @return Collection<int, GeneratedApp>
      */
     public function getPublished(int $limit = 50): Collection;
+
+    /**
+     * 특정 사용자가 소유한 등록·공개 생성 앱 목록(페이지네이션).
+     */
+    public function paginatePublishedForUser(int $userId, int $perPage = 20): LengthAwarePaginator;
 
     /**
      * 사용자 소유의 생성 앱 1건을 조회합니다.

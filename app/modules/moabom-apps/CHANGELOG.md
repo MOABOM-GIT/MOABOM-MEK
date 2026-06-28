@@ -1,5 +1,65 @@
 # Changelog
 
+## [0.4.1] - 2026-06-28
+
+### Fixed
+
+- 앱 리뷰 관리자 목록이 앱 소유 병원과 작성자 병원 조건을 명확히 구분해 조회되도록 개선하고, 빈 목록 원인을 응답 메타에서 확인할 수 있도록 보강.
+- 앱 리뷰 관리 화면의 상태·별점 필터, 초기 tenant 필터, 초기화 버튼, 상태 변경·삭제 진행 상태를 정리해 관리자 목록 조작 흐름을 안정화.
+
+### Changed
+
+- 앱 리뷰 공개 범위가 생성앱 공개 범위를 상속하는 정책을 회귀 테스트로 고정해 전체 공개·병원 공개·비공개 앱의 리뷰 노출 범위를 명확화.
+
+## [0.4.0] - 2026-06-28
+
+### Fixed
+
+- 앱 리뷰 admin `tenant_slug` 필터 — 작성자 tenant 가 아닌 **앱 소유 병원**(`generatedApp.tenant_slug`) 기준으로 통일. 생성앱 admin 과 동일 semantics.
+- 비공개 앱 소유자가 플랫폼·전용 프리뷰 host 에서 리뷰 작성 시 404 되던 문제 — 소유 앱 단건 열람 시 `scopeOwnedForViewer` 로 tenant 불일치 허용.
+- 작성자 tenant 미해석(`unknown`) 시 리뷰 저장 거부(422) — orphan 데이터 방지.
+
+### Added
+
+- 생성앱 admin 목록 API·화면 — `community_post_count`·`community_rating_avg` 집계 표시.
+- 앱 리뷰 admin — 앱 소유 병원·작성자 병원 분리 필터(`tenant_slug`, `author_tenant_slug`), 플랫폼 host 테이블 컬럼.
+
+## [0.3.9] - 2026-06-28
+
+### Changed
+
+- 운영 초기화 마이그레이션 — `moabom_app_community_posts` 전체 삭제·생성앱 community 집계 컬럼 리셋 (1회성).
+
+## [0.3.8] - 2026-06-28
+
+### Fixed
+
+- 앱 이야기 `tenant_slug` — 작성자 tenant SSOT(`AppCommunityTenantScope`)로 저장·조회. 앱 소유 tenant 덮어쓰기 제거.
+- unique 인덱스 `(generated_app_id, tenant_slug, user_id, post_type)` — cross-tenant `user_id` 충돌 방지.
+- `findReviewForUser` tenant 필터, purge `forceDelete`, 동시 작성 unique → 409, write throttle.
+
+### Changed
+
+- 목록·관리자 API 작성자 nickname **tenant_slug 배치 조회** (N+1 제거).
+- stats 집계 단일 SQL, post 변경+stats recalculate transaction 래핑.
+- read/write 권한 없음 응답 404 통일.
+
+## [0.3.7] - 2026-06-28
+
+### Fixed
+
+- 앱 이야기 목록 API 500 — platform DB 글에서 `users` 관계 eager load 시 잘못된 connection 조회. `tenant_slug` 기준 작성자 resolver로 교체.
+
+## [0.3.6] - 2026-06-28
+
+### Added
+
+- **앱 이야기 (App Community) MVP** — `generated_app_id` 단위 리뷰·별점 plane (`moabom_app_community_posts`).
+- 사용자 API: 요약·목록·작성·수정·삭제 (`/apps/generated/{id}/community/*`).
+- 관리자 API·화면: 앱 이야기 전체 목록, 숨김·삭제 (`/admin/apps/community/posts`).
+- 생성앱 `permissions` 확장: `can_community_read` / `can_community_write`.
+- moabom-basic: 생성앱 뷰어 툴바 **앱 이야기** 버튼, 별도 셸 창 UI.
+
 ## [0.3.4] - 2026-06-21
 
 ### Added

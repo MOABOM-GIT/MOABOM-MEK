@@ -28,7 +28,10 @@ export interface GenerationDraftView {
   canContinue: boolean;
 }
 
-/** 스트리밍 중·종료 후 항상 최신 원문을 고릅니다. */
+/**
+ * 미리보기·저장용 HTML 원문을 고릅니다.
+ * 스트리밍 중에는 live 버퍼를, 종료 후에는 committedHtml(수동 편집·finalize 반영)을 우선합니다.
+ */
 export function resolveGenerationSource(
   committedHtml: string,
   streamedRaw: string,
@@ -37,11 +40,14 @@ export function resolveGenerationSource(
   if (isStreaming && streamedRaw.trim()) {
     return streamedRaw;
   }
+  if (committedHtml.trim()) {
+    return committedHtml;
+  }
   if (streamedRaw.trim()) {
     return streamedRaw;
   }
 
-  return committedHtml;
+  return '';
 }
 
 export function stripMarkdownHtmlFence(input: string): string {

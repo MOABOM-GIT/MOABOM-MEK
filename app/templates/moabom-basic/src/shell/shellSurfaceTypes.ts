@@ -10,7 +10,8 @@ export type ShellSurfaceKind =
   | 'auth'
   | 'legal'
   | 'error'
-  | 'app';
+  | 'app'
+  | 'app-community';
 
 export type ShellSurfaceOpenAction =
   | {
@@ -28,6 +29,12 @@ export type ShellSurfaceOpenAction =
   | {
     kind: 'mypage';
     tab?: MyPageTab;
+  }
+  | {
+    kind: 'app-community';
+    serverId: number;
+    title?: string;
+    canWrite?: boolean;
   };
 
 export type ShellUrlSyncOptions = {

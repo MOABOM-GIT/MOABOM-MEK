@@ -8,6 +8,7 @@ use Illuminate\Routing\Controller;
 use Plugins\Moabom\Weather\Contracts\WeatherCurrentServiceInterface;
 use Plugins\Moabom\Weather\Exceptions\UpstreamUnavailableException;
 use Plugins\Moabom\Weather\Http\Requests\GetWeatherCurrentRequest;
+use Plugins\Moabom\Weather\Http\Support\WeatherConditionalHeaders;
 
 /**
  * Weather_Current_API — `GET /api/plugins/moabom-weather/weather/current?lat&lon&lang`.
@@ -37,10 +38,21 @@ class WeatherCurrentController extends Controller
             );
         }
 
+        $conditional = WeatherConditionalHeaders::build(
+            $resolved['lat'],
+            $resolved['lon'],
+            $resolved['lang'],
+            $snapshot->fetchedAt,
+        );
+
+        if (WeatherConditionalHeaders::matchesNotModified($request, $conditional)) {
+            return response()->json(null, 304)->withHeaders($conditional);
+        }
+
         return ResponseHelper::pluginSuccess(
             'moabom-weather',
             'messages.weather.fetch_success',
             $snapshot->toArray(),
-        );
+        )->withHeaders($conditional);
     }
 }

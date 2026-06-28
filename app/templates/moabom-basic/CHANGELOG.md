@@ -2,8 +2,28 @@
 
 ## [Unreleased]
 
+### Added
+
+- **날씨 lazy host** — `Moa_WeatherEffectHost` + dynamic import(`Moa_WeatherEffectHostInner`). `weather`·`animation` OFF 시 Canvas·엔진 청크·런타임 훅 미마운트. 마이페이지 설정 진입 시 `requestIdleCallback` 으로 청크 선로딩.
+- **앱 이야기** — 저장 AI 앱 뷰어 툴바에서 별도 셸 창으로 리뷰·별점 열람·작성 (`AppCommunityWindow`).
+
 ### Changed
 
+- **날씨 마이페이지 상태** — 15초 상시 폴링 제거, 이벤트 + bounded 재시도(800ms/2.5s/6s)로 전환.
+
+### Fixed
+
+- **생성앱 타이틀바** — 새로고침·딥링크 시 `App #n` placeholder 제목으로 그라데이션 해시가 달라지던 문제. `serverId` 단일 SSOT + 카탈로그 로드 후 윈도우 chrome 동기화.
+- **접속자 활동(앱)** — 생성앱 이용 시 우측 접속 목록에 `App #n 이용 중` placeholder가 남던 문제. presence foreground·카탈로그·API 로드 후 실제 앱 이름으로 동기화.
+- **앱 이야기** 툴바 버튼 — 포인트 컬러 그라데이션 배경·흰색 라벨(편집·등록·삭제 pill과 동일 구조).
+- **셸 게시판·navigate** — `useMoaShellWindows`에서 `moaShellBoardAppId` import 누락으로 공지·프로필 작성글 클릭 시 `ReferenceError` / `Failed to execute action: navigate` 발생. `moaShellWindowIds` barrel SSOT로 정리, navigate 브릿지 예외 격리.
+- **앱 이야기 셸** — URL-less 오버레이(부모 `generated-app-{id}` 경로), 태스크바 `canWrite`/제목 영속화, 앱 삭제 시 community 창 cascade, 미로그인 작성 시 로그인 유도.
+- **앱 이야기 fetch** — 세션 캐시(30s)로 minimize 복원 시 중복 요청 완화.
+- **앱 이야기 툴바** — 비로그인 시 제작자 라벨만 표시(화살표·메뉴 없음). 로그인 후 앱편집·앱 이야기, 소유자는 등록·삭제 추가.
+
+### Changed
+
+- **생성앱 툴바 액션 버튼** — `moa-btn-neutral` 제거, `.generated-app-action-button` CSS 변수 최소화(공통 색·테두리·그림자 + `is-*` 배경만).
 - **홈 셸 부트**: `extensionDeferredRegistry` → G7Config `deferred*` 클라이언트 복원(`installMoabomExtensionDeferredBootstrap`), shell-boot 완료 후 `frontend-defaults` 중복 fetch 제거.
 - **지연 확장 manifest**: sirsoft-ecommerce·daum_postcode·ckeditor5·tosspayments를 `loading.strategy: lazy`로 전환 — 홈 선로드 제거, `sirsoftEcommerceLayoutPrefetch`·Ghost registry와 정합.
 - 확장 IIFE Vite 빌드에 React `external` 적용(코어 `template-engine` 전역 React SSOT).

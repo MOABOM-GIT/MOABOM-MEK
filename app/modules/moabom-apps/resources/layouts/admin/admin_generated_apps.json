@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "layout_name": "admin_generated_apps",
   "permissions": ["moabom-apps.generated.read"],
   "extends": "_admin_base",
@@ -395,6 +395,7 @@
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_tier", "props": { "className": "px-4 py-3 text-left font-medium hidden sm:table-cell" } },
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_app_type", "props": { "className": "px-4 py-3 text-left font-medium hidden md:table-cell" } },
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_visibility", "props": { "className": "px-4 py-3 text-left font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_community", "props": { "className": "px-4 py-3 text-left font-medium hidden md:table-cell" } },
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_owner", "props": { "className": "px-4 py-3 text-left font-medium hidden lg:table-cell" } },
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_created", "props": { "className": "px-4 py-3 text-left font-medium hidden xl:table-cell" } },
                           { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.generated.table_updated", "props": { "className": "px-4 py-3 text-left font-medium hidden lg:table-cell" } },
@@ -591,6 +592,27 @@
                           {
                             "type": "basic",
                             "name": "Td",
+                            "props": { "className": "px-4 py-3 hidden md:table-cell text-xs whitespace-nowrap" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{Number(item.community_post_count) > 0}}",
+                                "props": { "className": "text-gray-700 dark:text-gray-200" },
+                                "text": "{{(item.community_rating_avg != null ? '★ ' + item.community_rating_avg + ' · ' : '') + Number(item.community_post_count) + '건'}}"
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Span",
+                                "if": "{{!(Number(item.community_post_count) > 0)}}",
+                                "props": { "className": "text-gray-400 dark:text-gray-500" },
+                                "text": "-"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
                             "props": { "className": "px-4 py-3 hidden lg:table-cell" },
                             "children": [
                               {
@@ -631,6 +653,15 @@
                             "name": "Td",
                             "props": { "className": "px-4 py-3 text-right whitespace-nowrap" },
                             "children": [
+                              {
+                                "type": "basic",
+                                "name": "A",
+                                "props": {
+                                  "href": "{{'/admin/apps/community/posts?generated_app_id=' + item.id}}",
+                                  "className": "inline-block mr-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                                },
+                                "text": "$t:moabom-apps.admin.generated.community_posts_link"
+                              },
                               {
                                 "type": "basic",
                                 "name": "A",

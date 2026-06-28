@@ -24,6 +24,15 @@ final class MoabomAppsAdminMenus
                 'order' => 50,
                 'permission' => 'moabom-apps.generated.read',
             ],
+            [
+                'name' => ['ko' => '앱 리뷰 관리', 'en' => 'App Review Posts'],
+                'slug' => 'moabom-apps-community',
+                'parent_slug' => 'platform-settings',
+                'url' => '/admin/apps/community/posts',
+                'icon' => 'fas fa-comments',
+                'order' => 51,
+                'permission' => 'moabom-apps.community.read',
+            ],
         ];
     }
 }

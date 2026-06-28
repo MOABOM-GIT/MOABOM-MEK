@@ -67,7 +67,12 @@ ok "RF-12: cloud-run-artisan-job * 거부"
   || fail "RF-13: run-layout-sync-job.sh 없음 또는 실행 불가"
 grep -q 'moabom:saas:sync-module-layouts' "${ROOT}/deploy/run-layout-sync-job.sh" \
   || fail "RF-14b: run-layout-sync-job.sh 에 moabom:saas:sync-module-layouts 없음"
+grep -q 'moabom:saas:sync-module-declarations' "${ROOT}/deploy/run-layout-sync-job.sh" \
+  || fail "RF-14d: run-layout-sync-job.sh 에 moabom:saas:sync-module-declarations 없음 (moabom-apps 권한 누락)"
+grep -q 'moabom-apps' "${ROOT}/deploy/run-layout-sync-job.sh" \
+  || fail "RF-14d: run-layout-sync-job — moabom-apps declarations sync 경로 없음"
 ok "RF-13/RF-14b: run-layout-sync-job.sh (template + module layouts)"
+ok "RF-14d: run-layout-sync-job module declarations SSOT (moabom-apps 포함)"
 
 grep -q 'moabom:saas:sync-module-layouts' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-14b: entrypoint 에 moabom:saas:sync-module-layouts 없음"

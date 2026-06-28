@@ -45,6 +45,7 @@ use Modules\Moabom\System\Console\Commands\SaasTenantProvisionCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantShowCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncPackageExtensionsCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncModuleLayoutsCommand;
+use Modules\Moabom\System\Console\Commands\SaasSyncModuleDeclarationsCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncTemplateLayoutsCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantRegisterCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantReseedSettingsCommand;
@@ -148,6 +149,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasSyncPackageExtensionsCommand::class,
         SaasSyncTemplateLayoutsCommand::class,
         SaasSyncModuleLayoutsCommand::class,
+        SaasSyncModuleDeclarationsCommand::class,
         SaasTenantReconcileCommand::class,
         SaasSetupSharedLanguagePacksCommand::class,
     ];

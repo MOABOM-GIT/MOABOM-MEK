@@ -17,6 +17,7 @@ import { MY_PAGE_TABS } from '../components/composite/mypage/myPageConstants';
 import { isEcommerceMypageSubpath } from './moabomLegacyMypagePaths';
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
 import { isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
+import { isShellBootAppId } from '../apps/shellBootApps';
 import { APPS } from '../data/Moa_apps';
 import {
   isMoaShellBoardAppId,
@@ -26,6 +27,11 @@ import {
   isMoaShellUserProfileAppId,
   moaShellUserProfileUuidFromAppId,
 } from '../shell/moaShellUserProfileIds';
+import {
+  formatAppCommunityShellPath,
+  isAppCommunityShellWindow,
+  resolveAppCommunityParentAppId,
+} from '../shell/moaShellCommunityUrl';
 import type { UserProfileWindowView } from '../shell/userProfileWindowLayoutRuntime';
 import {
   isMoaShellErrorAppId,
@@ -61,7 +67,7 @@ function isMyPageTab(s: string): s is MyPageTab {
 
 /** 현재 등록된 앱 id 인지 (mypage 포함, 저장 AI 앱 id 포함) */
 export function isRegisteredAppId(appId: string): boolean {
-  return APP_IDS.has(appId) || isGeneratedLibraryAppId(appId);
+  return APP_IDS.has(appId) || isGeneratedLibraryAppId(appId) || isShellBootAppId(appId);
 }
 
 export function parseCreateAppEditSearchParam(search: string): number | undefined {
@@ -280,6 +286,7 @@ export interface ShellWindowPathInput {
   userProfileUuid?: string;
   userProfileView?: UserProfileWindowView;
   errorCode?: ShellErrorCode;
+  appCommunityServerId?: number;
 }
 
 const SHELL_AUTH_IDS = new Set<string>(AUTH_MODES as unknown as string[]);
@@ -331,6 +338,9 @@ export function formatShellPathForWindow(win: ShellWindowPathInput): string {
   }
   if (isMoaShellErrorAppId(win.appId) && win.errorCode != null) {
     return formatShellPath({ kind: 'error', code: win.errorCode });
+  }
+  if (isAppCommunityShellWindow(win)) {
+    return formatAppCommunityShellPath(win);
   }
   return formatShellPath({ kind: 'app', appId: win.appId });
 }

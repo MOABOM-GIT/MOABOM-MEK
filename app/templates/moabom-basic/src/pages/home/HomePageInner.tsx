@@ -110,7 +110,7 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       setSystemDefaults={shell.setSystemDefaults}
       editMode={shell.editMode}
       toasts={shell.toasts}
-      weatherCanvasRef={shell.weatherCanvasRef}
+      effectiveSystemOptions={shell.effectiveSystemOptions}
       viewportWidth={shell.viewportWidth}
       overlayActive={shell.overlayActive}
       isMobileOverlay={shell.isMobileOverlay}
@@ -167,11 +167,13 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       openEditGeneratedApp={windows.openEditGeneratedApp}
       deleteSavedGeneratedApp={catalog.deleteSavedGeneratedApp}
       toggleGeneratedAppShare={catalog.toggleGeneratedAppShare}
+      openAppCommunityWindow={windows.openAppCommunityWindow}
       handleShellAuthenticated={windows.handleShellAuthenticated}
       handleShellProfileUpdated={windows.handleShellProfileUpdated}
       handleMyPageTabChange={windows.handleMyPageTabChange}
       updateLegalPageWindowTitle={windows.updateLegalPageWindowTitle}
       updateBoardWindowTitle={windows.updateBoardWindowTitle}
+      updateGeneratedAppWindowTitle={windows.updateGeneratedAppWindowTitle}
       updateUserProfileWindowTitle={windows.updateUserProfileWindowTitle}
       switchUserProfileWindowView={windows.switchUserProfileWindowView}
       updateErrorWindowTitle={windows.updateErrorWindowTitle}

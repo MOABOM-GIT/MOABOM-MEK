@@ -14,7 +14,11 @@ describe('aiGenerationDraft', () => {
     expect(resolveGenerationSource('<html>old</html>', '<div>live', true)).toBe('<div>live');
   });
 
-  it('스트리밍 종료 후에도 streamedRaw가 남아 있으면 committedHtml보다 우선한다', () => {
+  it('스트리밍 종료 후 committedHtml이 있으면 committedHtml을 우선한다', () => {
+    expect(resolveGenerationSource(COMPLETE_HTML, PARTIAL_HTML, false)).toBe(COMPLETE_HTML);
+  });
+
+  it('committedHtml이 비어 있으면 streamedRaw를 사용한다', () => {
     expect(resolveGenerationSource('', PARTIAL_HTML, false)).toBe(PARTIAL_HTML);
   });
 

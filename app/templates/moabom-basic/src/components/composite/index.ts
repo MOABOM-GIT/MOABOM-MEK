@@ -51,6 +51,7 @@ export { AvatarUploader } from './AvatarUploader';
 export { UserInfo } from './UserInfo';
 export { Moa_UserProfileActions, Moa_UserProfileActions as UserProfileActions } from './Moa_UserProfileActions';
 export { Moa_UserProfileHero, Moa_UserProfileHero as UserProfileHero } from './Moa_UserProfileHero';
+export { Moa_UserProfileAppGrid, Moa_UserProfileAppGrid as UserProfileAppGrid } from './Moa_UserProfileAppGrid';
 export { Modal } from './Modal';
 export { TabNavigation } from './TabNavigation';
 // AddressSearch는 별도 컴포넌트가 아닌 sirsoft-daum_postcode 플러그인의 extension_point 방식 사용

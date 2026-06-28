@@ -1,0 +1,723 @@
+{
+  "version": "1.0.5",
+  "layout_name": "admin_app_community_posts",
+  "permissions": ["moabom-apps.community.read"],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-apps.admin.community.title",
+    "description": "$t:moabom-apps.admin.community.list_description"
+  },
+  "initLocal": {
+    "q": "",
+    "statusFilter": "",
+    "appIdFilter": "",
+    "tenantSlugFilter": "",
+    "authorTenantFilter": "",
+    "ratingFilter": "",
+    "listOverride": null,
+    "isDeletingId": null,
+    "isUpdatingStatusId": null,
+    "actionError": null
+  },
+  "init_actions": [
+    {
+      "handler": "setState",
+      "params": {
+        "target": "global",
+        "_local": {
+          "q": "{{query.q || ''}}",
+          "statusFilter": "{{query.status || ''}}",
+          "appIdFilter": "{{query.generated_app_id || ''}}",
+          "tenantSlugFilter": "{{query.tenant_slug || ''}}",
+          "authorTenantFilter": "{{query.author_tenant_slug || ''}}",
+          "ratingFilter": "{{query.rating || ''}}"
+        }
+      }
+    }
+  ],
+  "computed": {
+    "listPayload": "{{_local.listOverride || communityPosts?.data || {}}}",
+    "itemsList": "{{Array.isArray((_local.listOverride || communityPosts?.data)?.items) ? (_local.listOverride || communityPosts.data).items : []}}",
+    "itemsTotal": "{{Array.isArray((_local.listOverride || communityPosts?.data)?.items) ? (_local.listOverride || communityPosts.data).items.length : 0}}",
+    "canManage": "{{((_local.listOverride || communityPosts?.data)?.meta?.abilities?.can_manage) === true}}",
+    "showTenantColumn": "{{((_local.listOverride || communityPosts?.data)?.meta?.abilities?.show_tenant_column) === true}}",
+    "canFilterTenant": "{{((_local.listOverride || communityPosts?.data)?.meta?.abilities?.filter_tenant_slug) === true}}",
+    "listMeta": "{{(_local.listOverride || communityPosts?.data)?.meta || {}}}",
+    "hasError": "{{!!_dataSourceErrors?.communityPosts}}"
+  },
+  "transition_overlay": {
+    "wait_for": ["communityPosts"]
+  },
+  "data_sources": [
+    {
+      "id": "communityPosts",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-apps/admin/app-community/posts",
+      "method": "GET",
+      "loading_strategy": "progressive",
+      "auto_fetch": true,
+      "auth_required": true,
+      "params": {
+        "q": "{{query.q || ''}}",
+        "status": "{{query.status || ''}}",
+        "generated_app_id": "{{query.generated_app_id || ''}}",
+        "tenant_slug": "{{query.tenant_slug || ''}}",
+        "author_tenant_slug": "{{query.author_tenant_slug || ''}}",
+        "rating": "{{query.rating || ''}}"
+      },
+      "fallback": {
+        "data": {
+          "items": [],
+          "meta": {
+            "total": 0,
+            "scope": "platform",
+            "abilities": {
+              "can_manage": false,
+              "show_tenant_column": false,
+              "filter_tenant_slug": false
+            }
+          }
+        }
+      },
+      "errorHandling": {
+        "401": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-apps.admin.community.auth_required"
+          }
+        },
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-apps.admin.community.permission_denied"
+          }
+        },
+        "500": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-apps.admin.community.load_error"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "type": "basic",
+        "name": "Div",
+        "props": {
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-apps.admin.community.title",
+              "description": "$t:moabom-apps.admin.community.list_description"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "title": "$t:moabom-apps.admin.community.loading",
+                  "className": "p-2 mr-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "refetchDataSource",
+                    "params": { "dataSourceId": "communityPosts" }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": { "name": "refresh", "className": "w-5 h-5" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.canManage}}",
+            "props": {
+              "className": "mt-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200"
+            },
+            "text": "$t:moabom-apps.admin.community.read_only_hint"
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{_computed.hasError}}",
+            "props": {
+              "className": "mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-800 dark:text-red-200"
+            },
+            "text": "$t:moabom-apps.admin.community.load_error"
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!!_local.actionError}}",
+            "props": {
+              "className": "mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-800 dark:text-red-200"
+            },
+            "text": "{{_local.actionError}}"
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": { "className": "flex flex-col gap-1 min-w-[10rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_search"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Input",
+                    "props": {
+                      "type": "text",
+                      "value": "{{_local.q}}",
+                      "placeholder": "$t:moabom-apps.admin.community.filter_search_placeholder",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "q": "{{$event.target.value}}" }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": { "className": "flex flex-col gap-1 min-w-[8rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_app_id"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Input",
+                    "props": {
+                      "type": "number",
+                      "value": "{{_local.appIdFilter}}",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "appIdFilter": "{{$event.target.value}}" }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": { "className": "flex flex-col gap-1 min-w-[8rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_status"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Select",
+                    "props": {
+                      "value": "{{_local.statusFilter}}",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "statusFilter": "{{$event.target.value}}" }
+                      }
+                    ],
+                    "children": [
+                      { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:moabom-apps.admin.community.filter_status_all" },
+                      { "type": "basic", "name": "Option", "props": { "value": "published" }, "text": "$t:moabom-apps.admin.community.status_published" },
+                      { "type": "basic", "name": "Option", "props": { "value": "hidden" }, "text": "$t:moabom-apps.admin.community.status_hidden" },
+                      { "type": "basic", "name": "Option", "props": { "value": "deleted" }, "text": "$t:moabom-apps.admin.community.status_deleted" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": { "className": "flex flex-col gap-1 min-w-[7rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_rating"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Select",
+                    "props": {
+                      "value": "{{_local.ratingFilter}}",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "ratingFilter": "{{$event.target.value}}" }
+                      }
+                    ],
+                    "children": [
+                      { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:moabom-apps.admin.community.filter_rating_all" },
+                      { "type": "basic", "name": "Option", "props": { "value": "5" }, "text": "5" },
+                      { "type": "basic", "name": "Option", "props": { "value": "4" }, "text": "4" },
+                      { "type": "basic", "name": "Option", "props": { "value": "3" }, "text": "3" },
+                      { "type": "basic", "name": "Option", "props": { "value": "2" }, "text": "2" },
+                      { "type": "basic", "name": "Option", "props": { "value": "1" }, "text": "1" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "if": "{{_computed.canFilterTenant}}",
+                "props": { "className": "flex flex-col gap-1 min-w-[8rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_tenant_slug"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Input",
+                    "props": {
+                      "type": "text",
+                      "value": "{{_local.tenantSlugFilter}}",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "tenantSlugFilter": "{{$event.target.value}}" }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "if": "{{_computed.canFilterTenant}}",
+                "props": { "className": "flex flex-col gap-1 min-w-[8rem]" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Label",
+                    "props": { "className": "text-xs font-medium text-gray-600 dark:text-gray-400" },
+                    "text": "$t:moabom-apps.admin.community.filter_author_tenant"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Input",
+                    "props": {
+                      "type": "text",
+                      "value": "{{_local.authorTenantFilter}}",
+                      "className": "px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    },
+                    "actions": [
+                      {
+                        "type": "change",
+                        "handler": "setState",
+                        "params": { "target": "local", "authorTenantFilter": "{{$event.target.value}}" }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "className": "px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 dark:bg-gray-700 text-white hover:bg-gray-900"
+                },
+                "text": "$t:moabom-apps.admin.community.filter_apply",
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "navigate",
+                    "params": {
+                      "path": "/admin/apps/community/posts",
+                      "query": {
+                        "q": "{{_local.q}}",
+                        "generated_app_id": "{{_local.appIdFilter}}",
+                        "tenant_slug": "{{(_computed.canFilterTenant && _local.tenantSlugFilter) ? _local.tenantSlugFilter : ''}}",
+                        "author_tenant_slug": "{{(_computed.canFilterTenant && _local.authorTenantFilter) ? _local.authorTenantFilter : ''}}",
+                        "status": "{{_local.statusFilter}}",
+                        "rating": "{{_local.ratingFilter}}"
+                      },
+                      "mergeQuery": false
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "className": "px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
+                },
+                "text": "$t:moabom-apps.admin.community.filter_reset",
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "sequence",
+                    "params": {
+                      "actions": [
+                        {
+                          "handler": "setState",
+                          "params": {
+                            "target": "local",
+                            "q": "",
+                            "statusFilter": "",
+                            "appIdFilter": "",
+                            "tenantSlugFilter": "",
+                            "authorTenantFilter": "",
+                            "ratingFilter": "",
+                            "listOverride": null,
+                            "actionError": null
+                          }
+                        },
+                        {
+                          "handler": "navigate",
+                          "params": {
+                            "path": "/admin/apps/community/posts",
+                            "query": {},
+                            "mergeQuery": false
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.hasError && _computed.itemsTotal === 0}}",
+            "props": {
+              "className": "mt-6 p-10 text-center bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "P",
+                "props": { "className": "text-base font-medium text-gray-700 dark:text-gray-200" },
+                "text": "$t:moabom-apps.admin.community.empty_title"
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "props": { "className": "mt-1 text-sm text-gray-500 dark:text-gray-400" },
+                "text": "$t:moabom-apps.admin.community.empty_description"
+              }
+            ]
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "if": "{{!_computed.hasError && _computed.itemsTotal > 0}}",
+            "props": {
+              "className": "mt-6 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Table",
+                "props": { "className": "min-w-full text-sm" },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Thead",
+                    "props": { "className": "bg-gray-50 dark:bg-gray-900/50 text-left text-gray-600 dark:text-gray-400" },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Tr",
+                        "children": [
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_app_id", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_app_title", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "if": "{{_computed.showTenantColumn}}", "text": "$t:moabom-apps.admin.community.table_app_tenant", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_author", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_rating", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_title", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_status", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_created", "props": { "className": "px-4 py-3 font-medium" } },
+                          { "type": "basic", "name": "Th", "text": "$t:moabom-apps.admin.community.table_actions", "props": { "className": "px-4 py-3 text-right font-medium" } }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Tbody",
+                    "iteration": {
+                      "data": "{{_computed.itemsList}}",
+                      "item_var": "item",
+                      "index_var": "rowIndex"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Tr",
+                        "props": { "className": "border-t border-gray-100 dark:border-gray-700" },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap" },
+                            "text": "{{item.generated_app_id}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 max-w-[12rem] truncate" },
+                            "text": "{{item.generated_app_title || '-'}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "if": "{{_computed.showTenantColumn}}",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap font-mono text-xs" },
+                            "text": "{{item.generated_app_tenant_slug || '-'}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap" },
+                            "text": "{{item.author?.nickname || '-'}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap" },
+                            "text": "{{item.rating != null ? '★ ' + item.rating : '-'}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 max-w-[16rem] truncate" },
+                            "text": "{{item.title}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 whitespace-nowrap" },
+                            "text": "{{item.status}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 text-xs text-gray-500 whitespace-nowrap" },
+                            "text": "{{item.created_at ? String(item.created_at).slice(0, 16).replace('T', ' ') : '-'}}"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Td",
+                            "props": { "className": "px-4 py-3 text-right whitespace-nowrap" },
+                            "children": [
+                              {
+                                "type": "basic",
+                                "name": "Button",
+                                "if": "{{_computed.canManage && item.status === 'hidden'}}",
+                                "props": {
+                                  "type": "button",
+                                  "disabled": "{{_local.isUpdatingStatusId === item.id}}",
+                                  "className": "inline-block mr-2 px-2 py-1 text-xs rounded text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                },
+                                "text": "$t:moabom-apps.admin.community.restore_button",
+                                "actions": [
+                                  {
+                                    "type": "click",
+                                    "handler": "sequence",
+                                    "params": {
+                                      "actions": [
+                                        {
+                                          "handler": "setState",
+                                          "params": { "target": "local", "isUpdatingStatusId": "{{item.id}}", "actionError": null }
+                                        },
+                                        {
+                                          "handler": "apiCall",
+                                          "auth_required": true,
+                                          "target": "{{'/api/modules/moabom-apps/admin/app-community/posts/' + item.id + '/status'}}",
+                                          "params": {
+                                            "method": "PATCH",
+                                            "body": { "status": "published" }
+                                          },
+                                          "onSuccess": [
+                                            { "handler": "refetchDataSource", "params": { "dataSourceId": "communityPosts" } },
+                                            { "handler": "setState", "params": { "target": "local", "isUpdatingStatusId": null } }
+                                          ],
+                                          "onError": [
+                                            {
+                                              "handler": "setState",
+                                              "params": {
+                                                "target": "local",
+                                                "isUpdatingStatusId": null,
+                                                "actionError": "$t:moabom-apps.admin.community.status_update_error"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Button",
+                                "if": "{{_computed.canManage && item.status === 'published'}}",
+                                "props": {
+                                  "type": "button",
+                                  "disabled": "{{_local.isUpdatingStatusId === item.id}}",
+                                  "className": "inline-block mr-2 px-2 py-1 text-xs rounded text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                },
+                                "text": "$t:moabom-apps.admin.community.hide_button",
+                                "actions": [
+                                  {
+                                    "type": "click",
+                                    "handler": "sequence",
+                                    "params": {
+                                      "actions": [
+                                        {
+                                          "handler": "setState",
+                                          "params": { "target": "local", "isUpdatingStatusId": "{{item.id}}", "actionError": null }
+                                        },
+                                        {
+                                          "handler": "apiCall",
+                                          "auth_required": true,
+                                          "target": "{{'/api/modules/moabom-apps/admin/app-community/posts/' + item.id + '/status'}}",
+                                          "params": {
+                                            "method": "PATCH",
+                                            "body": { "status": "hidden", "hidden_reason": "admin" }
+                                          },
+                                          "onSuccess": [
+                                            { "handler": "refetchDataSource", "params": { "dataSourceId": "communityPosts" } },
+                                            { "handler": "setState", "params": { "target": "local", "isUpdatingStatusId": null } }
+                                          ],
+                                          "onError": [
+                                            {
+                                              "handler": "setState",
+                                              "params": {
+                                                "target": "local",
+                                                "isUpdatingStatusId": null,
+                                                "actionError": "$t:moabom-apps.admin.community.status_update_error"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "basic",
+                                "name": "Button",
+                                "if": "{{_computed.canManage}}",
+                                "props": {
+                                  "type": "button",
+                                  "disabled": "{{_local.isDeletingId === item.id}}",
+                                  "className": "inline-block px-2 py-1 text-xs font-medium rounded text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                },
+                                "text": "$t:moabom-apps.admin.community.delete_button",
+                                "actions": [
+                                  {
+                                    "type": "click",
+                                    "confirm": "$t:moabom-apps.admin.community.delete_confirm",
+                                    "handler": "sequence",
+                                    "params": {
+                                      "actions": [
+                                        {
+                                          "handler": "setState",
+                                          "params": { "target": "local", "isDeletingId": "{{item.id}}", "actionError": null }
+                                        },
+                                        {
+                                          "handler": "apiCall",
+                                          "auth_required": true,
+                                          "target": "{{'/api/modules/moabom-apps/admin/app-community/posts/' + item.id}}",
+                                          "params": { "method": "DELETE" },
+                                          "onSuccess": [
+                                            { "handler": "refetchDataSource", "params": { "dataSourceId": "communityPosts" } },
+                                            { "handler": "setState", "params": { "target": "local", "isDeletingId": null } }
+                                          ],
+                                          "onError": [
+                                            {
+                                              "handler": "setState",
+                                              "params": {
+                                                "target": "local",
+                                                "isDeletingId": null,
+                                                "actionError": "$t:moabom-apps.admin.community.delete_error"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

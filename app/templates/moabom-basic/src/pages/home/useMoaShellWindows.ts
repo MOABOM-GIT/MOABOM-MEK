@@ -17,9 +17,13 @@ import {
   type MoaShellLegalPageSlug,
 } from '../../shell/moaShellLegalPageIds';
 import {
+  moaShellAppCommunityAppId,
   moaShellBoardAppId,
   moaShellBoardSlugFromAppId,
-} from '../../shell/moaShellBoardIds';
+  isMoaShellAppCommunityAppId,
+} from '../../shell/moaShellWindowIds';
+import { resolveAppCommunityParentAppId } from '../../shell/moaShellCommunityUrl';
+import { parseGeneratedLibraryServerId } from '../../apps/generatedAppLibrary';
 import {
   SHELL_PROFILE_SURFACE_APP_ID,
   isMoaShellUserProfileAppId,
@@ -60,6 +64,8 @@ import {
   AUTH_WINDOW_WIDTH,
   BOARD_WINDOW_HEIGHT,
   BOARD_WINDOW_WIDTH,
+  APP_COMMUNITY_WINDOW_HEIGHT,
+  APP_COMMUNITY_WINDOW_WIDTH,
   USER_PROFILE_WINDOW_HEIGHT,
   USER_PROFILE_WINDOW_WIDTH,
   DEFAULT_WINDOW_HEIGHT,
@@ -97,6 +103,52 @@ function resolveForegroundShellAppId(items: WindowState[]): string | null {
     return null;
   }
   return [...visible].sort((a, b) => b.zIndex - a.zIndex)[0]?.appId ?? null;
+}
+
+/** 열린·태스크바 창의 최대 zIndex 위 — 부모 창 포커스와 nextZIndex 드리프트 대비 */
+function allocateShellZIndex(
+  windows: WindowState[],
+  taskbar: WindowState[],
+  nextZIndex: number,
+): number {
+  let maxZ = nextZIndex - 1;
+  for (const w of windows) {
+    if (w.zIndex > maxZ) maxZ = w.zIndex;
+  }
+  for (const w of taskbar) {
+    if (w.zIndex > maxZ) maxZ = w.zIndex;
+  }
+  return maxZ + 1;
+}
+
+function reconcileGeneratedAppWindowChrome(
+  win: WindowState,
+  appsById: Map<string, App>,
+  locale: MoabomSystemLanguage,
+): WindowState {
+  if (!isGeneratedLibraryAppId(win.appId)) {
+    return win;
+  }
+  const app = appsById.get(win.appId);
+  if (!app) {
+    return win;
+  }
+  const resolvedTitle = resolveAppStrings(app, locale).name;
+  if (win.gradient === app.gradient && win.icon === app.icon && win.title === resolvedTitle) {
+    return win;
+  }
+  return { ...win, gradient: app.gradient, icon: app.icon, title: resolvedTitle };
+}
+
+function generatedAppCatalogChromePatch(
+  catalogApp: App | undefined,
+  locale: MoabomSystemLanguage,
+): Pick<WindowState, 'gradient' | 'icon' | 'title'> | null {
+  if (!catalogApp) {
+    return null;
+  }
+  const { name } = resolveAppStrings(catalogApp, locale);
+  return { gradient: catalogApp.gradient, icon: catalogApp.icon, title: name };
 }
 
 function getNewWindowPosition(
@@ -161,6 +213,15 @@ function doesShellLocationMatchWindow(pathname: string, search: string, win: Win
     return true;
   }
 
+  if (isMoaShellAppCommunityAppId(win.appId)) {
+    const parentAppId = resolveAppCommunityParentAppId(win);
+    if (parentAppId != null) {
+      const parentPath = formatShellPath({ kind: 'app', appId: parentAppId });
+      return pathname === parentPath.split(/[?#]/)[0];
+    }
+    return true;
+  }
+
   const userProfileUuid = win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId);
   if (userProfileUuid != null && pathname.startsWith(`/users/${encodeURIComponent(userProfileUuid)}`)) {
     return true;
@@ -172,6 +233,16 @@ function doesShellLocationMatchWindow(pathname: string, search: string, win: Win
   }
 
   return pathname === canonical.split(/[?#]/)[0];
+}
+
+function isRoutableShellPath(path: string): boolean {
+  const hashIndex = path.indexOf('#');
+  const withoutHash = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const queryIndex = withoutHash.indexOf('?');
+  const pathname = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+  const search = queryIndex >= 0 ? withoutHash.slice(queryIndex) : '';
+
+  return pathname === '/' || parseShellRoute(pathname, search).kind !== 'home';
 }
 
 export interface UseMoaShellWindowsOptions {
@@ -215,25 +286,6 @@ export function useMoaShellWindows({
   }, [windows]);
 
   useEffect(() => {
-    syncShellAppFocus(resolveForegroundShellAppId(windows));
-    const visible = windows.filter(item => !item.isMinimized);
-    const foreground = visible.length > 0
-      ? [...visible].sort((a, b) => b.zIndex - a.zIndex)[0]
-      : null;
-    publishShellPresenceForeground(foreground
-      ? {
-          appId: foreground.appId,
-          title: foreground.title,
-          boardSlug: foreground.boardSlug,
-          boardPostId: foreground.boardPostId,
-          boardMode: foreground.boardMode,
-          userProfileUuid: foreground.userProfileUuid,
-          myPageInitialTab: foreground.myPageInitialTab,
-        }
-      : null);
-  }, [windows]);
-
-  useEffect(() => {
     taskbarItemsRef.current = taskbarItems;
     const taskbarIcons = taskbarItems.map(w => ({
       id: w.id,
@@ -245,6 +297,11 @@ export function useMoaShellWindows({
       initialY: w.initialY,
       myPageInitialTab: w.myPageInitialTab,
       editGeneratedAppId: w.editGeneratedAppId,
+      boardSlug: w.boardSlug,
+      boardPostId: w.boardPostId,
+      appCommunityServerId: w.appCommunityServerId,
+      appCommunityTitle: w.appCommunityTitle,
+      appCommunityCanWrite: w.appCommunityCanWrite,
     }));
     saveJson(STORAGE_KEY_TASKBAR_ICONS, taskbarIcons);
   }, [taskbarItems]);
@@ -259,15 +316,74 @@ export function useMoaShellWindows({
     );
   }, [isLoggedIn]);
 
+  useEffect(() => {
+    if (appsById.size === 0) {
+      return;
+    }
+
+    const syncList = (items: WindowState[]) => {
+      let changed = false;
+      const next = items.map(win => {
+        const synced = reconcileGeneratedAppWindowChrome(win, appsById, language);
+        if (synced !== win) {
+          changed = true;
+        }
+        return synced;
+      });
+      return changed ? next : items;
+    };
+
+    commitWindows(prev => syncList(prev));
+    setTaskbarItems(prev => syncList(prev));
+  }, [appsById, commitWindows, language]);
+
   const removeWindowsByAppId = useCallback((appId: string) => {
-    setWindows(prev => prev.filter(win => win.appId !== appId));
-    setTaskbarItems(prev => prev.filter(win => win.appId !== appId));
+    const serverId = parseGeneratedLibraryServerId(appId);
+    const communityAppId = serverId != null ? moaShellAppCommunityAppId(serverId) : null;
+
+    setWindows(prev => prev.filter(win => {
+      if (win.appId === appId) {
+        return false;
+      }
+      if (communityAppId != null && win.appId === communityAppId) {
+        return false;
+      }
+      return true;
+    }));
+    setTaskbarItems(prev => prev.filter(win => {
+      if (win.appId === appId) {
+        return false;
+      }
+      if (communityAppId != null && win.appId === communityAppId) {
+        return false;
+      }
+      return true;
+    }));
   }, []);
 
   const resolveWinTitle = useCallback(
     (win: WindowState) => resolveWindowTitle(win, appsById, language, t, AUTH_WINDOW_APP_IDS),
     [appsById, language, t],
   );
+
+  useEffect(() => {
+    syncShellAppFocus(resolveForegroundShellAppId(windows));
+    const visible = windows.filter(item => !item.isMinimized);
+    const foreground = visible.length > 0
+      ? [...visible].sort((a, b) => b.zIndex - a.zIndex)[0]
+      : null;
+    publishShellPresenceForeground(foreground
+      ? {
+          appId: foreground.appId,
+          title: resolveWinTitle(foreground),
+          boardSlug: foreground.boardSlug,
+          boardPostId: foreground.boardPostId,
+          boardMode: foreground.boardMode,
+          userProfileUuid: foreground.userProfileUuid,
+          myPageInitialTab: foreground.myPageInitialTab,
+        }
+      : null);
+  }, [resolveWinTitle, windows]);
 
   const restoreTaskbarWindow = useCallback((id: string) => {
     const item = taskbarItemsRef.current.find(w => w.id === id);
@@ -279,6 +395,10 @@ export function useMoaShellWindows({
 
     const alreadyOpen = windowsRef.current.find(w => w.id === id || w.appId === item.appId);
     if (alreadyOpen) {
+      const catalogApp = isGeneratedLibraryAppId(alreadyOpen.appId)
+        ? appsById.get(alreadyOpen.appId)
+        : undefined;
+      const catalogChrome = generatedAppCatalogChromePatch(catalogApp, language);
       setTaskbarItems(prev => prev.filter(w => w.id !== id));
       commitWindows(prev => prev.map(w => (w.id === alreadyOpen.id
         ? {
@@ -286,6 +406,7 @@ export function useMoaShellWindows({
             zIndex: nextZIndex,
             isMinimized: false,
             ...(w.appId === 'mypage' ? { gradient: MOA_SHELL_POINT_TITLE_GRADIENT } : {}),
+            ...(catalogChrome ?? {}),
           }
         : w)));
       setNextZIndex(z => z + 1);
@@ -299,9 +420,12 @@ export function useMoaShellWindows({
     }
 
     setTaskbarItems(prev => prev.filter(w => w.id !== id));
+    const catalogApp = isGeneratedLibraryAppId(item.appId) ? appsById.get(item.appId) : undefined;
+    const catalogChrome = generatedAppCatalogChromePatch(catalogApp, language);
     const restored = {
       ...item,
       ...(item.appId === 'mypage' ? { gradient: MOA_SHELL_POINT_TITLE_GRADIENT } : {}),
+      ...(catalogChrome ?? {}),
       zIndex: nextZIndex,
       isMaximized: resolveShellWindowMaximized(),
       isMinimized: false,
@@ -309,7 +433,7 @@ export function useMoaShellWindows({
     commitWindows(prev => [...prev, restored]);
     setNextZIndex(z => z + 1);
     pushShellPath(formatShellPathForWindow(restored));
-  }, [commitWindows, nextZIndex, t]);
+  }, [appsById, commitWindows, language, nextZIndex, t]);
 
   const openMyPage = useCallback((initialTab: MyPageTab = 'profile', sync: ShellUrlSync = {}) => {
     const myPageApp = APPS.find(app => app.id === 'mypage');
@@ -584,7 +708,14 @@ export function useMoaShellWindows({
     commitWindows(prev => {
       const ex = prev.find(w => w.appId === app.id);
       if (ex) {
-        return prev.map(w => w.id === ex.id ? { ...w, zIndex: nextZIndex, isMinimized: false } : w);
+        return prev.map(w => w.id === ex.id ? {
+          ...w,
+          zIndex: nextZIndex,
+          isMinimized: false,
+          gradient: app.gradient,
+          icon: app.icon,
+          title: resolvedTitle,
+        } : w);
       }
       const position = getNewWindowPosition(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, countOpenWindows(prev));
       return [...prev, {
@@ -606,6 +737,15 @@ export function useMoaShellWindows({
 
   const updateBoardWindowTitle = useCallback((windowId: string, title: string) => {
     setWindows(prev => prev.map(w => (w.id === windowId ? { ...w, title } : w)));
+  }, []);
+
+  const updateGeneratedAppWindowTitle = useCallback((windowId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return;
+    }
+    setWindows(prev => prev.map(w => (w.id === windowId ? { ...w, title: trimmed } : w)));
+    setTaskbarItems(prev => prev.map(w => (w.id === windowId ? { ...w, title: trimmed } : w)));
   }, []);
 
   const updateErrorWindowTitle = useCallback((windowId: string, title: string) => {
@@ -784,6 +924,87 @@ export function useMoaShellWindows({
       }]);
       setNextZIndex(z => z + 1);
       syncBoardShellUrl();
+    },
+    [commitWindows, editMode, nextZIndex, restoreTaskbarWindow, t],
+  );
+
+  const openAppCommunityWindow = useCallback(
+    (
+      serverId: number,
+      options: { title?: string; canWrite?: boolean } = {},
+      sync: ShellUrlSync = {},
+    ) => {
+      if (editMode) return;
+
+      const normalizedId = Number(serverId);
+      if (!Number.isFinite(normalizedId) || normalizedId <= 0) return;
+
+      const appId = moaShellAppCommunityAppId(normalizedId);
+      const displayTitle = options.title?.trim() || t('moa_apps_ai.community.window_title_fallback', { id: normalizedId });
+      const bumpZIndex = () => {
+        const zIndex = allocateShellZIndex(windowsRef.current, taskbarItemsRef.current, nextZIndex);
+        setNextZIndex(zIndex + 1);
+        return zIndex;
+      };
+
+      const existing = windowsRef.current.find(w => w.appId === appId);
+      const minimized = taskbarItemsRef.current.find(w => w.appId === appId);
+
+      if (!existing && minimized) {
+        restoreTaskbarWindow(minimized.id);
+        commitWindows(prev => prev.map(w => (w.appId === appId
+          ? {
+            ...w,
+            appCommunityServerId: normalizedId,
+            appCommunityTitle: displayTitle,
+            appCommunityCanWrite: Boolean(options.canWrite),
+          }
+          : w)));
+        return;
+      }
+
+      if (existing) {
+        const zIndex = bumpZIndex();
+        commitWindows(prev => prev.map(w => (w.id === existing.id
+          ? {
+            ...w,
+            appCommunityServerId: normalizedId,
+            appCommunityTitle: displayTitle,
+            appCommunityCanWrite: Boolean(options.canWrite),
+            zIndex,
+            isMinimized: false,
+          }
+          : w)));
+        return;
+      }
+
+      const openWindowCount = countOpenWindows(windowsRef.current);
+      if (openWindowCount >= MAX_OPEN_WINDOWS) {
+        pushWarningToast(t('moa_shell.home.toast_max_windows', { max: MAX_OPEN_WINDOWS }));
+        return;
+      }
+
+      const position = getNewWindowPosition(
+        APP_COMMUNITY_WINDOW_WIDTH,
+        APP_COMMUNITY_WINDOW_HEIGHT,
+        openWindowCount,
+      );
+      const zIndex = bumpZIndex();
+
+      commitWindows(prev => [...prev, {
+        id: `${appId}-${Date.now()}`,
+        appId,
+        appCommunityServerId: normalizedId,
+        appCommunityTitle: displayTitle,
+        appCommunityCanWrite: Boolean(options.canWrite),
+        title: t('moa_apps_ai.community.window_title', { title: displayTitle }),
+        icon: 'comments',
+        gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+        zIndex,
+        isMaximized: resolveShellWindowMaximized(),
+        isMinimized: false,
+        ...position,
+      }]);
     },
     [commitWindows, editMode, nextZIndex, restoreTaskbarWindow, t],
   );
@@ -996,7 +1217,7 @@ export function useMoaShellWindows({
           if (foreground) {
             const target = formatShellPathForWindow(foreground);
             const current = `${window.location.pathname}${window.location.search}`;
-            if (current !== target) {
+            if (current !== target && isRoutableShellPath(target)) {
               replaceShellPath(target);
             }
             break;
@@ -1163,8 +1384,14 @@ export function useMoaShellWindows({
       case 'mypage':
         void openMyPage(action.tab, sync);
         break;
+      case 'app-community':
+        openAppCommunityWindow(action.serverId, {
+          title: action.title,
+          canWrite: action.canWrite,
+        }, sync);
+        break;
     }
-  }, [openBoardWindow, openMyPage, openUserProfileWindow]);
+  }, [openAppCommunityWindow, openBoardWindow, openMyPage, openUserProfileWindow]);
 
   return {
     windows,
@@ -1183,6 +1410,7 @@ export function useMoaShellWindows({
     openErrorWindow,
     closeErrorWindow,
     openBoardWindow,
+    openAppCommunityWindow,
     openUserProfileWindow,
     openShellSurface,
     openLegalPage,
@@ -1197,6 +1425,7 @@ export function useMoaShellWindows({
     handleShellProfileUpdated,
     updateLegalPageWindowTitle,
     updateBoardWindowTitle,
+    updateGeneratedAppWindowTitle,
     updateUserProfileWindowTitle,
     switchUserProfileWindowView,
     updateErrorWindowTitle,

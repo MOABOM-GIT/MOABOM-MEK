@@ -47,13 +47,14 @@
   justify-content: center;
   width: 100%;
   max-width: 36rem;
-  padding: 0.65rem 2.75rem;
+  padding: 0.7rem 2.75rem;
   border-radius: 999px;
 }
 
-.moa-global-search-form.is-hero .moa-global-search-input-wrap {
-  max-width: 40rem;
-  padding: 0.85rem 3rem;
+.moa-global-search-input-wrap:focus-within {
+  outline: 2px solid var(--moa-point-color);
+  outline-offset: -2px;
+  box-shadow: var(--moa-point-fill-shadow);
 }
 
 .moa-global-search-input__icon {
@@ -76,10 +77,18 @@
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
+  outline: none !important;
   font-size: 1rem;
   padding: 0 !important;
   min-height: auto !important;
   text-align: center !important;
+}
+
+.moa-global-search-input:focus,
+.moa-global-search-input:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .moa-global-search-input::placeholder {

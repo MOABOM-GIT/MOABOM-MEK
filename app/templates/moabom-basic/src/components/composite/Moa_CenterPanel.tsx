@@ -6,6 +6,7 @@ import { Icon } from '../basic/Icon';
 import { Span } from '../basic/Span';
 import { SlidingToggleSwitch } from '../basic/Moa_SlidingToggleSwitch';
 import { GlassPanel } from './Moa_GlassPanel';
+import { Moa_HorizontalPointerStrip } from './Moa_HorizontalPointerStrip';
 import { ModeSelector } from './Moa_ModeSelector';
 import { SortableAppGrid } from './Moa_SortableAppGrid';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
@@ -15,6 +16,7 @@ import type { App } from '../../data/Moa_apps';
 import type { BoardShellMode, ShellErrorCode } from '../../utils/moabomShellRoutes';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
 import type { MyPageTab } from './Moa_MyPageWindowContent';
+import { MOA_TASKBAR_WINDOW_ID_ATTR } from '../../hooks/Moa_useHorizontalPointerStrip';
 
 const FOOTER_HIDE_SCROLL_DISTANCE = 24;
 const FOOTER_SHOW_SCROLL_DISTANCE = 16;
@@ -44,7 +46,7 @@ export interface WindowState {
   boardSlug?: string;
   /** moa-shell-user:{uuid} 윈도우 — 공개 프로필 사용자 UUID */
   userProfileUuid?: string;
-  /** 공개 프로필 윈도우 표시 모드 (프로필 / 작성글 목록 / 대화) */
+  /** 공개 프로필 윈도우 표시 모드 (프로필 / 유저 활동 / 대화) */
   userProfileView?: UserProfileWindowView;
   /** 게시판 상세 글 id (목록이면 생략) */
   boardPostId?: string;
@@ -52,6 +54,12 @@ export interface WindowState {
   boardMode?: BoardShellMode;
   /** moa-shell-error 윈도우 — 표시할 HTTP 에러 코드 */
   errorCode?: ShellErrorCode;
+  /** app-community-{id} 윈도우 — 생성앱 서버 ID */
+  appCommunityServerId?: number;
+  /** 앱 리뷰 창 헤더용 앱 제목 */
+  appCommunityTitle?: string;
+  /** 앱 리뷰 작성 가능 여부 (태스크바 영속화; 런타임은 API 재조회) */
+  appCommunityCanWrite?: boolean;
 }
 
 export interface CenterPanelProps {
@@ -137,14 +145,6 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
   const footerTransitionLockedUntilRef = useRef(0);
   const footerLayoutGuardRef = useRef(false);
   const footerLayoutGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const taskbarRef = useRef<HTMLDivElement | null>(null);
-  const taskbarDragRef = useRef({
-    active: false,
-    moved: false,
-    startX: 0,
-    scrollLeft: 0,
-    windowId: '',
-  });
   const [isFooterHidden, setIsFooterHidden] = useState(false);
   const [mobileFooterScrollEnabled, setMobileFooterScrollEnabled] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_FOOTER_SCROLL_MQ).matches,
@@ -257,59 +257,6 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
     }
   };
 
-  const handleTaskbarPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-    const taskbar = taskbarRef.current;
-    if (!taskbar) return;
-
-    taskbar.setPointerCapture(e.pointerId);
-    taskbarDragRef.current = {
-      active: true,
-      moved: false,
-      startX: e.clientX,
-      scrollLeft: taskbar.scrollLeft,
-      windowId: (e.target as HTMLElement).closest<HTMLElement>('[data-taskbar-window-id]')?.dataset.taskbarWindowId ?? '',
-    };
-  };
-
-  const handleTaskbarPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const taskbar = taskbarRef.current;
-    const drag = taskbarDragRef.current;
-    if (!taskbar || !drag.active) return;
-
-    const deltaX = e.clientX - drag.startX;
-    if (Math.abs(deltaX) > 4) {
-      drag.moved = true;
-    }
-
-    if (drag.moved) {
-      taskbar.scrollLeft = drag.scrollLeft - deltaX;
-      e.preventDefault();
-    }
-  };
-
-  const handleTaskbarPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
-    const taskbar = taskbarRef.current;
-    const drag = taskbarDragRef.current;
-    if (taskbar?.hasPointerCapture(e.pointerId)) {
-      taskbar.releasePointerCapture(e.pointerId);
-    }
-
-    taskbarDragRef.current.active = false;
-    if (drag.moved) {
-      taskbarDragRef.current.moved = false;
-      taskbarDragRef.current.windowId = '';
-      return;
-    }
-
-    if (drag.windowId) {
-      onFocusWindow(drag.windowId);
-    }
-
-    taskbarDragRef.current.windowId = '';
-  };
-
   return (
     <GlassPanel
       className="moa-center-panel absolute moa-home-shell-inset-y"
@@ -347,13 +294,10 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 
       {/* 태스크바 (최소화된 윈도우) */}
       {!editMode && minimizedWindows.length > 0 && (
-        <Div
-          ref={taskbarRef}
+        <Moa_HorizontalPointerStrip
           className="moa-taskbar flex items-center gap-2 px-3 pt-1 pb-3 shrink-0 overflow-x-auto cursor-grab active:cursor-grabbing"
-          onPointerDown={handleTaskbarPointerDown}
-          onPointerMove={handleTaskbarPointerMove}
-          onPointerUp={handleTaskbarPointerEnd}
-          onPointerCancel={handleTaskbarPointerEnd}
+          itemDataAttribute={MOA_TASKBAR_WINDOW_ID_ATTR}
+          onItemActivate={onFocusWindow}
         >
           {minimizedWindows.map(w => (
             <Button
@@ -374,7 +318,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               </Div>
             </Button>
           ))}
-        </Div>
+        </Moa_HorizontalPointerStrip>
       )}
 
       {/* 앱 그리드 */}

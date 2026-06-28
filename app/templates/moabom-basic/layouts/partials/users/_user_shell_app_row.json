@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "공개 프로필 유저 활동 — 셸/제작앱 1행"
+  },
+  "type": "basic",
+  "name": "Button",
+  "props": {
+    "className": "moa-user-profile-post-row w-full min-w-0 cursor-pointer text-left"
+  },
+  "actions": [
+    {
+      "type": "click",
+      "handler": "navigate",
+      "params": {
+        "path": "/app/{{app.shell_id ?? app.id}}"
+      }
+    }
+  ],
+  "children": [
+    {
+      "type": "basic",
+      "name": "Span",
+      "props": {
+        "className": "moa-user-profile-post-title min-w-0 truncate"
+      },
+      "text": "{{app.title ?? app.id ?? ''}}"
+    }
+  ]
+}

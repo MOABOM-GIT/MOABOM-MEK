@@ -2,7 +2,8 @@
 .moa-main-app-grid {
   --moa-main-cell-min: 140px;
   --moa-main-grid-gap: 30px;
-  --moa-main-app-size: 100px;
+  /* 아이콘(88px)은 유지, 타이틀만 셀 여백까지 사용 — 그리드 열·gap·패널 폭 불변 */
+  --moa-main-app-size: 118px;
   --moa-main-icon-size: 88px;
   --moa-main-symbol-size: 1.875rem;
   --moa-main-title-size: 1rem;
@@ -60,6 +61,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * 메인·좌측 앱 타이틀 — 인접 그리드 gap으로 수평 확장 (아이콘·셀 min·폰트 크기 유지).
+ * gap 중앙에서 이웃 타이틀이 맞닿을 수 있으나 말줄임이라 레이아웃·열 수는 변하지 않음.
+ */
+.moa-main-app-item,
+.moa-main-app-btn,
+.moa-left-panel-app-btn {
+  overflow: visible;
+}
+
+.moa-main-app-btn > .text-center {
+  box-sizing: border-box;
+  width: calc(100% + var(--moa-main-grid-gap));
+  max-width: calc(var(--moa-main-app-size) + var(--moa-main-grid-gap));
+  margin-inline: calc(var(--moa-main-grid-gap) / -2);
+}
+
+.moa-left-panel-app-btn .moa-app-icon-label {
+  box-sizing: border-box;
+  width: calc(100% + var(--moa-left-panel-app-gap));
+  max-width: calc(100% + var(--moa-left-panel-app-gap));
+  margin-inline: calc(var(--moa-left-panel-app-gap) / -2);
 }
 
 .moa-left-panel-app-grid {

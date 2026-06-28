@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WEBSITE_LINK_APP_GRADIENT } from './ai-generator/websiteLinkApp';
 import {
+  buildSyntheticGeneratedLibraryApp,
   generatedAppLibraryId,
   mapStoredGeneratedAppToLibraryApp,
   parseGeneratedLibraryServerId,
@@ -51,6 +52,32 @@ describe('generatedAppLibrary', () => {
 
     expect(first.icon).toBe('calculator');
     expect(first.gradient).toBe(second.gradient);
+  });
+
+  it('keeps gradient stable when title changes for the same server id', () => {
+    const before = mapStoredGeneratedAppToLibraryApp({
+      id: 3,
+      title: 'App #3',
+      app_type: 'general',
+    });
+    const after = mapStoredGeneratedAppToLibraryApp({
+      id: 3,
+      title: '실제 앱 이름',
+      app_type: 'general',
+    });
+
+    expect(before.gradient).toBe(after.gradient);
+  });
+
+  it('buildSyntheticGeneratedLibraryApp matches catalog gradient after API load', () => {
+    const catalog = mapStoredGeneratedAppToLibraryApp({
+      id: 9,
+      title: 'Real Name',
+      app_type: 'general',
+    });
+    const synthetic = buildSyntheticGeneratedLibraryApp('generated-app-9');
+
+    expect(synthetic?.gradient).toBe(catalog.gradient);
   });
 
   it('resolveMainAppsFromOrder omits generated-app ids that are not in the validated library', () => {

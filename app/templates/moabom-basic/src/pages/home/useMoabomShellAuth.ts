@@ -4,6 +4,7 @@ import { ensureMoabomShellAuthPreloaded } from '../../runtime/moabomShellAuthPre
 import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
 import { syncMoabomWebSocketAuth } from '../../runtime/moabomWebSocketAuthSync';
 import { clearShellAccessToken, getShellAccessToken } from '../../api/moabomShellAccess';
+import { installShellAuthStateKeyBridge, syncShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { buildMoaCurrentUser, type AuthUserLike, type MoaCurrentUser } from '../../shell/moaShellTypes';
 
 interface UseMoabomShellAuthOptions {
@@ -37,12 +38,15 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
     (authenticated: boolean, user: AuthUserLike | null | undefined) => {
       if (authenticated && user) {
         setIsLoggedIn(true);
-        setCurrentUser(buildMoaCurrentUser(user, nameFallback));
+        const nextUser = buildMoaCurrentUser(user, nameFallback);
+        setCurrentUser(nextUser);
+        syncShellAuthStateKey(nextUser?.memberKey);
         syncMoabomWebSocketAuth(true);
         return;
       }
       setIsLoggedIn(false);
       setCurrentUser(null);
+      syncShellAuthStateKey(null);
       syncMoabomWebSocketAuth(false);
     },
     [nameFallback],
@@ -50,12 +54,17 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
 
   useEffect(() => {
     bootstrapMoabomShellAuthConfig();
+    const teardownAuthBridge = installShellAuthStateKeyBridge();
 
     const authManager = getAuthManager();
+    let cancelled = false;
+
     if (!authManager) {
       setIsLoggedIn(false);
       setCurrentUser(null);
-      return;
+      return () => {
+        teardownAuthBridge();
+      };
     }
 
     const onAuthChange = (...args: unknown[]) => {
@@ -64,7 +73,6 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
     };
     authManager.on('authStateChange', onAuthChange);
 
-    let cancelled = false;
     void (async () => {
       if (authManager.isAuthenticated() && authManager.getUser()) {
         if (!cancelled) applyAuthState(true, authManager.getUser());
@@ -92,6 +100,7 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
 
     return () => {
       cancelled = true;
+      teardownAuthBridge();
     };
   }, [applyAuthState]);
 

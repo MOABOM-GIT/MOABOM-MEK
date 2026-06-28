@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { memo, Suspense } from 'react';
 import type { AuthWindowMode } from '../../components/composite/Moa_AuthWindowContent';
 import type { WindowState } from '../../components/composite/Moa_CenterPanel';
 import type { MyPageTab } from '../../components/composite/mypage/myPageTypes';
@@ -7,6 +7,10 @@ import { GeneratedAppViewer } from '../../apps/generated/GeneratedAppViewer';
 import { HospitalInfoApp } from '../../apps/hospital-info/HospitalInfoApp';
 import { hospitalInfoAppMetadata } from '../../apps/hospital-info/metadata';
 import { parseGeneratedLibraryServerId } from '../../apps/generatedAppLibrary';
+import {
+  isMoaShellAppCommunityAppId,
+  parseAppCommunityServerId,
+} from '../../shell/moaShellAppCommunityIds';
 import type { App } from '../../data/Moa_apps';
 import type { MoabomTranslateFn } from '../../i18n/moabomT';
 import {
@@ -28,6 +32,7 @@ import { MoabomShellAppFromChunk } from './MoabomShellAppFromChunk';
 import type { AuthUserLike, MoaCurrentUser, ShellUrlSync } from '../../shell/moaShellTypes';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../../types/moabomSystem';
 import type { Dispatch, SetStateAction } from 'react';
+import { areShellWindowRendererPropsEqual } from '../../shell/moaShellWindowRendererCompare';
 
 const AuthWindowContentLazy = React.lazy(async () => {
   const m = await import('../../components/composite/Moa_AuthWindowContent');
@@ -59,10 +64,17 @@ const UserProfileWindowHostLazy = React.lazy(async () => {
   return { default: m.UserProfileWindowHost };
 });
 
+const AppCommunityWindowLazy = React.lazy(async () => {
+  const m = await import('../../apps/app-community/AppCommunityWindow');
+  return { default: m.AppCommunityWindow };
+});
+
 export interface Moa_ShellWindowRendererProps {
   win: WindowState;
   t: MoabomTranslateFn;
   compactWindow: boolean;
+  /** 로그인 memberKey — 권한 창 리렌더 최소화용 primitive */
+  authStateKey: string;
   currentUser: MoaCurrentUser | null;
   createdApps: App[];
   createdAppsLoading?: boolean;
@@ -79,6 +91,7 @@ export interface Moa_ShellWindowRendererProps {
   onEditGeneratedApp: (serverId: number) => void;
   onDeleteGeneratedApp: (serverId: number) => void;
   onToggleGeneratedAppShare: (serverId: number, nextShared: boolean) => void | Promise<void>;
+  onOpenAppCommunity?: (serverId: number, options?: { title?: string; canWrite?: boolean }) => void;
   onOpenAuthWindow: (mode: AuthWindowMode) => void;
   onAuthenticated: (user?: AuthUserLike | null) => void;
   onProfileUpdated: (user?: AuthUserLike | null) => void;
@@ -86,15 +99,17 @@ export interface Moa_ShellWindowRendererProps {
   onOpenBoard: (slug: string, postId?: string, sync?: ShellUrlSync) => void;
   onLegalPageTitleResolved: (windowId: string, title: string) => void;
   onBoardWindowTitleResolved: (windowId: string, title: string) => void;
+  onGeneratedAppWindowTitleResolved: (windowId: string, title: string) => void;
   onUserProfileWindowTitleResolved: (windowId: string, title: string) => void;
   onUserProfileViewChange: (windowId: string, view: import('../../shell/userProfileWindowLayoutRuntime').UserProfileWindowView) => void;
   onErrorWindowTitleResolved: (windowId: string, title: string) => void;
 }
 
-export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = ({
+export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
   win,
   t,
   compactWindow,
+  authStateKey,
   currentUser,
   createdApps,
   createdAppsLoading = false,
@@ -106,6 +121,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   onEditGeneratedApp,
   onDeleteGeneratedApp,
   onToggleGeneratedAppShare,
+  onOpenAppCommunity,
   onOpenAuthWindow,
   onAuthenticated,
   onProfileUpdated,
@@ -113,10 +129,11 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
   onOpenBoard,
   onLegalPageTitleResolved,
   onBoardWindowTitleResolved,
+  onGeneratedAppWindowTitleResolved,
   onUserProfileWindowTitleResolved,
   onUserProfileViewChange,
   onErrorWindowTitleResolved,
-}) => {
+}: Moa_ShellWindowRendererProps) {
   if ((AUTH_WINDOW_APP_IDS as readonly string[]).includes(win.appId)) {
     return (
       <Suspense
@@ -193,7 +210,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           boardSlug={win.boardSlug ?? moaShellBoardSlugFromAppId(win.appId) ?? undefined}
           boardPostId={win.boardPostId}
           boardMode={win.boardMode}
-          authStateKey={currentUser?.memberKey ?? ''}
+          authStateKey={authStateKey}
           onResolvedTitle={title => onBoardWindowTitleResolved(win.id, title)}
         />
       </Suspense>
@@ -212,7 +229,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
           appId={win.appId}
           userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
           userProfileView={win.userProfileView ?? 'profile'}
-          authStateKey={currentUser?.memberKey ?? ''}
+          authStateKey={authStateKey}
           onResolvedTitle={title => onUserProfileWindowTitleResolved(win.id, title)}
           onViewChange={view => onUserProfileViewChange(win.id, view)}
         />
@@ -235,14 +252,37 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
     );
   }
 
+  if (isMoaShellAppCommunityAppId(win.appId)) {
+    const communityServerId = win.appCommunityServerId ?? parseAppCommunityServerId(win.appId);
+    if (communityServerId != null) {
+      return (
+        <Suspense
+          fallback={(
+            <AppLoadingSpinner label={t('moa_apps_ai.community.loading')} fill />
+          )}
+        >
+          <AppCommunityWindowLazy
+            serverId={communityServerId}
+            appTitle={win.appCommunityTitle}
+            authStateKey={authStateKey}
+            onAuthRequired={() => onOpenAuthWindow('login')}
+          />
+        </Suspense>
+      );
+    }
+  }
+
   const generatedServerId = parseGeneratedLibraryServerId(win.appId);
   if (generatedServerId != null) {
     return (
       <GeneratedAppViewer
         serverId={generatedServerId}
+        authStateKey={authStateKey}
         onEditGeneratedApp={onEditGeneratedApp}
         onDeleteGeneratedApp={onDeleteGeneratedApp}
         onToggleGeneratedAppShare={onToggleGeneratedAppShare}
+        onOpenAppCommunity={onOpenAppCommunity}
+        onResolvedTitle={title => onGeneratedAppWindowTitleResolved(win.id, title)}
       />
     );
   }
@@ -252,6 +292,7 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
       <MoabomShellAppFromChunk
         appId={win.appId}
         editGeneratedAppId={win.editGeneratedAppId}
+        authStateKey={authStateKey}
       />
     );
   }
@@ -267,4 +308,4 @@ export const Moa_ShellWindowRenderer: React.FC<Moa_ShellWindowRendererProps> = (
       </Div>
     </Div>
   );
-};
+}, areShellWindowRendererPropsEqual);

@@ -34,6 +34,10 @@ export const BOARD_WINDOW_HEIGHT = 760;
 export const USER_PROFILE_WINDOW_WIDTH = 920;
 export const USER_PROFILE_WINDOW_HEIGHT = 680;
 
+/** 앱 리뷰 셸 창 기본 크기 */
+export const APP_COMMUNITY_WINDOW_WIDTH = 520;
+export const APP_COMMUNITY_WINDOW_HEIGHT = 640;
+
 /** G7 errors JSON 에러 윈도우 기본 크기 */
 export const ERROR_WINDOW_WIDTH = 480;
 export const ERROR_WINDOW_HEIGHT = 360;

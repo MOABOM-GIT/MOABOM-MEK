@@ -61,24 +61,37 @@ export function injectAiPreviewSafety(html: string): string {
   if (!html) return '';
 
   const stripped = stripPreviewIncompatibleMarkup(html);
-  if (stripped.includes('id="moabom-ai-preview-safety"')) {
+  const hasSafetyStyle = stripped.includes('id="moabom-ai-preview-safety"');
+  const hasCsp = /http-equiv=["']Content-Security-Policy["']/i.test(stripped);
+
+  if (hasSafetyStyle && hasCsp) {
+    return stripped;
+  }
+
+  const injections: string[] = [];
+  if (!hasCsp) {
+    injections.push(SAFETY_CSP_META);
+  }
+  if (!hasSafetyStyle) {
+    injections.push(SAFETY_STYLE);
+  }
+  const bundle = injections.join('');
+  if (bundle === '') {
     return stripped;
   }
 
   const headOpen = stripped.match(/<head[^>]*>/i);
   if (headOpen && stripped.includes('</head>')) {
-    return stripped
-      .replace(headOpen[0], `${headOpen[0]}${SAFETY_CSP_META}`)
-      .replace('</head>', `${SAFETY_STYLE}</head>`);
+    return stripped.replace(headOpen[0], `${headOpen[0]}${bundle}`);
   }
   if (stripped.includes('</head>')) {
-    return stripped.replace('</head>', `${SAFETY_CSP_META}${SAFETY_STYLE}</head>`);
+    return stripped.replace('</head>', `${bundle}</head>`);
   }
   if (stripped.includes('<body')) {
-    return stripped.replace('<body', `<head>${SAFETY_CSP_META}${SAFETY_STYLE}</head><body`);
+    return stripped.replace('<body', `<head>${bundle}</head><body`);
   }
 
-  return stripped;
+  return bundle + stripped;
 }
 
 export function extractCompleteHtml(input: string): string {

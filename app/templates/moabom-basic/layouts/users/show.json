@@ -193,14 +193,14 @@
                       "type": "basic",
                       "name": "Div",
                       "props": {
-                        "className": "px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+                        "className": "moa-user-profile-section-header flex items-center justify-between"
                       },
                       "children": [
                         {
                           "type": "basic",
                           "name": "H3",
                           "props": {
-                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                            "className": "moa-user-profile-section-title"
                           },
                           "text": "$t:user.profile.recent_posts"
                         },
@@ -260,14 +260,14 @@
                       "type": "basic",
                       "name": "Div",
                       "props": {
-                        "className": "px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+                        "className": "moa-user-profile-section-header flex items-center justify-between"
                       },
                       "children": [
                         {
                           "type": "basic",
                           "name": "H3",
                           "props": {
-                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                            "className": "moa-user-profile-section-title"
                           },
                           "text": "$t:user.profile.recent_posts"
                         },

@@ -1,72 +1,78 @@
-import { useEffect, useState } from 'react';
-import { fetchVisibleGeneratedApp, type StoredGeneratedApp } from '../../api/moabomAppsApi';
+import { useEffect, useRef, useState } from 'react';
+import { type StoredGeneratedApp } from '../../api/moabomAppsApi';
+import { loadVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
 import { useMoabomShellT } from 'moabom-shell-i18n';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
 import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
+import { isShellAuthMember, useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 import { resolveGeneratedAppFrameUrl, generatedAppFrameSandbox } from './generatedAppPreviewUrl';
+import { useGeneratedAppToolbarDrag } from './useGeneratedAppToolbarDrag';
 
 export interface GeneratedAppViewerProps {
   serverId: number;
+  authStateKey?: string;
   onEditGeneratedApp?: (serverId: number) => void;
   onDeleteGeneratedApp?: (serverId: number) => void;
   onToggleGeneratedAppShare?: (serverId: number, nextShared: boolean) => void | Promise<void>;
+  onOpenAppCommunity?: (serverId: number, options?: { title?: string; canWrite?: boolean }) => void;
+  onResolvedTitle?: (title: string) => void;
 }
 
 export function GeneratedAppViewer({
   serverId,
+  authStateKey: authStateKeyProp,
   onEditGeneratedApp,
   onDeleteGeneratedApp,
   onToggleGeneratedAppShare,
+  onOpenAppCommunity,
+  onResolvedTitle,
 }: GeneratedAppViewerProps) {
   const { t } = useMoabomShellT();
+  const storeAuthStateKey = useShellAuthStateKey();
+  const authStateKey = authStateKeyProp ?? storeAuthStateKey;
+  const isMember = isShellAuthMember(authStateKey);
   const [app, setApp] = useState<StoredGeneratedApp | null>(null);
   const [frameUrl, setFrameUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMember, setIsMember] = useState(false);
-
-  useEffect(() => {
-    const authManager = (window as { G7Core?: any }).G7Core?.AuthManager?.getInstance?.();
-    if (!authManager) {
-      setIsMember(false);
-      return;
-    }
-    const apply = () => setIsMember(Boolean(authManager.isAuthenticated?.() && authManager.getUser?.()));
-    apply();
-    const off = authManager.on?.('authStateChange', (state: { isAuthenticated?: boolean; user?: unknown }) => {
-      setIsMember(Boolean(state?.isAuthenticated && state?.user));
-    });
-
-    return () => {
-      if (typeof off === 'function') {
-        off();
-      }
-    };
-  }, []);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const {
+    toolbarStyle,
+    isDragging,
+    resetPosition,
+    ownerPointerHandlers,
+    shouldSuppressOwnerClick,
+  } = useGeneratedAppToolbarDrag(containerRef, toolbarRef);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setError('');
     setIsMenuOpen(false);
+    resetPosition();
     setApp(null);
     setFrameUrl(null);
     setTitle('');
 
     void (async () => {
       try {
-        const loaded = await fetchVisibleGeneratedApp(serverId);
+        const loaded = await loadVisibleGeneratedAppSession(serverId, authStateKey);
         if (cancelled) {
           return;
         }
         setApp(loaded);
-        setTitle(loaded.title?.trim() || `App #${loaded.id}`);
+        const resolvedTitle = loaded.title?.trim() || `App #${loaded.id}`;
+        setTitle(resolvedTitle);
+        if (loaded.title?.trim()) {
+          onResolvedTitle?.(resolvedTitle);
+        }
         setFrameUrl(resolveGeneratedAppFrameUrl(loaded));
       } catch (err) {
         if (!cancelled) {
@@ -82,7 +88,17 @@ export function GeneratedAppViewer({
     return () => {
       cancelled = true;
     };
-  }, [serverId, t]);
+  }, [serverId, t, authStateKey, onResolvedTitle, resetPosition]);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [authStateKey]);
+
+  useEffect(() => {
+    if (isDragging) {
+      setIsMenuOpen(false);
+    }
+  }, [isDragging]);
 
   const ownerNickname = app?.owner?.nickname?.trim() || '';
   const permissions = app?.permissions;
@@ -111,7 +127,9 @@ export function GeneratedAppViewer({
   const canEdit = Boolean(isMember && permissions?.can_edit && onEditGeneratedApp);
   const canShare = Boolean(isMember && permissions?.can_share && onToggleGeneratedAppShare);
   const canDelete = Boolean(isMember && permissions?.can_delete && onDeleteGeneratedApp);
-  const hasActions = canEdit || canShare || canDelete;
+  const canCommunityRead = Boolean(permissions?.can_community_read !== false && onOpenAppCommunity);
+  const canCommunityWrite = Boolean(isMember && permissions?.can_community_write);
+  const hasActions = canEdit || canShare || canDelete || canCommunityRead;
 
   if (isLoading) {
     return (
@@ -143,19 +161,30 @@ export function GeneratedAppViewer({
   }
 
   return (
-    <Div className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} relative h-full min-h-0 flex-1 overflow-hidden`}>
-      {ownerNickname || canEdit || canShare || canDelete ? (
-        <Div className="generated-app-toolbar">
+    <Div
+      ref={containerRef}
+      className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} relative h-full min-h-0 flex-1 overflow-hidden`}
+    >
+      {ownerNickname || canEdit || canShare || canDelete || canCommunityRead ? (
+        <Div
+          ref={toolbarRef}
+          className={`generated-app-toolbar ${isDragging ? 'is-dragging' : ''}`}
+          style={toolbarStyle}
+        >
           <Button
             type="button"
             aria-label={ownerNickname || t('moa_apps_ai.preview_title')}
             title={ownerNickname || t('moa_apps_ai.preview_title')}
+            {...ownerPointerHandlers}
             onClick={() => {
+              if (shouldSuppressOwnerClick()) {
+                return;
+              }
               if (hasActions) {
                 setIsMenuOpen(open => !open);
               }
             }}
-            className={`liquid-glass generated-app-owner-button ${hasActions ? 'is-actionable' : 'is-static'} ${hasActions && isMenuOpen ? 'is-open' : ''}`}
+            className={`liquid-glass generated-app-owner-button ${hasActions ? 'is-actionable' : 'is-draggable'} ${hasActions && isMenuOpen ? 'is-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
           >
             {hasActions ? (
               <Icon
@@ -179,9 +208,7 @@ export function GeneratedAppViewer({
                   aria-label={t('moa_mypage.library.edit_app')}
                   title={t('moa_mypage.library.edit_app')}
                   onClick={() => onEditGeneratedApp?.(serverId)}
-                  variant="neutral"
-                  size="xs"
-                  className="generated-app-action-button is-edit"
+                  className="moa-btn moa-btn-xs generated-app-action-button is-edit"
                 >
                   <Icon name="edit" />
                   <Span>{t('moa_mypage.library.edit_app')}</Span>
@@ -193,9 +220,7 @@ export function GeneratedAppViewer({
                   aria-label={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
                   title={t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}
                   onClick={handleToggleShare}
-                  variant="neutral"
-                  size="xs"
-                  className="generated-app-action-button is-share"
+                  className="moa-btn moa-btn-xs generated-app-action-button is-share"
                 >
                   <Icon name={isPublished ? 'share-alt' : 'share'} />
                   <Span>{t(isPublished ? 'moa_mypage.library.unshare_app' : 'moa_mypage.library.share_app')}</Span>
@@ -207,12 +232,28 @@ export function GeneratedAppViewer({
                   aria-label={t('moa_mypage.library.delete_app')}
                   title={t('moa_mypage.library.delete_app')}
                   onClick={() => onDeleteGeneratedApp?.(serverId)}
-                  variant="neutral"
-                  size="xs"
-                  className="generated-app-action-button is-danger"
+                  className="moa-btn moa-btn-xs generated-app-action-button is-danger"
                 >
                   <Icon name="trash" />
                   <Span>{t('moa_mypage.library.delete_app')}</Span>
+                </Button>
+              ) : null}
+              {canCommunityRead ? (
+                <Button
+                  type="button"
+                  aria-label={t('moa_apps_ai.community.open')}
+                  title={t('moa_apps_ai.community.open')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenAppCommunity?.(serverId, {
+                      title: title || app?.title,
+                      canWrite: canCommunityWrite,
+                    });
+                  }}
+                  className="moa-btn moa-btn-xs generated-app-action-button is-community"
+                >
+                  <Icon name="comments" />
+                  <Span>{t('moa_apps_ai.community.open')}</Span>
                 </Button>
               ) : null}
             </Div>

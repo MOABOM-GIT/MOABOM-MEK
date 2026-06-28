@@ -1,12 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Moabom\Apps\Http\Controllers\Admin\AppCommunityAdminController;
 use Modules\Moabom\Apps\Http\Controllers\Admin\GeneratedAppAdminController;
 use Modules\Moabom\Apps\Http\Controllers\AiAppController;
 use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
 use Modules\Moabom\Apps\Http\Controllers\AiStreamQueueController;
+use Modules\Moabom\Apps\Http\Controllers\AppCommunityController;
 use Modules\Moabom\Apps\Http\Controllers\GeneratedAppWebsiteIconController;
 use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
+use Modules\Moabom\Apps\Http\Controllers\PublicUserGeneratedAppController;
 use Modules\Moabom\Apps\Http\Controllers\WebsiteLinkController;
 
 /*
@@ -31,6 +34,23 @@ Route::prefix('apps')->middleware(['optional.sanctum'])->group(function () {
     Route::get('generated/{id}/website-icon', [GeneratedAppWebsiteIconController::class, 'show'])
         ->whereNumber('id')
         ->name('apps.generated.website_icon');
+
+    Route::prefix('generated/{id}/community')->whereNumber('id')->group(function (): void {
+        Route::get('summary', [AppCommunityController::class, 'summary'])
+            ->name('apps.generated.community.summary');
+        Route::get('posts', [AppCommunityController::class, 'index'])
+            ->name('apps.generated.community.posts.index');
+        Route::get('posts/{postId}', [AppCommunityController::class, 'show'])
+            ->whereNumber('postId')
+            ->name('apps.generated.community.posts.show');
+    });
+});
+
+Route::prefix('users/{user:uuid}')->middleware(['optional.sanctum', 'throttle:600,1'])->group(function (): void {
+    Route::get('generated-apps', [PublicUserGeneratedAppController::class, 'index'])
+        ->name('users.generated_apps.index');
+    Route::get('frequent-apps', [PublicUserGeneratedAppController::class, 'frequent'])
+        ->name('users.frequent_apps.index');
 });
 
 Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
@@ -81,6 +101,20 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
     Route::delete('generated/{id}', [AiAppController::class, 'destroy'])
         ->whereNumber('id')
         ->name('apps.generated.destroy');
+
+    Route::prefix('generated/{id}/community')->whereNumber('id')->group(function (): void {
+        Route::post('posts', [AppCommunityController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('apps.generated.community.posts.store');
+        Route::put('posts/{postId}', [AppCommunityController::class, 'update'])
+            ->whereNumber('postId')
+            ->middleware('throttle:30,1')
+            ->name('apps.generated.community.posts.update');
+        Route::delete('posts/{postId}', [AppCommunityController::class, 'destroy'])
+            ->whereNumber('postId')
+            ->middleware('throttle:30,1')
+            ->name('apps.generated.community.posts.destroy');
+    });
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -100,5 +134,23 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
             ->whereNumber('id')
             ->middleware('permission:admin,moabom-apps.generated.manage')
             ->name('admin.generated-apps.destroy');
+    });
+
+    Route::prefix('app-community')->group(function (): void {
+        Route::get('posts', [AppCommunityAdminController::class, 'index'])
+            ->middleware('permission:admin,moabom-apps.community.read')
+            ->name('admin.app-community.posts.index');
+        Route::get('posts/{id}', [AppCommunityAdminController::class, 'show'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.community.read')
+            ->name('admin.app-community.posts.show');
+        Route::patch('posts/{id}/status', [AppCommunityAdminController::class, 'updateStatus'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.community.manage')
+            ->name('admin.app-community.posts.status');
+        Route::delete('posts/{id}', [AppCommunityAdminController::class, 'destroy'])
+            ->whereNumber('id')
+            ->middleware('permission:admin,moabom-apps.community.manage')
+            ->name('admin.app-community.posts.destroy');
     });
 });

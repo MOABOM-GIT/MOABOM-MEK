@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import { Button, type ButtonProps } from '../../basic/Button';
 import { Div } from '../../basic/Div';
@@ -16,6 +16,7 @@ import { APP_STACK_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import AppLoadingSpinner from '../AppLoadingSpinner';
 import { useWeatherStatusLabel } from '../../../runtime/weather/useWeatherStatusLabel';
+import { prefetchWeatherEffectChunk } from '../../../runtime/weather/weatherEffectChunkPrefetch';
 
 interface MyPageSettingsTabProps {
   t: MoabomTranslateFn;
@@ -178,6 +179,10 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
     () => systemOptions.filter(option => option.id !== 'haptic' || hapticSupported),
     [systemOptions, hapticSupported],
   );
+
+  useEffect(() => {
+    prefetchWeatherEffectChunk();
+  }, []);
 
   /*
    * 날씨 토글 옆 현재 상태 텍스트("흐림 · 14°C"). 토글이 켜지고(애니메이션 잠김 제외)

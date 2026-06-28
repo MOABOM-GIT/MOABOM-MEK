@@ -41,6 +41,10 @@ export function getShellBootApps(): ShellAppManifest[] {
   return bootApps;
 }
 
+export function isShellBootAppId(appId: string): boolean {
+  return bootApps.some(app => app.id === appId);
+}
+
 /** 매니페스트가 선언한 청크 파일명 (정적 맵에 없을 때 로더 폴백). */
 export function shellBootChunkFileFor(appId: string): string | undefined {
   const manifest = bootApps.find(a => a.id === appId);

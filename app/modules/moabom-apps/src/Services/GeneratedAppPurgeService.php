@@ -6,6 +6,7 @@ namespace Modules\Moabom\Apps\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Support\GeneratedAppAdminScope;
@@ -21,6 +22,7 @@ class GeneratedAppPurgeService
     public function __construct(
         private readonly GeneratedAppHostingService $hostingService,
         private readonly GeneratedAppRepository $appRepository,
+        private readonly AppCommunityPostRepositoryInterface $communityPostRepository,
         private readonly WebsiteLinkIconStorageService $websiteLinkIconStorage,
         private readonly TenantRegistry $tenantRegistry,
         private readonly TenantDatabaseConfigurator $databaseConfigurator,
@@ -41,6 +43,7 @@ class GeneratedAppPurgeService
     {
         $this->websiteLinkIconStorage->purgeForApp($app);
         $this->hostingService->teardownHosted($app);
+        $this->communityPostRepository->hardDeleteByAppId((int) $app->id);
         $this->purgeTenantSessions($app);
         $this->purgeTenantLegacyStore($app);
         $this->appRepository->delete($app);

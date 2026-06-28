@@ -115,19 +115,28 @@ export interface GeneratedAppPermissions {
   can_share: boolean;
   can_delete: boolean;
   edit_mode: 'owner' | 'remix' | 'none';
+  can_community_read?: boolean;
+  can_community_write?: boolean;
+}
+
+export interface GeneratedAppCommunityStats {
+  rating_avg: number | null;
+  rating_count: number;
+  post_count: number;
 }
 
 export interface StoredGeneratedApp extends StoreGeneratedAppPayload, GeneratedAppPreviewFields {
   id: number;
   owner?: GeneratedAppOwner;
   permissions?: GeneratedAppPermissions;
+  community?: GeneratedAppCommunityStats;
   created_at?: string | null;
 }
 
 /** 목록 조회 응답 항목 (HTML 제외) */
 export type StoredGeneratedAppSummary = Pick<
   StoredGeneratedApp,
-  'id' | 'title' | 'app_type' | 'tier' | 'preview_url' | 'hosted_subdomain' | 'model_id' | 'prompt' | 'visibility' | 'is_shared' | 'metadata' | 'owner' | 'permissions' | 'created_at'
+  'id' | 'title' | 'app_type' | 'tier' | 'preview_url' | 'hosted_subdomain' | 'model_id' | 'prompt' | 'visibility' | 'is_shared' | 'metadata' | 'owner' | 'permissions' | 'community' | 'created_at'
 >;
 
 export interface CpapUserProfile {
