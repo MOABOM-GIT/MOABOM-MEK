@@ -276,4 +276,115 @@ describe('GeneratedAppViewer', () => {
     expect(toolbar.style.left).not.toBe('');
     expect(toolbar.style.top).not.toBe('');
   });
+
+  it('keeps loading overlay until iframe readiness signals arrive', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 7,
+      title: 'Sleep Tracker',
+      app_type: 'general',
+      html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
+      owner: { id: 1, nickname: 'A' },
+    });
+
+    renderViewer(7);
+
+    await screen.findByTitle('Sleep Tracker');
+    expect(screen.getByRole('status', { name: 'moa_apps_ai.viewer_loading' })).toBeInTheDocument();
+
+    const frame = screen.getByTitle('Sleep Tracker') as HTMLIFrameElement;
+    Object.defineProperty(frame, 'contentWindow', {
+      configurable: true,
+      value: window,
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: { source: 'moabom-app', type: 'backdrop-tone', tone: 'light' },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: 'moa_apps_ai.viewer_loading' })).not.toBeInTheDocument();
+    });
+    expect(frame.className).toContain('is-ready');
+  });
+
+  it('does not treat a hidden browser tab as an app freeze', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 7,
+      title: 'Sleep Tracker',
+      app_type: 'general',
+      html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://smoke.mek360.com/modules/moabom-apps/preview/g/7',
+      owner: { id: 1, nickname: 'A' },
+    });
+
+    renderViewer(7);
+    await screen.findByTitle('Sleep Tracker');
+
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+
+    vi.useFakeTimers();
+    try {
+      document.dispatchEvent(new Event('visibilitychange'));
+      vi.advanceTimersByTime(20_000);
+      expect(screen.queryByText('moa_apps_ai.frozen_title')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      if (visibilityDescriptor) {
+        Object.defineProperty(document, 'visibilityState', visibilityDescriptor);
+      }
+    }
+  });
+
+  it('downloads files from iframe postMessage in parent document', async () => {
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 7,
+      title: 'EngiCalc',
+      app_type: 'general',
+      html: '<!DOCTYPE html><html><head></head><body><p>Hello</p></body></html>',
+      preview_url: 'https://26.apps.mek360.com/',
+      owner: { id: 1, nickname: 'A' },
+    });
+
+    const click = vi.fn();
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+      Object.defineProperty(node, 'click', { value: click });
+      return node;
+    });
+    vi.spyOn(HTMLElement.prototype, 'remove').mockImplementation(() => {});
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    renderViewer(7);
+
+    const frame = await screen.findByTitle('EngiCalc');
+    const iframe = frame as HTMLIFrameElement;
+    Object.defineProperty(iframe, 'contentWindow', {
+      configurable: true,
+      value: window,
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          source: 'moabom-app',
+          type: 'file-download',
+          filename: 'calc-log.csv',
+          mimeType: 'text/csv',
+          encoding: 'utf8',
+          data: 'a,b,c',
+        },
+      }),
+    );
+
+    expect(click).toHaveBeenCalledTimes(1);
+  });
 });

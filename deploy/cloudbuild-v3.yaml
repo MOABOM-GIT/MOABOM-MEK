@@ -1,6 +1,6 @@
 # 태그는 substitutions._IMAGE_TAG 한 곳만 수정 (build -t / images 자동 동기화)
 substitutions:
-  _IMAGE_TAG: v395
+  _IMAGE_TAG: v402
   _SKIP_INNER_CHECK: 'false'
 
 steps:

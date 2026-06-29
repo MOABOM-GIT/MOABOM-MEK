@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "moabom 사용자 템플릿 라우트 정의",
   "routes": [
     {
@@ -36,7 +36,7 @@
     },
     {
       "path": "/app/:id",
-      "layout": "home",
+      "layout": "seo/app_detail",
       "auth_required": false,
       "meta": {
         "title": "앱"
@@ -44,7 +44,7 @@
     },
     {
       "path": "/apps",
-      "layout": "home",
+      "layout": "seo/apps_index",
       "auth_required": false,
       "meta": {
         "title": "MOABOM APPS"

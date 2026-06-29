@@ -1,4 +1,5 @@
 import type { AuthWindowMode } from '../components/composite/Moa_AuthWindowContent';
+import type { MyPageTab } from '../components/composite/mypage/myPageTypes';
 import type { BoardShellMode } from '../utils/moabomShellRoutes';
 import type { UserProfileWindowView } from './userProfileWindowLayoutRuntime';
 import { isMoaShellBoardAppId } from './moaShellBoardIds';
@@ -24,6 +25,10 @@ export interface MoaShellBoardBridge {
   openBoard: (slug: string, postId?: string, options?: MoaShellBoardOpenOptions) => void;
   openAuth: (mode: AuthWindowMode) => void;
   openUserProfile?: (userUuid: string, view?: UserProfileWindowView, options?: MoaShellUserProfileOpenOptions) => void;
+  /** `/app/{id}` — 기존 창 포커스·없으면 추가. 다른 창은 유지한다. */
+  openAppById?: (appId: string, options?: MoaShellBoardOpenOptions) => void;
+  /** `/me/{tab}` */
+  openMyPage?: (tab: MyPageTab, options?: MoaShellBoardOpenOptions) => void;
 }
 
 export function notifyBoardShellUrlChanged(): void {

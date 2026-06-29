@@ -22,6 +22,7 @@ class StreamAiAppRequest extends FormRequest
         $continue = $this->boolean('continue');
 
         return [
+            'title' => ['sometimes', 'nullable', 'string', 'max:200'],
             'prompt' => $continue
                 ? ['nullable', 'string', 'max:8000']
                 : ['required', 'string', 'min:5', 'max:8000'],

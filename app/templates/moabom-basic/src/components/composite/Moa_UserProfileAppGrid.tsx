@@ -9,6 +9,7 @@ import { Div } from '../basic/Div';
 import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
 import { Moa_HorizontalPointerStrip } from './Moa_HorizontalPointerStrip';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
+import { openMoabomShellApp } from '../../shell/openMoabomShellApp';
 import { mapUserProfileAppItemToLibraryApp } from './userProfile/mapUserProfileAppItem';
 
 export interface MoaUserProfileAppGridProps {
@@ -57,10 +58,10 @@ export const Moa_UserProfileAppGrid: React.FC<MoaUserProfileAppGridProps> = ({
   }, [libraryApps]);
 
   const openAppById = useCallback((appId: string) => {
-    if (!appsById.has(appId) || typeof G7Core === 'undefined') {
+    if (!appsById.has(appId)) {
       return;
     }
-    G7Core.dispatch({ handler: 'navigate', params: { path: `/app/${appId}` } });
+    openMoabomShellApp(appId);
   }, [appsById]);
 
   if (libraryApps.length === 0) {

@@ -34,7 +34,7 @@ export interface MyPageWindowContentProps {
   /** 저장 AI 앱 편집 (create-app 셸) */
   onEditGeneratedApp?: (serverId: number) => void;
   /** 저장 AI 앱 영구 삭제 */
-  onDeleteGeneratedApp?: (serverId: number) => void;
+  onDeleteGeneratedApp?: (serverId: number, displayTitle?: string) => void;
   /** 저장 AI 앱 공유 토글 */
   onToggleGeneratedAppShare?: (serverId: number, nextShared: boolean) => void;
   /** 서버에 저장된 AI 생성 앱 목록(홈/좌측 패널과 동기화) */

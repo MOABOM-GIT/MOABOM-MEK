@@ -89,7 +89,7 @@ export interface Moa_ShellWindowRendererProps {
   resolveWinTitle: (win: WindowState) => string;
   onOpenApp: (app: App) => void;
   onEditGeneratedApp: (serverId: number) => void;
-  onDeleteGeneratedApp: (serverId: number) => void;
+  onDeleteGeneratedApp: (serverId: number, displayTitle?: string) => void;
   onToggleGeneratedAppShare: (serverId: number, nextShared: boolean) => void | Promise<void>;
   onOpenAppCommunity?: (serverId: number, options?: { title?: string; canWrite?: boolean }) => void;
   onOpenAuthWindow: (mode: AuthWindowMode) => void;

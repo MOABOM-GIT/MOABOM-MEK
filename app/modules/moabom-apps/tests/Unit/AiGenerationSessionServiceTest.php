@@ -31,6 +31,48 @@ class AiGenerationSessionServiceTest extends ModuleTestCase
         $this->assertSame('streaming', $second->status);
     }
 
+    public function test_begin_persists_form_context_for_resume(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->app->make(AiGenerationSessionService::class);
+
+        $session = $service->begin($user->id, [
+            'prompt' => '계산기 만들어줘',
+            'title' => '내 계산기',
+            'tier' => 'hosted',
+            'app_type' => 'general',
+            'model_id' => 'claude-sonnet',
+        ]);
+
+        $serialized = $service->serialize($session);
+
+        $this->assertSame('내 계산기', $serialized['title']);
+        $this->assertSame('계산기 만들어줘', $serialized['prompt']);
+        $this->assertSame('hosted', $serialized['tier']);
+    }
+
+    public function test_serialize_falls_back_to_first_user_message_for_legacy_sessions(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->app->make(AiGenerationSessionService::class);
+
+        $session = AiGenerationSession::query()->create([
+            'user_id' => $user->id,
+            'status' => 'paused',
+            'app_type' => 'general',
+            'model_id' => 'claude-sonnet',
+            'partial_raw' => '<!DOCTYPE html><html><head></head><body>wip</body></html>',
+            'messages' => [
+                ['role' => 'user', 'content' => '레거시 프롬프트'],
+                ['role' => 'assistant', 'content' => '<html></html>'],
+            ],
+        ]);
+
+        $serialized = $service->serialize($session);
+
+        $this->assertSame('레거시 프롬프트', $serialized['prompt']);
+    }
+
     public function test_find_active_for_user_returns_latest_resumable_session(): void
     {
         $user = User::factory()->create();

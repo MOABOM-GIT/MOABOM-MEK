@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { scanGeneratedAppHtmlSecurity } from '../generatedAppHtmlSecurity';
+import {
+  detectObviousInfiniteLoopRisk,
+  scanGeneratedAppHtmlSecurity,
+} from '../generatedAppHtmlSecurity';
 
 const COMPLETE_SHELL = '<!DOCTYPE html><html><head><title>x</title></head><body>';
 
@@ -35,5 +38,27 @@ describe('generatedAppHtmlSecurity', () => {
     const html = `${COMPLETE_SHELL}<p>parent.document example</p></body></html>`;
 
     expect(scanGeneratedAppHtmlSecurity(html).ok).toBe(true);
+  });
+});
+
+describe('detectObviousInfiniteLoopRisk', () => {
+  it('while(true) 동기 루프를 감지한다', () => {
+    const html = `${COMPLETE_SHELL}<script>while(true){ doStuff(); }</script></body></html>`;
+    expect(detectObviousInfiniteLoopRisk(html)).toBe(true);
+  });
+
+  it('for(;;) 동기 루프를 감지한다', () => {
+    const html = `${COMPLETE_SHELL}<script>for(;;){}</script></body></html>`;
+    expect(detectObviousInfiniteLoopRisk(html)).toBe(true);
+  });
+
+  it('requestAnimationFrame 게임 루프는 경고하지 않는다', () => {
+    const html = `${COMPLETE_SHELL}<script>function loop(){requestAnimationFrame(loop);}loop();</script></body></html>`;
+    expect(detectObviousInfiniteLoopRisk(html)).toBe(false);
+  });
+
+  it('종료 조건이 있는 일반 루프는 경고하지 않는다', () => {
+    const html = `${COMPLETE_SHELL}<script>for(let i=0;i<10;i++){}</script></body></html>`;
+    expect(detectObviousInfiniteLoopRisk(html)).toBe(false);
   });
 });

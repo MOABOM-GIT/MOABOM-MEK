@@ -43,6 +43,7 @@ return [
             'share_success' => '생성 앱 공유 상태를 변경했습니다.',
             'delete_success' => '생성 앱을 삭제했습니다.',
             'owner_unknown' => '알 수 없는 제작자',
+            'untitled_app' => '제목 없는 앱',
             'user_public_list_success' => '제작앱 목록을 조회했습니다.',
             'user_frequent_apps_success' => '자주 쓰는 앱 목록을 조회했습니다.',
             'security' => [
@@ -55,6 +56,18 @@ return [
                 'data_html_iframe' => 'data: URL iframe은 허용되지 않습니다.',
                 'save_blocked' => '보안 검사에 실패해 저장할 수 없습니다. 아래 안내를 확인해주세요.',
             ],
+        ],
+        'seo' => [
+            'list_success' => '앱 SEO 목록을 조회했습니다.',
+            'show_success' => '앱 SEO 정보를 조회했습니다.',
+            'not_found' => '공개된 앱을 찾을 수 없습니다.',
+            'index_title' => '앱 디렉터리',
+            'index_description' => '모아봄의 기본 제공 앱과 AI로 만든 공개 웹앱을 한눈에 둘러보고 바로 실행해 보세요.',
+            'open_app' => '앱 열기',
+            'open_live' => '실행 화면 보기',
+            'directory_link' => '전체 앱 디렉터리',
+            'category_basic' => '기본 제공 앱',
+            'category_user' => 'AI 제작 앱',
         ],
         'community' => [
             'summary_success' => '앱 리뷰 요약을 조회했습니다.',

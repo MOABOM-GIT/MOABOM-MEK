@@ -142,40 +142,6 @@ class Module extends AbstractModule
                     ],
                 ],
             ],
-            [
-                'type' => 'friend_removed',
-                'hook_prefix' => 'moabom-presence',
-                'name' => [
-                    'ko' => '친구 해제',
-                    'en' => 'Friend Removed',
-                ],
-                'description' => [
-                    'ko' => '내가 친구 관계를 해제하면 나에게 발송',
-                    'en' => 'Sent to you when you remove a friend',
-                ],
-                'channels' => ['database'],
-                'hooks' => ['moabom-presence.friendship.after_remove'],
-                'variables' => [
-                    ['key' => 'name', 'description' => '수신자 이름'],
-                    ['key' => 'other_name', 'description' => '해제한 친구 표시 이름'],
-                    ['key' => 'other_uuid', 'description' => '해제한 친구 UUID'],
-                ],
-                'templates' => [
-                    [
-                        'channel' => 'database',
-                        'recipients' => [['type' => 'trigger_user']],
-                        'click_url' => '/users/{other_uuid}',
-                        'subject' => [
-                            'ko' => '친구 해제',
-                            'en' => 'Friend removed',
-                        ],
-                        'body' => [
-                            'ko' => '{other_name}와 친구가 해제되었습니다.',
-                            'en' => 'You are no longer friends with {other_name}.',
-                        ],
-                    ],
-                ],
-            ],
         ];
     }
 }

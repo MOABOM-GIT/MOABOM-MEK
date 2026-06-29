@@ -72,4 +72,79 @@ return [
         'path_prefix' => '/modules/moabom-apps/preview',
         'access_token_ttl_seconds' => (int) env('MOABOM_APPS_PREVIEW_TOKEN_TTL', 7200),
     ],
+
+    /*
+     * 앱 SEO/AI 노출 (메인 사이트 /app/{id} · /apps 봇 전용 서버렌더).
+     *
+     * 노출 범위: 기본 제공 앱(AppRegistry + builtin 보강) + 전역 공개(visibility=global)
+     * 제작앱만. private/tenant 제작앱은 절대 비노출.
+     */
+    'seo' => [
+        'enabled' => filter_var(env('MOABOM_APPS_SEO_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
+        // 전역 공개 제작앱의 중복콘텐츠 방지용 canonical 호스트(빈 값이면 app.url 사용).
+        'canonical_base' => trim((string) env('MOABOM_APPS_SEO_CANONICAL_BASE', '')),
+
+        // 메인 사이트 셸 경로.
+        'detail_path_prefix' => '/app',
+        'index_path' => '/apps',
+
+        // 사이트맵에 포함할 전역 공개 제작앱 최대 개수.
+        'max_generated' => (int) env('MOABOM_APPS_SEO_MAX_GENERATED', 1000),
+
+        // robots.txt(/llms.txt) 동적 서빙 여부(코어 미보유 — 모듈이 제공).
+        'serve_robots' => filter_var(env('MOABOM_APPS_SEO_SERVE_ROBOTS', true), FILTER_VALIDATE_BOOLEAN),
+
+        // SEO 비노출 기본앱 id(개인/시스템 페이지 등).
+        'exclude' => ['mypage'],
+
+        /*
+         * app.json 미보유 기본 제공 앱 보강 카탈로그.
+         * AppRegistry(app.json)로 집계되지 않는 템플릿 전용 앱만 여기에 선언한다.
+         */
+        'builtin' => [
+            [
+                'id' => 'hospital-info',
+                'category' => 'basic',
+                'name' => ['ko' => '병원 정보', 'en' => 'Hospital Info'],
+                'description' => [
+                    'ko' => '병원 위치·진료 정보를 빠르게 찾아보는 모아봄 기본 앱',
+                    'en' => 'Find hospital locations and care information quickly on MOABOM',
+                ],
+                'keywords' => ['병원', '병원정보', 'hospital', 'clinic'],
+                'icon' => 'hospital',
+                'order' => 1,
+            ],
+            [
+                'id' => 'create-app',
+                'category' => 'basic',
+                'name' => ['ko' => 'AI 앱 만들기', 'en' => 'Create AI App'],
+                'description' => [
+                    'ko' => '설명만 입력하면 AI가 나만의 웹앱을 즉시 만들어 주는 모아봄 앱 생성기',
+                    'en' => 'Describe what you need and AI instantly builds your own web app on MOABOM',
+                ],
+                'keywords' => ['AI 앱', '앱 만들기', 'ai app builder', 'no-code', 'web app'],
+                'icon' => 'magic',
+                'order' => 2,
+            ],
+        ],
+
+        /*
+         * AI 크롤러 User-Agent 토큰(부분 일치). core.seo.resolve_is_bot 훅에서 봇으로 판정.
+         */
+        'ai_crawler_user_agents' => [
+            'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',
+            'Google-Extended', 'GoogleOther',
+            'PerplexityBot', 'Perplexity-User',
+            'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'Claude-User', 'Claude-SearchBot',
+            'CCBot', 'Bytespider', 'Amazonbot', 'Applebot-Extended',
+            'cohere-ai', 'Diffbot', 'ImagesiftBot', 'Meta-ExternalAgent', 'meta-externalagent',
+            'YouBot', 'DuckAssistBot', 'Timpibot', 'Kangaroo Bot', 'MistralAI-User',
+        ],
+    ],
+
+    'shell_rankings' => [
+        'review_avg_weight' => (int) env('MOABOM_APPS_RANKING_REVIEW_AVG_WEIGHT', 800),
+        'review_count_weight' => (int) env('MOABOM_APPS_RANKING_REVIEW_COUNT_WEIGHT', 120),
+    ],
 ];

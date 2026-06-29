@@ -13,7 +13,7 @@ class AiGenerationSessionService
     }
 
     /**
-     * @param  array{prompt: string, app_type: string, model_id: string, generated_app_id?: int|null}  $data
+     * @param  array{prompt?: string, title?: string|null, tier?: string|null, app_type?: string, model_id?: string, generated_app_id?: int|null}  $data
      */
     public function begin(int $userId, array $data, ?int $sessionId = null): AiGenerationSession
     {
@@ -24,6 +24,7 @@ class AiGenerationSessionService
                     'status' => 'streaming',
                     'app_type' => $data['app_type'],
                     'model_id' => $data['model_id'],
+                    'form_context' => $this->mergeFormContext($existing->form_context, $data),
                 ]);
             }
         }
@@ -35,6 +36,7 @@ class AiGenerationSessionService
             'status' => 'streaming',
             'app_type' => $data['app_type'],
             'model_id' => $data['model_id'],
+            'form_context' => $this->mergeFormContext(null, $data),
             'generated_app_id' => $data['generated_app_id'] ?? null,
             'messages' => [],
             'partial_raw' => '',
@@ -130,11 +132,16 @@ class AiGenerationSessionService
      */
     public function serialize(AiGenerationSession $session, bool $includePartial = true): array
     {
+        $form = $this->resolveFormContext($session);
+
         $payload = [
             'id' => $session->id,
             'status' => $session->status,
             'app_type' => $session->app_type,
             'model_id' => $session->model_id,
+            'title' => (string) ($form['title'] ?? ''),
+            'prompt' => (string) ($form['prompt'] ?? ''),
+            'tier' => (string) ($form['tier'] ?? 'standard'),
             'generated_app_id' => $session->generated_app_id,
             'truncated' => $session->truncated,
             'finish_reason' => $session->finish_reason,
@@ -147,5 +154,59 @@ class AiGenerationSessionService
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  array{prompt?: string, title?: string|null, tier?: string|null}|null  $existing
+     * @param  array{prompt?: string, title?: string|null, tier?: string|null}  $data
+     * @return array{title?: string, prompt?: string, tier?: string}
+     */
+    private function mergeFormContext(?array $existing, array $data): array
+    {
+        $context = is_array($existing) ? $existing : [];
+
+        if (array_key_exists('title', $data)) {
+            $title = trim((string) ($data['title'] ?? ''));
+            if ($title !== '') {
+                $context['title'] = $title;
+            }
+        }
+
+        $prompt = trim((string) ($data['prompt'] ?? ''));
+        if ($prompt !== '') {
+            $context['prompt'] = $prompt;
+        }
+
+        if (! empty($data['tier'])) {
+            $context['tier'] = (string) $data['tier'];
+        }
+
+        return $context;
+    }
+
+    /**
+     * @return array{title?: string, prompt?: string, tier?: string}
+     */
+    private function resolveFormContext(AiGenerationSession $session): array
+    {
+        $context = is_array($session->form_context) ? $session->form_context : [];
+
+        if (($context['prompt'] ?? '') === '' && is_array($session->messages)) {
+            foreach ($session->messages as $message) {
+                if (! is_array($message)) {
+                    continue;
+                }
+                if (($message['role'] ?? '') !== 'user' || ! empty($message['continue'])) {
+                    continue;
+                }
+                $content = trim((string) ($message['content'] ?? ''));
+                if ($content !== '') {
+                    $context['prompt'] = $content;
+                    break;
+                }
+            }
+        }
+
+        return $context;
     }
 }

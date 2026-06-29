@@ -2,7 +2,8 @@ import { type RefObject } from 'react';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Textarea } from '../../components/basic/Textarea';
-import { APP_SHELL_BODY_CLASS, APP_SHELL_TEXTAREA_RESIZABLE_CLASS } from '../appShellTypography';
+import { Moa_CopyToClipboardButton } from '../../components/basic/Moa_CopyToClipboardButton';
+import { APP_SHELL_BODY_CLASS, APP_SHELL_TEXTAREA_CLASS } from '../appShellTypography';
 import type { GenerationCompleteness } from './aiGenerationDraft';
 
 type TranslateFn = (key: string) => string;
@@ -39,15 +40,25 @@ export function AiGenerationCodePanel({
       : t('moa_apps_ai.stream_title_editable');
 
   return (
-    <Div className="flex min-h-0 shrink-0 flex-col">
-      <Div className={`mb-2 flex items-center gap-2 ${APP_SHELL_BODY_CLASS}`}>
-        <Icon
-          name={isStreaming ? 'spinner' : 'code-branch'}
-          className={isStreaming ? 'animate-spin text-faint' : 'text-faint'}
-        />
-        <span>{panelTitle}</span>
-        {completeness === 'partial' && !isStreaming ? (
-          <span className="moa-ai-draft-badge">{t('moa_apps_ai.recovery.badge_partial')}</span>
+    <Div className="moa-ai-code-panel flex min-h-0 flex-1 flex-col">
+      <Div className={`moa-ai-code-panel__toolbar mb-2 ${APP_SHELL_BODY_CLASS}`}>
+        <Div className="flex min-w-0 items-center gap-2">
+          <Icon
+            name={isStreaming ? 'spinner' : 'code-branch'}
+            className={isStreaming ? 'animate-spin text-faint' : 'text-faint'}
+          />
+          <span className="truncate">{panelTitle}</span>
+          {completeness === 'partial' && !isStreaming ? (
+            <span className="moa-ai-draft-badge">{t('moa_apps_ai.recovery.badge_partial')}</span>
+          ) : null}
+        </Div>
+        {!isStreaming && editableCode.trim() ? (
+          <Moa_CopyToClipboardButton
+            text={editableCode}
+            label={t('moa_apps_ai.copy_code')}
+            copiedLabel={t('moa_apps_ai.copy_code_done')}
+            size="xxs"
+          />
         ) : null}
       </Div>
 
@@ -60,7 +71,7 @@ export function AiGenerationCodePanel({
         </Div>
       ) : (
         <Textarea
-          className={`${APP_SHELL_TEXTAREA_RESIZABLE_CLASS} font-mono text-xs leading-relaxed`}
+          className={`${APP_SHELL_TEXTAREA_CLASS} moa-ai-code-panel__textarea font-mono text-xs leading-relaxed`}
           value={editableCode}
           onChange={(event) => onCodeChange(event.target.value)}
           onBlur={() => onCodeCommit?.()}

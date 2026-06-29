@@ -7,6 +7,7 @@ use Modules\Moabom\Apps\Http\Controllers\AiAppController;
 use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
 use Modules\Moabom\Apps\Http\Controllers\AiStreamQueueController;
 use Modules\Moabom\Apps\Http\Controllers\AppCommunityController;
+use Modules\Moabom\Apps\Http\Controllers\AppSeoController;
 use Modules\Moabom\Apps\Http\Controllers\GeneratedAppWebsiteIconController;
 use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
 use Modules\Moabom\Apps\Http\Controllers\PublicUserGeneratedAppController;
@@ -24,6 +25,14 @@ use Modules\Moabom\Apps\Http\Controllers\WebsiteLinkController;
 | 모든 엔드포인트는 사용자 본인 자원만 다루므로 `auth:sanctum` 만 사용한다.
 |
 */
+
+Route::prefix('seo')->middleware(['throttle:120,1'])->group(function (): void {
+    Route::get('apps', [AppSeoController::class, 'index'])
+        ->name('seo.apps.index');
+    Route::get('apps/{id}', [AppSeoController::class, 'show'])
+        ->where('id', '[A-Za-z0-9_-]+')
+        ->name('seo.apps.show');
+});
 
 Route::prefix('apps')->middleware(['optional.sanctum'])->group(function () {
     Route::get('generated/shared', [PublicGeneratedAppController::class, 'shared'])

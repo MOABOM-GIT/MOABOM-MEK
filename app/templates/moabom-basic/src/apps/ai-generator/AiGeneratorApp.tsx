@@ -13,6 +13,7 @@ import {
 } from 'moabom-create-app-edit';
 import { notifyGeneratedAppSaved } from '../generatedAppEvents';
 import {
+  detectObviousInfiniteLoopRisk,
   formatGeneratedAppSecurityToast,
   scanGeneratedAppHtmlSecurity,
 } from './generatedAppHtmlSecurity';
@@ -47,7 +48,12 @@ import {
 import { AiGenerationQueuePanel } from './AiGenerationQueuePanel';
 import { AiGenerationRecoveryBanner } from './AiGenerationRecoveryBanner';
 import { AiGenerationCodePanel } from './AiGenerationCodePanel';
+import { AiGenerationSplitHandle } from './AiGenerationSplitHandle';
+import { useVerticalSplitPane } from '../../hooks/useVerticalSplitPane';
+import { handleMoabomAppFileDownloadMessage } from '../generated/generatedAppIframeBridge';
 import { useAiAppStream } from './useAiAppStream';
+import { readAiGenerationResumeFormFields } from './aiGenerationResumeForm';
+import type { AiGenerationSession } from '../../api/moabomAppsApi';
 import {
   buildWebsiteLinkStoredHtml,
   isWebsiteLinkAppType,
@@ -118,6 +124,7 @@ export function AiGeneratorApp() {
   const [resolvedIconFromTitle, setResolvedIconFromTitle] = useState(false);
   const [isResolvingWebsite, setIsResolvingWebsite] = useState(false);
   const codePanelRef = useRef<HTMLDivElement>(null);
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
   const prevEditServerIdRef = useRef<number | null>(null);
   const isWebsiteLink = isWebsiteLinkAppType(appType);
 
@@ -193,6 +200,19 @@ export function AiGeneratorApp() {
     clearStreamedBuffer();
   }, [clearStreamedBuffer]);
 
+  const applyResumeFormFields = useCallback((session: AiGenerationSession) => {
+    const fields = readAiGenerationResumeFormFields(session);
+    if (fields.title) {
+      setTitle(fields.title);
+    }
+    if (fields.prompt) {
+      setPrompt(fields.prompt);
+    }
+    setAppType(fields.appType);
+    setAppTier(fields.appTier);
+    setModelId(fields.modelId);
+  }, []);
+
   useEffect(() => {
     if (!editServerId) {
       if (prevEditServerIdRef.current != null) {
@@ -250,12 +270,33 @@ export function AiGeneratorApp() {
     };
   }, [authStateKey, editServerId, resetCreateForm, t]);
 
+  // 이어하기 세션이 있으면 배너 노출과 동시에 제목·프롬프트·설정을 폼에 복원한다.
   useEffect(() => {
-    if (!isStreaming || !codePanelRef.current) {
+    if (!resumeChecked || !resumeSession?.partial_raw || editServerId) {
+      return;
+    }
+    applyResumeFormFields(resumeSession);
+  }, [applyResumeFormFields, editServerId, resumeChecked, resumeSession]);
+
+  useEffect(() => {
+    if (!codePanelRef.current) {
       return;
     }
     codePanelRef.current.scrollTop = codePanelRef.current.scrollHeight;
   }, [streamedRaw, isStreaming]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== previewIframeRef.current?.contentWindow) {
+        return;
+      }
+      if (!handleMoabomAppFileDownloadMessage(event.data)) {
+        return;
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   const draftSource = resolveGenerationSource(draftHtml, streamedRaw, isStreaming);
   const debouncedDraftHtml = useDebouncedValue(draftHtml, CODE_PREVIEW_DEBOUNCE_MS);
@@ -288,6 +329,8 @@ export function AiGeneratorApp() {
 
   const previewHtml = draftView.previewHtml;
   const codePreview = isStreaming ? draftSource : (draftHtml || debouncedPrepared.html);
+  const showCodePreviewPanel = !isWebsiteLink && (isStreaming || Boolean(codePreview));
+  const splitPane = useVerticalSplitPane({ enabled: showCodePreviewPanel && Boolean(previewHtml || isStreaming) });
   const isEditingExisting = loadedEditId != null;
   const isRemixingExisting = remixSourceId != null;
   const needsRecovery = !isWebsiteLink && !isStreaming && persistPrepared.canContinue;
@@ -361,6 +404,7 @@ export function AiGeneratorApp() {
 
       await runStream({
         prompt: prompt.trim(),
+        title: title.trim(),
         currentHtml: currentHtml || null,
         continueGeneration,
         generationMode: continueGeneration ? 'append' : (currentHtml ? 'patch' : 'generate'),
@@ -433,6 +477,11 @@ export function AiGeneratorApp() {
         }
         setError(t('moa_apps_ai.security.save_blocked'));
         return;
+      }
+      // 비차단 1차 경고: 명백한 무한 루프 패턴은 저장은 허용하되 사용자에게 알린다.
+      // 실행 중 멈춰도 런타임 워치독이 해당 앱만 재시작하므로 셸/브라우저는 안전하다.
+      if (detectObviousInfiniteLoopRisk(resolvedSaveHtml)) {
+        pushWarningToast(t('moa_apps_ai.security.loop_warning'), 5000);
       }
     }
 
@@ -523,8 +572,7 @@ export function AiGeneratorApp() {
               size="sm"
               onClick={() => {
                 if (resumeSession) {
-                  setAppType(resumeSession.app_type ?? 'general');
-                  setModelId(resumeSession.model_id ?? 'claude-sonnet');
+                  applyResumeFormFields(resumeSession);
                 }
                 adoptResumeSession();
               }}
@@ -681,7 +729,10 @@ export function AiGeneratorApp() {
           </Div>
         </Div>
 
-        <Div className={`${APP_SHELL_PANEL_STACK_CLASS} min-h-0 overflow-hidden relative`}>
+        <Div
+          ref={splitPane.containerRef}
+          className={`${APP_SHELL_PANEL_STACK_CLASS} min-h-0 overflow-hidden relative ${showCodePreviewPanel ? 'moa-ai-split-pane' : ''}`}
+        >
           {!isWebsiteLink && queueState ? (
             <AiGenerationQueuePanel
               queue={queueState}
@@ -690,44 +741,68 @@ export function AiGeneratorApp() {
             />
           ) : null}
 
-          {!isWebsiteLink && (isStreaming || codePreview) ? (
-            <AiGenerationCodePanel
-              isStreaming={isStreaming}
-              codePreview={codePreview}
-              editableCode={draftHtml}
-              completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
-              onCodeChange={handleCodeChange}
-              onCodeCommit={handleCodeCommit}
-              codePanelRef={codePanelRef}
-              t={t}
+          {showCodePreviewPanel ? (
+            <Div
+              className="moa-ai-split-pane__code"
+              style={splitPane.enabled && splitPane.codeFlex ? { flex: `0 0 ${splitPane.codeFlex}` } : undefined}
+            >
+              <AiGenerationCodePanel
+                isStreaming={isStreaming}
+                codePreview={codePreview}
+                editableCode={draftHtml}
+                completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
+                onCodeChange={handleCodeChange}
+                onCodeCommit={handleCodeCommit}
+                codePanelRef={codePanelRef}
+                t={t}
+              />
+            </Div>
+          ) : null}
+
+          {showCodePreviewPanel && (previewHtml || isStreaming) ? (
+            <AiGenerationSplitHandle
+              ariaLabel={t('moa_apps_ai.split_resize')}
+              nudgeUpLabel={t('moa_apps_ai.split_nudge_up')}
+              nudgeDownLabel={t('moa_apps_ai.split_nudge_down')}
+              onPointerDown={splitPane.onHandlePointerDown}
+              onPointerMove={splitPane.onHandlePointerMove}
+              onPointerUp={splitPane.onHandlePointerUp}
+              onNudgeUp={() => splitPane.nudgeRatio(-0.05)}
+              onNudgeDown={() => splitPane.nudgeRatio(0.05)}
             />
           ) : null}
 
-          {isWebsiteLink && websitePreviewUrl ? (
-            <iframe
-              title={title.trim() || t('moa_apps_ai.preview_title')}
-              className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
-              src={websitePreviewUrl}
-              sandbox={generatedAppFrameSandbox(websitePreviewUrl, 'website_link')}
-            />
-          ) : previewHtml ? (
-            <iframe
-              title={t('moa_apps_ai.preview_title')}
-              className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
-              srcDoc={previewHtml}
-              sandbox="allow-scripts"
-            />
-          ) : (
-            <Div className="flex h-full min-h-[280px] flex-1 flex-col items-center justify-center gap-3 text-center">
-              <Icon name="file-alt" className="text-4xl text-faint" />
-              <Div className={APP_SHELL_BODY_CLASS}>{t('moa_apps_ai.preview_empty_title')}</Div>
-              <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>
-                {isWebsiteLink
-                  ? t('moa_apps_ai.preview_empty_description_website')
-                  : t('moa_apps_ai.preview_empty_description')}
+          <Div
+            className={showCodePreviewPanel ? 'moa-ai-split-pane__preview' : 'flex min-h-0 flex-1 flex-col'}
+            style={splitPane.enabled && splitPane.previewFlex ? { flex: `1 1 ${splitPane.previewFlex}` } : undefined}
+          >
+            {isWebsiteLink && websitePreviewUrl ? (
+              <iframe
+                title={title.trim() || t('moa_apps_ai.preview_title')}
+                className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
+                src={websitePreviewUrl}
+                sandbox={generatedAppFrameSandbox(websitePreviewUrl, 'website_link')}
+              />
+            ) : previewHtml ? (
+              <iframe
+                ref={previewIframeRef}
+                title={t('moa_apps_ai.preview_title')}
+                className="min-h-[280px] w-full flex-1 rounded-2xl border border-white/60 bg-white"
+                srcDoc={previewHtml}
+                sandbox="allow-scripts allow-downloads"
+              />
+            ) : (
+              <Div className="flex h-full min-h-[280px] flex-1 flex-col items-center justify-center gap-3 text-center">
+                <Icon name="file-alt" className="text-4xl text-faint" />
+                <Div className={APP_SHELL_BODY_CLASS}>{t('moa_apps_ai.preview_empty_title')}</Div>
+                <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>
+                  {isWebsiteLink
+                    ? t('moa_apps_ai.preview_empty_description_website')
+                    : t('moa_apps_ai.preview_empty_description')}
+                </Div>
               </Div>
-            </Div>
-          )}
+            )}
+          </Div>
         </Div>
       </Div>
     </Div>

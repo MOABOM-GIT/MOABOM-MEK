@@ -11,6 +11,15 @@
       }
     },
     {
+      "path": "*/admin/platform/realtime-vm",
+      "layout": "admin_realtime_vm",
+      "auth_required": true,
+      "meta": {
+        "title": "$t:moabom-system.admin.realtime_vm.title",
+        "permission": "moabom-system.realtime.read"
+      }
+    },
+    {
       "path": "*/admin/saas/hospitals",
       "layout": "admin_saas_hospitals",
       "auth_required": true,

@@ -255,6 +255,7 @@ final class ShellRankingService
             'like_received',
             'attendance',
             'comment_write',
+            'app_review_write',
         ];
 
         /** @var array<int, int> $scores */
@@ -318,6 +319,7 @@ final class ShellRankingService
             'like_received',
             'attendance',
             'comment_write',
+            'app_review_write',
         ];
 
         $rows = DB::table('moabom_credit_transactions')

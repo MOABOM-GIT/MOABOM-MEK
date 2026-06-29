@@ -1,0 +1,402 @@
+{
+  "version": "1.0.0",
+  "layout_name": "admin_realtime_vm",
+  "permissions": ["moabom-system.realtime.read"],
+  "extends": "_admin_base",
+  "meta": {
+    "title": "$t:moabom-system.admin.realtime_vm.title",
+    "description": "$t:moabom-system.admin.realtime_vm.description"
+  },
+  "transition_overlay": {
+    "target": "realtime_vm_content",
+    "fallback_target": "right_content_area",
+    "wait_for": ["realtimeStatus"]
+  },
+  "computed": {
+    "status": "{{realtimeStatus?.data || {}}}",
+    "overallOk": "{{!!status?.overall_ok}}",
+    "wsProbe": "{{status?.websocket_probe || {}}}",
+    "runtimeConfig": "{{status?.config || {}}}",
+    "architecture": "{{status?.architecture || {}}}",
+    "vm_metrics": "{{status?.vm_metrics || {}}}",
+    "vmMetricsData": "{{vm_metrics?.data || {}}}",
+    "vmMetricsAvailable": "{{!!vm_metrics?.available}}",
+    "checkedAt": "{{status?.checked_at || ''}}",
+    "latencyMs": "{{typeof wsProbe?.latency_ms === 'number' ? wsProbe.latency_ms : '—'}}",
+    "hasError": "{{!!_dataSourceErrors?.realtimeStatus}}"
+  },
+  "data_sources": [
+    {
+      "id": "realtimeStatus",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-system/platform/realtime-vm",
+      "method": "GET",
+      "loading_strategy": "blocking",
+      "auto_fetch": true,
+      "auth_required": true,
+      "errorHandling": {
+        "401": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.realtime_vm.auth_required"
+          }
+        },
+        "403": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.realtime_vm.permission_denied"
+          }
+        },
+        "404": {
+          "handler": "showErrorPage",
+          "params": {
+            "target": "content",
+            "message": "$t:moabom-system.admin.realtime_vm.platform_only"
+          }
+        }
+      }
+    }
+  ],
+  "slots": {
+    "content": [
+      {
+        "type": "basic",
+        "name": "Div",
+        "props": {
+          "id": "realtime_vm_content",
+          "className": "p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen"
+        },
+        "children": [
+          {
+            "type": "composite",
+            "name": "PageHeader",
+            "props": {
+              "title": "$t:moabom-system.admin.realtime_vm.title",
+              "description": "$t:moabom-system.admin.realtime_vm.description"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Button",
+                "props": {
+                  "type": "button",
+                  "title": "$t:moabom-system.admin.realtime_vm.refresh",
+                  "className": "p-2 mr-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                },
+                "actions": [
+                  {
+                    "type": "click",
+                    "handler": "refetchDataSource",
+                    "params": { "dataSourceId": "realtimeStatus" }
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Icon",
+                    "props": { "name": "refresh", "className": "w-5 h-5" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "basic",
+            "name": "Div",
+            "props": {
+              "className": "mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4"
+            },
+            "children": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                    "text": "$t:moabom-system.admin.realtime_vm.card_overall"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "{{overallOk ? 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}}"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Span",
+                        "text": "{{overallOk ? '$t:moabom-system.admin.realtime_vm.status_ok' : '$t:moabom-system.admin.realtime_vm.status_fail'}}"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": { "className": "mt-3 text-xs text-gray-500 dark:text-gray-400" },
+                    "text": "{{'$t:moabom-system.admin.realtime_vm.checked_at' + ': ' + (checkedAt || '—')}}"
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                    "text": "$t:moabom-system.admin.realtime_vm.card_websocket"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Dl",
+                    "props": { "className": "space-y-2 text-sm" },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "HTTP" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{wsProbe?.http_status ?? '—'}}" }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:moabom-system.admin.realtime_vm.latency" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{latencyMs + ' ms'}}" }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Pusher" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{wsProbe?.pusher_established ? 'OK' : '—'}}" }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Host" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100 truncate max-w-[12rem]" }, "text": "{{wsProbe?.host || '—'}}" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                    "text": "$t:moabom-system.admin.realtime_vm.card_runtime"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Dl",
+                    "props": { "className": "space-y-2 text-sm" },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:moabom-system.admin.realtime_vm.client_endpoint" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-xs text-gray-900 dark:text-gray-100 text-right break-all" }, "text": "{{(runtimeConfig?.client_scheme || 'https') + '://' + (runtimeConfig?.client_host || '—') + ':' + (runtimeConfig?.client_port || '')}}" }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Broadcast" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{runtimeConfig?.broadcast_connection || '—'}}" }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "flex justify-between gap-4" },
+                        "children": [
+                          { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:moabom-system.admin.realtime_vm.immediate" },
+                          { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{runtimeConfig?.broadcast_immediate ? 'ShouldBroadcastNow' : '—'}}" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                        "text": "$t:moabom-system.admin.realtime_vm.card_vm_metrics"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Dl",
+                        "if": "{{vmMetricsAvailable}}",
+                        "props": { "className": "space-y-2 text-sm" },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "CPU" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{vmMetricsData?.cpu_percent ?? '—'}}%" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Memory" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{vmMetricsData?.memory_percent ?? '—'}}%" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Disk" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{vmMetricsData?.disk_percent ?? '—'}}%" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Load" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{vmMetricsData?.load_avg || '—'}}" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Redis clients" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{vmMetricsData?.redis?.connected_clients ?? '—'}}" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Processes" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-xs text-gray-900 dark:text-gray-100 text-right" }, "text": "{{'nginx:' + (vmMetricsData?.processes?.nginx ? 'OK' : '—') + ' reverb:' + (vmMetricsData?.processes?.reverb ? 'OK' : '—') + ' redis:' + (vmMetricsData?.processes?.redis ? 'OK' : '—')}}" }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "if": "{{!vmMetricsAvailable}}",
+                        "props": { "className": "text-sm text-gray-500 dark:text-gray-400" },
+                        "text": "$t:moabom-system.admin.realtime_vm.vm_metrics_unavailable"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "H3",
+                        "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                        "text": "$t:moabom-system.admin.realtime_vm.card_architecture"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Dl",
+                        "props": { "className": "space-y-2 text-sm" },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "VM" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{architecture?.vm_name || '—'}}" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "DNS" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{architecture?.dns_host || '—'}}" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Public IP" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{architecture?.vm_public_ip || '—'}}" }
+                            ]
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-between gap-4" },
+                            "children": [
+                              { "type": "basic", "name": "Dt", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "Internal IP" },
+                              { "type": "basic", "name": "Dd", "props": { "className": "font-mono text-gray-900 dark:text-gray-100" }, "text": "{{architecture?.vm_internal_ip || '—'}}" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

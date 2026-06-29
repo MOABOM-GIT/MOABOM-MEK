@@ -383,6 +383,44 @@
                             "props": {
                               "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
                             },
+                            "text": "$t:moabom-credit.admin.settings.fields.app_review_write_amount"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Input",
+                            "props": {
+                              "name": "rewards.app_review_write_enabled",
+                              "type": "checkbox",
+                              "disabled": "{{_computed.isReadOnly}}",
+                              "className": "w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "rewards.app_review_write_amount",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "flex items-center justify-between gap-3"
+                        },
+                        "children": [
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "props": {
+                              "className": "text-sm font-medium text-gray-700 dark:text-gray-300"
+                            },
                             "text": "$t:moabom-credit.admin.settings.fields.attendance_amount"
                           },
                           {
@@ -540,6 +578,25 @@
                         "name": "Input",
                         "props": {
                           "name": "limits.max_comment_write_rewards_per_day",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.max_app_review_write_rewards_per_day"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "limits.max_app_review_write_rewards_per_day",
                           "type": "number",
                           "min": 0,
                           "disabled": "{{_computed.isReadOnly}}",

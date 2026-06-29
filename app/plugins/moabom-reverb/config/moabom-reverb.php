@@ -11,7 +11,7 @@ return [
     'client_port' => (int) env('REVERB_CLIENT_PORT', 443),
     'client_scheme' => env('REVERB_CLIENT_SCHEME', 'https'),
     'verify_ssl' => filter_var(env('REVERB_VERIFY_SSL', true), FILTER_VALIDATE_BOOL),
-    'server_host' => env('REVERB_SERVER_HOST', '127.0.0.1'),
-    'server_port' => (int) env('REVERB_SERVER_PORT', 6001),
-    'server_scheme' => env('REVERB_SERVER_SCHEME', 'http'),
+    'server_host' => env('REVERB_SERVER_HOST', 'realtime.mek360.com'),
+    'server_port' => (int) env('REVERB_SERVER_PORT', 443),
+    'server_scheme' => env('REVERB_SERVER_SCHEME', 'https'),
 ];

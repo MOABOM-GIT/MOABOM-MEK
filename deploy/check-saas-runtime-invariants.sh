@@ -979,6 +979,24 @@ grep -q 'Content-Security-Policy' "${APP}/templates/moabom-basic/src/apps/ai-gen
   || fail "aiHtmlUtils.ts 에 CSP 메타 주입 없음 (C2 심층 방어)"
 grep -q 'Content-Security-Policy' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
   || fail "GeneratedAppHtmlService 에 서버측 CSP 하드닝 없음 (C2 심층 방어)"
+grep -q 'moabom-app-download-bridge' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
+  || fail "GeneratedAppHtmlService download bridge 주입 누락"
+[[ -f "${APP}/modules/moabom-apps/resources/js/generated-app-download-bridge.js" ]] \
+  || fail "generated-app-download-bridge.js SSOT 누락"
+grep -q 'file-download' "${APP}/templates/moabom-basic/src/apps/generated/GeneratedAppViewer.tsx" \
+  || fail "GeneratedAppViewer file-download postMessage 핸들러 누락"
+grep -q 'handleMoabomAppFileDownloadMessage' "${APP}/templates/moabom-basic/src/apps/generated/generatedAppIframeBridge.ts" \
+  || fail "generatedAppIframeBridge 다운로드 브릿지 유틸 누락"
+grep -q 'registerHostedDataApiRoutes' "${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php" \
+  || fail "AppsServiceProvider hosted data API 라우트 등록 누락"
+grep -q 'withoutMiddleware' "${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php" \
+  || fail "Hosted data API CSRF 면제(withoutMiddleware) 누락"
+grep -q 'RestrictToGeneratedAppHostedHost' "${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php" \
+  || fail "RestrictToGeneratedAppHostedHost 미들웨어 연동 누락"
+[[ -f "${APP}/modules/moabom-apps/resources/js/generated-app-data-api-bridge.js" ]] \
+  || fail "generated-app-data-api-bridge.js SSOT 누락"
+grep -q 'moabom-app-data-api-bridge' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
+  || fail "GeneratedAppHtmlService data API bridge 주입 누락"
 grep -q 'shellFrameAncestors' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPreviewRouting.php" \
   || fail "GeneratedAppPreviewRouting shellFrameAncestors (테넌트 셸 frame-ancestors) 누락"
 grep -q 'frame-ancestors' "${APP}/modules/moabom-apps/src/Services/GeneratedAppPreviewService.php" \

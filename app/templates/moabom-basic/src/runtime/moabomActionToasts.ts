@@ -18,7 +18,6 @@ export type PushActionToastOptions = {
 export type PushConfirmToastOptions = {
   message: string;
   confirmLabel: string;
-  cancelLabel?: string;
   type?: ToastType;
   onConfirm: () => void | Promise<void>;
   onCancel?: () => void;
@@ -43,7 +42,6 @@ export function pushConfirmToast(options: PushConfirmToastOptions): string | nul
   const {
     message,
     confirmLabel,
-    cancelLabel,
     type = 'warning',
     onConfirm,
     onCancel,
@@ -56,17 +54,8 @@ export function pushConfirmToast(options: PushConfirmToastOptions): string | nul
     type,
     severity: 'system',
     duration: 0,
+    ...(onCancel ? { onDismiss: onCancel } : {}),
     actions: [
-      ...(cancelLabel
-        ? [{
-          label: cancelLabel,
-          variant: 'secondary' as const,
-          onClick: () => {
-            onCancel?.();
-            dismissMoabomToast(toastId);
-          },
-        }]
-        : []),
       {
         label: confirmLabel,
         variant: 'primary' as const,

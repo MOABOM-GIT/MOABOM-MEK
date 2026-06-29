@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.13] - 2026-06-29
+
+### Added
+
+- 플랫폼 관리자 **Realtime VM** 대시보드 (`/admin/platform/realtime-vm`) — WebSocket probe·런타임 엔드포인트·FCM 상태.
+- `RealtimeVmHealthService` — 30s 캐시, curl 101 + Pusher handshake probe.
+- `moabom-system.realtime.read` 권한·플랫폼 API `GET/POST platform/realtime-vm`.
+
 ## [0.8.12] - 2026-06-28
 
 ### Added

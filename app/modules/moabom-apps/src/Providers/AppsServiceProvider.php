@@ -5,6 +5,7 @@ namespace Modules\Moabom\Apps\Providers;
 use App\Extension\BaseModuleServiceProvider;
 use App\Extension\HookManager;
 use App\Extension\ModuleManager;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Apps\Apps\AppRegistry;
 use Modules\Moabom\Apps\Apps\AppRegistryInterface;
@@ -17,7 +18,11 @@ use Modules\Moabom\Apps\Contracts\AiGenerationSessionRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 use Modules\Moabom\Apps\Http\Controllers\GeneratedAppPreviewController;
+use Modules\Moabom\Apps\Http\Middleware\RestrictToGeneratedAppHostedHost;
+use Modules\Moabom\Apps\Listeners\AppSeoCacheListener;
 use Modules\Moabom\Apps\Models\GeneratedApp;
+use Modules\Moabom\Apps\Seo\AppSeoHookRegistrar;
+use Modules\Moabom\Apps\Seo\AppsSitemapContributor;
 use Modules\Moabom\Apps\Repositories\AiGenerationSessionRepository;
 use Modules\Moabom\Apps\Repositories\AppCommunityPostRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
@@ -30,6 +35,7 @@ use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
 use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
 use Modules\Moabom\Apps\Support\ShellRankingGeneratedAppScope;
+use Modules\Moabom\Apps\Support\ShellRankingReviewBoost;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
 {
@@ -82,6 +88,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
         $this->registerGeneratedAppHostHooks();
         $this->registerShellRankingScopeHooks();
         $this->registerAppCommunityNotificationHooks();
+        $this->registerAppSeo();
 
         HookManager::addFilter(
             'moabom.shell_boot.apps',
@@ -122,12 +129,35 @@ class AppsServiceProvider extends BaseModuleServiceProvider
         });
 
         $this->registerPreviewDomainRoutes();
+        $this->registerHostedDataApiRoutes();
+    }
+
+    /**
+     * 앱 SEO/AI 노출 — core.seo.* 훅, sitemap 기여자, 제작앱 캐시 무효화 리스너.
+     */
+    private function registerAppSeo(): void
+    {
+        if (! (bool) config('moabom-apps.seo.enabled', true)) {
+            return;
+        }
+
+        app(AppSeoHookRegistrar::class)->register();
+        app(AppSeoCacheListener::class)->register();
+
+        $this->app->booted(function (): void {
+            if ($this->app->bound(\App\Seo\SitemapGenerator::class)) {
+                $this->app->make(\App\Seo\SitemapGenerator::class)
+                    ->registerContributor($this->app->make(AppsSitemapContributor::class));
+            }
+        });
     }
 
     private function registerShellRankingScopeHooks(): void
     {
         $filterScores = function (array $scores): array {
-            return app(ShellRankingGeneratedAppScope::class)->filterAppScoreRows($scores);
+            $scoped = app(ShellRankingGeneratedAppScope::class)->filterAppScoreRows($scores);
+
+            return app(ShellRankingReviewBoost::class)->apply($scoped);
         };
 
         $allowIngest = function (bool $allowed, string $appId): bool {
@@ -265,18 +295,54 @@ class AppsServiceProvider extends BaseModuleServiceProvider
                 ->group(function (): void {
                     Route::get('/', [GeneratedAppPreviewController::class, 'hostedRoot'])
                         ->name('moabom-apps.preview.hosted.domain');
-
-                    Route::get('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'listHostedDataByHost'])
-                        ->where('tableKey', '[A-Za-z0-9_-]+');
-                    Route::post('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'storeHostedDataByHost'])
-                        ->where('tableKey', '[A-Za-z0-9_-]+');
-                    Route::put('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'updateHostedDataByHost'])
-                        ->whereNumber('rowId')
-                        ->where('tableKey', '[A-Za-z0-9_-]+');
-                    Route::delete('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'destroyHostedDataByHost'])
-                        ->whereNumber('rowId')
-                        ->where('tableKey', '[A-Za-z0-9_-]+');
                 });
         }
+    }
+
+    /**
+     * Hosted row API — preview_token 으로 인증하므로 CSRF 면제.
+     *
+     * dedicated_host: /api/data/* (RestrictToGeneratedAppHostedHost)
+     * 폴백: /modules/moabom-apps/preview/hosted/{id}/api/data/*
+     */
+    private function registerHostedDataApiRoutes(): void
+    {
+        $csrfExempt = [VerifyCsrfToken::class];
+
+        Route::middleware(['web'])
+            ->withoutMiddleware($csrfExempt)
+            ->prefix(GeneratedAppPreviewRouting::pathPrefix().'/hosted/{hostedApp}')
+            ->whereNumber('hostedApp')
+            ->group(function (): void {
+                Route::get('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'listHostedData'])
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::post('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'storeHostedData'])
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::put('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'updateHostedData'])
+                    ->whereNumber('rowId')
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::delete('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'destroyHostedData'])
+                    ->whereNumber('rowId')
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+            });
+
+        if (GeneratedAppPreviewRouting::usesTenantPath()) {
+            return;
+        }
+
+        Route::middleware(['web', RestrictToGeneratedAppHostedHost::class])
+            ->withoutMiddleware($csrfExempt)
+            ->group(function (): void {
+                Route::get('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'listHostedDataByHost'])
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::post('api/data/{tableKey}', [GeneratedAppPreviewController::class, 'storeHostedDataByHost'])
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::put('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'updateHostedDataByHost'])
+                    ->whereNumber('rowId')
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+                Route::delete('api/data/{tableKey}/{rowId}', [GeneratedAppPreviewController::class, 'destroyHostedDataByHost'])
+                    ->whereNumber('rowId')
+                    ->where('tableKey', '[A-Za-z0-9_-]+');
+            });
     }
 }

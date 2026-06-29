@@ -84,6 +84,7 @@ export function useAiAppStream({
 
   const runStream = useCallback(async (options: {
     prompt: string;
+    title?: string;
     currentHtml?: string | null;
     continueGeneration?: boolean;
     generationMode?: 'generate' | 'append' | 'patch';
@@ -108,6 +109,7 @@ export function useAiAppStream({
       const result = await streamAiApp(
         {
           prompt: options.prompt,
+          title: options.title?.trim() || null,
           app_type: appType,
           tier: appTier,
           model_id: modelId,

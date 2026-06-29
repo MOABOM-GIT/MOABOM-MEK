@@ -50,6 +50,7 @@ final class MoabomRuntimeDriverSettings
         $drivers['_runtime'] = [
             'locked' => true,
             'source' => 'cloud-run-env',
+            'plane' => 'realtime-vm',
             'keys' => [
                 'storage_driver',
                 'cache_driver',

@@ -25,8 +25,9 @@
 | R13 | 대화 mute | 3 | ✅ `muted_until` API |
 | R14 | 탭 백그라운드 OS 알림 | 4 | ✅ Web Notification API |
 | R15 | 앱 종료 FCM | 4+ | ⏳ 향후 |
-| R16 | Reverb 멀티 인스턴스 | 2 | ⚠️ `max-instances=1` 고정 (단일 Reverb) |
+| R16 | Reverb 멀티 인스턴스 | 2 | ✅ VM `realtime.mek360.com` + Redis scaling |
 | R17 | Cloud Run Billing Request-based | 2 | ✅ SSOT 고정 (`--cpu-throttling`) |
+| R18 | 브로드캐스트 즉시 전송 | 2 | ✅ `ShouldBroadcastNow` (큐 우회) |
 
 ---
 
@@ -83,23 +84,25 @@ Backend (moabom-chat)
 
 ---
 
-## 5. 인프라 (v335+)
+## 5. 인프라 (v363+)
 
-- Cloud Run Billing: **Request-based** (`--cpu-throttling`) — SSOT `deploy/lib/cloud-run-service-flags.sh`, 가드 `deploy/check-cloud-run-billing-ssot.sh`
-- Cloud Run: `--timeout=3600`, `--session-affinity`, `--max-instances=1`
-- Reverb: 동일 컨테이너 sidecar `127.0.0.1:6001`
-- 스모크: Reverb upgrade probe + chat routes
+- Cloud Run Billing: **Request-based** (`--cpu-throttling`) — SSOT `deploy/lib/cloud-run-service-flags.sh`
+- Cloud Run: `min-instances=0`, `max-instances=10`, `--timeout=3600`, `--session-affinity`
+- **Reverb + Redis:** 전용 VM `realtime.mek360.com` (Cloud Run sidecar 제거)
+- Laravel publish: `REVERB_SERVER_HOST=realtime.mek360.com:443` → VM nginx → Reverb
+- 브로드캐스트: `ShouldBroadcastNow` — DB 큐 경유 없이 즉시 Reverb HTTP publish
+- 스모크: `deploy/smoke-after-deploy.sh` Reverb probe + `deploy/check-realtime-vm-health.sh`
 
 ### Request-based 와 실시간 채팅
 
 | 구분 | 영향 |
 |------|------|
 | HTTP API·로그인 | 영향 없음 (요청 처리 중 CPU 할당) |
-| WS 연결 유지 중 | 연결이 활성 요청으로 잡히는 동안 CPU 유지 |
-| Reverb sidecar (idle) | **요청 없을 때 CPU 스로틀** → ping·내부 브로드캐스트 지연·WS 끊김 가능 |
-| 완화 | `moabomShellChatSyncService` REST 폴링 fallback, `min-instances=1` |
+| WS (브라우저) | VM Reverb 상시 구동 — Cloud Run CPU 스로틀과 무관 |
+| Laravel → Reverb publish | 요청 스레드에서 동기 HTTP (큐 지연 없음) |
+| 완화 | `moabomShellChatSyncService` REST 폴링 안전망 유지 |
 
-Instance-based(`--no-cpu-throttling`) 는 Reverb에 유리하나 **비용·정책상 Request-based 고정**.
+Instance-based(`--no-cpu-throttling`) 는 정책상 Request-based 고정. WS는 VM이 담당.
 
 ---
 

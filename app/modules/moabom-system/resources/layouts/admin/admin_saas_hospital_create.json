@@ -16,8 +16,20 @@
     "slugShowInvalid": "{{!!_local?.form?.slug && !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase())}}",
     "baseDomain": "{{_local?.baseDomain || 'mek360.com'}}",
     "previewHost": "{{((_local?.form?.slug || '').toLowerCase()) ? ((_local?.form?.slug || '').toLowerCase() + '.' + (_local?.baseDomain || 'mek360.com')) : ''}}",
-    "submitDisabled": "{{_local?.isSaving || !_local?.form?.slug || !_local?.form?.name || !(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase()))}}"
+    "slugAvailability": "{{slugCheck?.data || {}}}",
+    "slugHostUnavailable": "{{_computed.slugIsValid && slugAvailability && slugAvailability.available === false}}",
+    "submitDisabled": "{{_local?.isSaving || !_local?.form?.slug || !_local?.form?.name || !(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase())) || _computed.slugHostUnavailable}}"
   },
+  "data_sources": [
+    {
+      "id": "slugCheck",
+      "type": "api",
+      "endpoint": "/api/modules/moabom-system/platform/saas/hospitals/slug-availability?slug={{_local.form.slug || ''}}",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true
+    }
+  ],
   "initLocal": {
     "form": {
       "slug": "",
@@ -338,6 +350,15 @@
                               "className": "text-gray-400 dark:text-gray-500 italic"
                             },
                             "text": "$t:moabom-system.admin.saas.hospitals.host_preview_placeholder"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "if": "{{_computed.slugHostUnavailable}}",
+                            "props": {
+                              "className": "text-sm font-medium text-red-600 dark:text-red-400"
+                            },
+                            "text": "$t:moabom-system.admin.saas.hospitals.host_unavailable"
                           }
                         ]
                       },

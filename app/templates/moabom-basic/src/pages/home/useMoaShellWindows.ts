@@ -24,6 +24,7 @@ import {
 } from '../../shell/moaShellWindowIds';
 import { resolveAppCommunityParentAppId } from '../../shell/moaShellCommunityUrl';
 import { parseGeneratedLibraryServerId } from '../../apps/generatedAppLibrary';
+import { pickGeneratedAppDisplayTitle } from '../../apps/generated/resolveGeneratedAppDisplayTitle';
 import {
   SHELL_PROFILE_SURFACE_APP_ID,
   isMoaShellUserProfileAppId,
@@ -733,6 +734,40 @@ export function useMoaShellWindows({
     }
   }, [commitWindows, editMode, language, nextZIndex, openCreateAppShell, openMyPage, recordRecentApp, restoreTaskbarWindow, t]);
 
+  const openAppById = useCallback((appId: string, sync: ShellUrlSync = {}) => {
+    if (editMode) return;
+
+    const shellPath = sync.shellPath ?? formatShellPath({ kind: 'app', appId });
+    const syncAppShellUrl = () => {
+      if (sync.skipUrl && !sync.shellPath) return;
+      if (sync.replace) {
+        replaceShellPath(shellPath);
+      } else {
+        pushShellPath(shellPath);
+      }
+    };
+
+    if (appId === 'mypage') {
+      void openMyPage('profile', sync);
+      return;
+    }
+    if (appId === createAppShellMetadata.id) {
+      openCreateAppShell(sync);
+      return;
+    }
+
+    const generated = isGeneratedLibraryAppId(appId)
+      ? (appsById.get(appId) ?? buildSyntheticGeneratedLibraryApp(appId))
+      : null;
+    const catalogApp = generated ?? APPS.find(a => a.id === appId) ?? appsById.get(appId);
+    if (!catalogApp) {
+      return;
+    }
+
+    openApp(catalogApp, { skipUrl: true });
+    syncAppShellUrl();
+  }, [appsById, editMode, openApp, openCreateAppShell, openMyPage]);
+
   const updateLegalPageWindowTitle = useCallback((windowId: string, title: string) => {
     setWindows(prev => prev.map(w => (w.id === windowId ? { ...w, title } : w)));
   }, []);
@@ -944,7 +979,7 @@ export function useMoaShellWindows({
       if (!Number.isFinite(normalizedId) || normalizedId <= 0) return;
 
       const appId = moaShellAppCommunityAppId(normalizedId);
-      const displayTitle = options.title?.trim() || t('moa_apps_ai.community.window_title_fallback', { id: normalizedId });
+      const displayTitle = pickGeneratedAppDisplayTitle(options.title) || t('moa_apps_ai.untitled_app');
       const bumpZIndex = () => {
         const zIndex = allocateShellZIndex(windowsRef.current, taskbarItemsRef.current, nextZIndex);
         setNextZIndex(zIndex + 1);
@@ -1418,6 +1453,7 @@ export function useMoaShellWindows({
     openCreateAppShell,
     openEditGeneratedApp,
     openApp,
+    openAppById,
     openErrorWindow,
     closeErrorWindow,
     openBoardWindow,

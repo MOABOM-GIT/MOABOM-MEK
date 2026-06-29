@@ -72,6 +72,22 @@ describe('moaShellBoardNavigate', () => {
     expect(tryHandleBoardShellNavigate('/board/notice', bridge)).toBe(false);
   });
 
+  it('홈 셸이 마운트되면 앱 경로를 openAppById 로 위임한다', () => {
+    markMoabomShellHomeMounted(true);
+    const openAppById = vi.fn();
+    const bridge: MoaShellBoardBridge = {
+      isActive: () => false,
+      openBoard: vi.fn(),
+      openAuth: vi.fn(),
+      openAppById,
+    };
+
+    expect(tryHandleBoardShellNavigate('/app/generated-app-42', bridge)).toBe(true);
+    expect(openAppById).toHaveBeenCalledWith('generated-app-42', expect.objectContaining({ shellPath: '/app/generated-app-42' }));
+
+    markMoabomShellHomeMounted(false);
+  });
+
   it('홈 셸이 마운트되면 게시판·프로필 경로를 가로챈다', () => {
     markMoabomShellHomeMounted(true);
     const openBoard = vi.fn();

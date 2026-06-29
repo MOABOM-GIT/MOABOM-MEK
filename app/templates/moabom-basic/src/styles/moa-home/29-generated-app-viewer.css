@@ -98,7 +98,8 @@
     transform 0.18s,
     visibility 0.18s;
   display: flex;
-  overflow: hidden;
+  /* overflow:hidden 제거 — liquid-glass ::before 테두리(inset:0)가 둥근 클립 + scale 트랜지션에
+     서브픽셀 반올림으로 하단 1px 깎이는 문제 방지. pseudo 는 border-radius:inherit 로 이미 둥글다. */
 }
 
 .generated-app-action-menu.is-open {
@@ -131,7 +132,7 @@
   background: transparent;
   color: var(--moa-liquid-readable-color);
   font-family: inherit;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -179,10 +180,87 @@
   min-height: 0;
   width: 100%;
   flex: 1;
+  border: 0;
   border-radius: 1rem;
+  transition: opacity 0.18s ease;
+}
+
+.generated-app-preview-frame.is-loading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.generated-app-preview-frame.is-ready {
+  opacity: 1;
+}
+
+.generated-app-frame-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: rgb(var(--moa-surface-rgb, 248 250 252) / 96%);
+}
+
+.generated-app-toolbar.is-frame-loading {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.moa-window-frame--maximized .generated-app-frame-loading-overlay {
+  border-radius: 0;
 }
 
 .moa-window-frame--maximized .generated-app-preview-frame {
+  border-radius: 0;
+}
+
+/* 앱 멈춤(무한 루프 등) 감지 시 노출되는 수동 재시작 오вер레이. */
+.generated-app-frozen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: rgb(var(--moa-surface-rgb, 248 250 252) / 72%);
+  backdrop-filter: blur(4px);
+}
+
+.generated-app-frozen-card {
+  width: min(100%, 20rem);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--moa-app-panel-radius, 1rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+}
+
+.generated-app-frozen-icon {
+  margin-bottom: 0.35rem;
+  font-size: 1.75rem;
+  color: #f59e0b;
+}
+
+.generated-app-frozen-desc {
+  margin-bottom: 0.65rem;
+  max-width: 16rem;
+  line-height: 1.45;
+}
+
+.generated-app-frozen-restart {
+  width: 100%;
+  max-width: 14rem;
+}
+
+.moa-window-frame--maximized .generated-app-frozen-overlay {
   border-radius: 0;
 }
 

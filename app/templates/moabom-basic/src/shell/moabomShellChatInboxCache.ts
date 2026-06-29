@@ -1,5 +1,9 @@
 import type { ChatConversation, ChatMessage } from '../api/moabomChatApi';
 import type { ChatMessageCreatedPayload } from '../runtime/moabomChatSocket';
+import {
+  isConversationLeft,
+  markConversationLeft,
+} from '../runtime/moabomShellChatLeftConversations';
 import { registerShellChatInboxHandler } from '../shell/ShellRealtimeStore';
 
 type InboxCacheListener = (conversations: ChatConversation[]) => void;
@@ -17,11 +21,22 @@ function notifyCacheListeners(): void {
   cacheListeners.forEach(listener => listener(cachedConversations));
 }
 
-function applyChatInboxPayload(payload: ChatMessageCreatedPayload): void {
+function applyChatInboxPayload(payload: ChatMessageCreatedPayload & { removed?: boolean; reason?: string }): void {
   const conversationUuid = payload.conversation_uuid
     ?? payload.message?.conversation_uuid
     ?? payload.conversation?.uuid;
   if (!conversationUuid) {
+    return;
+  }
+
+  if (payload.removed || payload.reason === 'member.left.self') {
+    markConversationLeft(conversationUuid);
+    cachedConversations = cachedConversations.filter(item => item.uuid !== conversationUuid);
+    notifyCacheListeners();
+    return;
+  }
+
+  if (isConversationLeft(conversationUuid)) {
     return;
   }
 
@@ -55,7 +70,7 @@ export function getShellChatInboxCache(): ChatConversation[] {
 }
 
 export function setShellChatInboxCache(conversations: ChatConversation[]): void {
-  cachedConversations = conversations;
+  cachedConversations = conversations.filter(row => !isConversationLeft(row.uuid));
   notifyCacheListeners();
 }
 

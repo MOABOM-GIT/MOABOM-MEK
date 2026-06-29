@@ -43,6 +43,7 @@ return [
             'share_success' => 'Updated generated app sharing.',
             'delete_success' => 'Deleted the generated app.',
             'owner_unknown' => 'Unknown creator',
+            'untitled_app' => 'Untitled app',
             'user_public_list_success' => 'Loaded published apps for this user.',
             'user_frequent_apps_success' => 'Loaded frequently used apps for this user.',
             'security' => [
@@ -55,6 +56,18 @@ return [
                 'data_html_iframe' => 'data: URL iframes are not allowed.',
                 'save_blocked' => 'Save was blocked by the security check. See the messages below.',
             ],
+        ],
+        'seo' => [
+            'list_success' => 'Loaded app SEO catalog.',
+            'show_success' => 'Loaded app SEO data.',
+            'not_found' => 'Public app not found.',
+            'index_title' => 'App Directory',
+            'index_description' => 'Browse every built-in app and AI-generated public web app on MOABOM and launch them instantly.',
+            'open_app' => 'Open app',
+            'open_live' => 'View live app',
+            'directory_link' => 'Browse all apps',
+            'category_basic' => 'Built-in apps',
+            'category_user' => 'AI-built apps',
         ],
         'community' => [
             'summary_success' => 'Loaded app community summary.',

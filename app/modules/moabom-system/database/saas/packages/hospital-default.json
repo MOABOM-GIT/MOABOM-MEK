@@ -26,6 +26,7 @@
     "moabom-auth-hardening",
     "moabom-pwa",
     "moabom-reverb",
+    "moabom-fcm",
     "moabom-weather",
     "sirsoft-daum_postcode",
     "sirsoft-ckeditor5",

@@ -120,6 +120,33 @@ export function scanGeneratedAppHtmlSecurity(html: string): GeneratedAppHtmlSecu
   };
 }
 
+// 명백한 동기 무한 루프 패턴(저장 차단이 아닌 선택적 1차 경고).
+// 런타임 격리(Origin-Agent-Cluster)+워치독이 실제 방어이고, 이 검사는 가장 분명한 패턴만 짚어
+// 저장 전에 사용자에게 알려주는 용도다. 정상 게임 루프는 requestAnimationFrame 을 쓰므로 오탐이 적다.
+const OBVIOUS_INFINITE_LOOP_PATTERN = /\b(?:while\s*\(\s*(?:true|1)\s*\)|for\s*\(\s*;\s*;\s*\))/i;
+
+/** 스크립트 표면에서 명백한 무한 루프 패턴을 감지합니다(비차단 경고용). */
+export function detectObviousInfiniteLoopRisk(html: string): boolean {
+  if (!html.trim()) {
+    return false;
+  }
+
+  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const body = match[2] ?? '';
+    if (body.trim() && OBVIOUS_INFINITE_LOOP_PATTERN.test(body)) {
+      return true;
+    }
+  }
+
+  for (const match of html.matchAll(/\s(on[a-z]+)\s*=\s*("|')([\s\S]*?)\2/gi)) {
+    if (match[3] && OBVIOUS_INFINITE_LOOP_PATTERN.test(match[3])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function formatGeneratedAppSecurityToast(
   violations: GeneratedAppHtmlSecurityViolation[],
   t: (key: string) => string,

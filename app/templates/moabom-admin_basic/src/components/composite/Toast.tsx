@@ -23,6 +23,13 @@ export type ToastPosition =
   | 'bottom-center'
   | 'bottom-right';
 
+/** 토스트 액션 버튼 (확인/취소 등). 공용 토스트 라이브러리 표면 — moabom-basic Toast 와 동일 계약. */
+export interface ToastActionButton {
+  label: string;
+  onClick: () => void | Promise<void>;
+  variant?: 'primary' | 'secondary';
+}
+
 export interface ToastItem {
   id: string | number;
   type: ToastType;
@@ -31,6 +38,12 @@ export interface ToastItem {
   icon?: string;
   /** 개별 토스트 자동 닫힘 시간 (ms) */
   duration?: number;
+  /** 단일 액션 버튼. `actions` 가 있으면 무시된다. */
+  action?: ToastActionButton;
+  /** 복수 액션 버튼(확인 등). `actions` 가 있으면 `action` 보다 우선한다. */
+  actions?: ToastActionButton[];
+  /** X(닫기) 버튼 클릭 시 호출. 확인 토스트에서 취소와 동일한 처리에 사용한다. */
+  onDismiss?: () => void;
 }
 
 export interface ToastProps {
@@ -172,8 +185,8 @@ export const Toast: React.FC<ToastProps> = ({
         return next;
       });
 
-      // 자동 제거 타이머 설정
-      const effectiveDuration = toast.duration || duration;
+      // 자동 제거 타이머 설정 (duration: 0 이면 자동 닫힘 비활성 — 확인/취소 토스트용)
+      const effectiveDuration = toast.duration !== undefined ? toast.duration : duration;
       if (effectiveDuration > 0) {
         setTimeout(() => {
           handleRemove(toast.id);
@@ -199,7 +212,10 @@ export const Toast: React.FC<ToastProps> = ({
           toast={toast}
           position={position}
           isVisible={visibleToasts.get(toast.id) ?? true}
-          onClose={() => handleRemove(toast.id)}
+          onClose={() => {
+            toast.onDismiss?.();
+            handleRemove(toast.id);
+          }}
         />
       ))}
     </Div>
@@ -215,6 +231,9 @@ interface ToastItemProps {
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, position, isVisible, onClose }) => {
   const typeStyle = typeStyleMap[toast.type] || typeStyleMap.info;
+  const actionButtons = toast.actions?.length
+    ? toast.actions
+    : (toast.action ? [toast.action] : []);
 
   // 아이콘 결정: 커스텀 아이콘 > 타입별 기본 아이콘
   const iconName = toast.icon
@@ -223,6 +242,13 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, position, isVisible, onClo
 
   // position에 따라 숨김 애니메이션 방향 결정 (top → 위로, bottom → 아래로)
   const hideTranslate = position.startsWith('bottom') ? 'translate-y-2' : '-translate-y-2';
+
+  const actionButtonClass = (variant: 'primary' | 'secondary' = 'primary'): string => {
+    if (variant === 'secondary') {
+      return `moa-toast-action moa-toast-action--secondary flex-shrink-0 min-h-8 px-3 py-1.5 rounded-lg text-xs font-semibold border shadow-sm transition-colors ${typeStyle.text} border-current/25 bg-white/70 hover:bg-white/90 dark:bg-black/20 dark:hover:bg-black/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30`;
+    }
+    return `moa-toast-action moa-toast-action--primary flex-shrink-0 min-h-8 px-3 py-1.5 rounded-lg text-xs font-semibold border shadow-sm transition-colors ${typeStyle.text} border-current/35 bg-current/10 hover:bg-current/20 dark:bg-white/10 dark:hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30`;
+  };
 
   return (
     <Div
@@ -242,7 +268,24 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, position, isVisible, onClo
       <Span className={`flex-1 text-sm font-medium ${typeStyle.text}`}>
         {toast.message}
       </Span>
+      {actionButtons.length > 0 ? (
+        <Div className="flex flex-shrink-0 items-center gap-2">
+          {actionButtons.map((actionButton, index) => (
+            <Button
+              key={`${actionButton.label}-${index}`}
+              type="button"
+              onClick={() => {
+                void actionButton.onClick();
+              }}
+              className={actionButtonClass(actionButton.variant ?? (index === actionButtons.length - 1 ? 'primary' : 'secondary'))}
+            >
+              {actionButton.label}
+            </Button>
+          ))}
+        </Div>
+      ) : null}
       <Button
+        type="button"
         onClick={onClose}
         className={`flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${typeStyle.text} focus:outline-none`}
         aria-label={getTranslation('common.close_notification')}

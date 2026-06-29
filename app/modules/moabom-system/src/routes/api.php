@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Moabom\System\Http\Controllers\Admin\HomeBackgroundController;
 use Modules\Moabom\System\Http\Controllers\Admin\SystemSettingsController;
 use Modules\Moabom\System\Http\Controllers\HomeBackgroundFileController;
+use Modules\Moabom\System\Http\Controllers\Platform\RealtimeVmController;
 use Modules\Moabom\System\Http\Controllers\Platform\SaasHospitalController;
 use Modules\Moabom\System\Http\Controllers\PublicExtensionBootMetaController;
 use Modules\Moabom\System\Http\Controllers\PublicFrontendDefaultsController;
@@ -90,6 +91,9 @@ Route::prefix('platform/saas')
     ->middleware([RequireMoabomPlatformHost::class, 'auth:sanctum', 'admin'])
     ->group(function () {
         Route::prefix('hospitals')->group(function () {
+            Route::get('slug-availability', [SaasHospitalController::class, 'slugAvailability'])
+                ->middleware('permission:admin,moabom-system.saas.read')
+                ->name('platform.saas.hospitals.slug_availability');
             Route::get('/', [SaasHospitalController::class, 'index'])
                 ->middleware('permission:admin,moabom-system.saas.read')
                 ->name('platform.saas.hospitals.index');
@@ -117,6 +121,17 @@ Route::prefix('platform/saas')
         Route::get('packages', [SaasHospitalController::class, 'packages'])
             ->middleware('permission:admin,moabom-system.saas.read')
             ->name('platform.saas.packages');
+    });
+
+Route::prefix('platform/realtime-vm')
+    ->middleware([RequireMoabomPlatformHost::class, 'auth:sanctum', 'admin'])
+    ->group(function () {
+        Route::get('/', [RealtimeVmController::class, 'show'])
+            ->middleware('permission:admin,moabom-system.realtime.read')
+            ->name('platform.realtime-vm.show');
+        Route::post('refresh', [RealtimeVmController::class, 'refresh'])
+            ->middleware('permission:admin,moabom-system.realtime.read')
+            ->name('platform.realtime-vm.refresh');
     });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {

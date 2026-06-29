@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MoabomTranslateFn } from '../i18n/moabomT';
 import {
   fetchChatBlocks,
@@ -53,11 +53,20 @@ import { requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 import type { ChatMessageCreatedPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
 import {
+  clearConversationLeft,
+  isConversationLeft,
+  markConversationLeft,
+} from '../runtime/moabomShellChatLeftConversations';
+import {
   hasChatAutoStartBeenAttempted,
   isChatAutoStartSuppressed,
   markChatAutoStartAttempted,
   suppressChatAutoStartForPeer,
 } from '../runtime/moabomShellChatAutoStartGuard';
+
+function filterActiveConversations(rows: ChatConversation[]): ChatConversation[] {
+  return rows.filter(row => !isConversationLeft(row.uuid));
+}
 
 function chatErrorMessage(error: unknown, t: MoabomTranslateFn): string {
   if (error instanceof MoabomChatApiError) {
@@ -143,11 +152,30 @@ export function useMoabomChat(
   const typingClearTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const lastTypingSignalRef = useRef(0);
 
-  const applyIncomingChatMessage = useCallback((payload: ChatMessageCreatedPayload) => {
+  const applyIncomingChatMessage = useCallback((payload: ChatMessageCreatedPayload & { removed?: boolean; reason?: string }) => {
     const conversationUuid = payload.conversation_uuid
       ?? payload.message?.conversation_uuid
       ?? payload.conversation?.uuid;
     if (!conversationUuid) {
+      return;
+    }
+
+    if (payload.removed || payload.reason === 'member.left.self') {
+      markConversationLeft(conversationUuid);
+      if (activeConversationRef.current?.uuid === conversationUuid) {
+        setActiveConversation(null);
+        setMessages([]);
+        clearMoabomShellActiveChat();
+      }
+      setConversations(prev => {
+        const next = prev.filter(item => item.uuid !== conversationUuid);
+        setShellChatInboxCache(next);
+        return next;
+      });
+      return;
+    }
+
+    if (isConversationLeft(conversationUuid)) {
       return;
     }
 
@@ -195,8 +223,9 @@ export function useMoabomChat(
     setError(null);
     try {
       const rows = await fetchChatConversations(search);
-      setConversations(rows);
-      setShellChatInboxCache(rows);
+      const activeRows = filterActiveConversations(rows);
+      setConversations(activeRows);
+      setShellChatInboxCache(activeRows);
       if (
         !activeConversationRef.current
         && rows[0]
@@ -286,6 +315,7 @@ export function useMoabomChat(
   const startWithUsers = useCallback(async (memberUuids: string[], title?: string | null) => {
     try {
       const conversation = await startChatConversation(memberUuids, title);
+      clearConversationLeft(conversation.uuid);
       setConversations(prev => upsertConversation(prev, conversation));
       await selectConversation(conversation);
       return conversation;
@@ -489,6 +519,7 @@ export function useMoabomChat(
   const removeConversation = useCallback(async (conversationUuid: string) => {
     try {
       await deleteChatConversation(conversationUuid);
+      markConversationLeft(conversationUuid);
       const wasActive = activeConversationRef.current?.uuid === conversationUuid;
 
       if (wasActive) {
@@ -527,13 +558,22 @@ export function useMoabomChat(
   }, [selectConversation, t]);
 
   useEffect(() => {
-    const cached = getShellChatInboxCache();
+    const cached = filterActiveConversations(getShellChatInboxCache());
     if (cached.length > 0) {
       setConversations(cached);
     }
     void loadConversations(undefined, { silent: cached.length > 0 });
     void loadBlocks();
   }, [loadBlocks, loadConversations]);
+
+  useEffect(() => {
+    return subscribeMoabomWebSocketConnectionChange(() => {
+      if (isMoabomWebSocketConnected()) {
+        setWsAuthEpoch(epoch => epoch + 1);
+        void refreshActiveMessagesSilent();
+      }
+    });
+  }, [refreshActiveMessagesSilent]);
 
   useEffect(() => {
     const refreshOnFocus = () => {
@@ -564,14 +604,6 @@ export function useMoabomChat(
     window.addEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
     return () => window.removeEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, onWsAuthSynced);
   }, []);
-
-  useEffect(() => {
-    return subscribeMoabomWebSocketConnectionChange(() => {
-      if (isMoabomWebSocketConnected()) {
-        void refreshActiveMessagesSilent();
-      }
-    });
-  }, [refreshActiveMessagesSilent]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -675,9 +707,18 @@ export function useMoabomChat(
     clearMoabomShellActiveChat();
   }, []);
 
+  const conversationChannelKey = useMemo(
+    () => conversations
+      .map(conversation => conversation.channel)
+      .filter((channel): channel is string => Boolean(channel))
+      .sort()
+      .join('\0'),
+    [conversations],
+  );
+
   useEffect(() => {
     return registerShellChatInboxCacheListener(cached => {
-      setConversations(cached);
+      setConversations(filterActiveConversations(cached));
     });
   }, []);
 
@@ -686,9 +727,7 @@ export function useMoabomChat(
   }, [applyIncomingChatMessage]);
 
   useEffect(() => {
-    const channels = conversations
-      .map(conversation => conversation.channel)
-      .filter((channel): channel is string => Boolean(channel));
+    const channels = conversationChannelKey ? conversationChannelKey.split('\0') : [];
 
     if (channels.length === 0) {
       return undefined;
@@ -710,7 +749,7 @@ export function useMoabomChat(
     }
 
     return () => subscription.unsubscribe();
-  }, [applyIncomingChatMessage, conversations, handlePeerTyping, wsAuthEpoch]);
+  }, [applyIncomingChatMessage, conversationChannelKey, handlePeerTyping, wsAuthEpoch]);
 
   useEffect(() => {
     if (!activeConversation?.channel) {

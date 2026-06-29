@@ -1,6 +1,7 @@
 import type { App } from '../data/Moa_apps';
 import type { StoredGeneratedAppSummary } from '../api/moabomAppsApi';
 import { isGeneratedAppPublished } from '../api/moabomAppsApi';
+import { pickGeneratedAppDisplayTitle } from './generated/resolveGeneratedAppDisplayTitle';
 import { resolveGeneratedAppIconFromTitle } from './generated/generatedAppIconFromTitle';
 import {
   isWebsiteLinkAppType,
@@ -74,7 +75,10 @@ export function resolveGeneratedAppTitleBarGradient(serverId: number, appType = 
 /** API 생성 앱 목록 항목 → 마이페이지 library `App` 카드 */
 export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummary): App {
   const appType = item.app_type ?? 'general';
-  const title = item.title?.trim() || `App #${item.id}`;
+  const title = pickGeneratedAppDisplayTitle(
+    item.title?.trim(),
+    item.prompt?.trim()?.slice(0, 80),
+  );
   const promptHint = item.prompt?.trim();
   const metadata = item.metadata ?? {};
   const isWebsiteLink = isWebsiteLinkAppType(appType);
@@ -123,7 +127,7 @@ export function buildSyntheticGeneratedLibraryApp(appId: string): App | null {
   }
   return mapStoredGeneratedAppToLibraryApp({
     id: serverId,
-    title: `App #${serverId}`,
+    title: '',
     app_type: 'general',
   });
 }

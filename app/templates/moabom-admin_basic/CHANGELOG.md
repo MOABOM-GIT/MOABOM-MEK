@@ -4,6 +4,13 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.0-beta.15] - 2026-06-29
+
+### Changed
+
+- 환경설정 > 드라이버 탭 안내 문구를 Realtime VM 아키텍처(realtime.mek360.com, 즉시 브로드캐스트, 큐·캐시 역할 분리)에 맞게 갱신했습니다.
+- 운영 고정 시 WebSocket 클라이언트·서버 엔드포인트 구분 표시 및 VM 운영 안내 패널을 추가했습니다.
+
 ## [1.0.0-beta.14] - 2026-06-28
 
 ### Changed

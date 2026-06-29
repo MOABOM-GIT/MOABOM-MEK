@@ -131,7 +131,7 @@ export interface Moa_HomeShellViewProps {
   focusWindow: (id: string) => void;
   resolveWinTitle: (win: WindowState) => string;
   openEditGeneratedApp: (serverId: number) => void;
-  deleteSavedGeneratedApp: (serverId: number) => Promise<void>;
+  deleteSavedGeneratedApp: (serverId: number, displayTitle?: string) => Promise<void>;
   toggleGeneratedAppShare: (serverId: number, nextShared: boolean) => Promise<void>;
   openAppCommunityWindow: (serverId: number, options?: { title?: string; canWrite?: boolean }) => void;
   handleShellAuthenticated: (user?: AuthUserLike | null) => void;

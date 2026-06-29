@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import Select, { components, MultiValue, SingleValue, ActionMeta, InputActionMeta } from 'react-select';
 import CreatableSelect from 'react-select/creatable';
+import { pushMoabomAdminToast } from '../../runtime/moabomAdminToast';
 
 export interface TagOption {
   value: string | number;
@@ -399,7 +400,7 @@ export const TagInput: React.FC<TagInputProps> = ({
         const result = onBeforeRemove(actionMeta.removedValue);
         if (result !== true) {
           const message = typeof result === 'string' ? result : `"${actionMeta.removedValue.label}"은(는) 제거할 수 없습니다.`;
-          alert(message);
+          pushMoabomAdminToast(message, 'warning');
           return;
         }
       }
@@ -423,7 +424,7 @@ export const TagInput: React.FC<TagInputProps> = ({
         const result = onBeforeRemove(currentOption);
         if (result !== true) {
           const message = typeof result === 'string' ? result : `"${currentOption.label}"은(는) 제거할 수 없습니다.`;
-          alert(message);
+          pushMoabomAdminToast(message, 'warning');
           return;
         }
       }

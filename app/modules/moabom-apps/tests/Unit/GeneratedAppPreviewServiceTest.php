@@ -173,5 +173,7 @@ class GeneratedAppPreviewServiceTest extends ModuleTestCase
 
         $this->assertStringContainsString('https://*.mek360.com', $headers['Content-Security-Policy']);
         $this->assertStringContainsString('frame-ancestors', $headers['Content-Security-Policy']);
+        // 생성앱 origin 을 부모 셸과 별도 agent cluster(독립 이벤트 루프)로 격리한다.
+        $this->assertSame('?1', $headers['Origin-Agent-Cluster'] ?? null);
     }
 }

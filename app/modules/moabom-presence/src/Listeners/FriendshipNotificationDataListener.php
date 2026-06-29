@@ -67,10 +67,6 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
             return $this->extractFriendAcceptedData($default, $args);
         }
 
-        if ($type === 'friend_removed') {
-            return $this->extractFriendRemovedData($default, $args);
-        }
-
         return $default;
     }
 
@@ -149,43 +145,6 @@ final class FriendshipNotificationDataListener implements HookListenerInterface
                 'trigger_user' => $requester,
                 'related_users' => [
                     'addressee' => $addressee,
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * @param  array{notifiable: mixed, notifiables: mixed, data: array<string, mixed>, context: array<string, mixed>}  $default
-     * @param  array<int, mixed>  $args
-     * @return array{notifiable: null, notifiables: null, data: array<string, mixed>, context: array<string, mixed>}
-     */
-    private function extractFriendRemovedData(array $default, array $args): array
-    {
-        $viewer = $args[0] ?? null;
-        $other = $args[1] ?? null;
-
-        if (! $viewer instanceof User || ! $other instanceof User) {
-            return $default;
-        }
-
-        $otherName = trim((string) ($other->nickname ?: $other->name));
-        if ($otherName === '') {
-            $otherName = 'User #'.$other->id;
-        }
-
-        return [
-            'notifiable' => null,
-            'notifiables' => null,
-            'data' => [
-                'name' => '{recipient_name}',
-                'other_name' => $otherName,
-                'other_uuid' => $other->uuid,
-            ],
-            'context' => [
-                'trigger_user_id' => $viewer->id,
-                'trigger_user' => $viewer,
-                'related_users' => [
-                    'other' => $other,
                 ],
             ],
         ];

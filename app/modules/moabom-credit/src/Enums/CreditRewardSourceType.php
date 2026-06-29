@@ -12,6 +12,7 @@ enum CreditRewardSourceType: string
     case LikeReceived = 'like_received';
     case Attendance = 'attendance';
     case CommentWrite = 'comment_write';
+    case AppReviewWrite = 'app_review_write';
 
     /**
      * @return list<string>

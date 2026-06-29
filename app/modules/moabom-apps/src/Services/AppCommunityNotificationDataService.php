@@ -62,7 +62,7 @@ final class AppCommunityNotificationDataService
             'data' => [
                 'name' => '{recipient_name}',
                 'app_name' => config('app.name'),
-                'app_title' => $appTitle !== '' ? $appTitle : 'App #'.(int) $app->id,
+                'app_title' => $appTitle !== '' ? $appTitle : __('moabom-apps::messages.apps.generated.untitled_app'),
                 'review_author' => $reviewerName,
                 'review_title' => $reviewTitle,
                 'review_body' => $this->truncateText((string) $post->body),

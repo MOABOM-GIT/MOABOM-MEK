@@ -2,6 +2,8 @@ import type { AuthWindowMode } from '../components/composite/Moa_AuthWindowConte
 import {
   formatBoardShellPath,
   parseShellRoute,
+  pushShellPath,
+  replaceShellPath,
   type ParsedShellRoute,
 } from '../utils/moabomShellRoutes';
 import type { MoaShellBoardBridge } from './moaShellBoardBridge';
@@ -49,20 +51,53 @@ export function tryHandleBoardShellNavigate(
   bridge: MoaShellBoardBridge,
   options?: { replace?: boolean },
 ): boolean {
+  const { pathname, search } = splitPathAndSearch(pathWithQuery);
+  const route: ParsedShellRoute = parseShellRoute(pathname, search);
+  const shellPath = search ? `${pathname}${search}` : pathname;
+
+  if (route.kind === 'app') {
+    if (bridge.openAppById) {
+      bridge.openAppById(route.appId, { shellPath, replace: options?.replace === true });
+      return true;
+    }
+    if (isMoabomShellHomeMounted()) {
+      if (options?.replace) {
+        replaceShellPath(shellPath);
+      } else {
+        pushShellPath(shellPath);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  if (route.kind === 'me') {
+    if (bridge.openMyPage) {
+      bridge.openMyPage(route.tab, { shellPath, replace: options?.replace === true });
+      return true;
+    }
+    if (isMoabomShellHomeMounted()) {
+      if (options?.replace) {
+        replaceShellPath(shellPath);
+      } else {
+        pushShellPath(shellPath);
+      }
+      return true;
+    }
+    return false;
+  }
+
   if (!isMoabomShellHomeMounted() && !bridge.isActive()) {
     return false;
   }
 
-  const { pathname, search } = splitPathAndSearch(pathWithQuery);
   const authMode = resolveShellAuthModeFromPath(pathname);
   if (authMode) {
     bridge.openAuth(authMode);
     return true;
   }
 
-  const route: ParsedShellRoute = parseShellRoute(pathname, search);
   if (route.kind === 'board') {
-    const shellPath = search ? `${pathname}${search}` : pathname;
     bridge.openBoard(route.slug, route.postId, {
       shellPath,
       replace: options?.replace === true,

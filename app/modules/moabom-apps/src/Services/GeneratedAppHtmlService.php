@@ -21,7 +21,7 @@ class GeneratedAppHtmlService
         ."connect-src https:; "
         ."base-uri 'none'; form-action 'self' https:;";
 
-    public function harden(string $html, ?GeneratedAppDataScope $runtimeScope = null): string
+    public function harden(string $html, ?GeneratedAppDataScope $runtimeScope = null, bool $injectHostedDataApiBridge = false): string
     {
         if ($html === '') {
             return $html;
@@ -30,6 +30,8 @@ class GeneratedAppHtmlService
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-ai-preview-runtime["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-runtime["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-backdrop-probe["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
+        $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-download-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
+        $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-data-api-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<base\b[^>]*>/i', '', $html);
         $html = (string) preg_replace('/<link\b[^>]*\brel=["\']manifest["\'][^>]*>/i', '', $html);
 
@@ -43,6 +45,12 @@ class GeneratedAppHtmlService
         // iframe 내부에서 실제 렌더된 배경 휘도를 측정해 postMessage 로 부모에 알린다.
         // 부모(셸)는 cross-origin iframe 픽셀을 읽을 수 없으므로 측정은 iframe 안에서만 가능하다.
         $cspAndRuntime .= $this->backdropProbeScript();
+        // sandbox iframe 은 allow-downloads 없이 내부 다운로드를 차단한다.
+        // blob/data URL + download 앵커를 가로채 부모(셸)에 postMessage 로 위임한다.
+        $cspAndRuntime .= $this->downloadBridgeScript();
+        if ($injectHostedDataApiBridge) {
+            $cspAndRuntime .= $this->dataApiBridgeScript();
+        }
 
         if (! str_contains($html, 'http-equiv="Content-Security-Policy"')) {
             $cspAndRuntime = '<meta http-equiv="Content-Security-Policy" content="'.self::PREVIEW_CSP.'">'.$cspAndRuntime;
@@ -123,7 +131,15 @@ class GeneratedAppHtmlService
   }
   window.addEventListener('message', function(ev){
     var d = ev.data;
-    if (!d || d.source !== 'moabom-shell' || d.type !== 'backdrop-probe') { return; }
+    if (!d || d.source !== 'moabom-shell') { return; }
+    // 부모(셸) 워치독의 생존 확인 ping 에 즉시 회신한다.
+    // 앱 메인 스레드가 무한 루프로 막히면 이 회신이 끊기고, 부모는 별도 이벤트 루프에서
+    // 응답 없음을 감지해 해당 iframe 만 재시작한다.
+    if (d.type === 'heartbeat-ping') {
+      try { parent.postMessage({ source: 'moabom-app', type: 'heartbeat-pong', id: d.id }, '*'); } catch (e) {}
+      return;
+    }
+    if (d.type !== 'backdrop-probe') { return; }
     reply(d.id, d.points);
   });
   function initial(){ reply('initial', null); }
@@ -136,6 +152,46 @@ class GeneratedAppHtmlService
 JS;
 
         return '<script id="moabom-app-backdrop-probe">'.$js.'</script>';
+    }
+
+    /**
+     * iframe 내부 다운로드 → 부모(셸) postMessage 브릿지.
+     *
+     * @see resources/js/generated-app-download-bridge.js
+     */
+    private function downloadBridgeScript(): string
+    {
+        $path = dirname(__DIR__, 2).'/resources/js/generated-app-download-bridge.js';
+        if (! is_readable($path)) {
+            return '';
+        }
+
+        $js = (string) file_get_contents($path);
+        if ($js === '') {
+            return '';
+        }
+
+        return '<script id="moabom-app-download-bridge">'.$js.'</script>';
+    }
+
+    /**
+     * Hosted 앱 fetch('/api/data/...') — preview_token 헤더 자동 부착.
+     *
+     * @see resources/js/generated-app-data-api-bridge.js
+     */
+    private function dataApiBridgeScript(): string
+    {
+        $path = dirname(__DIR__, 2).'/resources/js/generated-app-data-api-bridge.js';
+        if (! is_readable($path)) {
+            return '';
+        }
+
+        $js = (string) file_get_contents($path);
+        if ($js === '') {
+            return '';
+        }
+
+        return '<script id="moabom-app-data-api-bridge">'.$js.'</script>';
     }
 
     private function injectAfterHeadOpen(string $html, string $injection): string

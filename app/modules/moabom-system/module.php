@@ -164,6 +164,32 @@ class Module extends AbstractModule
                         ],
                     ],
                 ],
+                [
+                    'identifier' => 'realtime',
+                    'name' => [
+                        'ko' => 'Realtime VM',
+                        'en' => 'Realtime VM',
+                    ],
+                    'description' => [
+                        'ko' => 'mek360.com 플랫폼 Realtime VM(Reverb) 모니터링',
+                        'en' => 'Platform Realtime VM (Reverb) monitoring',
+                    ],
+                    'permissions' => [
+                        [
+                            'action' => 'read',
+                            'name' => [
+                                'ko' => 'Realtime VM 조회',
+                                'en' => 'Read Realtime VM',
+                            ],
+                            'description' => [
+                                'ko' => 'Realtime VM WebSocket probe·런타임 엔드포인트 조회',
+                                'en' => 'Read Realtime VM WebSocket probe and runtime endpoints',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                    ],
+                ],
             ],
         ];
     }

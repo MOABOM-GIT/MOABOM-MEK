@@ -62,6 +62,8 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
     closeErrorWindow: windows.closeErrorWindow,
     openBoardWindow: windows.openBoardWindow,
     openAuthWindow: windows.openAuthWindow,
+    openAppById: windows.openAppById,
+    openMyPage: windows.openMyPage,
     openUserProfileWindow: windows.openUserProfileWindow,
     initialWindow,
     isLoggedIn,

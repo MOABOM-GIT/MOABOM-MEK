@@ -23,6 +23,8 @@ body.moa-home-active {
 .moa-app-window-viewport {
   container-type: size;
   container-name: moa-app-window;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
@@ -43,7 +45,8 @@ body.moa-home-active {
 .moa-mypage-surface,
 .moa-auth-window {
   display: flex;
-  min-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   gap: var(--moa-app-stack-gap);
 }
@@ -57,5 +60,5 @@ body.moa-home-active {
 
 /** 앱 창 본문 내부 블록(섹션) 그리드 */
 .moa-app-stack-grid {
-  gap: var(--moa-app-stack-gap);
+  gap: 1rem;
 }

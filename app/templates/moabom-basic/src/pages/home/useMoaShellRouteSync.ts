@@ -21,7 +21,7 @@ import {
   isAnyShellNavigateWindowOpen,
   type MoaShellBoardBridge,
 } from '../../shell/moaShellBoardBridge';
-import { formatShellPath, parseShellRoute, replaceShellPath } from '../../utils/moabomShellRoutes';
+import { formatShellPath, parseShellRoute, pushShellPath, replaceShellPath } from '../../utils/moabomShellRoutes';
 import type { ShellErrorCode } from '../../shell/moaShellErrorIds';
 import type { BoardShellMode } from '../../utils/moabomShellRoutes';
 import type { UserProfileWindowView } from '../../shell/userProfileWindowLayoutRuntime';
@@ -35,6 +35,8 @@ type ShellWindowsApi = {
   closeErrorWindow: () => void;
   openBoardWindow: (slug: string, postId?: string, sync?: ShellUrlSync, boardMode?: BoardShellMode) => void;
   openAuthWindow: (mode: AuthWindowMode, sync?: ShellUrlSync) => void;
+  openAppById: (appId: string, sync?: ShellUrlSync) => void;
+  openMyPage: (tab: import('../../components/composite/mypage/myPageTypes').MyPageTab, sync?: ShellUrlSync) => void;
 };
 
 export interface UseMoaShellRouteSyncOptions extends ShellWindowsApi {
@@ -55,6 +57,8 @@ export function useMoaShellRouteSync({
   closeErrorWindow,
   openBoardWindow,
   openAuthWindow,
+  openAppById,
+  openMyPage,
   openUserProfileWindow,
   initialWindow,
   isLoggedIn,
@@ -69,6 +73,10 @@ export function useMoaShellRouteSync({
   openAuthWindowRef.current = openAuthWindow;
   const openUserProfileWindowRef = useRef(openUserProfileWindow);
   openUserProfileWindowRef.current = openUserProfileWindow;
+  const openAppByIdRef = useRef(openAppById);
+  openAppByIdRef.current = openAppById;
+  const openMyPageRef = useRef(openMyPage);
+  openMyPageRef.current = openMyPage;
   const openErrorWindowRef = useRef(openErrorWindow);
   openErrorWindowRef.current = openErrorWindow;
   const closeErrorWindowRef = useRef(closeErrorWindow);
@@ -193,6 +201,22 @@ export function useMoaShellRouteSync({
           shellPath: options?.shellPath,
           replace: options?.replace,
         }, view);
+      },
+      openAppById: (appId, options) => {
+        openAppByIdRef.current(appId, {
+          skipUrl: true,
+          shellPath: options?.shellPath,
+          replace: options?.replace,
+        });
+      },
+      openMyPage: (tab, options) => {
+        const shellPath = options?.shellPath ?? formatShellPath({ kind: 'me', tab });
+        openMyPageRef.current(tab, { skipUrl: true });
+        if (options?.replace) {
+          replaceShellPath(shellPath);
+        } else {
+          pushShellPath(shellPath);
+        }
       },
     };
 

@@ -3,6 +3,12 @@
   "home": {
     "title": "首页"
   },
+  "seo": {
+    "app_detail_title": "应用",
+    "app_detail_description": "探索可在 MOABOM 上即时运行的网页应用。",
+    "apps_index_title": "应用目录",
+    "apps_index_description": "一览 MOABOM 的内置应用与 AI 生成的公开网页应用，并立即运行。"
+  },
   "auth": {
     "login": "登录",
     "logout": "退出",
@@ -561,6 +567,7 @@
     "description": "描述想要的应用，即可生成 HTML Web 应用预览。",
     "field_title": "应用标题",
     "field_title_placeholder": "例如：睡眠计算器",
+    "untitled_app": "未命名应用",
     "field_type": "应用类型",
     "field_tier": "数据存储",
     "field_model": "AI 模型",
@@ -602,6 +609,10 @@
     "viewer_loading": "正在加载已保存的应用…",
     "viewer_error": "无法加载已保存的应用。",
     "viewer_empty": "没有可显示的应用 HTML。",
+    "frozen_title": "应用无响应",
+    "frozen_description": "点击「重启应用」按钮即可重新启动应用。",
+    "frozen_restart": "重启应用",
+    "download_failed": "无法下载文件。",
     "preview_empty_title": "尚未生成应用",
     "preview_empty_description": "输入提示词并点击生成查看预览。",
     "notice_fallback": "在配置 AI provider 前将显示默认预览。",
@@ -648,6 +659,7 @@
     "security": {
       "save_blocked": "安全检测未通过，无法保存。",
       "more": "另有 {count} 项安全规则违规。",
+      "loop_warning": "检测到可能导致无限循环的代码。运行时可能会卡住（若卡住将自动重启）。",
       "parent_shell_escape": "不允许访问父窗口（壳层）的代码。",
       "cookie_exfiltration": "不允许 Cookie 窃取或外传模式。",
       "javascript_protocol": "不允许 javascript: URL。",

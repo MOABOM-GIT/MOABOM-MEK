@@ -4,7 +4,7 @@ import {
   pathNeedsLegacyG7RouterPath,
 } from './moabomLegacyMypagePaths';
 import { navigateMoabomChatNotification } from './moabomChatNotificationNavigate';
-import { parseShellRoute, pushShellPath } from './moabomShellRoutes';
+import { navigateMoabomShellPath } from '../shell/navigateMoabomShellPath';
 
 const MY_PAGE_TABS = [
   'profile',
@@ -174,10 +174,7 @@ export function navigateMoabomNotificationUrl(
 
   const pathname = normalizePathname(target.split(/[?#]/)[0] ?? target);
   const search = target.includes('?') ? target.slice(target.indexOf('?')) : '';
-  const shellRoute = parseShellRoute(pathname, search);
-  if (shellRoute.kind === 'userProfile' || shellRoute.kind === 'me' || shellRoute.kind === 'board') {
-    // URL만 갱신 — useMoaShellRouteSync.applyShellRoute 가 창을 단일 경로로 연다.
-    pushShellPath(target);
+  if (navigateMoabomShellPath(`${pathname}${search}`)) {
     return;
   }
 

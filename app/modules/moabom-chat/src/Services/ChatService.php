@@ -43,7 +43,7 @@ final class ChatService
     public function focusConversation(User $viewer, string $conversationUuid): void
     {
         $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
-        $this->cache->put(
+        $this->focusCache()->put(
             $this->focusCacheKey($viewer->id),
             $conversation->uuid,
             self::FOCUS_CACHE_TTL_SECONDS,
@@ -53,20 +53,21 @@ final class ChatService
     public function clearConversationFocus(User $viewer, ?string $conversationUuid = null): void
     {
         $key = $this->focusCacheKey($viewer->id);
+        $store = $this->focusCache();
         if ($conversationUuid === null) {
-            $this->cache->forget($key);
+            $store->forget($key);
 
             return;
         }
 
-        if ($this->cache->get($key) === $conversationUuid) {
-            $this->cache->forget($key);
+        if ($store->get($key) === $conversationUuid) {
+            $store->forget($key);
         }
     }
 
     public function isFocusedOnConversation(User $viewer, string $conversationUuid): bool
     {
-        return $this->cache->get($this->focusCacheKey($viewer->id)) === $conversationUuid;
+        return $this->focusCache()->get($this->focusCacheKey($viewer->id)) === $conversationUuid;
     }
 
     /**
@@ -245,6 +246,16 @@ final class ChatService
             'membersIncludingTrashed.user',
             'latestMessage.sender',
         ]);
+
+        HookManager::broadcast(
+            "core.user.notifications.{$viewer->uuid}",
+            'chat.inbox.updated',
+            [
+                'conversation_uuid' => $conversation->uuid,
+                'reason' => 'member.left.self',
+                'removed' => true,
+            ],
+        );
         $this->broadcastInboxStateToActiveMembers($conversation, 'member.left');
 
         return [
@@ -689,6 +700,14 @@ final class ChatService
     private function focusCacheKey(int $userId): string
     {
         return 'moabom_chat:focus:'.$this->tenantId().':'.$userId;
+    }
+
+    /**
+     * 활성 대화 포커스 — Cloud Run 멀티 인스턴스 간 공유 (file 캐시는 인스턴스 로컬).
+     */
+    private function focusCache(): CacheInterface
+    {
+        return $this->cache->withStore('database');
     }
 
     private function tenantId(): string

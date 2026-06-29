@@ -70,6 +70,8 @@ return [
             'operation_not_found' => 'Operation record not found.',
         ],
     ],
+    'realtime_vm_status_success' => 'Realtime VM status loaded.',
+    'realtime_vm_refresh_success' => 'Realtime VM status refreshed.',
     // All 'apps.*' keys are moved to dedicated modules (2026-06-02).
     // - apps.ai.*, apps.generated.*: moabom-apps
     // - apps.cpap.*: moabom-cpap

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.1] - 2026-06-29
+
+### Fixed
+
+- Hosted(앱 서버에 저장) 생성앱 저장 시 500 — platform DB 앱 row 갱신 후 `fresh(['user'])`가 `moabom-platform.users`를 조회하던 cross-DB eager load 제거. 소유자 조회는 기존처럼 `GeneratedAppOwnerResolver` 경로만 사용.
+
+## [0.5.0] - 2026-06-29
+
+### Added
+
+- 앱 SEO/AI 검색 노출 — 기본 제공 앱과 전역 공개(visibility=global) 제작앱을 메인 사이트 `/app/{id}`·`/apps` 경로에서 봇 전용 서버렌더(메타·OpenGraph·schema.org 구조화데이터·읽을 수 있는 본문)로 노출. 그누보드7 코어 SEO 봇 파이프라인의 확장 슬롯(`core.seo.filter_view_data`·`core.seo.resolve_is_bot`·`SitemapContributorInterface`)만 사용하며 코어는 수정하지 않음.
+  - `AppSeoDataService` — 기본앱(AppRegistry + config 보강) + 전역 공개 제작앱만 SEO 디스크립터로 정규화하는 단일 가드. private/tenant 제작앱은 절대 비노출.
+  - 공개 SEO API(`GET /api/modules/moabom-apps/seo/apps`·`/seo/apps/{id}`) — 인증 불필요, 전역 공개분만. 외부 검색·AI 소비자용.
+  - `moabom-basic`: `layouts/seo/app_detail.json`·`apps_index.json`(components=HomePage 유지로 SPA 무변경) + routes.json `/app/:id`·`/apps` 매핑 교체.
+  - `AppsSitemapContributor` — `/apps` + 기본앱 + 전역 공개 제작앱 URL을 sitemap.xml에 기여.
+  - AI 크롤러(GPTBot/ClaudeBot/PerplexityBot/Google-Extended 등) User-Agent 봇 판정 + robots.txt Sitemap·허용 + `llms.txt` 인덱스.
+  - `AppSeoCacheListener` — 전역 공개 제작앱 저장/삭제 시 `/app/generated-app-{id}`·`/apps` SEO 캐시 무효화(다음 크롤러 요청에 lazy 재생성).
+  - 전역 공개 제작앱 중복콘텐츠 방지용 canonical 호스트(`MOABOM_APPS_SEO_CANONICAL_BASE`, 기본 `app.url`) 적용.
+
 ## [0.4.4] - 2026-06-28
 
 ### Fixed

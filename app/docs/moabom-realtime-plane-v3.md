@@ -32,15 +32,15 @@
 - G7 코어 — `HookManager::broadcast`·알림 리스너만 사용, 코어 직접 수정 최소화
 - Request-based CPU 스로틀 — Reverb idle 시 WS 지연 가능 → **REST 안전망 필수 유지**
 
-### VM 분리 (진행 중)
+### VM 분리 (완료)
 
-Reverb + Redis 를 전용 VM(`34.50.62.24`)으로 이전. 상세 SSOT: [`deploy/moabom-realtime-vm.md`](../../deploy/moabom-realtime-vm.md)
+Reverb + Redis 를 전용 VM(`34.50.62.24` / `realtime.mek360.com`)으로 운영. 상세 SSOT: [`deploy/moabom-realtime-vm.md`](../../deploy/moabom-realtime-vm.md)
 
-| 현재 | 목표 |
+| 이전 | 현재 |
 |------|------|
 | Cloud Run sidecar `127.0.0.1:6001` | VM nginx `wss://realtime.mek360.com` |
 | 인스턴스별 독립 Reverb | Redis-backed 단일 Reverb |
-| `websocket_server_host=127.0.0.1` | `websocket_server_host=realtime.mek360.com` (컷오버 후) |
+| 브로드캐스트 DB 큐 경유 | `ShouldBroadcastNow` 즉시 publish |
 
 ---
 

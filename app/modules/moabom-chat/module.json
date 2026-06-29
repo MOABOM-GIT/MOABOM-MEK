@@ -5,7 +5,7 @@
         "ko": "프로필 대화",
         "en": "Profile Chat"
     },
-    "version": "0.2.1",
+    "version": "0.2.3",
     "license": "MIT",
     "description": {
         "ko": "프로필 윈도우 1:1·그룹 대화, 메시지 보관, 대화거부, 실시간 채팅 이벤트를 제공합니다.",

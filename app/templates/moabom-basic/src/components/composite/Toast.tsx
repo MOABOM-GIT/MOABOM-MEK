@@ -58,12 +58,14 @@ export interface ToastItem {
     onClick: () => void | Promise<void>;
     variant?: 'primary' | 'secondary';
   };
-  /** 복수 액션 버튼(확인/취소 등). `actions`가 있으면 `action`보다 우선한다. */
+  /** 복수 액션 버튼(확인 등). `actions`가 있으면 `action`보다 우선한다. */
   actions?: Array<{
     label: string;
     onClick: () => void | Promise<void>;
     variant?: 'primary' | 'secondary';
   }>;
+  /** X(닫기) 버튼 클릭 시 호출. 확인 토스트에서 취소와 동일한 처리에 사용한다. */
+  onDismiss?: () => void;
 }
 
 export interface ToastProps {
@@ -283,7 +285,10 @@ export const Toast: React.FC<ToastProps> = ({
             toast={toast}
             position={position}
             isVisible={visibleToasts.get(toast.id) ?? true}
-            onClose={() => handleRemove(toast.id)}
+            onClose={() => {
+              toast.onDismiss?.();
+              handleRemove(toast.id);
+            }}
           />
         ))}
       </Div>

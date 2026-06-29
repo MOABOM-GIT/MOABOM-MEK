@@ -64,7 +64,7 @@ export function generatedAppPreviewSandbox(previewUrl: string | null): string {
   try {
     const origin = new URL(previewUrl, window.location.origin).origin;
     if (origin !== window.location.origin) {
-      return 'allow-scripts allow-same-origin';
+      return 'allow-scripts allow-same-origin allow-downloads';
     }
   } catch {
     // ignore

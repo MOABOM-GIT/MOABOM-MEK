@@ -30,6 +30,7 @@ return [
         'login_description' => 'Login reward',
         'post_write_description' => 'Post write reward',
         'comment_write_description' => 'Comment write reward',
+        'app_review_write_description' => 'App review write reward',
         'like_received_description' => 'Received like reward',
     ],
 ];

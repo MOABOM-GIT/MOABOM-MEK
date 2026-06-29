@@ -331,6 +331,86 @@ describe('Toast', () => {
     });
   });
 
+  describe('액션 버튼', () => {
+    it('actions가 있으면 버튼을 렌더링하고 클릭 시 onClick을 호출해야 함', () => {
+      const onConfirm = vi.fn();
+      const toasts: ToastItem[] = [
+        {
+          id: 'confirm_1',
+          type: 'warning',
+          message: '삭제하시겠습니까?',
+          duration: 0,
+          actions: [
+            { label: '삭제', variant: 'primary', onClick: onConfirm },
+          ],
+        },
+      ];
+
+      render(<Toast toasts={toasts} />);
+
+      fireEvent.click(screen.getByText('삭제'));
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it('onDismiss가 있으면 닫기 버튼 클릭 시 onDismiss를 호출해야 함', () => {
+      const onDismiss = vi.fn();
+      const toasts: ToastItem[] = [
+        {
+          id: 'confirm_2',
+          type: 'warning',
+          message: '삭제하시겠습니까?',
+          duration: 0,
+          onDismiss,
+          actions: [{ label: '삭제', variant: 'primary', onClick: vi.fn() }],
+        },
+      ];
+
+      render(<Toast toasts={toasts} />);
+
+      fireEvent.click(screen.getByLabelText('알림 닫기'));
+      expect(onDismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it('단일 action도 버튼으로 렌더링되어야 함', () => {
+      const onClick = vi.fn();
+      const toasts: ToastItem[] = [
+        {
+          id: 'action_1',
+          type: 'info',
+          message: '업데이트가 있습니다',
+          duration: 0,
+          action: { label: '새로고침', onClick },
+        },
+      ];
+
+      render(<Toast toasts={toasts} />);
+
+      fireEvent.click(screen.getByText('새로고침'));
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('duration이 0이면 자동 제거되지 않아야 함', () => {
+      const handleRemove = vi.fn();
+      const toasts: ToastItem[] = [
+        {
+          id: 'persist_1',
+          type: 'warning',
+          message: '확인이 필요합니다',
+          duration: 0,
+          actions: [{ label: '확인', onClick: vi.fn() }],
+        },
+      ];
+
+      render(<Toast toasts={toasts} onRemove={handleRemove} />);
+
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+
+      expect(handleRemove).not.toHaveBeenCalled();
+    });
+  });
+
   describe('ActionDispatcher 연동 시나리오', () => {
     it('_global.toasts 형식의 배열 데이터로 렌더링되어야 함', () => {
       // ActionDispatcher가 설정하는 형식

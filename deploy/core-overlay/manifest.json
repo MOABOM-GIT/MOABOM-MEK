@@ -103,6 +103,10 @@
         "reason": "template:cache-clear must forget versioned lang/routes keys and bump ext.cache_version for SaaS lang refresh."
       },
       {
+        "path": "app/Events/GenericBroadcastEvent.php",
+        "reason": "Realtime plane requires ShouldBroadcastNow so presence/chat/notification events publish without queue latency on Cloud Run."
+      },
+      {
         "path": "app/Http/Controllers/Api/Admin/MenuController.php",
         "reason": "Admin active menu API must send no-store headers for shell navigation freshness."
       },

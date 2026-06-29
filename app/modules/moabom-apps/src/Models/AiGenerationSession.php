@@ -25,6 +25,7 @@ class AiGenerationSession extends Model
         'status',
         'app_type',
         'model_id',
+        'form_context',
         'messages',
         'partial_raw',
         'generated_app_id',
@@ -38,6 +39,7 @@ class AiGenerationSession extends Model
     protected function casts(): array
     {
         return [
+            'form_context' => 'array',
             'messages' => 'array',
             'truncated' => 'boolean',
         ];

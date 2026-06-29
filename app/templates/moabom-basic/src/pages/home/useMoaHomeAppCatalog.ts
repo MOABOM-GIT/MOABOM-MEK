@@ -55,7 +55,9 @@ import {
   STORAGE_KEY_RECENT_APPS,
 } from '../../shell/moaShellLayoutConstants';
 import { loadJsonSanitizedIds, saveJson } from '../../shell/moaShellLocalStorage';
-import { pushWarningToast, showAppEditToast } from '../../runtime/moaShellToasts';
+import { resolveGeneratedAppDisplayTitle } from '../../apps/generated/resolveGeneratedAppDisplayTitle';
+import { buildShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
+import { confirmViaToast, pushWarningToast, showAppEditToast } from '../../runtime/moaShellToasts';
 import type { MoaCurrentUser } from '../../shell/moaShellTypes';
 import type { MoabomTranslateFn } from '../../i18n/moabomT';
 import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../../i18n/moabomShellEvents';
@@ -515,10 +517,21 @@ export function useMoaHomeAppCatalog({
     );
   }, [addAppToMain, t]);
 
-  const deleteSavedGeneratedApp = useCallback(async (serverId: number) => {
+  const deleteSavedGeneratedApp = useCallback(async (serverId: number, preferredTitle?: string) => {
     const appId = generatedAppLibraryId(serverId);
-    const appName = appsById.get(appId)?.name ?? `App #${serverId}`;
-    if (!window.confirm(t('moa_shell.home.confirm_delete_generated', { name: appName }))) {
+    const appName = await resolveGeneratedAppDisplayTitle({
+      serverId,
+      authStateKey: buildShellAuthStateKey(currentUserRef.current?.memberKey),
+      catalogTitle: appsById.get(appId)?.name,
+      preferredTitle,
+      untitledLabel: t('moa_apps_ai.untitled_app'),
+    });
+    const confirmed = await confirmViaToast({
+      message: t('moa_shell.home.confirm_delete_generated', { name: appName }),
+      confirmLabel: t('common.delete'),
+      type: 'warning',
+    });
+    if (!confirmed) {
       return;
     }
 

@@ -1536,8 +1536,11 @@
         "optional": "선택사항"
       },
       "runtime_locked": {
-        "title": "운영 드라이버는 Cloud Run 환경 변수 기준으로 고정됩니다.",
-        "desc": "이 화면은 실제 런타임 값을 표시합니다. cache/session/queue/log/websocket 등 인프라 드라이버 변경은 배포 환경 설정을 통해서만 반영됩니다."
+        "title": "운영 드라이버는 Cloud Run·Realtime VM 환경 변수 기준으로 고정됩니다.",
+        "desc": "이 화면은 실제 런타임 값을 표시합니다. 아래 필드는 읽기 전용이며, 변경은 deploy/production.env.yaml 과 Realtime VM 설정을 통해서만 반영됩니다.",
+        "detail_realtime": "실시간(채팅·알림·접속자): 브라우저는 wss://realtime.mek360.com, Cloud Run API는 동일 호스트로 Reverb publish. Reverb·Redis는 전용 VM(moabom-realtime-prod)에서 상시 구동하며 Cloud Run 인스턴스 수와 무관합니다.",
+        "detail_broadcast": "브로드캐스트는 DB 큐를 거치지 않고 요청 처리 중 즉시 전송됩니다(ShouldBroadcastNow). 큐(database)는 메일·백그라운드 작업용입니다.",
+        "detail_infra": "스토리지 GCS · 캐시 file(인스턴스 로컬) · 세션 cookie · 로그 stderr — Cloud Run SSOT."
       },
       "storage": {
         "title": "파일 스토리지",
@@ -1564,7 +1567,7 @@
       },
       "cache": {
         "title": "캐시",
-        "desc": "애플리케이션 캐시 드라이버를 설정합니다.",
+        "desc": "애플리케이션 캐시 드라이버를 설정합니다. 운영(Cloud Run)에서는 file — 컨테이너·인스턴스별 로컬 캐시입니다. 멀티 인스턴스에서 공유가 필요한 값(예: 채팅 활성 대화 포커스)은 앱이 DB 캐시 스토어를 별도로 사용합니다.",
         "driver": "캐시 드라이버",
         "options": {
           "file": "파일",
@@ -1593,14 +1596,14 @@
       },
       "queue": {
         "title": "큐",
-        "desc": "백그라운드 작업 처리 방식을 설정합니다.",
+        "desc": "백그라운드 작업 처리 방식을 설정합니다. 운영에서는 database 큐와 컨테이너 내 queue-worker가 사용됩니다. 실시간 채팅·알림·presence 브로드캐스트는 큐를 사용하지 않습니다.",
         "driver": "큐 드라이버",
         "options": {
           "sync": "동기 처리 (즉시 실행)",
           "database": "데이터베이스",
           "redis": "Redis"
         },
-        "worker_notice": "database 또는 redis 사용 시 큐 워커를 실행해야 합니다.",
+        "worker_notice": "database 또는 redis 사용 시 큐 워커를 실행해야 합니다. 실시간 WebSocket 이벤트와는 별개입니다.",
         "redis_shared_notice": "Redis 선택 시 캐시의 Redis 설정을 공유합니다."
       },
       "log": {
@@ -1629,24 +1632,27 @@
         "path_info": "로그 파일 위치: /storage/logs/"
       },
       "websocket": {
-        "title": "웹소켓 (Reverb)",
-        "desc": "실시간 통신을 위한 웹소켓 서버를 설정합니다.",
+        "title": "웹소켓 (Reverb · Realtime VM)",
+        "desc": "실시간 채팅·알림·접속자 revision을 위한 WebSocket 설정입니다. 운영에서는 Reverb·Redis가 전용 VM(realtime.mek360.com)에서 구동되고, Cloud Run은 publish API만 호출합니다.",
         "enabled": "웹소켓 사용",
-        "enabled_desc": "Laravel Reverb를 통한 실시간 기능을 활성화합니다.",
+        "enabled_desc": "Laravel Reverb — 대화(message.*), 알림(notification.received), 인박스(chat.inbox.updated), 접속자(presence.revision).",
+        "client_endpoint_title": "클라이언트 엔드포인트 (브라우저 → Reverb)",
+        "client_endpoint_desc": "Echo/Pusher가 연결하는 주소입니다. 운영 SSOT: realtime.mek360.com · 443 · https (wss).",
         "app_id": "앱 ID",
         "app_key": "앱 키",
         "app_secret": "앱 시크릿",
         "host": "호스트",
         "port": "포트",
         "scheme": "프로토콜",
-        "reverb_notice": "웹소켓 사용 시 Reverb 서버를 실행해야 합니다.",
+        "reverb_notice": "로컬 개발 시에만 이 컨테이너에서 Reverb를 직접 실행합니다.",
+        "architecture_notice": "운영: Reverb·Redis는 VM moabom-realtime-prod에서 Docker로 상시 구동. 상태 확인 — deploy/check-realtime-vm-health.sh",
         "verify_ssl": "SSL 인증서 검증",
-        "verify_ssl_desc": "자체 서명 인증서 사용 시 비활성화하세요. 프로덕션 환경에서는 반드시 활성화해야 합니다.",
-        "server_endpoint_title": "서버 엔드포인트 (백엔드 → Reverb)",
-        "server_endpoint_desc": "백엔드가 broadcast 이벤트를 Reverb 서버에 전달할 때 사용하는 내부 주소입니다. 위 호스트/포트는 브라우저 접속용이고, 이 값은 백엔드 → Reverb 내부 통신용입니다. 비워두면 위 클라이언트 값과 동일하게 사용됩니다.",
-        "server_host": "서버 호스트 (내부)",
-        "server_port": "서버 포트 (내부)",
-        "server_scheme": "서버 프로토콜 (내부)"
+        "verify_ssl_desc": "자체 서명 인증서 사용 시 비활성화하세요. 프로덕션(realtime.mek360.com)에서는 활성화가 기본입니다.",
+        "server_endpoint_title": "서버 엔드포인트 (Cloud Run → Reverb publish)",
+        "server_endpoint_desc": "Laravel broadcast가 Reverb HTTP API를 호출할 주소입니다. 운영 SSOT: realtime.mek360.com · 443 · https (nginx → Reverb :6001). Cloud Run sidecar Reverb는 사용하지 않습니다.",
+        "server_host": "서버 호스트 (publish)",
+        "server_port": "서버 포트 (publish)",
+        "server_scheme": "서버 프로토콜 (publish)"
       },
       "search_engine": {
         "title": "검색엔진",

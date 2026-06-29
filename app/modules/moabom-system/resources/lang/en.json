@@ -78,6 +78,28 @@
         "action_failed": "Operation failed."
       }
     },
+    "realtime_vm": {
+      "title": "Realtime VM",
+      "description": "Check Cloud Run → Realtime VM (Reverb) WebSocket path availability and runtime endpoints.",
+      "refresh": "Refresh status",
+      "card_overall": "Overall",
+      "card_websocket": "WebSocket Probe",
+      "card_runtime": "Runtime endpoints",
+      "card_fcm": "FCM (push)",
+      "status_ok": "Healthy",
+      "status_fail": "Degraded",
+      "checked_at": "Checked at",
+      "latency": "Latency",
+      "client_endpoint": "Client",
+      "immediate": "Immediate broadcast",
+      "fcm_configured": "Credentials",
+      "fcm_hint": "moabom-fcm plugin skeleton. Chat/notification wiring is a follow-up.",
+      "arch_hint": "Use deploy/check-realtime-vm-health.sh on VM/WSL for SSH and docker stats.",
+      "auth_required": "Authentication required.",
+      "permission_denied": "Missing moabom-system.realtime.read permission.",
+      "platform_only": "Realtime VM dashboard is available only on the master host (mek360.com).",
+      "load_error": "Failed to load status."
+    },
     "settings": {
       "title": "My Page Settings",
       "description": "Manage My Page menus and the theme, background, and preference choices customers can select.",

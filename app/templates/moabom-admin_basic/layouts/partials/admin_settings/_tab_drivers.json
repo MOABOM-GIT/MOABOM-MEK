@@ -47,6 +47,30 @@
                 "className": "mt-1 text-sm text-blue-800 dark:text-blue-200"
               },
               "text": "$t:admin.settings.drivers.runtime_locked.desc"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-2 text-xs text-blue-700 dark:text-blue-300"
+              },
+              "text": "$t:admin.settings.drivers.runtime_locked.detail_realtime"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-1 text-xs text-blue-700 dark:text-blue-300"
+              },
+              "text": "$t:admin.settings.drivers.runtime_locked.detail_broadcast"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "mt-1 text-xs text-blue-700 dark:text-blue-300"
+              },
+              "text": "$t:admin.settings.drivers.runtime_locked.detail_infra"
             }
           ]
         }
@@ -1935,12 +1959,36 @@
                   ]
                 },
                 {
+                  "id": "websocket_client_endpoint_section",
                   "type": "basic",
                   "name": "Div",
                   "props": {
-                    "className": "grid grid-cols-1 md:grid-cols-3 gap-4"
+                    "className": "pt-2 border-t border-gray-200 dark:border-gray-700"
                   },
                   "children": [
+                    {
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "text-sm font-medium text-gray-900 dark:text-white mb-1 pt-2"
+                      },
+                      "text": "$t:admin.settings.drivers.websocket.client_endpoint_title"
+                    },
+                    {
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "text-xs text-gray-500 dark:text-gray-400 mb-4"
+                      },
+                      "text": "$t:admin.settings.drivers.websocket.client_endpoint_desc"
+                    },
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "grid grid-cols-1 md:grid-cols-3 gap-4"
+                      },
+                      "children": [
                     {
                       "type": "basic",
                       "name": "Div",
@@ -2055,6 +2103,8 @@
                           },
                           "text": "{{_local.errors?.['drivers.websocket_scheme']?.[0] ?? ''}}"
                         }
+                      ]
+                    }
                       ]
                     }
                   ]
@@ -2255,8 +2305,46 @@
                   ]
                 },
                 {
+                  "id": "websocket_runtime_architecture_notice",
                   "type": "basic",
                   "name": "Div",
+                  "if": "{{_local.form?.drivers?._runtime?.locked}}",
+                  "props": {
+                    "className": "mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "props": {
+                        "className": "flex items-start gap-2"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Icon",
+                          "props": {
+                            "name": "circle-info",
+                            "className": "w-4 h-4 text-blue-600 dark:text-blue-300 mt-0.5 flex-shrink-0"
+                          }
+                        },
+                        {
+                          "type": "basic",
+                          "name": "P",
+                          "props": {
+                            "className": "text-xs text-blue-800 dark:text-blue-200"
+                          },
+                          "text": "$t:admin.settings.drivers.websocket.architecture_notice"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "websocket_local_reverb_notice",
+                  "type": "basic",
+                  "name": "Div",
+                  "if": "{{!_local.form?.drivers?._runtime?.locked}}",
                   "props": {
                     "className": "mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
                   },

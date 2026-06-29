@@ -89,6 +89,16 @@ final class MoabomSystemAdminMenus
         }
 
         $menus[] = [
+            'name' => ['ko' => 'Realtime VM', 'en' => 'Realtime VM'],
+            'slug' => 'moabom-realtime-vm',
+            'parent_slug' => 'platform-settings',
+            'url' => '/admin/platform/realtime-vm',
+            'icon' => 'fas fa-satellite-dish',
+            'order' => 15,
+            'permission' => 'moabom-system.realtime.read',
+        ];
+
+        $menus[] = [
             'name' => ['ko' => '마이페이지 설정', 'en' => 'My Page Settings'],
             'slug' => 'moabom-system-settings',
             'parent_slug' => 'platform-settings',

@@ -27,6 +27,8 @@
         "max_post_write_rewards_per_day": "글 작성 적립 일일 횟수 제한",
         "max_like_received_rewards_per_day": "좋아요 적립 일일 횟수 제한",
         "max_comment_write_rewards_per_day": "댓글 작성 적립 일일 횟수 제한",
+        "max_app_review_write_rewards_per_day": "앱 리뷰 작성 적립 일일 횟수 제한",
+        "app_review_write_amount": "앱 리뷰 작성 시 적립",
         "attendance_requires_ad": "출석체크 적립 전 광고 시청 필요",
         "attendance_ad_provider": "광고 제공자",
         "attendance_ad_reward_multiplier": "광고 시청 적립 배율"

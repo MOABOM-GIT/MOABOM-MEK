@@ -22,6 +22,7 @@ use Modules\Moabom\System\Saas\TenantPackageCatalog;
 use Modules\Moabom\System\Saas\TenantProvisionerInterface;
 use Modules\Moabom\System\Saas\TenantRecord;
 use Modules\Moabom\System\Saas\TenantRegistry;
+use Modules\Moabom\System\Saas\SaasSlugAvailabilityService;
 use Modules\Moabom\System\Saas\Usage\TenantUsageReporter;
 
 /**
@@ -35,6 +36,7 @@ final class SaasHospitalController extends Controller
         private readonly TenantProvisionerInterface $provisioner,
         private readonly TenantPackageCatalog $packageCatalog,
         private readonly TenantUsageReporter $usageReporter,
+        private readonly SaasSlugAvailabilityService $slugAvailability,
         private readonly TenantDeprovisionerInterface $deprovisioner,
         private readonly TenantOperationLogger $operationLogger,
     ) {}
@@ -117,6 +119,17 @@ final class SaasHospitalController extends Controller
                     'includes_storage' => $includeStorage,
                 ],
             ],
+        );
+    }
+
+    public function slugAvailability(Request $request): JsonResponse
+    {
+        $slug = (string) $request->query('slug', '');
+
+        return ResponseHelper::moduleSuccess(
+            'moabom-system',
+            'messages.saas.hospitals.slug_availability_success',
+            $this->slugAvailability->check($slug),
         );
     }
 

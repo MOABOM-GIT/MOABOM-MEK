@@ -2269,3 +2269,25 @@ index 14867b2..b33154e 100644
                      }@endif
                  });
              } else {
+diff --git a/app/Events/GenericBroadcastEvent.php b/app/Events/GenericBroadcastEvent.php
+index 8a1f2c3..b4e9d1a 100644
+--- a/app/Events/GenericBroadcastEvent.php
++++ b/app/Events/GenericBroadcastEvent.php
+@@ -5,7 +5,7 @@ namespace App\Events;
+ use Illuminate\Broadcasting\Channel;
+ use Illuminate\Broadcasting\InteractsWithSockets;
+ use Illuminate\Broadcasting\PrivateChannel;
+-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
++use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+ use Illuminate\Foundation\Events\Dispatchable;
+ use Illuminate\Queue\SerializesModels;
+ 
+@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
+  * 외부에서 직접 사용하지 않습니다.
+  * 반드시 HookManager::broadcast()를 통해 호출하세요.
+  */
+-class GenericBroadcastEvent implements ShouldBroadcast
++class GenericBroadcastEvent implements ShouldBroadcastNow
+ {
+     use Dispatchable, InteractsWithSockets, SerializesModels;
+ 

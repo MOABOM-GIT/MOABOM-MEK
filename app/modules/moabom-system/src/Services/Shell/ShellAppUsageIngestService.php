@@ -24,7 +24,6 @@ final class ShellAppUsageIngestService
         $maxEvents = (int) config('moabom-system.shell_rankings.max_events_per_request', 20);
 
         $normalized = [];
-        $userTotals = [];
 
         foreach (array_slice($events, 0, $maxEvents) as $event) {
             $appId = trim((string) ($event['app_id'] ?? ''));
@@ -50,21 +49,6 @@ final class ShellAppUsageIngestService
                 'open_hits' => $openHits,
                 'active_seconds' => $activeSeconds,
             ];
-
-            if ($userId !== null) {
-                $bucketKey = $bucketHour->copy()->utc()->startOfHour()->format('Y-m-d H:i:s');
-                if (! isset($userTotals[$bucketKey])) {
-                    $userTotals[$bucketKey] = [
-                        'user_id' => $userId,
-                        'bucket_hour' => $bucketHour,
-                        'open_hits' => 0,
-                        'active_seconds' => 0,
-                    ];
-                }
-
-                $userTotals[$bucketKey]['open_hits'] += $openHits;
-                $userTotals[$bucketKey]['active_seconds'] += $activeSeconds;
-            }
         }
 
         if ($normalized === []) {
@@ -72,10 +56,6 @@ final class ShellAppUsageIngestService
         }
 
         $this->usageRepository->incrementBuckets($normalized);
-
-        if ($userTotals !== []) {
-            $this->usageRepository->incrementUserBuckets(array_values($userTotals));
-        }
 
         return count($normalized);
     }

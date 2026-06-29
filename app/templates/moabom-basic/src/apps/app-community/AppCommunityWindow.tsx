@@ -144,8 +144,9 @@ export function AppCommunityWindow({
 
   const headerTitle = useMemo(() => {
     const trimmed = appTitle.trim();
-    return trimmed || t('moa_apps_ai.community.window_title_fallback', { id: serverId });
-  }, [appTitle, serverId, t]);
+    const displayTitle = trimmed || t('moa_apps_ai.untitled_app');
+    return t('moa_apps_ai.community.window_title', { title: displayTitle });
+  }, [appTitle, t]);
 
   const creators = community.summary?.creators ?? [];
 

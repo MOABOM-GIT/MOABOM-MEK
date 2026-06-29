@@ -205,6 +205,10 @@ class GeneratedAppPreviewService
 
         return [
             'Content-Security-Policy' => 'frame-ancestors '.implode(' ', $ancestors),
+            // 생성앱 origin(apps.mek360.com / {id}.apps.mek360.com)을 부모(테넌트 셸)와
+            // 같은 site(mek360.com)여도 별도 agent cluster(독립 이벤트 루프·프로세스)로 격리한다.
+            // 앱 내부 무한 루프가 부모 탭/브라우저까지 멈추는 것을 차단한다.
+            'Origin-Agent-Cluster' => '?1',
         ];
     }
 
@@ -213,6 +217,7 @@ class GeneratedAppPreviewService
         return $this->htmlService->harden(
             (string) $app->html,
             $this->resolveDataScope($app, $previewToken),
+            $this->tierOf($app) === AppTier::Hosted,
         );
     }
 

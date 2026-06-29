@@ -17,6 +17,7 @@ export type MoabomToastEnqueuePayload = {
   icon?: string;
   action?: MoabomToastActionButton;
   actions?: MoabomToastActionButton[];
+  onDismiss?: () => void;
 };
 
 let enqueueInstalled = false;
@@ -50,6 +51,7 @@ export function installMoabomToastEnqueue(): void {
             ...(payload.duration !== undefined ? { duration: payload.duration } : {}),
             ...(payload.action ? { action: payload.action } : {}),
             ...(payload.actions?.length ? { actions: payload.actions } : {}),
+            ...(payload.onDismiss ? { onDismiss: payload.onDismiss } : {}),
           },
         ],
       };

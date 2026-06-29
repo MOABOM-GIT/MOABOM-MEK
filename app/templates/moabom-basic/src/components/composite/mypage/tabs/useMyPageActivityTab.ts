@@ -112,14 +112,7 @@ export function useMyPageActivityTab({
       return;
     }
 
-    const G7Core = (window as any).G7Core;
-    if (typeof G7Core?.dispatch === 'function') {
-      G7Core.dispatch({
-        handler: 'navigate',
-        params: {
-          path: item.target_url,
-        },
-      });
+    if (navigateMoabomShellPath(item.target_url)) {
       return;
     }
 

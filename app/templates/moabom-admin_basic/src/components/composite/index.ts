@@ -56,7 +56,7 @@ export { AlertDialog } from './AlertDialog';
 export type { AlertDialogProps } from './AlertDialog';
 
 export { Toast } from './Toast';
-export type { ToastProps, ToastItem, ToastType, ToastPosition } from './Toast';
+export type { ToastProps, ToastItem, ToastType, ToastPosition, ToastActionButton } from './Toast';
 
 export { Breadcrumb } from './Breadcrumb';
 export type { BreadcrumbProps, BreadcrumbItem } from './Breadcrumb';

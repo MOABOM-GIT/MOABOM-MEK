@@ -37,7 +37,8 @@ class GeneratedAppHostingService
             'provisioned_at' => now(),
         ])->save();
 
-        return $app->fresh(['user']) ?? $app;
+        // platform plane: users 는 tenant DB — fresh(['user']) 시 moabom-platform.users 조회로 500
+        return $app->fresh() ?? $app;
     }
 
     public function teardownHosted(GeneratedApp $app): void

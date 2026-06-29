@@ -15,6 +15,7 @@ export type AiAppType = 'general' | '3d' | 'game' | 'dataviz' | 'website_link';
 
 export interface GenerateAiAppPayload {
   prompt: string;
+  title?: string | null;
   app_type: AiAppType;
   model_id: string;
   tier?: AppTier;
@@ -44,6 +45,9 @@ export interface AiGenerationSession {
   status: string;
   app_type: AiAppType;
   model_id: string;
+  title?: string;
+  prompt?: string;
+  tier?: AppTier;
   generated_app_id?: number | null;
   truncated: boolean;
   finish_reason?: string | null;

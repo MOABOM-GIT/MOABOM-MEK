@@ -59,6 +59,20 @@ final class CreditRewardService
         );
     }
 
+    public function rewardAppReviewWrite(User $user, int|string $reviewPostId): void
+    {
+        $this->maybeReward(
+            $user,
+            'rewards.app_review_write_enabled',
+            'rewards.app_review_write_amount',
+            CreditRewardSourceType::AppReviewWrite,
+            (string) $reviewPostId,
+            'limits.max_app_review_write_rewards_per_day',
+            __('moabom-credit::messages.rewards.app_review_write_description'),
+            ['review_post_id' => (int) $reviewPostId],
+        );
+    }
+
     public function rewardLikeReceived(User $user, int|string $postId, int|string $eventId): void
     {
         $this->maybeReward(

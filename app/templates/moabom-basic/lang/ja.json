@@ -3,6 +3,12 @@
   "home": {
     "title": "ホーム"
   },
+  "seo": {
+    "app_detail_title": "アプリ",
+    "app_detail_description": "MOABOMですぐに実行できるWebアプリをご覧ください。",
+    "apps_index_title": "アプリディレクトリ",
+    "apps_index_description": "MOABOMの標準アプリとAIで作られた公開Webアプリを一覧で見て、すぐに実行できます。"
+  },
   "auth": {
     "login": "ログイン",
     "logout": "ログアウト",
@@ -561,6 +567,7 @@
     "description": "作りたいアプリを説明するとHTML Webアプリのプレビューを生成します。",
     "field_title": "アプリ名",
     "field_title_placeholder": "例: 睡眠計算機",
+    "untitled_app": "タイトル未設定のアプリ",
     "field_type": "アプリ種別",
     "field_tier": "データ保存",
     "field_model": "AIモデル",
@@ -602,6 +609,10 @@
     "viewer_loading": "保存したアプリを読み込み中…",
     "viewer_error": "保存したアプリを読み込めませんでした。",
     "viewer_empty": "表示するアプリ HTML がありません。",
+    "frozen_title": "アプリが応答しません",
+    "frozen_description": "「アプリを再起動」ボタンを押して、アプリを再起動できます。",
+    "frozen_restart": "アプリを再起動",
+    "download_failed": "ファイルをダウンロードできませんでした。",
     "preview_empty_title": "まだ生成されたアプリはありません",
     "preview_empty_description": "プロンプトを入力して生成ボタンを押してください。",
     "notice_fallback": "AI provider設定前は基本プレビューを表示します。",
@@ -648,6 +659,7 @@
     "security": {
       "save_blocked": "セキュリティ検査に失敗したため保存できません。",
       "more": "他に {count} 件のセキュリティ違反があります。",
+      "loop_warning": "無限ループの可能性があるコードが検出されました。実行中に停止する場合があります（停止しても自動的に再起動します）。",
       "parent_shell_escape": "親ウィンドウ（シェル）へのアクセスコードは許可されていません。",
       "cookie_exfiltration": "Cookie の窃取・外部送信パターンは許可されていません。",
       "javascript_protocol": "javascript: URL は許可されていません。",

@@ -1,4 +1,5 @@
 import { getMoaShellBoardBridge } from './moaShellBoardBridge';
+import { buildBoardNavigatePath } from './moaShellBoardNavigate';
 import { safeTryHandleBoardShellNavigate } from './safeShellBoardNavigate';
 
 type RouterLike = {
@@ -8,11 +9,28 @@ type RouterLike = {
 
 type G7CoreLike = {
   updateQueryParams?: (newPath: string, options?: { transitionOverlayTarget?: string }) => Promise<void>;
+  dispatch?: (action: {
+    handler?: string;
+    params?: {
+      path?: string;
+      mergeQuery?: boolean;
+      query?: Record<string, unknown>;
+    };
+  }) => unknown;
   __moabomBoardUpdateQueryPatched?: boolean;
+  __moabomDispatchNavPatched?: boolean;
 };
 
 let originalNavigate: ((path: string) => void) | null = null;
 let originalUpdateQueryParams: ((newPath: string, options?: { transitionOverlayTarget?: string }) => Promise<void>) | null = null;
+let originalDispatch: ((action: {
+  handler?: string;
+  params?: {
+    path?: string;
+    mergeQuery?: boolean;
+    query?: Record<string, unknown>;
+  };
+}) => unknown) | null = null;
 
 export function installMoaShellBoardNavigateBridge(): void {
   if (typeof window === 'undefined') return;
@@ -43,6 +61,25 @@ export function installMoaShellBoardNavigateBridge(): void {
     };
     G7Core.__moabomBoardUpdateQueryPatched = true;
   }
+
+  if (G7Core?.dispatch && !G7Core.__moabomDispatchNavPatched) {
+    originalDispatch = G7Core.dispatch.bind(G7Core);
+    G7Core.dispatch = (action) => {
+      if (action?.handler === 'navigate') {
+        const params = action.params ?? {};
+        const rawPath = typeof params.path === 'string' ? params.path : '';
+        if (rawPath) {
+          const path = buildBoardNavigatePath(rawPath, params);
+          const bridge = getMoaShellBoardBridge();
+          if (bridge && safeTryHandleBoardShellNavigate(path, bridge)) {
+            return;
+          }
+        }
+      }
+      return originalDispatch?.(action);
+    };
+    G7Core.__moabomDispatchNavPatched = true;
+  }
 }
 
 export function uninstallMoaShellBoardNavigateBridge(): void {
@@ -61,5 +98,11 @@ export function uninstallMoaShellBoardNavigateBridge(): void {
     G7Core.updateQueryParams = originalUpdateQueryParams;
     delete G7Core.__moabomBoardUpdateQueryPatched;
     originalUpdateQueryParams = null;
+  }
+
+  if (G7Core?.__moabomDispatchNavPatched && originalDispatch) {
+    G7Core.dispatch = originalDispatch;
+    delete G7Core.__moabomDispatchNavPatched;
+    originalDispatch = null;
   }
 }

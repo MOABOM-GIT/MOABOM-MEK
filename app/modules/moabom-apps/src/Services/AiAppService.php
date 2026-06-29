@@ -32,8 +32,9 @@ class AiAppService
 HOSTED APP RULES (dedicated app origin — app server storage):
 - Personal data only: each signed-in member has isolated storage. Never mix users.
 - Read window.__MOABOM_APP_RUNTIME__ for appId, userId, tenantSlug, storagePrefix.
-- Data API: fetch('/api/data/{table_key}') on the same origin as this page.
-- ALL data requests (GET/POST/PUT/DELETE) require header X-Moabom-Preview-Token with preview_token from the page URL query.
+- Data API: same-origin fetch('/api/data/{table_key}'). Moabom injects X-Moabom-Preview-Token from preview_token query for /api/data/* automatically.
+- Writes must POST/PUT/DELETE JSON body: { "payload": { ... } } with Content-Type application/json.
+- Optional helper: window.__MOABOM_SHELL__.dataApiFetch('table_key', init).
 - Use stable snake_case table_key names. Never call the Moabom shell API from inside the app.
 PROMPT;
 
@@ -95,7 +96,13 @@ SELF-REVIEW BEFORE OUTPUT:
 - Check responsive design and mobile layout.
 - Check JavaScript functions are defined before use.
 - Add try/catch around interactive JavaScript and show a user-friendly retry action on error.
-- Prevent infinite loops and memory leaks.
+
+MAIN-THREAD SAFETY RULES (critical — a blocked main thread freezes the whole app):
+- Never write synchronous infinite loops such as while(true){...}, while(1){...} or for(;;){...} on the main thread.
+- Every loop must have a clear, finite termination condition; cap iterations with a safety limit when the bound is dynamic.
+- For continuous animation use requestAnimationFrame, not busy-wait loops.
+- For heavy or long-running computation (large number crunching, simulations, parsing), run it inside a Web Worker created from a Blob URL so the UI stays responsive; never block the main thread.
+- Validate user input before computing (e.g. guard against division by zero or runaway recursion) so pressing a button can never hang the page.
 PROMPT;
 
     /**
@@ -358,7 +365,7 @@ PROMPT;
         $normalized = $this->websiteLinkIconStorage->persistForApp($app, $metadata);
 
         if ($normalized == $metadata) {
-            return $app->fresh(['user']) ?? $app;
+            return $app->fresh() ?? $app;
         }
 
         return $this->appRepository->update($app, ['metadata' => $normalized]);

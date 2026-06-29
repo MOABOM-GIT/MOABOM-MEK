@@ -1,0 +1,24 @@
+{
+    "version": "1.0.0",
+    "layout_name": "seo/apps_index",
+    "meta": {
+        "title": "$t:seo.apps_index_title",
+        "seo": {
+            "enabled": true,
+            "page_type": "apps_index",
+            "priority": 0.7,
+            "changefreq": "daily",
+            "title": "$t:seo.apps_index_title",
+            "description": "$t:seo.apps_index_description",
+            "og": {
+                "type": "website"
+            }
+        }
+    },
+    "components": [
+        {
+            "type": "composite",
+            "name": "HomePage"
+        }
+    ]
+}

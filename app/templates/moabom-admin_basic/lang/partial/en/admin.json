@@ -1526,8 +1526,11 @@
         "optional": "Optional"
       },
       "runtime_locked": {
-        "title": "Production drivers are locked to Cloud Run environment variables.",
-        "desc": "This page shows the effective runtime values. Infrastructure drivers such as cache, session, queue, log, and websocket are changed through deployment environment settings."
+        "title": "Production drivers are locked to Cloud Run and Realtime VM environment variables.",
+        "desc": "This page shows effective runtime values. Fields below are read-only; changes apply only through deploy/production.env.yaml and Realtime VM configuration.",
+        "detail_realtime": "Realtime (chat, notifications, presence): browsers use wss://realtime.mek360.com; Cloud Run API publishes to the same host. Reverb and Redis run on dedicated VM moabom-realtime-prod, independent of Cloud Run instance count.",
+        "detail_broadcast": "Broadcasts are sent immediately during the request (ShouldBroadcastNow), not via the DB queue. The database queue is for mail and other background jobs.",
+        "detail_infra": "Storage GCS · cache file (per-instance local) · session cookie · log stderr — Cloud Run SSOT."
       },
       "storage": {
         "title": "File Storage",
@@ -1554,7 +1557,7 @@
       },
       "cache": {
         "title": "Cache",
-        "desc": "Configure application cache driver settings.",
+        "desc": "Configure application cache driver. In production (Cloud Run), file is used — local per-container cache. Values that must be shared across instances (e.g. active chat focus) use the DB cache store in application code.",
         "driver": "Cache Driver",
         "options": {
           "file": "File",
@@ -1583,14 +1586,14 @@
       },
       "queue": {
         "title": "Queue",
-        "desc": "Configure background job processing settings.",
+        "desc": "Configure background job processing. Production uses the database queue with an in-container queue worker. Real-time chat, notification, and presence broadcasts do not use the queue.",
         "driver": "Queue Driver",
         "options": {
           "sync": "Synchronous (Immediate)",
           "database": "Database",
           "redis": "Redis"
         },
-        "worker_notice": "Queue worker must be running when using database or redis.",
+        "worker_notice": "Queue worker must run when using database or redis. This is separate from real-time WebSocket events.",
         "redis_shared_notice": "Uses Redis settings from cache when Redis is selected."
       },
       "log": {
@@ -1619,24 +1622,27 @@
         "path_info": "Log file location: /storage/logs/"
       },
       "websocket": {
-        "title": "WebSocket (Reverb)",
-        "desc": "Configure WebSocket server for real-time communication.",
+        "title": "WebSocket (Reverb · Realtime VM)",
+        "desc": "WebSocket settings for real-time chat, notifications, and presence revision. In production, Reverb and Redis run on dedicated VM realtime.mek360.com; Cloud Run only calls the publish API.",
         "enabled": "Enable WebSocket",
-        "enabled_desc": "Enable real-time features via Laravel Reverb.",
+        "enabled_desc": "Laravel Reverb — conversations (message.*), notifications (notification.received), inbox (chat.inbox.updated), presence (presence.revision).",
+        "client_endpoint_title": "Client Endpoint (Browser → Reverb)",
+        "client_endpoint_desc": "Address Echo/Pusher connects to. Production SSOT: realtime.mek360.com · 443 · https (wss).",
         "app_id": "App ID",
         "app_key": "App Key",
         "app_secret": "App Secret",
         "host": "Host",
         "port": "Port",
         "scheme": "Protocol",
-        "reverb_notice": "Reverb server must be running when WebSocket is enabled.",
+        "reverb_notice": "Local development only: run Reverb in this container.",
+        "architecture_notice": "Production: Reverb and Redis run on VM moabom-realtime-prod via Docker. Health check — deploy/check-realtime-vm-health.sh",
         "verify_ssl": "SSL Certificate Verification",
-        "verify_ssl_desc": "Disable for self-signed certificates. Must be enabled in production.",
-        "server_endpoint_title": "Server Endpoint (Backend → Reverb)",
-        "server_endpoint_desc": "Internal address used by the backend to deliver broadcast events to the Reverb server. The host/port above is for browser access, while this value is for backend → Reverb internal communication. Leave empty to use the same values as the client endpoint above.",
-        "server_host": "Server Host (Internal)",
-        "server_port": "Server Port (Internal)",
-        "server_scheme": "Server Scheme (Internal)"
+        "verify_ssl_desc": "Disable for self-signed certificates. Enabled by default for production (realtime.mek360.com).",
+        "server_endpoint_title": "Server Endpoint (Cloud Run → Reverb publish)",
+        "server_endpoint_desc": "Address Laravel broadcast uses for Reverb HTTP API. Production SSOT: realtime.mek360.com · 443 · https (nginx → Reverb :6001). Cloud Run sidecar Reverb is not used.",
+        "server_host": "Server Host (publish)",
+        "server_port": "Server Port (publish)",
+        "server_scheme": "Server Scheme (publish)"
       },
       "search_engine": {
         "title": "Search Engine",
