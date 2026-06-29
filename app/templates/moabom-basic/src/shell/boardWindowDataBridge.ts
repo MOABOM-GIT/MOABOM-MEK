@@ -1,7 +1,9 @@
 import {
   refetchBoardWindowDataSource,
+  setBoardWindowDataSource,
   type BoardWindowRefetchOptions,
   type BoardWindowRenderPayload,
+  type BoardWindowSetOptions,
 } from './boardWindowLayoutRuntime';
 
 type BoardWindowDataSession = {
@@ -11,10 +13,16 @@ type BoardWindowDataSession = {
     dataSourceId: string,
     options?: BoardWindowRefetchOptions,
   ) => Promise<unknown>;
+  set: (
+    dataSourceId: string,
+    data: unknown,
+    options?: BoardWindowSetOptions,
+  ) => unknown;
 };
 
 const sessions = new Map<string, BoardWindowDataSession>();
-let bridgeInstalled = false;
+let refetchBridgeInstalled = false;
+let setBridgeInstalled = false;
 
 function resolveSessionFromOptions(
   options?: BoardWindowRefetchOptions,
@@ -29,8 +37,23 @@ function resolveSessionFromOptions(
   return undefined;
 }
 
+function resolveBoardDataSession(dataSourceId: string): BoardWindowDataSession | undefined {
+  if (sessions.size === 1) {
+    const session = sessions.values().next().value;
+    if (session?.dataSourceIds.has(dataSourceId)) {
+      return session;
+    }
+  }
+  for (const session of sessions.values()) {
+    if (session.dataSourceIds.has(dataSourceId)) {
+      return session;
+    }
+  }
+  return undefined;
+}
+
 function installBoardWindowRefetchBridge(): void {
-  if (bridgeInstalled || typeof window === 'undefined') {
+  if (refetchBridgeInstalled || typeof window === 'undefined') {
     return;
   }
 
@@ -58,7 +81,41 @@ function installBoardWindowRefetchBridge(): void {
     return originalRefetch.call(g7.G7Core!.dataSource, dataSourceId, options);
   };
 
-  bridgeInstalled = true;
+  refetchBridgeInstalled = true;
+}
+
+function installBoardWindowSetBridge(): void {
+  if (setBridgeInstalled || typeof window === 'undefined') {
+    return;
+  }
+
+  const g7 = window as {
+    G7Core?: {
+      dataSource?: {
+        set?: (
+          dataSourceId: string,
+          data: unknown,
+          options?: BoardWindowSetOptions & { sync?: boolean },
+        ) => void;
+      };
+    };
+  };
+
+  const originalSet = g7.G7Core?.dataSource?.set;
+  if (!originalSet) {
+    return;
+  }
+
+  g7.G7Core!.dataSource!.set = (dataSourceId, data, options) => {
+    const session = resolveBoardDataSession(dataSourceId);
+    if (session) {
+      session.set(dataSourceId, data, options);
+      return;
+    }
+    originalSet.call(g7.G7Core!.dataSource, dataSourceId, data, options);
+  };
+
+  setBridgeInstalled = true;
 }
 
 export type BoardWindowDataSessionHandle = {
@@ -66,7 +123,7 @@ export type BoardWindowDataSessionHandle = {
 };
 
 /**
- * 게시판 셸 윈도우가 마운트될 때 등록 — layout JSON 의 refetchDataSource 가
+ * 게시판 셸 윈도우가 마운트될 때 등록 — layout JSON 의 refetchDataSource / updateDataSource 가
  * TemplateApp 이 아닌 해당 윈도우 dataContext 를 갱신하도록 한다.
  */
 export function registerBoardWindowDataSession(
@@ -74,9 +131,15 @@ export function registerBoardWindowDataSession(
   onDataContextChange: (next: Record<string, unknown>) => void,
 ): () => void {
   installBoardWindowRefetchBridge();
+  installBoardWindowSetBridge();
 
   const dataSourceIds = new Set(payload.layoutDataSources.map(source => source.id));
   let currentContext = payload.dataContext;
+
+  const applyContext = (next: Record<string, unknown>) => {
+    currentContext = next;
+    onDataContextChange(next);
+  };
 
   const session: BoardWindowDataSession = {
     sessionKey: payload.boardSessionKey,
@@ -94,8 +157,20 @@ export function registerBoardWindowDataSession(
       if (!next) {
         return undefined;
       }
-      currentContext = next;
-      onDataContextChange(next);
+      applyContext(next);
+      return next[dataSourceId];
+    },
+    set: (dataSourceId, data, options) => {
+      const next = setBoardWindowDataSource(
+        payload.layoutComputed,
+        dataSourceId,
+        data,
+        payload.route,
+        payload.query,
+        currentContext,
+        options,
+      );
+      applyContext(next);
       return next[dataSourceId];
     },
   };

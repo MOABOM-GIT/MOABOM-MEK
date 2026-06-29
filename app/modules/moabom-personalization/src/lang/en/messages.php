@@ -2,8 +2,8 @@
 
 return [
     'mypage_activity' => [
-        'fetch_success' => 'Activities loaded successfully.',
-        'fetch_failed' => 'Failed to load activities.',
+        'fetch_success' => 'Posts loaded successfully.',
+        'fetch_failed' => 'Failed to load posts.',
         'types' => [
             'post' => 'Posts',
             'comment' => 'Comments',

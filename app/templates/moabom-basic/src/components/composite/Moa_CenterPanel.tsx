@@ -46,7 +46,7 @@ export interface WindowState {
   boardSlug?: string;
   /** moa-shell-user:{uuid} 윈도우 — 공개 프로필 사용자 UUID */
   userProfileUuid?: string;
-  /** 공개 프로필 윈도우 표시 모드 (프로필 / 유저 활동 / 대화) */
+  /** 공개 프로필 윈도우 표시 모드 (소개 / 활동 / 메시지) */
   userProfileView?: UserProfileWindowView;
   /** 게시판 상세 글 id (목록이면 생략) */
   boardPostId?: string;

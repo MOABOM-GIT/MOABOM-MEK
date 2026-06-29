@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'profile_panel_title' => '프로필',
+    'profile_panel_title' => '소개',
     'stat_posts_label' => '게시글',
     'stat_comments_label' => '댓글',
     'recent_posts_title' => '최근 게시글',

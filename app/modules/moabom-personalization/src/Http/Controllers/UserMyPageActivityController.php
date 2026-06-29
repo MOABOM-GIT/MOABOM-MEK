@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Log;
 use Modules\Moabom\Personalization\Services\UserMyPageActivityService;
 
 /**
- * 마이페이지 내 활동 (sirsoft-board 연동).
+ * 마이페이지 게시글 관리 (sirsoft-board 연동).
  *
- * 사용자가 마이페이지 "내 활동" 화면에서 자신이 쓴 글·댓글, 그리고 자신에게
+ * 사용자가 마이페이지 "게시글 관리" 화면에서 자신이 쓴 글·댓글, 그리고 자신에게
  * 도착한 상호작용(받은 댓글/답글)을 한 피드로 조회한다.
  *
  * 데이터 접근·변환은 {@see UserMyPageActivityService} (→ Repository)로 위임하고,

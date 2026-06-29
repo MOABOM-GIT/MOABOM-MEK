@@ -190,12 +190,38 @@
                       },
                       "onSuccess": [
                         {
-                          "comment": "로컬 상태 초기화",
+                          "comment": "삭제 유형을 먼저 보존 (deleteModal 초기화 전)",
                           "handler": "setState",
                           "params": {
                             "target": "local",
                             "deleteSubmitting": false,
-                            "deleteError": ""
+                            "deleteError": "",
+                            "pendingDeleteType": "{{_global.deleteModal.type}}"
+                          }
+                        },
+                        {
+                          "comment": "댓글 삭제 시 데이터소스 갱신",
+                          "if": "{{_local.pendingDeleteType === 'comment'}}",
+                          "handler": "refetchDataSource",
+                          "params": {
+                            "dataSourceId": "post"
+                          }
+                        },
+                        {
+                          "comment": "게시글 삭제 시 목록으로 이동",
+                          "if": "{{_local.pendingDeleteType !== 'comment'}}",
+                          "handler": "navigate",
+                          "params": {
+                            "path": "/board/{{route.slug}}"
+                          }
+                        },
+                        {
+                          "if": "{{_local.pendingDeleteType !== 'comment' && route?.slug === 'notice'}}",
+                          "handler": "moabom.notifyShellNoticeBoardChanged",
+                          "params": {
+                            "slug": "{{route?.slug}}",
+                            "postId": "{{route?.id}}",
+                            "action": "deleted"
                           }
                         },
                         {
@@ -210,31 +236,14 @@
                           "handler": "toast",
                           "params": {
                             "type": "success",
-                            "message": "{{_global.deleteModal.type === 'comment' ? '$t:board.comment_deleted' : '$t:board.post_deleted'}}"
+                            "message": "{{_local.pendingDeleteType === 'comment' ? '$t:board.comment_deleted' : '$t:board.post_deleted'}}"
                           }
                         },
                         {
-                          "if": "{{_global.deleteModal.type !== 'comment' && route?.slug === 'notice'}}",
-                          "handler": "moabom.notifyShellNoticeBoardChanged",
+                          "handler": "setState",
                           "params": {
-                            "slug": "{{route?.slug}}",
-                            "postId": "{{route?.id}}",
-                            "action": "deleted"
-                          }
-                        },
-                        {
-                          "comment": "댓글 삭제 시 데이터소스 갱신, 게시글 삭제 시 목록으로 이동",
-                          "if": "{{_global.deleteModal.type === 'comment'}}",
-                          "handler": "refetchDataSource",
-                          "params": {
-                            "dataSourceId": "post"
-                          }
-                        },
-                        {
-                          "if": "{{_global.deleteModal.type !== 'comment'}}",
-                          "handler": "navigate",
-                          "params": {
-                            "path": "/board/{{route.slug}}"
+                            "target": "local",
+                            "pendingDeleteType": null
                           }
                         },
                         {

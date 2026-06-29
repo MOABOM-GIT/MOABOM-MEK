@@ -22,7 +22,7 @@
   transform: translate3d(0, 0, 0);
 }
 
-/** 가로 1줄 포인터 스트립 — 태스크바·유저 활동 앱 행 등 공통 스크롤·드래그 SSOT */
+/** 가로 1줄 포인터 스트립 — 태스크바·활동 앱 행 등 공통 스크롤·드래그 SSOT */
 .moa-horizontal-strip {
   touch-action: pan-x;
   scrollbar-width: none;

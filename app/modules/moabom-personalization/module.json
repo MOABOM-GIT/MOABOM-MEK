@@ -5,11 +5,11 @@
         "ko": "개인화",
         "en": "Personalization"
     },
-    "version": "0.2.0",
+    "version": "0.2.1",
     "license": "MIT",
     "description": {
-        "ko": "마이페이지 \"내 활동\" 등 사용자별 개인화 피드를 제공하는 모듈. 현재는 sirsoft-board(게시판) 활동/상호작용 집계를 노출하며, 향후 다른 콘텐츠 모듈도 PersonalizationProvider 로 합류한다.",
-        "en": "Per-user personalization feeds for the My Page area. Currently aggregates sirsoft-board posts/comments/interactions; future content modules can plug into a PersonalizationProvider interface."
+        "ko": "마이페이지 \"게시글 관리\" 등 사용자별 개인화 피드를 제공하는 모듈. 현재는 sirsoft-board(게시판) 활동/상호작용 집계를 노출하며, 향후 다른 콘텐츠 모듈도 PersonalizationProvider 로 합류한다.",
+        "en": "Per-user personalization feeds for the My Page area (e.g. post management). Currently aggregates sirsoft-board posts/comments/interactions; future content modules can plug into a PersonalizationProvider interface."
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {

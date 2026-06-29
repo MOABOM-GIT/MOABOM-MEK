@@ -1567,7 +1567,7 @@
       },
       "cache": {
         "title": "캐시",
-        "desc": "애플리케이션 캐시 드라이버를 설정합니다. 운영(Cloud Run)에서는 file — 컨테이너·인스턴스별 로컬 캐시입니다. 멀티 인스턴스에서 공유가 필요한 값(예: 채팅 활성 대화 포커스)은 앱이 DB 캐시 스토어를 별도로 사용합니다.",
+        "desc": "애플리케이션 캐시 드라이버를 설정합니다. 운영(Cloud Run)에서는 file — 컨테이너·인스턴스별 로컬 캐시입니다. 멀티 인스턴스에서 공유가 필요한 값(예: 활성 메시지방 포커스)은 앱이 DB 캐시 스토어를 별도로 사용합니다.",
         "driver": "캐시 드라이버",
         "options": {
           "file": "파일",
@@ -1635,7 +1635,7 @@
         "title": "웹소켓 (Reverb · Realtime VM)",
         "desc": "실시간 채팅·알림·접속자 revision을 위한 WebSocket 설정입니다. 운영에서는 Reverb·Redis가 전용 VM(realtime.mek360.com)에서 구동되고, Cloud Run은 publish API만 호출합니다.",
         "enabled": "웹소켓 사용",
-        "enabled_desc": "Laravel Reverb — 대화(message.*), 알림(notification.received), 인박스(chat.inbox.updated), 접속자(presence.revision).",
+        "enabled_desc": "Laravel Reverb — 메시지(message.*), 알림(notification.received), 인박스(chat.inbox.updated), 접속자(presence.revision).",
         "client_endpoint_title": "클라이언트 엔드포인트 (브라우저 → Reverb)",
         "client_endpoint_desc": "Echo/Pusher가 연결하는 주소입니다. 운영 SSOT: realtime.mek360.com · 443 · https (wss).",
         "app_id": "앱 ID",

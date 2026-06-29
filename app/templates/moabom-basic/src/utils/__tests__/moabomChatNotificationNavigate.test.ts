@@ -9,7 +9,7 @@ describe('moabomChatNotificationNavigate', () => {
   const senderUuid = '00000000-0000-4000-8000-000000000001';
   const conversationUuid = '00000000-0000-4000-8000-000000000099';
 
-  it('알림 url 에서 발신자·대화방 uuid 를 추출한다', () => {
+  it('알림 url 에서 발신자·메시지방 uuid 를 추출한다', () => {
     const url = `/users/${senderUuid}/chat?conversation=${conversationUuid}`;
     expect(extractChatSenderUuidFromUrl(url)).toBe(senderUuid);
     expect(extractChatConversationUuidFromUrl(url)).toBe(conversationUuid);

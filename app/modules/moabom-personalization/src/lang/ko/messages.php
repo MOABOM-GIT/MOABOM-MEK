@@ -2,8 +2,8 @@
 
 return [
     'mypage_activity' => [
-        'fetch_success' => '내 활동을 성공적으로 가져왔습니다.',
-        'fetch_failed' => '내 활동을 가져오는데 실패했습니다.',
+        'fetch_success' => '게시글을 성공적으로 가져왔습니다.',
+        'fetch_failed' => '게시글을 가져오는데 실패했습니다.',
         'types' => [
             'post' => '작성글',
             'comment' => '작성댓글',

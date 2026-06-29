@@ -13,7 +13,7 @@ export interface MoaHorizontalPointerStripProps
 }
 
 /**
- * 가로 1줄 스트립 — 태스크바·유저 활동 앱 행 등 공통 포인터 스크롤 + 탭 활성화.
+ * 가로 1줄 스트립 — 태스크바·활동 앱 행 등 공통 포인터 스크롤 + 탭 활성화.
  * 레이아웃(gap·padding·align)은 `className` 으로 표면별 지정.
  */
 export const Moa_HorizontalPointerStrip: React.FC<MoaHorizontalPointerStripProps> = ({

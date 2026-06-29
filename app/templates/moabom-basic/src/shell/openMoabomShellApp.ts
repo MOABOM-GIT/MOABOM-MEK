@@ -3,7 +3,7 @@ import { getMoaShellBoardBridge } from './moaShellBoardBridge';
 
 /**
  * 셸에서 등록 앱을 연다. G7 `navigate` 대신 셸 창 스택·URL 동기화를 사용한다.
- * (프로필 유저 활동 탭 등 composite 컴포넌트 SSOT)
+ * (프로필 활동 탭 등 composite 컴포넌트 SSOT)
  */
 export function openMoabomShellApp(appId: string, options?: { replace?: boolean }): void {
   const trimmed = appId.trim();

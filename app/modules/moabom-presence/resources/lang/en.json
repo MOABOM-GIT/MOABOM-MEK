@@ -18,7 +18,7 @@
         "presence_settings_updated": "Presence settings saved."
     },
     "user": {
-        "profile_panel_title": "Profile",
+        "profile_panel_title": "About",
         "activity_tab_title": "Activity",
         "stat_posts_label": "Posts",
         "stat_comments_label": "Comments",

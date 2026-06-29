@@ -2,14 +2,14 @@
     "identifier": "moabom-chat",
     "vendor": "moabom",
     "name": {
-        "ko": "프로필 대화",
-        "en": "Profile Chat"
+        "ko": "프로필 메시지",
+        "en": "Profile Messages"
     },
-    "version": "0.2.3",
+    "version": "0.2.4",
     "license": "MIT",
     "description": {
-        "ko": "프로필 윈도우 1:1·그룹 대화, 메시지 보관, 대화거부, 실시간 채팅 이벤트를 제공합니다.",
-        "en": "Profile window direct and group conversations, message history, chat blocks, and realtime chat events."
+        "ko": "프로필 윈도우 1:1·그룹 메시지, 메시지 보관, 차단, 실시간 메시지 이벤트를 제공합니다.",
+        "en": "Profile window direct and group messaging, message history, blocks, and realtime message events."
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {

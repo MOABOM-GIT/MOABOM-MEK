@@ -12,34 +12,34 @@ class Module extends AbstractModule
     {
         return [
             'name' => [
-                'ko' => '프로필 대화',
-                'en' => 'Profile Chat',
+                'ko' => '프로필 메시지',
+                'en' => 'Profile Messages',
             ],
             'description' => [
-                'ko' => '대화방·메시지·대화거부 관리',
-                'en' => 'Conversation, message, and chat block management',
+                'ko' => '메시지방·메시지·차단 관리',
+                'en' => 'Message threads, messages, and block management',
             ],
             'categories' => [
                 [
                     'identifier' => 'chat',
                     'name' => [
-                        'ko' => '대화',
-                        'en' => 'Chat',
+                        'ko' => '메시지',
+                        'en' => 'Messages',
                     ],
                     'description' => [
-                        'ko' => '프로필 대화 권한',
-                        'en' => 'Profile chat permissions',
+                        'ko' => '프로필 메시지 권한',
+                        'en' => 'Profile message permissions',
                     ],
                     'permissions' => [
                         [
                             'action' => 'use',
                             'name' => [
-                                'ko' => '대화 사용',
-                                'en' => 'Use Chat',
+                                'ko' => '메시지 사용',
+                                'en' => 'Use Messages',
                             ],
                             'description' => [
-                                'ko' => '프로필 대화 기능 사용',
-                                'en' => 'Use profile chat features',
+                                'ko' => '프로필 메시지 기능 사용',
+                                'en' => 'Use profile messaging features',
                             ],
                             'type' => 'user',
                             'roles' => ['user'],
@@ -81,12 +81,12 @@ class Module extends AbstractModule
                 'type' => 'chat_message',
                 'hook_prefix' => 'moabom-chat',
                 'name' => [
-                    'ko' => '새 대화 메시지',
-                    'en' => 'New chat message',
+                    'ko' => '새 메시지',
+                    'en' => 'New message',
                 ],
                 'description' => [
-                    'ko' => '대화방에 새 메시지가 도착하면 멤버에게 발송',
-                    'en' => 'Sent to members when a new chat message arrives',
+                    'ko' => '메시지방에 새 메시지가 도착하면 멤버에게 발송',
+                    'en' => 'Sent to members when a new message arrives',
                 ],
                 'channels' => ['database'],
                 'hooks' => ['moabom-chat.message.after_create'],
@@ -94,7 +94,7 @@ class Module extends AbstractModule
                     ['key' => 'name', 'description' => '수신자 이름'],
                     ['key' => 'sender_name', 'description' => '발신자 표시 이름'],
                     ['key' => 'sender_uuid', 'description' => '발신자 UUID'],
-                    ['key' => 'conversation_uuid', 'description' => '대화방 UUID'],
+                    ['key' => 'conversation_uuid', 'description' => '메시지방 UUID'],
                     ['key' => 'message_preview', 'description' => '메시지 미리보기'],
                 ],
                 'templates' => [
@@ -103,8 +103,8 @@ class Module extends AbstractModule
                         'recipients' => [['type' => 'related_user', 'relation' => 'member']],
                         'click_url' => '/users/{sender_uuid}/chat?conversation={conversation_uuid}',
                         'subject' => [
-                            'ko' => '새 대화 메시지',
-                            'en' => 'New chat message',
+                            'ko' => '새 메시지',
+                            'en' => 'New message',
                         ],
                         'body' => [
                             'ko' => '{sender_name}: {message_preview}',

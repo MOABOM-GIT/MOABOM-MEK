@@ -13,7 +13,7 @@ import { activityFilterLabelKey, optionButtonVariant } from './myPageUtils';
 
 export interface Moa_MyPageActivityPanelProps {
   t: MoabomTranslateFn;
-  /** 관리자·슈퍼관리자 세션일 때 내 활동 상단 안내 표시 */
+  /** 관리자·슈퍼관리자 세션일 때 게시글 관리 상단 안내 표시 */
   showAdminSessionNotice?: boolean;
   activityOverview: ActivityOverview | null;
   activityFilter: string;

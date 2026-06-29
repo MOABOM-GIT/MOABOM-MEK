@@ -38,7 +38,8 @@ import { MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX, MOABOM_SHELL_SUB_TAB_SLOT_PX } 
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
-import AppLoadingSpinner from './AppLoadingSpinner';
+import { Moa_PanelEmptyState } from './Moa_PanelEmptyState';
+import { Moa_PanelLoadingState } from './Moa_PanelLoadingState';
 
 type LeftPanelNoticeItem = ShellNoticePreviewItem;
 
@@ -478,15 +479,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   tapToAdd={tapToAdd}
                 />
               ) : (
-                <Div className="text-center py-8 text-muted">
-                  <Icon
-                    name={activeTab === 'user' ? 'users' : 'cube'}
-                    className="text-3xl mb-2 opacity-30"
-                  />
-                  <Div className="text-sm">
-                    {t(activeTab === 'user' ? 'moa_shell.left.empty_user_apps' : 'moa_shell.left.empty_basic_apps')}
-                  </Div>
-                </Div>
+                <Moa_PanelEmptyState
+                  icon={activeTab === 'user' ? 'users' : 'cube'}
+                  message={t(activeTab === 'user' ? 'moa_shell.left.empty_user_apps' : 'moa_shell.left.empty_basic_apps')}
+                />
               )}
             </Div>
           )}
@@ -496,12 +492,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             <Div className="py-1">
               {rankingSubTab === 'apps' && (
                 rankingLoading ? (
-                  <AppLoadingSpinner label={t('moa_shell.left.rankings_loading')} className="py-8" />
+                  <Moa_PanelLoadingState label={t('moa_shell.left.rankings_loading')} />
                 ) : rankingLoadFailed ? (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_load_failed')}</Div>
-                  </Div>
+                  <Moa_PanelEmptyState
+                    icon="triangle-exclamation"
+                    message={t('moa_shell.left.rankings_load_failed')}
+                  />
                 ) : visibleAppRankings.length > 0 ? (
                   <Div className="flex flex-col gap-1">
                     {visibleAppRankings.map(item => {
@@ -543,20 +539,20 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     })}
                   </Div>
                 ) : (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="trophy" className="text-3xl mb-2 opacity-30" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_apps_empty')}</Div>
-                  </Div>
+                  <Moa_PanelEmptyState
+                    icon="trophy"
+                    message={t('moa_shell.left.rankings_apps_empty')}
+                  />
                 )
               )}
               {rankingSubTab === 'users' && (
                 rankingLoading ? (
-                  <AppLoadingSpinner label={t('moa_shell.left.rankings_loading')} className="py-8" />
+                  <Moa_PanelLoadingState label={t('moa_shell.left.rankings_loading')} />
                 ) : rankingLoadFailed ? (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="triangle-exclamation" className="text-3xl mb-2 opacity-30" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_load_failed')}</Div>
-                  </Div>
+                  <Moa_PanelEmptyState
+                    icon="triangle-exclamation"
+                    message={t('moa_shell.left.rankings_load_failed')}
+                  />
                 ) : userRankings.length > 0 ? (
                   <Div className="flex flex-col gap-1">
                     {userRankings.map(user => (
@@ -597,10 +593,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     ))}
                   </Div>
                 ) : (
-                  <Div className="text-center py-8 text-muted">
-                    <Icon name="users" className="text-3xl mb-2 opacity-30" />
-                    <Div className="text-sm">{t('moa_shell.left.rankings_users_empty')}</Div>
-                  </Div>
+                  <Moa_PanelEmptyState
+                    icon="users"
+                    message={t('moa_shell.left.rankings_users_empty')}
+                  />
                 )
               )}
             </Div>
@@ -612,7 +608,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               {myappSubTab === 'myapps' && (
                 <Div>
                   {ownedGeneratedAppsLoading && !hasOwnedGeneratedApps ? (
-                    <AppLoadingSpinner label={t('moa_shell.left.myapps_loading')} className="py-8" />
+                    <Moa_PanelLoadingState label={t('moa_shell.left.myapps_loading')} />
                   ) : createdApps.length > 0 ? (
                     <LeftPanelAppGrid
                       apps={createdApps}
@@ -623,10 +619,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                       tapToAdd={tapToAdd}
                     />
                   ) : (
-                    <Div className="text-center py-8 text-muted">
-                      <Icon name="cube" className="text-3xl mb-2 opacity-30" />
-                      <Div className="text-sm">{t('moa_shell.left.empty_myapps')}</Div>
-                    </Div>
+                    <Moa_PanelEmptyState
+                      icon="cube"
+                      message={t('moa_shell.left.empty_myapps')}
+                    />
                   )}
                 </Div>
               )}
@@ -642,10 +638,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                       tapToAdd={tapToAdd}
                     />
                   ) : (
-                    <Div className="text-center py-8 text-muted">
-                      <Icon name="star" className="text-3xl mb-2 opacity-30" />
-                      <Div className="text-sm">{t('moa_shell.left.empty_favorites')}</Div>
-                    </Div>
+                    <Moa_PanelEmptyState
+                      icon="star"
+                      message={t('moa_shell.left.empty_favorites')}
+                    />
                   )}
                 </Div>
               )}
@@ -656,7 +652,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {activeNav === 'notice' && (
             <Div className="py-1">
               {noticeBoardLoading ? (
-                <AppLoadingSpinner label={t('moa_shell.left.notice_loading')} className="py-8" />
+                <Moa_PanelLoadingState label={t('moa_shell.left.notice_loading')} />
               ) : noticeItems.length > 0 ? (
                 <Div className="flex flex-col gap-1">
                   {noticeItems.map((notice, index) => (
@@ -700,12 +696,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   ))}
                 </Div>
               ) : (
-                <Div className="text-center py-8 text-muted">
-                  <Icon name={noticeSubTab === 'updates' ? 'sync' : 'bell'} className="text-3xl mb-2 opacity-30" />
-                  <Div className="text-sm">
-                    {t(noticeSubTab === 'updates' ? 'moa_shell.left.empty_updates' : 'moa_shell.left.empty_notices')}
-                  </Div>
-                </Div>
+                <Moa_PanelEmptyState
+                  icon={noticeSubTab === 'updates' ? 'sync' : 'bell'}
+                  message={t(noticeSubTab === 'updates' ? 'moa_shell.left.empty_updates' : 'moa_shell.left.empty_notices')}
+                />
               )}
             </Div>
           )}

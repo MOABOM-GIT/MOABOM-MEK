@@ -9,7 +9,8 @@ import { Icon } from '../basic/Icon';
 import { Img } from '../basic/Img';
 import { Span } from '../basic/Span';
 import { GlassPanel } from './Moa_GlassPanel';
-import AppLoadingSpinner from './AppLoadingSpinner';
+import { Moa_PanelEmptyState } from './Moa_PanelEmptyState';
+import { Moa_PanelLoadingState } from './Moa_PanelLoadingState';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LoginPrompt } from './Moa_LoginPrompt';
@@ -93,7 +94,7 @@ interface PresenceUserActionsMenuProps {
   onAcceptFriend: (userUuid: string) => void | Promise<void>;
 }
 
-/** 친구 행 — 대화 바로가기 */
+/** 친구 행 — 메시지 바로가기 */
 const FriendChatOpenButton: React.FC<{ userUuid: string }> = ({ userUuid }) => {
   const { t } = useMoabomShellT();
 
@@ -524,16 +525,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <>
                     <Span className="text-xs text-muted px-1 block">{onlineSummaryLabel}</Span>
                     {loadingOnline && onlineUsers.length === 0 && (
-                      <AppLoadingSpinner
-                        label={t('moa_shell.right.presence_loading')}
-                        compact
-                        className="w-full py-4"
-                      />
+                      <Moa_PanelLoadingState label={t('moa_shell.right.presence_loading')} />
                     )}
                     {!loadingOnline && onlineUsers.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.presence_empty')}
-                      </Span>
+                      <Moa_PanelEmptyState
+                        icon="globe"
+                        message={t('moa_shell.right.presence_empty')}
+                      />
                     )}
                     <Div className="mt-2 flex flex-col gap-1">
                       {onlineUsers.map(u => {
@@ -609,21 +607,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   <>
                     <Span className="text-xs text-muted px-1 block">{friendsSummaryLabel}</Span>
                     {!isLoggedIn && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.friends_login_required')}
-                      </Span>
-                    )}
-                    {isLoggedIn && loadingFriends && friends.length === 0 && (
-                      <AppLoadingSpinner
-                        label={t('moa_shell.right.presence_loading')}
-                        compact
-                        className="w-full py-4"
+                      <Moa_PanelEmptyState
+                        icon="lock"
+                        message={t('moa_shell.right.friends_login_required')}
                       />
                     )}
+                    {isLoggedIn && loadingFriends && friends.length === 0 && (
+                      <Moa_PanelLoadingState label={t('moa_shell.right.presence_loading')} />
+                    )}
                     {isLoggedIn && !loadingFriends && friends.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.friends_empty')}
-                      </Span>
+                      <Moa_PanelEmptyState
+                        icon="users"
+                        message={t('moa_shell.right.friends_empty')}
+                      />
                     )}
                     <Div className="mt-2 flex flex-col gap-1">
                       {friends.map(u => {
@@ -674,16 +670,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <Div className="py-3">
                   <Div className="flex flex-col gap-1">
                     {notificationsLoading && notificationItems.length === 0 && (
-                      <AppLoadingSpinner
-                        label={t('moa_shell.right.notifications_loading')}
-                        compact
-                        className="w-full py-4"
-                      />
+                      <Moa_PanelLoadingState label={t('moa_shell.right.notifications_loading')} />
                     )}
                     {!notificationsLoading && notificationItems.length === 0 && (
-                      <Span className="text-xs text-muted px-3 py-4 text-center block">
-                        {t('moa_shell.right.notifications_empty')}
-                      </Span>
+                      <Moa_PanelEmptyState
+                        icon="bell"
+                        message={t('moa_shell.right.notifications_empty')}
+                      />
                     )}
                     {notificationItems.map(item => {
                       const visual = getNotificationVisual(item.type);

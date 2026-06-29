@@ -1,4 +1,4 @@
-/** 프로필 대화 탭 자동 시작 — 삭제 후 탭 재진입 시 대화 복원 방지 */
+/** 프로필 메시지 탭 자동 시작 — 삭제 후 탭 재진입 시 메시지방 복원 방지 */
 const suppressedPeerUuids = new Set<string>();
 const attemptedPeerUuids = new Set<string>();
 

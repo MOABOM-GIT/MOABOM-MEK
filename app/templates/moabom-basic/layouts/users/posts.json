@@ -82,7 +82,7 @@
       },
       "children": [
         {
-          "comment": "유저 활동 — 마이앱 · 최근 실행 앱 · 작성글",
+          "comment": "활동 — 마이앱 · 최근 실행 앱 · 작성글",
           "type": "basic",
           "name": "Div",
           "if": "{{userProfile.data && !userProfile.error}}",
@@ -107,13 +107,13 @@
                   "text": "$t:user.profile.generated_apps_title"
                 },
                 {
-                  "type": "basic",
-                  "name": "Div",
+                  "type": "composite",
+                  "name": "PanelEmptyState",
                   "if": "{{!(userGeneratedApps.data?.data?.length)}}",
                   "props": {
-                    "className": "text-center py-8 text-gray-500 dark:text-gray-400 text-sm"
-                  },
-                  "text": "$t:user.profile.generated_apps_empty"
+                    "icon": "cube",
+                    "message": "$t:user.profile.generated_apps_empty"
+                  }
                 },
                 {
                   "type": "composite",
@@ -142,13 +142,13 @@
                   "text": "$t:user.profile.frequent_apps_title"
                 },
                 {
-                  "type": "basic",
-                  "name": "Div",
+                  "type": "composite",
+                  "name": "PanelEmptyState",
                   "if": "{{!(userFrequentApps.data?.data?.length)}}",
                   "props": {
-                    "className": "text-center py-8 text-gray-500 dark:text-gray-400 text-sm"
-                  },
-                  "text": "$t:user.profile.frequent_apps_empty"
+                    "icon": "clock",
+                    "message": "$t:user.profile.frequent_apps_empty"
+                  }
                 },
                 {
                   "type": "composite",
@@ -180,31 +180,13 @@
                 },
                 {
                   "comment": "게시글 없음",
-                  "type": "basic",
-                  "name": "Div",
+                  "type": "composite",
+                  "name": "PanelEmptyState",
                   "if": "{{!userPosts.data?.data?.length}}",
                   "props": {
-                    "className": "text-center py-12"
-                  },
-                  "children": [
-                    {
-                      "type": "basic",
-                      "name": "Icon",
-                      "props": {
-                        "name": "file-circle-xmark",
-                        "size": "3x",
-                        "className": "text-gray-300 dark:text-gray-600 mb-4"
-                      }
-                    },
-                    {
-                      "type": "basic",
-                      "name": "P",
-                      "props": {
-                        "className": "text-gray-500 dark:text-gray-400"
-                      },
-                      "text": "$t:user.profile.no_posts"
-                    }
-                  ]
+                    "icon": "file-alt",
+                    "message": "$t:user.profile.no_posts"
+                  }
                 },
                 {
                   "comment": "게시글 목록",

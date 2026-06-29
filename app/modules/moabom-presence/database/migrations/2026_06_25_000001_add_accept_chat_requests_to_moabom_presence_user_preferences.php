@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('accept_chat_requests')
                 ->default(true)
                 ->after('show_avatar_in_connect_list')
-                ->comment('대화 요청 수락 여부 (1: 수락, 0: 거부)');
+                ->comment('메시지 요청 수락 여부 (1: 수락, 0: 거부)');
         });
     }
 

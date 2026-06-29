@@ -88,18 +88,18 @@ const SortableMypageRow: React.FC<{
           <Input
             type="text"
             value={menu.label ?? ''}
-            disabled={readOnly}
+            disabled
+            readOnly
             placeholder="메뉴명"
-            className="w-full px-3 py-2 text-sm"
-            onChange={(e) => onPatch(menu.id, { label: e.target.value })}
+            className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900/40 cursor-not-allowed"
           />
           <Input
             type="text"
             value={menu.description ?? ''}
-            disabled={readOnly}
+            disabled
+            readOnly
             placeholder="설명"
-            className="w-full px-3 py-2 text-xs"
-            onChange={(e) => onPatch(menu.id, { description: e.target.value })}
+            className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900/40 cursor-not-allowed"
           />
         </Div>
       </Div>

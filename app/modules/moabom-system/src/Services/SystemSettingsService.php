@@ -93,6 +93,12 @@ class SystemSettingsService implements SystemSettingsServiceInterface
         }
 
         $settings = $this->normalizeSettingsData($settings, $defaultValues);
+        if (isset($settings['mypage']) && is_array($settings['mypage'])) {
+            $settings['mypage'] = $this->applyMypageMenuCatalogFromDefaults(
+                $settings['mypage'],
+                is_array($defaultValues['mypage'] ?? null) ? $defaultValues['mypage'] : [],
+            );
+        }
         if (isset($settings['appearance']) && is_array($settings['appearance'])) {
             $settings['appearance'] = $this->stripLegacyAppearanceDefaultKeys($settings['appearance']);
             $settings['appearance'] = $this->enrichAppearanceForResponse($settings['appearance']);
@@ -130,6 +136,9 @@ class SystemSettingsService implements SystemSettingsServiceInterface
 
             $categoryDefaults = $defaultValues[$category] ?? [];
             $processedSettings = $this->normalizeCategoryData($categorySettings, $categoryDefaults);
+            if ($category === 'mypage') {
+                $processedSettings = $this->stripMypageMenuCatalogForStorage($processedSettings);
+            }
             if ($category === 'preferences') {
                 $processedSettings = $this->stripLegacySystemOptionDefaultKey($processedSettings);
             }
@@ -170,6 +179,9 @@ class SystemSettingsService implements SystemSettingsServiceInterface
 
             $categoryDefaults = $defaultValues[$category] ?? [];
             $processedSettings = $this->normalizeCategoryData($categorySettings, $categoryDefaults);
+            if ($category === 'mypage') {
+                $processedSettings = $this->stripMypageMenuCatalogForStorage($processedSettings);
+            }
             if ($category === 'preferences') {
                 $processedSettings = $this->stripLegacySystemOptionDefaultKey($processedSettings);
             }
@@ -465,6 +477,10 @@ class SystemSettingsService implements SystemSettingsServiceInterface
         $merged = $this->mergeCategoryDefaults($category, $defaults, $stored);
         $merged = $this->normalizeCategoryData($merged, $defaults);
 
+        if ($category === 'mypage') {
+            $merged = $this->applyMypageMenuCatalogFromDefaults($merged, $defaults);
+        }
+
         if ($category === 'preferences') {
             $merged = $this->stripLegacySystemOptionDefaultKey($merged);
         }
@@ -728,5 +744,77 @@ class SystemSettingsService implements SystemSettingsServiceInterface
         }
 
         return $appearance;
+    }
+
+    /**
+     * 마이페이지 메뉴 label·description·icon 은 defaults.json 카탈로그 SSOT.
+     * 테넌트 저장본의 구 명칭(앱 보관함·내 활동 등)이 조회·관리자 UI에 남지 않도록 id 기준으로 덮어씁니다.
+     *
+     * @param  array<string, mixed>  $mypage
+     * @param  array<string, mixed>  $defaultsMypage
+     * @return array<string, mixed>
+     */
+    private function applyMypageMenuCatalogFromDefaults(array $mypage, array $defaultsMypage): array
+    {
+        $defaultMenus = $defaultsMypage['menus'] ?? null;
+        if (! is_array($defaultMenus) || $defaultMenus === []) {
+            return $mypage;
+        }
+
+        $catalogById = [];
+        foreach ($defaultMenus as $row) {
+            if (is_array($row) && isset($row['id'])) {
+                $catalogById[(string) $row['id']] = $row;
+            }
+        }
+
+        $menus = $mypage['menus'] ?? null;
+        if (! is_array($menus)) {
+            return $mypage;
+        }
+
+        $mypage['menus'] = array_values(array_map(function ($row) use ($catalogById) {
+            if (! is_array($row)) {
+                return $row;
+            }
+
+            $id = (string) ($row['id'] ?? '');
+            $catalog = $catalogById[$id] ?? null;
+            if (! is_array($catalog)) {
+                return $row;
+            }
+
+            return array_merge($row, [
+                'label' => $catalog['label'] ?? $row['label'] ?? '',
+                'description' => $catalog['description'] ?? $row['description'] ?? null,
+                'icon' => $catalog['icon'] ?? $row['icon'] ?? null,
+            ]);
+        }, $menus));
+
+        return $mypage;
+    }
+
+    /**
+     * 마이페이지 메뉴 저장 시 카탈로그 필드는 제외 — enabled·guest_enabled·order 만 유지.
+     *
+     * @param  array<string, mixed>  $mypage
+     * @return array<string, mixed>
+     */
+    private function stripMypageMenuCatalogForStorage(array $mypage): array
+    {
+        $menus = $mypage['menus'] ?? null;
+        if (! is_array($menus)) {
+            return $mypage;
+        }
+
+        $mypage['menus'] = array_values(array_map(function ($row) {
+            if (! is_array($row)) {
+                return $row;
+            }
+
+            return array_intersect_key($row, array_flip(['id', 'enabled', 'guest_enabled', 'order']));
+        }, $menus));
+
+        return $mypage;
     }
 }

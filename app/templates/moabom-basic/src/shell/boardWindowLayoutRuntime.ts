@@ -600,6 +600,63 @@ export async function refetchBoardWindowDataSource(
   return mergeBoardComputedIntoContext(nextContext, computedDefs);
 }
 
+export type BoardWindowSetOptions = {
+  merge?: boolean;
+};
+
+/**
+ * 셸 게시판 윈도우 전용 data source 직접 갱신 — 비밀글 verify-password 응답 등 refetch 없이 반영.
+ */
+export function setBoardWindowDataSource(
+  computedDefs: Record<string, string> | undefined,
+  dataSourceId: string,
+  data: unknown,
+  route: Record<string, string>,
+  query: Record<string, string | string[]>,
+  currentContext: Record<string, unknown>,
+  options?: BoardWindowSetOptions,
+): Record<string, unknown> {
+  const merge = options?.merge ?? false;
+
+  const priorFetched: Record<string, unknown> = {};
+  for (const key of Object.keys(currentContext)) {
+    if (!key.startsWith('_') && key !== 'route' && key !== 'query' && key !== '$computed') {
+      priorFetched[key] = currentContext[key];
+    }
+  }
+
+  const globalState = typeof currentContext._global === 'object' && currentContext._global != null
+    ? currentContext._global as Record<string, unknown>
+    : {};
+  const localState = typeof currentContext._local === 'object' && currentContext._local != null
+    ? currentContext._local as Record<string, unknown>
+    : {};
+
+  let nextValue = data;
+  if (merge && priorFetched[dataSourceId] != null) {
+    const existing = priorFetched[dataSourceId];
+    if (
+      typeof existing === 'object'
+      && existing != null
+      && typeof data === 'object'
+      && data != null
+    ) {
+      nextValue = { ...(existing as Record<string, unknown>), ...(data as Record<string, unknown>) };
+    }
+  }
+
+  const nextContext: Record<string, unknown> = {
+    ...priorFetched,
+    [dataSourceId]: nextValue,
+    _local: localState,
+    _global: globalState,
+    route,
+    query,
+  };
+
+  return mergeBoardComputedIntoContext(nextContext, computedDefs);
+}
+
 function extractDataSourcePayload(raw: unknown): unknown {
   if (raw != null && typeof raw === 'object' && 'data' in (raw as object)) {
     return (raw as { data?: unknown }).data ?? raw;

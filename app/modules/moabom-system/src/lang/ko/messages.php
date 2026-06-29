@@ -47,7 +47,7 @@ return [
     'shell_rankings' => [
         'usage_accepted' => '앱 사용량을 반영했습니다.',
         'apps_fetch_success' => '앱 순위를 조회했습니다.',
-        'users_fetch_success' => '유저 순위를 조회했습니다.',
+        'users_fetch_success' => '활동 순위를 조회했습니다.',
     ],
     'saas' => [
         'hospitals' => [

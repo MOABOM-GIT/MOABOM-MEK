@@ -17,10 +17,10 @@ JS_DIR="${APP_ROOT}/templates/moabom-basic/dist/js"
 DEFAULT_BUDGET_KB=200
 FAIL=0
 
-# 파일별 상한(KB). 현재(2026-06): components≈499, cpap≈171, consulting≈35, create-app≈19, gallery≈57.
+# 파일별 상한(KB). 현재(2026-06): components≈701, cpap≈174, consulting≈41, create-app≈54, gallery≈56.
 budget_for() {
   case "$1" in
-    components.iife.js)               echo 700 ;;  # 메인 셸 번들
+    components.iife.js)               echo 710 ;;  # 메인 셸 번들 (PanelEmptyState·패널 빈/로딩 UI 통일)
     moabom-shell-cpap-mask.iife.js)   echo 280 ;;  # @mediapipe/tasks-vision 포함(무거움)
     moabom-shell-consulting.iife.js)  echo 140 ;;
     moabom-shell-create-app.iife.js)  echo 140 ;;

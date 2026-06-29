@@ -14,6 +14,12 @@ import {
   buildBoardPayloadCacheKey,
   resolveBoardWindowQuery,
 } from '../../shell/boardWindowPrefetch';
+import {
+  buildBoardFetchToken,
+  getBoardPayloadCacheEntry,
+  patchBoardPayloadCacheDataContext,
+  setBoardPayloadCacheEntry,
+} from '../../shell/boardWindowPayloadCache';
 import { moaShellBoardSlugFromAppId } from '../../shell/moaShellBoardIds';
 import { MOA_SHELL_BOARD_URL_EVENT } from '../../shell/moaShellBoardBridge';
 import { Button } from '../basic/Button';
@@ -49,10 +55,10 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
   const [refetching, setRefetching] = useState(false);
   const [payload, setPayload] = useState<BoardWindowRenderPayload | null>(null);
   const [dataContext, setDataContext] = useState<Record<string, unknown> | null>(null);
+  const [dataRevision, setDataRevision] = useState(0);
   const [urlEpoch, setUrlEpoch] = useState(0);
   const payloadRef = useRef<BoardWindowRenderPayload | null>(null);
   const dataContextRef = useRef<Record<string, unknown> | null>(null);
-  const payloadCacheRef = useRef<Map<string, BoardWindowRenderPayload>>(new Map());
   payloadRef.current = payload;
   dataContextRef.current = dataContext;
 
@@ -72,7 +78,8 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
 
     const query = resolveBoardWindowQuery();
     const cacheKey = buildBoardPayloadCacheKey(boardSlug, boardPostId, boardMode, query, authStateKey);
-    const cached = payloadCacheRef.current.get(cacheKey);
+    const fetchToken = buildBoardFetchToken(cacheKey, urlEpoch);
+    const cached = getBoardPayloadCacheEntry(cacheKey, fetchToken);
     const keepContent = payloadRef.current != null || cached != null;
 
     if (cached) {
@@ -93,9 +100,10 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
 
     try {
       const next = await loadBoardWindowRenderPayload(boardSlug, boardPostId, boardMode, query);
-      payloadCacheRef.current.set(cacheKey, next);
+      setBoardPayloadCacheEntry(cacheKey, fetchToken, next);
       setPayload(next);
       setDataContext(next.dataContext);
+      setDataRevision(revision => revision + 1);
 
       const fetched: Record<string, unknown> = {};
       for (const key of Object.keys(next.dataContext)) {
@@ -130,6 +138,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     const unregister = registerBoardWindowDataSession(payload, next => {
       invalidateBoardWindowBindingCache(payload.bindingEngine);
       setDataContext(next);
+      setDataRevision(revision => revision + 1);
       const cacheKey = buildBoardPayloadCacheKey(
         boardSlug,
         boardPostId,
@@ -137,10 +146,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
         resolveBoardWindowQuery(),
         authStateKey,
       );
-      const cached = payloadCacheRef.current.get(cacheKey);
-      if (cached) {
-        payloadCacheRef.current.set(cacheKey, { ...cached, dataContext: next });
-      }
+      patchBoardPayloadCacheDataContext(cacheKey, next);
     });
 
     return unregister;
@@ -207,8 +213,8 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
               <DynamicRenderer
                 key={
                   componentDef.id
-                    ? `${componentDef.id}_${layoutName}`
-                    : `board-window-${index}_${layoutName}`
+                    ? `${componentDef.id}_${layoutName}_${dataRevision}`
+                    : `board-window-${index}_${layoutName}_${dataRevision}`
                 }
                 componentDef={componentDef}
                 dataContext={activeDataContext}

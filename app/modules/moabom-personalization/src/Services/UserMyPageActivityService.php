@@ -9,7 +9,7 @@ use Modules\Sirsoft\Board\Models\Comment;
 use Modules\Sirsoft\Board\Models\Post;
 
 /**
- * 마이페이지 "내 활동" 피드 조립 서비스.
+ * 마이페이지 "게시글 관리" 피드 조립 서비스.
  *
  * 데이터 접근은 {@see UserActivityRepositoryInterface} 로 위임하고, 본 서비스는
  * 표현용 항목 변환(라벨/아이콘/URL/상대시간)과 피드 병합·정렬만 담당한다.

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SPIN_KEYFRAMES = '@keyframes moabom-loading-spin{to{transform:rotate(360deg)}}';
+export const MOABOM_SPIN_KEYFRAMES = '@keyframes moabom-loading-spin{to{transform:rotate(360deg)}}';
 
 export interface AppLoadingSpinnerProps {
   label?: string;
@@ -38,7 +38,7 @@ export const AppLoadingSpinner: React.FC<AppLoadingSpinnerProps> = ({
       aria-live="polite"
       aria-label={label || 'Loading'}
     >
-      <style>{SPIN_KEYFRAMES}</style>
+      <style>{MOABOM_SPIN_KEYFRAMES}</style>
       <span
         aria-hidden="true"
         className={compact ? 'shrink-0' : undefined}

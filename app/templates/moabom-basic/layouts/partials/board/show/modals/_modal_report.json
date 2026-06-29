@@ -369,6 +369,13 @@
                               }
                             },
                             {
+                              "comment": "신고 상태(is_already_reported) 즉시 반영",
+                              "handler": "refetchDataSource",
+                              "params": {
+                                "dataSourceId": "post"
+                              }
+                            },
+                            {
                               "handler": "setState",
                               "params": {
                                 "target": "global",

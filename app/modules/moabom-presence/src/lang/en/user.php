@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'profile_panel_title' => 'Profile',
+    'profile_panel_title' => 'About',
     'stat_posts_label' => 'Posts',
     'stat_comments_label' => 'Comments',
     'recent_posts_title' => 'Recent posts',

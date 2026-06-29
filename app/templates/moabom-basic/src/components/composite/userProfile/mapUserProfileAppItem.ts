@@ -40,7 +40,7 @@ function mapFrequentGeneratedItem(item: UserProfileAppItem, shellId: string): Ap
   };
 }
 
-/** 공개 프로필 유저 활동 API 항목 → 마이페이지 보관함과 동일한 App 카드 */
+/** 공개 프로필 활동 API 항목 → 마이페이지 라이브러리와 동일한 App 카드 */
 export function mapUserProfileAppItemToLibraryApp(item: UserProfileAppItem): App | null {
   if (!item || typeof item !== 'object') {
     return null;

@@ -26,7 +26,7 @@ interface CreditRepositoryInterface
     public function updateBalance(CreditBalance $balance, int $amount): bool;
 
     /**
-     * 유저 랭킹용 누적 적립 포인트를 증가시킵니다.
+     * 활동 순위용 누적 적립 포인트를 증가시킵니다.
      */
     public function incrementRankingPoints(CreditBalance $balance, int $amount): void;
 

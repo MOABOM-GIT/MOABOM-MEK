@@ -5,7 +5,7 @@
         "ko": "Moabom Admin Basic",
         "en": "Moabom Admin Basic"
     },
-    "version": "1.0.0-beta.15",
+    "version": "1.0.0-beta.17",
     "license": "MIT",
     "description": {
         "ko": "Moabom 커스텀 관리자 템플릿 (sirsoft-admin_basic 포크)",

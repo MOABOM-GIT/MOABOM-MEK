@@ -4,6 +4,18 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.0-beta.17] - 2026-06-30
+
+### Changed
+
+- 환경설정 Realtime·캐시 안내 문구의 「대화」 표현을 「메시지/메시지방」에 맞게 정리.
+
+## [1.0.0-beta.16] - 2026-06-30
+
+### Changed
+
+- **SortableMypageMenuList** — 마이페이지 메뉴 구성에서 메뉴명·설명 입력을 읽기 전용으로 전환 (노출·게스트·순서만 편집).
+
 ## [1.0.0-beta.15] - 2026-06-29
 
 ### Changed

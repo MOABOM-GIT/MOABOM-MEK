@@ -7,7 +7,7 @@ use App\Models\User;
 use Modules\Moabom\Chat\Services\ChatService;
 
 /**
- * 수신자가 해당 대화방에 포커스(열람) 중이면 database 알림 채널을 생략합니다.
+ * 수신자가 해당 메시지방에 포커스(열람) 중이면 database 알림 채널을 생략합니다.
  */
 final class ChatNotificationChannelListener implements HookListenerInterface
 {

@@ -297,30 +297,12 @@
                       ]
                     },
                     {
-                      "type": "basic",
-                      "name": "Div",
+                      "type": "composite",
+                      "name": "PanelEmptyState",
                       "props": {
-                        "className": "text-center py-12"
-                      },
-                      "children": [
-                        {
-                          "type": "basic",
-                          "name": "Icon",
-                          "props": {
-                            "name": "file-circle-xmark",
-                            "size": "3x",
-                            "className": "text-gray-300 dark:text-gray-600 mb-4"
-                          }
-                        },
-                        {
-                          "type": "basic",
-                          "name": "P",
-                          "props": {
-                            "className": "text-gray-500 dark:text-gray-400"
-                          },
-                          "text": "$t:user.profile.no_posts"
-                        }
-                      ]
+                        "icon": "file-alt",
+                        "message": "$t:user.profile.no_posts"
+                      }
                     }
                   ]
                 }

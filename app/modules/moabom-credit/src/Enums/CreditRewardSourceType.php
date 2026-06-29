@@ -3,7 +3,7 @@
 namespace Modules\Moabom\Credit\Enums;
 
 /**
- * 크레딧 적립 이벤트 출처 — 유저 랭킹 집계 SSOT.
+ * 크레딧 적립 이벤트 출처 — 활동 순위 집계 SSOT.
  */
 enum CreditRewardSourceType: string
 {

@@ -10,11 +10,11 @@ return new class extends Migration
     {
         if (! Schema::hasTable('moabom_chat_conversations')) {
             Schema::create('moabom_chat_conversations', function (Blueprint $table): void {
-                $table->id()->comment('대화방 ID');
-                $table->uuid('uuid')->unique('moabom_chat_conversations_uuid_uq')->comment('대화방 UUID');
-                $table->string('type', 16)->default('direct')->comment('대화방 유형 (direct: 1:1, group: 그룹)');
-                $table->string('title', 120)->nullable()->comment('그룹 대화방 제목');
-                $table->string('direct_key', 64)->nullable()->comment('1:1 대화 중복 방지 키');
+                $table->id()->comment('메시지방 ID');
+                $table->uuid('uuid')->unique('moabom_chat_conversations_uuid_uq')->comment('메시지방 UUID');
+                $table->string('type', 16)->default('direct')->comment('메시지방 유형 (direct: 1:1, group: 그룹)');
+                $table->string('title', 120)->nullable()->comment('그룹 메시지방 제목');
+                $table->string('direct_key', 64)->nullable()->comment('1:1 메시지방 중복 방지 키');
                 $table->foreignId('created_by')->comment('생성자 ID')->constrained('users')->cascadeOnDelete();
                 $table->timestamp('last_message_at')->nullable()->comment('마지막 메시지 시각');
                 $table->timestamps();
@@ -28,8 +28,8 @@ return new class extends Migration
 
         if (! Schema::hasTable('moabom_chat_conversation_members')) {
             Schema::create('moabom_chat_conversation_members', function (Blueprint $table): void {
-                $table->id()->comment('대화방 멤버 ID');
-                $table->foreignId('conversation_id')->comment('대화방 ID')->constrained('moabom_chat_conversations')->cascadeOnDelete();
+                $table->id()->comment('메시지방 멤버 ID');
+                $table->foreignId('conversation_id')->comment('메시지방 ID')->constrained('moabom_chat_conversations')->cascadeOnDelete();
                 $table->foreignId('user_id')->comment('사용자 ID')->constrained('users')->cascadeOnDelete();
                 $table->string('role', 16)->default('member')->comment('멤버 역할 (owner: 방장, member: 멤버)');
                 $table->timestamp('last_read_at')->nullable()->comment('마지막 읽음 시각');
@@ -48,7 +48,7 @@ return new class extends Migration
             Schema::create('moabom_chat_messages', function (Blueprint $table): void {
                 $table->id()->comment('메시지 ID');
                 $table->uuid('uuid')->unique('moabom_chat_messages_uuid_uq')->comment('메시지 UUID');
-                $table->foreignId('conversation_id')->comment('대화방 ID')->constrained('moabom_chat_conversations')->cascadeOnDelete();
+                $table->foreignId('conversation_id')->comment('메시지방 ID')->constrained('moabom_chat_conversations')->cascadeOnDelete();
                 $table->foreignId('sender_id')->comment('발신자 ID')->constrained('users')->cascadeOnDelete();
                 $table->uuid('client_message_id')->nullable()->comment('클라이언트 멱등 메시지 UUID');
                 $table->string('type', 16)->default('text')->comment('메시지 유형 (text: 일반 텍스트)');
@@ -65,10 +65,10 @@ return new class extends Migration
 
         if (! Schema::hasTable('moabom_chat_user_blocks')) {
             Schema::create('moabom_chat_user_blocks', function (Blueprint $table): void {
-                $table->id()->comment('대화거부 ID');
-                $table->foreignId('blocker_id')->comment('대화거부 설정 사용자 ID')->constrained('users')->cascadeOnDelete();
-                $table->foreignId('blocked_id')->comment('대화거부 대상 사용자 ID')->constrained('users')->cascadeOnDelete();
-                $table->string('reason', 255)->nullable()->comment('대화거부 사유');
+                $table->id()->comment('차단 ID');
+                $table->foreignId('blocker_id')->comment('차단 설정 사용자 ID')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('blocked_id')->comment('차단 대상 사용자 ID')->constrained('users')->cascadeOnDelete();
+                $table->string('reason', 255)->nullable()->comment('차단 사유');
                 $table->timestamps();
 
                 $table->unique(['blocker_id', 'blocked_id'], 'moabom_chat_blocks_pair_uq');

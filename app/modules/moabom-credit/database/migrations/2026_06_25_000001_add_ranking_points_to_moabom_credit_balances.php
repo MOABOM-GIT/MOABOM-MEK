@@ -21,7 +21,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('ranking_points')
                     ->default(0)
                     ->after('balance')
-                    ->comment('유저 랭킹용 누적 적립 포인트');
+                    ->comment('활동 순위용 누적 적립 포인트');
                 $table->index('ranking_points', 'moabom_credit_balances_ranking_points_idx');
             });
         }

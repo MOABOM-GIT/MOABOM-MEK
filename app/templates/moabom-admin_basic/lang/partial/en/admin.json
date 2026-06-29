@@ -1557,7 +1557,7 @@
       },
       "cache": {
         "title": "Cache",
-        "desc": "Configure application cache driver. In production (Cloud Run), file is used — local per-container cache. Values that must be shared across instances (e.g. active chat focus) use the DB cache store in application code.",
+        "desc": "Configure application cache driver. In production (Cloud Run), file is used — local per-container cache. Values that must be shared across instances (e.g. active message thread focus) use the DB cache store in application code.",
         "driver": "Cache Driver",
         "options": {
           "file": "File",
@@ -1625,7 +1625,7 @@
         "title": "WebSocket (Reverb · Realtime VM)",
         "desc": "WebSocket settings for real-time chat, notifications, and presence revision. In production, Reverb and Redis run on dedicated VM realtime.mek360.com; Cloud Run only calls the publish API.",
         "enabled": "Enable WebSocket",
-        "enabled_desc": "Laravel Reverb — conversations (message.*), notifications (notification.received), inbox (chat.inbox.updated), presence (presence.revision).",
+        "enabled_desc": "Laravel Reverb — messages (message.*), notifications (notification.received), inbox (chat.inbox.updated), presence (presence.revision).",
         "client_endpoint_title": "Client Endpoint (Browser → Reverb)",
         "client_endpoint_desc": "Address Echo/Pusher connects to. Production SSOT: realtime.mek360.com · 443 · https (wss).",
         "app_id": "App ID",

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * 홈 셸 유저별 앱 사용량 시간 버킷 (활동지수·유저 랭킹용)
+     * 홈 셸 유저별 앱 사용량 시간 버킷 (활동지수·활동 순위용)
      */
     public function up(): void
     {

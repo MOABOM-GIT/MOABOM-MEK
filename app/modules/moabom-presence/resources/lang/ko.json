@@ -18,7 +18,7 @@
         "presence_settings_updated": "접속 표시 설정이 저장되었습니다."
     },
     "user": {
-        "profile_panel_title": "프로필",
+        "profile_panel_title": "소개",
         "activity_tab_title": "활동",
         "stat_posts_label": "게시글",
         "stat_comments_label": "댓글",

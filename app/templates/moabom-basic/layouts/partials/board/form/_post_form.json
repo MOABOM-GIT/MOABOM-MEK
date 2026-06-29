@@ -808,6 +808,15 @@
                       }
                     },
                     {
+                      "comment": "상세·원글·목록 셸 캐시 무효화",
+                      "handler": "moabom.invalidateBoardShellPostCache",
+                      "params": {
+                        "slug": "{{route?.slug}}",
+                        "postId": "{{_local.form?.parent_id || result?.data?.id}}",
+                        "invalidateIndex": "{{route?.id || !_local.form?.parent_id}}"
+                      }
+                    },
+                    {
                       "handler": "navigate",
                       "params": {
                         "path": "/board/{{route?.slug}}/{{result?.data?.id}}"

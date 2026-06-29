@@ -15,7 +15,7 @@
   overflow: hidden;
 }
 
-/* ── 섹션 제목 (프로필 최근 게시글 · 유저 활동 패널) ── */
+/* ── 섹션 제목 (소개 최근 게시글 · 활동 패널) ── */
 .moa-user-profile-section-header {
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid rgb(229 231 235);
@@ -298,7 +298,7 @@
   border-color: var(--moa-surface, #fff);
 }
 
-/* ── 대화하기 — 좌 목록 · 우 대화창 · 하단 입력 고정 ── */
+/* ── 메시지 — 좌 목록 · 우 메시지창 · 하단 입력 고정 ── */
 .moa-chat-panel {
   display: flex;
   flex-direction: row;

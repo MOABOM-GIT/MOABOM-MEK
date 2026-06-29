@@ -894,6 +894,29 @@
         }
       },
       {
+        "name": "PanelEmptyState",
+        "type": "composite",
+        "description": "패널·프로필 공통 빈 상태 (아이콘 + 안내 문구)",
+        "path": "src/components/composite/Moa_PanelEmptyState.tsx",
+        "props": {
+          "icon": {
+            "type": "string",
+            "required": true,
+            "description": "Font Awesome 아이콘 이름 (예: star, cube, bell)"
+          },
+          "message": {
+            "type": "string",
+            "required": true,
+            "description": "빈 상태 안내 문구"
+          },
+          "className": {
+            "type": "string",
+            "required": false,
+            "description": "추가 클래스"
+          }
+        }
+      },
+      {
         "name": "ThemeToggle",
         "type": "composite",
         "description": "테마 전환 토글 (auto/light/dark)",
@@ -1124,7 +1147,7 @@
       {
         "name": "UserProfileActions",
         "type": "composite",
-        "description": "공개 프로필 헤더의 친구 추가, 대화하기, 대화거부 액션",
+        "description": "공개 프로필 헤더의 친구 추가, 메시지, 차단 액션",
         "path": "src/components/composite/Moa_UserProfileActions.tsx",
         "props": {
           "userUuid": {
@@ -1160,7 +1183,7 @@
       {
         "name": "UserProfileAppGrid",
         "type": "composite",
-        "description": "공개 프로필 유저 활동 — 마이페이지 보관함과 동일한 아이콘 앱 그리드",
+        "description": "공개 프로필 활동 — 마이페이지 라이브러리와 동일한 아이콘 앱 그리드",
         "path": "src/components/composite/Moa_UserProfileAppGrid.tsx",
         "props": {
           "apps": {

@@ -8,7 +8,7 @@ export const MOA_HORIZONTAL_STRIP_CLASS = 'moa-horizontal-strip';
 /** 태스크바 최소화 버튼 식별 속성 */
 export const MOA_TASKBAR_WINDOW_ID_ATTR = 'data-taskbar-window-id';
 
-/** 유저 활동 앱 스트립 아이템 식별 속성 */
+/** 활동 앱 스트립 아이템 식별 속성 */
 export const MOA_USER_PROFILE_APP_ID_ATTR = 'data-user-profile-app-id';
 
 export interface UseMoaHorizontalPointerStripOptions {

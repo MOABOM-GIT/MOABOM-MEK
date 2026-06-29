@@ -47,7 +47,7 @@ return [
     'shell_rankings' => [
         'usage_accepted' => 'App usage has been recorded.',
         'apps_fetch_success' => 'App rankings have been loaded.',
-        'users_fetch_success' => 'User rankings have been loaded.',
+        'users_fetch_success' => 'Activity rankings have been loaded.',
     ],
     'saas' => [
         'hospitals' => [

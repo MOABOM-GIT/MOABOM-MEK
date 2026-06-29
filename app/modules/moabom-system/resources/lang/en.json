@@ -113,7 +113,7 @@
       "save": "Save",
       "save_error": "Failed to save My Page settings.",
       "menus": "Menu Configuration",
-      "menus_description": "Manage visibility and default order of My Page sidebar menus.",
+      "menus_description": "Menu names and descriptions are fixed catalog values (read-only). You can change visibility, guest access, and order only.",
       "appearance": "Themes & backgrounds",
       "appearance_description": "Manage which themes, point-color presets, and uploaded home backgrounds customers see in My Page on the site. This does not style the admin UI.",
       "appearance_customer_palette_title": "Point color settings",

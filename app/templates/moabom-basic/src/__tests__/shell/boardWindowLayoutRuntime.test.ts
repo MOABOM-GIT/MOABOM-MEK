@@ -6,6 +6,7 @@ import {
   buildBoardSessionKey,
   calculateBoardLayoutComputed,
   extractBoardComponents,
+  setBoardWindowDataSource,
 } from '../../shell/boardWindowLayoutRuntime';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -74,6 +75,55 @@ describe('boardWindowLayoutRuntime', () => {
         10: 10,
         11: 10,
         12: 10,
+      });
+    } finally {
+      (globalThis as { G7Core?: unknown }).G7Core = priorG7;
+    }
+  });
+
+  it('setBoardWindowDataSource 는 post 갱신 후 computed 를 재계산한다', () => {
+    const priorG7 = (globalThis as { G7Core?: unknown }).G7Core;
+    (globalThis as { G7Core?: unknown }).G7Core = {
+      getDataBindingEngine: () => ({
+        evaluateExpression: (expr: string, ctx: Record<string, unknown>) => {
+          const keys = Object.keys(ctx);
+          const values = keys.map(key => ctx[key]);
+          // eslint-disable-next-line no-new-func
+          return new Function(...keys, `return (${expr});`)(...values);
+        },
+      }),
+    };
+
+    try {
+      const initial = {
+        post: {
+          data: {
+            comments: [{ id: 1, depth: 0, parent_id: null }],
+          },
+        },
+        route: { slug: 'notice', id: '1' },
+        query: {},
+      };
+
+      const next = setBoardWindowDataSource(
+        { commentRootMap: COMMENT_ROOT_MAP_EXPR },
+        'post',
+        {
+          data: {
+            comments: [
+              { id: 1, depth: 0, parent_id: null },
+              { id: 2, depth: 1, parent_id: 1 },
+            ],
+          },
+        },
+        { slug: 'notice', id: '1' },
+        {},
+        initial,
+      );
+
+      expect((next._computed as Record<string, unknown>)?.commentRootMap).toEqual({
+        1: 1,
+        2: 1,
       });
     } finally {
       (globalThis as { G7Core?: unknown }).G7Core = priorG7;

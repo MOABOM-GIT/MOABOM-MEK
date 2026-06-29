@@ -29,7 +29,7 @@ export interface MyPageWindowContentProps {
   initialTab?: MyPageTab;
   /** AuthManager에서 가져온 현재 사용자 정보 */
   currentUser: MyPageUser | null;
-  /** 앱 보관함에서 앱 실행 */
+  /** 라이브러리에서 앱 실행 */
   onOpenApp?: (app: App) => void;
   /** 저장 AI 앱 편집 (create-app 셸) */
   onEditGeneratedApp?: (serverId: number) => void;
@@ -49,7 +49,7 @@ export interface MyPageWindowContentProps {
   onProfileUpdated?: (user?: AuthManagerUserSnapshot | null) => void;
   /** 활성 탭 변경 시 (REST 경로 `/me/:tab` 동기화용) */
   onActiveTabChange?: (tab: MyPageTab) => void;
-  /** 내 활동 항목 → 게시판 윈도우 (좌측 공지와 동일) */
+  /** 게시글 관리 항목 → 게시판 윈도우 (좌측 공지와 동일) */
   onOpenBoard?: (slug: string, postId?: string, sync?: ShellUrlSync) => void;
   /** 홈 셸 system 상태 — 전달 시 마이페이지 중복 server pull 생략 */
   shellSystem?: {

@@ -1,4 +1,4 @@
-/** 내가 나간(목록 삭제) 대화 — WS 이벤트로 목록이 복원되지 않도록 SSOT */
+/** 내가 나간(목록 삭제) 메시지방 — WS 이벤트로 목록이 복원되지 않도록 SSOT */
 const leftConversationUuids = new Set<string>();
 
 export function markConversationLeft(conversationUuid: string): void {

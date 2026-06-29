@@ -10,7 +10,7 @@ function isSameDay(a: Date, b: Date): boolean {
     && a.getDate() === b.getDate();
 }
 
-/** 대화 목록·헤더용 메신저 스타일 시각 */
+/** 메시지 목록·헤더용 메신저 스타일 시각 */
 export function formatChatListTimestamp(
   iso: string | null | undefined,
   t: TranslateFn,

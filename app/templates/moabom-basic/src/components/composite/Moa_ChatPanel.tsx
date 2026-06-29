@@ -281,7 +281,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
         ) : null}
 
         {userResults.length > 0 ? (
-          <Div className="moa-chat-sidebar__search-results glass-panel">
+          <Div className="moa-chat-sidebar__search-results glass-sm">
             {userResults.map(user => (
               <Div
                 key={user.user_uuid}
@@ -308,8 +308,8 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
         ) : null}
 
         {showBlocks ? (
-          <Div className="moa-chat-sidebar__blocks glass-panel rounded-xl border border-gray-200 p-2 dark:border-gray-700">
-            <Div className="mb-2 text-xs font-semibold text-muted">{t('moa_chat.blocks')}</Div>
+          <Div className="moa-chat-sidebar__blocks glass-sm rounded-xl border border-gray-200 p-2 dark:border-gray-700">
+            <Div className="text-xs font-semibold text-muted">{t('moa_chat.blocks')}</Div>
             {chat.blocks.length === 0 ? (
               <Span className="text-xs text-muted">{t('moa_chat.blocks_empty')}</Span>
             ) : chat.blocks.map(block => (

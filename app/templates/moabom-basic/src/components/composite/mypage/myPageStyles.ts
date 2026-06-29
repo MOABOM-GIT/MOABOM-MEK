@@ -21,5 +21,5 @@ export const DISABLED_TAB_CLASS = 'glass-sm text-faint opacity-55 grayscale curs
 
 /** 본문 블록 제목 타포그래피 (여백 없음 — 플렉스 행·인라인 조합용) */
 export const MY_PAGE_BLOCK_TITLE_TEXT_CLASS = 'text-sm font-bold text-primary';
-/** 본문 블록 제목·폼 라벨 통일 (섹션 헤더·앱 보관함 구역 제목·크레딧 최근 내역 등) */
+/** 본문 블록 제목·폼 라벨 통일 (섹션 헤더·라이브러리 구역 제목·크레딧 최근 내역 등) */
 export const MY_PAGE_BLOCK_TITLE_CLASS = `${MY_PAGE_BLOCK_TITLE_TEXT_CLASS} mb-3`;
