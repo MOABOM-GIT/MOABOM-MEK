@@ -396,6 +396,29 @@
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
+  gap: 0.25rem;
+}
+
+.moa-chat-conversation-item__delete {
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  padding-inline: 0.375rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.moa-chat-conversation-item:hover .moa-chat-conversation-item__delete,
+.moa-chat-conversation-item:focus-within .moa-chat-conversation-item__delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .moa-chat-conversation-item__delete {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .moa-chat-conversation-item__title {

@@ -58,5 +58,8 @@ if grep -q '"module_refresh_layout"' "${PKG}"; then
   fi
 fi
 
+chmod +x "${ROOT}/scripts/check-realtime-vm-layout-bindings.sh" 2>/dev/null || true
+"${ROOT}/scripts/check-realtime-vm-layout-bindings.sh"
+
 echo "OK: admin route layouts + module sync catalog SSOT"
 echo "== check-module-layout-sync-ssot PASSED =="

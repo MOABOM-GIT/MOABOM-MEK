@@ -15,7 +15,9 @@ export const Moa_PanelEmptyState: React.FC<MoaPanelEmptyStateProps> = ({
   className = '',
 }) => (
   <Div className={['text-center py-8 text-muted', className].filter(Boolean).join(' ')}>
-    <Icon name={icon} className="text-3xl mb-2 opacity-30" />
+    <Div className="moa-panel-placeholder-visual">
+      <Icon name={icon} />
+    </Div>
     <Div className="text-sm">{message}</Div>
   </Div>
 );

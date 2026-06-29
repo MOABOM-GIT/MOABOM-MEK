@@ -1,9 +1,5 @@
 import React from 'react';
 import { Div } from '../basic/Div';
-import { MOABOM_SPIN_KEYFRAMES } from './AppLoadingSpinner';
-
-/** PanelEmptyState 아이콘(text-3xl)과 동일한 시각 슬롯 */
-const PANEL_SPINNER_SIZE = '1.875rem';
 
 export interface MoaPanelLoadingStateProps {
   label?: string;
@@ -22,18 +18,8 @@ export const Moa_PanelLoadingState: React.FC<MoaPanelLoadingStateProps> = ({
     aria-live="polite"
     aria-label={label || 'Loading'}
   >
-    <Div className="mb-2 flex justify-center opacity-30" aria-hidden="true">
-      <style>{MOABOM_SPIN_KEYFRAMES}</style>
-      <span
-        style={{
-          width: PANEL_SPINNER_SIZE,
-          height: PANEL_SPINNER_SIZE,
-          borderRadius: '9999px',
-          border: '3px solid rgb(148 163 184 / 0.35)',
-          borderTopColor: 'rgb(var(--moa-point-rgb, 59 130 246) / 0.95)',
-          animation: 'moabom-loading-spin 0.75s linear infinite',
-        }}
-      />
+    <Div className="moa-panel-placeholder-visual" aria-hidden="true">
+      <span className="moa-panel-placeholder-spinner" />
     </Div>
     {label ? <Div className="text-sm">{label}</Div> : null}
   </Div>

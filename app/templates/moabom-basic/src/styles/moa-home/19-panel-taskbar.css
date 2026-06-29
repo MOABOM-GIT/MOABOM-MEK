@@ -48,6 +48,35 @@
 }
 
 /*
+ * 패널 빈·로딩 공통 visual 슬롯.
+ * FA <i>는 inline이라 mb-2가 무시되고, 로딩 쪽 flex 블록만 margin이 적용되어
+ * 문구 Y 위치가 어긋난다 → 동일 높이( text-3xl line-height ) 블록 슬롯으로 통일.
+ */
+.moa-panel-placeholder-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.3;
+}
+
+.moa-panel-placeholder-visual > i {
+  display: block;
+  font-size: 1.875rem;
+  line-height: 1;
+}
+
+.moa-panel-placeholder-spinner {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 9999px;
+  border: 3px solid rgb(148 163 184 / 0.35);
+  border-top-color: rgb(var(--moa-point-rgb, 59 130 246) / 0.95);
+  animation: moabom-loading-spin 0.75s linear infinite;
+}
+
+/*
  * 최소화 pill: 버튼 직계에 FA <i> + <span>을 두면 글리프 메트릭과 한글 em-box가 달라
  * 교차축 center만으로는 라벨이 아래로 가라앉아 보인다.
  * → 한 줄 행(.moa-taskbar-btn) 안에 "동일 높이(em)" 교차축 박스를 두 개 두고 각각 중앙 정렬.

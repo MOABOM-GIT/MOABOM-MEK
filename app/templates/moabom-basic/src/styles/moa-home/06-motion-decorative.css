@@ -16,6 +16,12 @@
   0% { transform: scale(0.8); opacity: 1; }
   100% { transform: scale(2); opacity: 0; }
 }
+
+@keyframes moabom-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 /* 로켓 아이콘 애니메이션 */
 .rocket-icon {
   animation: rocketShake 5s infinite ease-in-out;

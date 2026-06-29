@@ -350,7 +350,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                 key={conversation.uuid}
                 role="button"
                 tabIndex={0}
-                className={`moa-chat-conversation-item glass-panel${isActive ? ' moa-chat-conversation-item--active' : ''}`}
+                className={`moa-chat-conversation-item group glass-panel${isActive ? ' moa-chat-conversation-item--active' : ''}`}
                 onClick={() => selectConversation(conversation)}
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -370,11 +370,28 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                       />
                     ) : conversation.display_title}
                   </Span>
-                  {conversation.unread_count > 0 ? (
-                    <Span className="moa-chat-conversation-item__meta">
+                  <Span className="moa-chat-conversation-item__meta">
+                    {conversation.unread_count > 0 ? (
                       <Span className="moa-chat-unread-badge">{conversation.unread_count}</Span>
-                    </Span>
-                  ) : null}
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="danger-outline"
+                      size="xxs"
+                      className="moa-chat-conversation-item__delete"
+                      disabled={deletingConversationUuid === conversation.uuid}
+                      aria-label={t('moa_chat.delete_conversation')}
+                      title={t('moa_chat.delete_conversation')}
+                      onPointerDown={event => event.stopPropagation()}
+                      onClick={event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        void handleRemoveConversation(conversation.uuid);
+                      }}
+                    >
+                      <Icon name="trash" className="text-sm" aria-hidden />
+                    </Button>
+                  </Span>
                 </Span>
                 <Span className="moa-chat-conversation-item__preview">
                   {conversation.latest_message?.body ?? t('moa_chat.no_messages')}
