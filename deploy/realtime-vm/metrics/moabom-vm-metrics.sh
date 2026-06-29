@@ -25,23 +25,33 @@ read_disk_percent() {
 docker_running() {
   local name="$1"
   if command -v docker >/dev/null 2>&1; then
-    docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name" && echo true || echo false
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -qE "^${name}(-[0-9]+)?$" && echo true || echo false
   else
     echo false
   fi
 }
 
-redis_clients() {
+redis_container() {
   if command -v docker >/dev/null 2>&1; then
-    docker exec moabom-realtime-redis redis-cli INFO clients 2>/dev/null | awk -F: '/connected_clients/ {gsub("\r","",$2); print $2; exit}' || echo 0
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^moabom-realtime-redis' | head -1
+  fi
+}
+
+redis_clients() {
+  local c
+  c="$(redis_container)"
+  if [[ -n "${c}" ]]; then
+    docker exec "${c}" redis-cli INFO clients 2>/dev/null | awk -F: '/connected_clients/ {gsub("\r","",$2); print $2; exit}' || echo 0
   else
     echo 0
   fi
 }
 
 redis_memory_mb() {
-  if command -v docker >/dev/null 2>&1; then
-    docker exec moabom-realtime-redis redis-cli INFO memory 2>/dev/null | awk -F: '/used_memory_human/ {gsub("\r","",$2); print $2; exit}' || echo "0B"
+  local c
+  c="$(redis_container)"
+  if [[ -n "${c}" ]]; then
+    docker exec "${c}" redis-cli INFO memory 2>/dev/null | awk -F: '/used_memory_human/ {gsub("\r","",$2); print $2; exit}' || echo "0B"
   else
     echo "0B"
   fi
@@ -49,6 +59,10 @@ redis_memory_mb() {
 
 load_avg="$(awk '{print $1" "$2" "$3}' /proc/loadavg 2>/dev/null || echo '0 0 0')"
 uptime_sec="$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)"
+
+if [[ -n "${GATEWAY_INTERFACE:-}" ]]; then
+  printf 'Content-Type: application/json\r\n\r\n'
+fi
 
 cat <<EOF
 {

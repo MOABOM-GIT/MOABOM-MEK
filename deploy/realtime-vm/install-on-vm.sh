@@ -9,6 +9,13 @@ SECRET_NAME="${SECRET_NAME:-moabom-reverb-app-secret}"
 METRICS_SECRET_NAME="${METRICS_SECRET_NAME:-moabom-realtime-vm-metrics-token}"
 WS_HOST="${WS_HOST:-realtime.mek360.com}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+METRICS_ONLY=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --metrics-only) METRICS_ONLY=1 ;;
+  esac
+done
 
 log() { printf '[moabom-realtime] %s\n' "$*"; }
 
@@ -140,6 +147,9 @@ issue_tls() {
         return 0
       }
   fi
+}
+
+install_nginx_site() {
   cp "${INSTALL_DIR}/nginx/realtime.mek360.com.conf" /etc/nginx/sites-available/moabom-realtime.conf
   ln -sf /etc/nginx/sites-available/moabom-realtime.conf /etc/nginx/sites-enabled/moabom-realtime.conf
   rm -f /etc/nginx/sites-enabled/moabom-realtime-bootstrap.conf
@@ -168,7 +178,10 @@ EOF
   chmod +x "${INSTALL_DIR}/metrics/moabom-vm-metrics.sh"
 
   local token
-  token="$(gcloud secrets versions access latest --secret="${METRICS_SECRET_NAME}" --project="${GCP_PROJECT}" 2>/dev/null || true)"
+  token="${METRICS_TOKEN:-}"
+  if [[ -z "${token}" ]]; then
+    token="$(gcloud secrets versions access latest --secret="${METRICS_SECRET_NAME}" --project="${GCP_PROJECT}" 2>/dev/null || true)"
+  fi
   if [[ -z "${token}" ]]; then
     token="$(openssl rand -base64 32)"
     log "Creating Secret Manager secret ${METRICS_SECRET_NAME}..."
@@ -191,12 +204,21 @@ EOF
   chmod 640 /etc/nginx/moabom-metrics-token.map
   chown root:www-data /etc/nginx/moabom-metrics-token.map 2>/dev/null || true
 
-  nginx -t && systemctl reload nginx
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx
+  fi
   log "VM metrics ready: GET https://${WS_HOST}/internal/vm-metrics (X-Moabom-Metrics-Token)"
 }
 
 main() {
   require_root
+  if [[ "${METRICS_ONLY}" -eq 1 ]]; then
+    sync_stack
+    install_vm_metrics
+    install_nginx_site
+    log "Done (metrics-only)."
+    return
+  fi
   install_packages
   ensure_swap
   sync_stack
@@ -205,6 +227,7 @@ main() {
   install_nginx_http_bootstrap
   issue_tls
   install_vm_metrics
+  install_nginx_site
   firewall_hint
   log "Done. Test: curl -sI http://127.0.0.1:6001 || curl -s http://localhost/app/moabom-laravel-key"
 }
