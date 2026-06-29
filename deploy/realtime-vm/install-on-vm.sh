@@ -6,6 +6,7 @@ set -euo pipefail
 INSTALL_DIR="${INSTALL_DIR:-/opt/moabom-realtime}"
 GCP_PROJECT="${GCP_PROJECT:-smartmek}"
 SECRET_NAME="${SECRET_NAME:-moabom-reverb-app-secret}"
+METRICS_SECRET_NAME="${METRICS_SECRET_NAME:-moabom-realtime-vm-metrics-token}"
 WS_HOST="${WS_HOST:-realtime.mek360.com}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -150,6 +151,50 @@ firewall_hint() {
   log "Example: gcloud compute firewall-rules create moabom-realtime-https --allow=tcp:80,tcp:443 --target-tags=..."
 }
 
+install_vm_metrics() {
+  log "Installing VM metrics endpoint (fcgiwrap + token auth)..."
+  apt-get install -y -qq fcgiwrap
+  usermod -aG docker moabom 2>/dev/null || true
+
+  mkdir -p /etc/systemd/system/fcgiwrap.service.d /etc/moabom
+  cat > /etc/systemd/system/fcgiwrap.service.d/override.conf <<'EOF'
+[Service]
+User=moabom
+Group=docker
+EOF
+  systemctl daemon-reload
+  systemctl enable --now fcgiwrap
+
+  chmod +x "${INSTALL_DIR}/metrics/moabom-vm-metrics.sh"
+
+  local token
+  token="$(gcloud secrets versions access latest --secret="${METRICS_SECRET_NAME}" --project="${GCP_PROJECT}" 2>/dev/null || true)"
+  if [[ -z "${token}" ]]; then
+    token="$(openssl rand -base64 32)"
+    log "Creating Secret Manager secret ${METRICS_SECRET_NAME}..."
+    if ! gcloud secrets describe "${METRICS_SECRET_NAME}" --project="${GCP_PROJECT}" >/dev/null 2>&1; then
+      echo -n "${token}" | gcloud secrets create "${METRICS_SECRET_NAME}" \
+        --replication-policy=automatic \
+        --data-file=- \
+        --project="${GCP_PROJECT}"
+    else
+      echo -n "${token}" | gcloud secrets versions add "${METRICS_SECRET_NAME}" \
+        --data-file=- \
+        --project="${GCP_PROJECT}"
+    fi
+    log "NOTE: deploy host 에서 bash deploy/build-and-deploy.sh --env-only 로 Cloud Run 토큰 반영"
+  fi
+
+  echo -n "${token}" > /etc/moabom/metrics-token
+  chmod 600 /etc/moabom/metrics-token
+  printf '"%s" 1;\n' "${token}" > /etc/nginx/moabom-metrics-token.map
+  chmod 640 /etc/nginx/moabom-metrics-token.map
+  chown root:www-data /etc/nginx/moabom-metrics-token.map 2>/dev/null || true
+
+  nginx -t && systemctl reload nginx
+  log "VM metrics ready: GET https://${WS_HOST}/internal/vm-metrics (X-Moabom-Metrics-Token)"
+}
+
 main() {
   require_root
   install_packages
@@ -159,6 +204,7 @@ main() {
   compose_up
   install_nginx_http_bootstrap
   issue_tls
+  install_vm_metrics
   firewall_hint
   log "Done. Test: curl -sI http://127.0.0.1:6001 || curl -s http://localhost/app/moabom-laravel-key"
 }

@@ -184,7 +184,8 @@ if [[ "${GRANT_IAM}" -eq 1 ]]; then
     "${SECRET_MOABOM_OPENAI_API_KEY}" \
     "${SECRET_MOABOM_ANTHROPIC_API_KEY}" \
     "${SECRET_MOABOM_GOOGLE_AI_API_KEY}" \
-    "${SECRET_REVERB_APP_SECRET}"
+    "${SECRET_REVERB_APP_SECRET}" \
+    "${SECRET_REALTIME_VM_METRICS_TOKEN}"
   do
     if [[ "${AI_KEYS_ONLY}" -eq 1 ]]; then
       case "${secret_name}" in
