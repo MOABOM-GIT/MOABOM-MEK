@@ -42,6 +42,8 @@ class SaasHospitalControllerTest extends ModuleTestCase
 
     private const ENDPOINT = '/api/modules/moabom-system/platform/saas/hospitals';
 
+    private const SLUG_AVAILABILITY_ENDPOINT = '/api/modules/moabom-system/platform/saas/hospitals/slug-availability';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -59,6 +61,46 @@ class SaasHospitalControllerTest extends ModuleTestCase
     public function test_unauthenticated_request_is_rejected(): void
     {
         $this->getJson(self::ENDPOINT)->assertUnauthorized();
+    }
+
+    public function test_slug_availability_reports_reserved_system_slug(): void
+    {
+        $this->actingAs($this->adminUser, 'sanctum')
+            ->getJson(self::SLUG_AVAILABILITY_ENDPOINT.'?slug=realtime')
+            ->assertOk()
+            ->assertJsonPath('data.available', false)
+            ->assertJsonPath('data.host', 'realtime.mek360.com');
+    }
+
+    public function test_slug_availability_reports_existing_tenant_slug(): void
+    {
+        DB::connection('moabom_platform')->table('moabom_saas_tenants')->insert([
+            'slug' => 'taken',
+            'host' => 'taken.mek360.com',
+            'display_name' => 'Taken',
+            'db_database' => 'hospital_taken',
+            'gcs_prefix' => 'tenants/taken',
+            'package_id' => 'hospital-default',
+            'status' => 'active',
+            'app_url' => 'https://taken.mek360.com',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->adminUser, 'sanctum')
+            ->getJson(self::SLUG_AVAILABILITY_ENDPOINT.'?slug=taken')
+            ->assertOk()
+            ->assertJsonPath('data.available', false)
+            ->assertJsonFragment(['conflicts' => ['tenant_exists']]);
+    }
+
+    public function test_slug_availability_reports_available_slug(): void
+    {
+        $this->actingAs($this->adminUser, 'sanctum')
+            ->getJson(self::SLUG_AVAILABILITY_ENDPOINT.'?slug=freshent')
+            ->assertOk()
+            ->assertJsonPath('data.available', true)
+            ->assertJsonPath('data.host', 'freshent.mek360.com');
     }
 
     public function test_lists_hospitals_for_authorized_admin(): void
@@ -428,6 +470,8 @@ class SaasHospitalControllerTest extends ModuleTestCase
             ->middleware(['api', 'auth:sanctum', 'admin'])
             ->group(function (): void {
                 Route::prefix('hospitals')->group(function (): void {
+                    Route::get('slug-availability', [SaasHospitalController::class, 'slugAvailability'])
+                        ->middleware('permission:admin,moabom-system.saas.read');
                     Route::get('/', [SaasHospitalController::class, 'index'])
                         ->middleware('permission:admin,moabom-system.saas.read');
                     Route::post('/', [SaasHospitalController::class, 'store'])

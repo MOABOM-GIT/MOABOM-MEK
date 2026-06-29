@@ -10,8 +10,8 @@
         { "id": "profile", "label": "프로필 설정", "description": "닉네임과 소개 관리", "icon": "user", "enabled": true, "guest_enabled": false, "order": 10 },
         { "id": "settings", "label": "환경 설정", "description": "언어와 화면 옵션", "icon": "cog", "enabled": true, "guest_enabled": true, "order": 20 },
         { "id": "credit", "label": "크레딧", "description": "잔액과 사용 내역", "icon": "gem", "enabled": true, "guest_enabled": false, "order": 30 },
-        { "id": "library", "label": "앱 보관함", "description": "보관한 앱 관리", "icon": "folder-open", "enabled": true, "guest_enabled": true, "order": 40 },
-        { "id": "activity", "label": "내 활동", "description": "글·댓글·반응", "icon": "clock", "enabled": true, "guest_enabled": false, "order": 50 },
+        { "id": "library", "label": "라이브러리", "description": "보관한 앱 관리", "icon": "folder-open", "enabled": true, "guest_enabled": true, "order": 40 },
+        { "id": "activity", "label": "게시글 관리", "description": "글·댓글·반응", "icon": "clock", "enabled": true, "guest_enabled": false, "order": 50 },
         { "id": "account", "label": "계정 관리", "description": "정보와 보안 관리", "icon": "lock", "enabled": true, "guest_enabled": false, "order": 60 },
         { "id": "subscription", "label": "구독 관리", "description": "플랜과 결제 관리", "icon": "check-circle", "enabled": true, "guest_enabled": false, "order": 70 }
       ]

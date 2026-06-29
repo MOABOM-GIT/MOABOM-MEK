@@ -9,13 +9,19 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Realtime VM(Reverb) 공개 WebSocket probe — Cloud Run 에서 VM 경로 가용성 SSOT.
  *
- * SSH·docker stats 는 운영자 WSL/VM 에서만 가능하므로 HTTP 101 upgrade + Pusher handshake 만 검증한다.
+ * VM 리소스·프로세스·컨테이너 지표는 VM nginx `/internal/vm-metrics` (토큰 인증) 로 수집한다.
  */
 final class RealtimeVmHealthService
 {
     private const CACHE_KEY = 'moabom:realtime-vm:health:v1';
 
+    private const METRICS_CACHE_KEY = 'moabom:realtime-vm:metrics:v1';
+
     private const CACHE_TTL_SECONDS = 30;
+
+    private const METRICS_CACHE_TTL_SECONDS = 15;
+
+    private const DEFAULT_METRICS_URL = 'https://realtime.mek360.com/internal/vm-metrics';
 
   /**
    * @return array<string, mixed>
@@ -24,10 +30,11 @@ final class RealtimeVmHealthService
     {
         if ($forceRefresh) {
             Cache::forget(self::CACHE_KEY);
+            Cache::forget(self::METRICS_CACHE_KEY);
         }
 
         /** @var array<string, mixed> $payload */
-        $payload = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function (): array {
+        $payload = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () use ($forceRefresh): array {
             $probe = $this->probeWebSocket();
 
             return [
@@ -38,7 +45,7 @@ final class RealtimeVmHealthService
                 'config' => $this->runtimeConfig(),
                 'websocket_probe' => $probe,
                 'architecture' => $this->architectureFacts(),
-                'vm_metrics' => $this->fetchVmMetrics(),
+                'vm_metrics' => $this->fetchVmMetrics($forceRefresh),
             ];
         });
 
@@ -47,6 +54,22 @@ final class RealtimeVmHealthService
         }
 
         return $payload;
+    }
+
+    /**
+     * VM 메트릭만 조회 (대시보드 경량 갱신용).
+     *
+     * @return array<string, mixed>
+     */
+    public function metricsSnapshot(bool $forceRefresh = false): array
+    {
+        $metrics = $this->fetchVmMetrics($forceRefresh);
+
+        return [
+            'checked_at' => now()->toIso8601String(),
+            'cached' => ! $forceRefresh,
+            ...$metrics,
+        ];
     }
 
     /**
@@ -78,7 +101,6 @@ final class RealtimeVmHealthService
             'vm_internal_ip' => '10.178.0.4',
             'dns_host' => 'realtime.mek360.com',
             'cloud_run_publish' => 'Laravel ShouldBroadcastNow → Reverb HTTP API',
-            'health_script' => 'deploy/check-realtime-vm-health.sh',
         ];
     }
 
@@ -130,9 +152,11 @@ final class RealtimeVmHealthService
         curl_setopt_array($handle, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
-            CURLOPT_TIMEOUT => 6,
+            CURLOPT_TIMEOUT => 8,
             CURLOPT_CONNECTTIMEOUT => 4,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER => [
                 'Connection: Upgrade',
                 'Upgrade: websocket',
@@ -154,7 +178,16 @@ final class RealtimeVmHealthService
 
         $latencyMs = (int) round((microtime(true) - $startedAt) * 1000);
         $pusherEstablished = str_contains($body, 'pusher:connection_established');
-        $ok = $httpStatus === 101 && $pusherEstablished;
+        // Server-side PHP curl often receives 101 without the first Pusher frame; browser wss is SSOT for frame delivery.
+        $ok = $httpStatus === 101;
+
+        if (! $ok && $error === null) {
+            if ($httpStatus !== 101) {
+                $error = $httpStatus > 0 ? 'http_status_'.$httpStatus : 'no_response';
+            } elseif (! $pusherEstablished) {
+                $error = null;
+            }
+        }
 
         return [
             'ok' => $ok,
@@ -170,9 +203,34 @@ final class RealtimeVmHealthService
     /**
      * @return array<string, mixed>
      */
-    private function fetchVmMetrics(): array
+    private function fetchVmMetrics(bool $forceRefresh): array
     {
-        $url = trim((string) env('MOABOM_REALTIME_VM_METRICS_URL', ''));
+        if ($forceRefresh) {
+            Cache::forget(self::METRICS_CACHE_KEY);
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = Cache::remember(
+            self::METRICS_CACHE_KEY,
+            self::METRICS_CACHE_TTL_SECONDS,
+            fn (): array => $this->pullVmMetricsFromAgent(),
+        );
+
+        if ($forceRefresh) {
+            $payload['cached'] = false;
+        } else {
+            $payload['cached'] = true;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pullVmMetricsFromAgent(): array
+    {
+        $url = trim((string) env('MOABOM_REALTIME_VM_METRICS_URL', self::DEFAULT_METRICS_URL));
         if ($url === '' || ! function_exists('curl_init')) {
             return [
                 'available' => false,
@@ -196,6 +254,8 @@ final class RealtimeVmHealthService
             CURLOPT_TIMEOUT => 5,
             CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 2,
         ]);
 
         $body = curl_exec($handle);
@@ -203,7 +263,24 @@ final class RealtimeVmHealthService
         $error = curl_error($handle) ?: null;
         curl_close($handle);
 
-        if (! is_string($body) || $body === '' || $httpStatus < 200 || $httpStatus >= 300) {
+        if (! is_string($body) || $body === '') {
+            return [
+                'available' => false,
+                'reason' => 'empty_response',
+                'http_status' => $httpStatus,
+                'error' => $error,
+            ];
+        }
+
+        if ($httpStatus === 403) {
+            return [
+                'available' => false,
+                'reason' => 'metrics_token_rejected',
+                'http_status' => $httpStatus,
+            ];
+        }
+
+        if ($httpStatus < 200 || $httpStatus >= 300) {
             return [
                 'available' => false,
                 'reason' => 'fetch_failed',
@@ -222,6 +299,7 @@ final class RealtimeVmHealthService
         return [
             'available' => true,
             'data' => $decoded,
+            'fetched_at' => now()->toIso8601String(),
         ];
     }
 }

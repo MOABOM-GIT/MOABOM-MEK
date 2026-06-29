@@ -1,0 +1,325 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "Credit management - adjust credit modal"
+  },
+  "id": "modal_adjust_credit",
+  "type": "composite",
+  "name": "Modal",
+  "props": {
+    "title": "$t:moabom-credit.admin.user_credits.modal.title",
+    "description": "$t:moabom-credit.admin.user_credits.modal.description",
+    "size": "md"
+  },
+  "children": [
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "space-y-4"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 p-3 text-sm"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "font-medium text-gray-900 dark:text-white"
+              },
+              "text": "{{_global.creditAdjustTarget?.name || ''}}{{_global.creditAdjustTarget?.nickname ? ' (' + _global.creditAdjustTarget.nickname + ')' : ''}}"
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "text-gray-600 dark:text-gray-300 mt-1"
+              },
+              "text": "{{_global.creditAdjustTarget?.email || ''}}"
+            },
+            {
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "mt-2 flex items-center gap-2 text-gray-700 dark:text-gray-200"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-sm text-gray-500 dark:text-gray-400"
+                  },
+                  "text": "$t:moabom-credit.admin.user_credits.modal.current_balance"
+                },
+                {
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "font-mono font-semibold"
+                  },
+                  "text": "{{_global.creditAdjustTarget?.balance ?? 0}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "space-y-2"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Label",
+              "props": {
+                "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+              },
+              "text": "$t:moabom-credit.admin.user_credits.modal.direction"
+            },
+            {
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "grid grid-cols-2 gap-2"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Button",
+                  "props": {
+                    "type": "button",
+                    "className": "{{(_global.creditAdjustForm?.direction || 'increase') === 'increase' ? 'px-3 py-2 rounded-lg text-sm font-medium bg-green-600 text-white' : 'px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'}}"
+                  },
+                  "text": "$t:moabom-credit.admin.user_credits.modal.direction_increase",
+                  "actions": [
+                    {
+                      "type": "click",
+                      "handler": "setState",
+                      "params": {
+                        "target": "global",
+                        "creditAdjustForm.direction": "increase",
+                        "creditAdjustError": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "basic",
+                  "name": "Button",
+                  "props": {
+                    "type": "button",
+                    "className": "{{_global.creditAdjustForm?.direction === 'decrease' ? 'px-3 py-2 rounded-lg text-sm font-medium bg-red-600 text-white' : 'px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'}}"
+                  },
+                  "text": "$t:moabom-credit.admin.user_credits.modal.direction_decrease",
+                  "actions": [
+                    {
+                      "type": "click",
+                      "handler": "setState",
+                      "params": {
+                        "target": "global",
+                        "creditAdjustForm.direction": "decrease",
+                        "creditAdjustError": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "composite",
+          "name": "FormField",
+          "props": {
+            "label": "$t:moabom-credit.admin.user_credits.modal.amount",
+            "required": true,
+            "error": "{{_global.creditAdjustError || ''}}"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "type": "number",
+                "min": 1,
+                "value": "{{_global.creditAdjustForm?.amount ?? ''}}",
+                "placeholder": "$t:moabom-credit.admin.user_credits.modal.amount_placeholder",
+                "className": "admin-field-input"
+              },
+              "actions": [
+                {
+                  "type": "change",
+                  "handler": "setState",
+                  "params": {
+                    "target": "global",
+                    "creditAdjustForm.amount": "{{$event.target.value}}",
+                    "creditAdjustError": null
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "composite",
+          "name": "FormField",
+          "props": {
+            "label": "$t:moabom-credit.admin.user_credits.modal.description_label"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "type": "text",
+                "value": "{{_global.creditAdjustForm?.description ?? ''}}",
+                "placeholder": "$t:moabom-credit.admin.user_credits.modal.description_placeholder",
+                "className": "admin-field-input"
+              },
+              "actions": [
+                {
+                  "type": "change",
+                  "handler": "setState",
+                  "params": {
+                    "target": "global",
+                    "creditAdjustForm.description": "{{$event.target.value}}"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Div",
+          "if": "{{Number(_global.creditAdjustForm?.amount || 0) > 0}}",
+          "props": {
+            "className": "flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Span",
+              "text": "$t:moabom-credit.admin.user_credits.modal.preview_balance"
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "props": {
+                "className": "font-mono font-semibold text-gray-900 dark:text-white"
+              },
+              "text": "{{Math.max(0, Number(_global.creditAdjustTarget?.balance || 0) + ((_global.creditAdjustForm?.direction === 'decrease' ? -1 : 1) * Number(_global.creditAdjustForm?.amount || 0)))}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "flex justify-end gap-3 mt-6"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "Button",
+          "props": {
+            "type": "button",
+            "disabled": "{{_global.creditIsAdjusting}}",
+            "className": "px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300"
+          },
+          "text": "$t:common.cancel",
+          "actions": [
+            {
+              "type": "click",
+              "handler": "closeModal"
+            }
+          ]
+        },
+        {
+          "type": "basic",
+          "name": "Button",
+          "props": {
+            "type": "button",
+            "disabled": "{{_global.creditIsAdjusting || !Number(_global.creditAdjustForm?.amount || 0) || (_global.creditAdjustForm?.direction === 'decrease' && Number(_global.creditAdjustForm?.amount || 0) > Number(_global.creditAdjustTarget?.balance || 0))}}",
+            "className": "px-4 py-2 text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-medium disabled:opacity-50"
+          },
+          "text": "{{_global.creditIsAdjusting ? '$t:moabom-credit.admin.user_credits.modal.submitting' : '$t:moabom-credit.admin.user_credits.modal.submit'}}",
+          "actions": [
+            {
+              "type": "click",
+              "handler": "sequence",
+              "actions": [
+                {
+                  "handler": "setState",
+                  "params": {
+                    "target": "global",
+                    "creditIsAdjusting": true,
+                    "creditAdjustError": null
+                  }
+                },
+                {
+                  "handler": "apiCall",
+                  "auth_required": true,
+                  "target": "/api/modules/moabom-credit/admin/user-credits/{{_global.creditAdjustTarget?.uuid}}/adjust",
+                  "params": {
+                    "method": "POST",
+                    "body": {
+                      "direction": "{{_global.creditAdjustForm?.direction || 'increase'}}",
+                      "amount": "{{Number(_global.creditAdjustForm?.amount || 0)}}",
+                      "description": "{{_global.creditAdjustForm?.description || ''}}"
+                    }
+                  },
+                  "onSuccess": [
+                    {
+                      "handler": "setState",
+                      "params": {
+                        "target": "global",
+                        "creditIsAdjusting": false
+                      }
+                    },
+                    {
+                      "handler": "refetchDataSource",
+                      "params": {
+                        "dataSourceId": "userCredits"
+                      }
+                    },
+                    {
+                      "handler": "toast",
+                      "params": {
+                        "type": "success",
+                        "message": "$t:moabom-credit.admin.user_credits.modal.success"
+                      }
+                    },
+                    {
+                      "handler": "closeModal"
+                    }
+                  ],
+                  "onError": [
+                    {
+                      "handler": "setState",
+                      "params": {
+                        "target": "global",
+                        "creditIsAdjusting": false,
+                        "creditAdjustError": "{{error.errors?.amount?.[0] || error.errors?.direction?.[0] || error.message || '$t:moabom-credit.admin.user_credits.modal.error'}}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

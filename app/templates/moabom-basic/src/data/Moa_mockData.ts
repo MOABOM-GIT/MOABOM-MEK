@@ -4,12 +4,9 @@
  * 실제 API 연동 전까지 사용하는 홈 셸 보조 데이터입니다.
  */
 
-/** 마이앱 데이터 */
+/** 마이앱 데이터 — 신규 사용자 기본값은 빈 보관함 */
 export const MY_APPS_DATA = {
-  favorites: [
-    { id: 'cpap-mask',  name: '마스크 피팅', icon: 'head-side-mask', gradient: 'linear-gradient(135deg,#06b6d4,#2563eb)', category: 'basic' as const },
-    { id: 'consulting', name: '스마트 컨설팅', icon: 'handshake',      gradient: 'linear-gradient(135deg,#27bfc1,#479ee2)', category: 'basic' as const },
-  ],
+  favorites: [],
   myapps: [],
 };
 

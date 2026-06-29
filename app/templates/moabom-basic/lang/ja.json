@@ -66,7 +66,7 @@
     "friend_request_cancel_confirm": "{name}への友だちリクエストを取り消しますか？",
     "friend_request_cancelled": "{name}への友だちリクエストを取り消しました。",
     "toast_confirm_yes": "はい",
-    "chat": "チャット",
+    "chat": "メッセージ",
     "chat_block_on": "拒否中",
     "chat_block_off": "会話拒否",
     "chat_blocked": "会話を拒否しました。",
@@ -111,11 +111,11 @@
         "desc": "残高と履歴"
       },
       "library": {
-        "label": "アプリライブラリ",
+        "label": "ライブラリ",
         "desc": "保存したアプリを管理"
       },
       "activity": {
-        "label": "マイアクティビティ",
+        "label": "投稿管理",
         "desc": "投稿・コメント・反応"
       },
       "account": {
@@ -219,9 +219,9 @@
       "transaction_fallback": "クレジット取引"
     },
     "library": {
-      "created_title": "作成したアプリ",
+      "created_title": "マイアプリ",
       "created_guest_msg": "ログインするとご利用いただけます。",
-      "created_empty": "作成したアプリはありません。",
+      "created_empty": "マイアプリがありません。",
       "created_loading": "アプリ一覧を読み込み中…",
       "edit_app": "アプリを編集",
       "delete_app": "アプリを削除",
@@ -243,7 +243,7 @@
       "filter_interactions": "受け取った反応",
       "likes_notice": "おすすめやいいねは、掲示板モジュールがデータを提供するとここに表示されます。",
       "admin_session_notice": "管理者アカウントでログインしています。以下の活動は、現在ログインしている会員基準で表示されます。",
-      "loading": "アクティビティを読み込み中…",
+      "loading": "投稿を読み込み中…",
       "empty": "表示するアクティビティがありません。",
       "load_more": "もっと見る",
       "loading_more": "読み込み中…"
@@ -304,7 +304,7 @@
     "msg": {
       "profile_load_failed": "プロフィールを読み込めません。再度ログインしてください。",
       "credit_load_failed": "クレジットを読み込めませんでした。",
-      "activity_load_failed": "アクティビティを読み込めませんでした。",
+      "activity_load_failed": "投稿を読み込めませんでした。",
       "email_missing_field": "メールを読み込めませんでした。アカウントで確認してください。",
       "email_missing_toast": "アカウント情報を再読み込みしてから保存してください。",
       "save_failed": "保存に失敗しました。",
@@ -334,7 +334,7 @@
       "badge_update": "更新"
     },
     "nav": {
-      "launcher": "すべてのアプリ",
+      "launcher": "探索",
       "economy": "ランキング",
       "myapp": "マイアプリ",
       "notice": "お知らせ"
@@ -342,9 +342,9 @@
     "left": {
       "close_panel": "左パネルを閉じる",
       "tabs_basic_apps": "基本アプリ",
-      "tabs_user_apps": "ユーザーアプリ",
+      "tabs_user_apps": "公開アプリ",
       "tabs_rank_apps": "アプリ順位",
-      "tabs_rank_users": "ユーザーランキング",
+      "tabs_rank_users": "活動ランキング",
       "tabs_favorites": "お気に入り",
       "tabs_my_apps": "マイアプリ",
       "tabs_notices": "お知らせ",
@@ -353,7 +353,7 @@
       "empty_myapps": "登録されたアプリがありません",
       "myapps_loading": "アプリ一覧を読み込み中…",
       "empty_basic_apps": "基本アプリがありません",
-      "empty_user_apps": "ユーザーアプリがありません",
+      "empty_user_apps": "公開アプリがありません",
       "notice_view_all": "お知らせをすべて見る",
       "notice_loading": "投稿を読み込み中です",
       "empty_notices": "お知らせはまだありません",
@@ -414,9 +414,9 @@
       "board_window": "掲示板 · {slug}",
       "board_loading": "掲示板を読み込み中…",
       "user_profile_window": "ユーザープロフィール",
-      "user_profile_tab_profile": "プロフィール",
-      "user_profile_tab_posts": "アクティビティ",
-      "user_profile_tab_chat": "チャット",
+      "user_profile_tab_profile": "紹介",
+      "user_profile_tab_posts": "活動",
+      "user_profile_tab_chat": "メッセージ",
       "user_profile_loading": "プロフィールを読み込み中…",
       "user_profile_error": "プロフィールを読み込めません",
       "error_window": "エラー · {code}",
@@ -556,10 +556,12 @@
     "min_length": "検索語は2文字以上入力してください。",
     "result_count": "「{query}」の検索結果 {count}件",
     "section_system_apps": "全体アプリ",
-    "section_generated_apps": "制作アプリ",
+    "section_generated_apps": "マイアプリ・公開アプリ",
+    "section_public_apps": "公開アプリ",
     "section_boards": "掲示板",
     "empty_system_apps": "一致するアプリがありません。",
-    "empty_generated_apps": "一致する制作アプリがありません。",
+    "empty_generated_apps": "一致するマイアプリ・公開アプリがありません。",
+    "empty_public_apps": "一致する公開アプリがありません。",
     "empty_boards": "一致する投稿がありません。"
   },
   "moa_apps_ai": {

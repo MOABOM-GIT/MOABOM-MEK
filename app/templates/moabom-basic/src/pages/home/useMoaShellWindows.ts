@@ -8,6 +8,7 @@ import {
   syncShellAppFocus,
 } from '../../shell/moaShellAppUsageTracker';
 import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
+import { hasMoabomShellAppChunk, warmMoabomShellAppChunk } from '../../apps';
 import { setCreateAppEditServerId } from '../../apps/ai-generator/moabomCreateAppEditSession';
 import { resolveAppStrings, resolveWindowTitle } from '../../i18n/resolveAppStrings';
 import type { MoabomTranslateFn } from '../../i18n/moabomT';
@@ -683,8 +684,13 @@ export function useMoaShellWindows({
       return;
     }
     if (app.id === createAppShellMetadata.id) {
+      warmMoabomShellAppChunk(createAppShellMetadata.id);
       openCreateAppShell(sync);
       return;
+    }
+
+    if (hasMoabomShellAppChunk(app.id)) {
+      warmMoabomShellAppChunk(app.id);
     }
 
     const existing = windowsRef.current.find(w => w.appId === app.id);

@@ -190,7 +190,25 @@
   color: rgb(156 163 175);
 }
 
-@container moa-g7-window (max-width: 480px) {
+/**
+ * 게시판 목록 제목 — 창 폭이 좁을 때(모바일 카드형) 한 줄 말줄임.
+ * 최소 폭(480px 이하)에서는 약 30자(30ch)로 제한.
+ */
+@container moa-g7-window (width < 1024px) {
+  .moa-board-window-host .moa-board-post-list-title {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@container moa-g7-window (width <= 480px) {
+  .moa-board-window-host .moa-board-post-list-title {
+    max-width: 30ch;
+  }
+
   .moa-board-window-host .moa-board-comment-form-row {
     flex-direction: column;
     align-items: stretch;

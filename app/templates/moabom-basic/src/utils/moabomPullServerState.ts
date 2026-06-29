@@ -3,15 +3,18 @@ import { loadMoabomSettingsPayloadForMerge } from '../api/moabomSystemApi';
 import {
   extractServerMainAppOrder,
   extractServerMainAppOrderCustomized,
+  extractServerRecentAppIds,
   hasLocalMainAppOrderCustomized,
   loadLocalMainAppOrder,
   mergeMainAppOrderFromPull,
+  mergeRecentAppIdsFromPull,
   saveLocalMainAppOrder,
   clearLocalMainAppOrder,
   type MainAppOrderSnapshot,
 } from '../shell/moaShellAppOrder';
 import { queueSaveMoabomSystemSettings, isRecentlySavedSettings } from './moabomSettingsSaveQueue';
 import { isRecentlySavedShellOrder, queueSaveShellHomeSettings } from './moabomShellOrderSaveQueue';
+import { isRecentlySavedRecentAppIds, queueSaveRecentAppIds } from './moabomShellRecentAppsSaveQueue';
 import {
   extractServerMainUnpinnedGeneratedIds,
   filterOrderExcludingUnpinned,
@@ -22,6 +25,8 @@ import {
 import { mergeMoabomSystemStateFromSettingsApi, writeStoredMoabomDefaultsRevision } from './moabomSystemServerMerge';
 import { areMoabomSystemStatesEqual } from './moabomSystemStore';
 import { applyMoabomSystemAppearance, hasStoredMoabomSystemState, loadMoabomSystemState, saveMoabomSystemState } from './moabomSystemStore';
+import { STORAGE_KEY_RECENT_APPS } from '../shell/moaShellLayoutConstants';
+import { loadJsonSanitizedIds, saveJson } from '../shell/moaShellLocalStorage';
 
 function toSettingsSnapshot(state: MoabomSystemState): Record<string, unknown> {
   return {
@@ -111,7 +116,7 @@ export async function pullMoabomServerState(input: {
   const localMainAppOrderCustomized = hasLocalMainAppOrderCustomized();
   const serverMainAppOrder = extractServerMainAppOrder(payload.settings);
   const serverMainAppOrderCustomized = extractServerMainAppOrderCustomized(payload.settings);
-  const trustLocalShellOrder = isRecentlySavedSettings() || isRecentlySavedShellOrder();
+  const trustLocalShellOrder = isRecentlySavedSettings() || isRecentlySavedShellOrder() || isRecentlySavedRecentAppIds();
   const mergedMainAppOrder = mergeMainAppOrderFromPull({
     isLoggedIn: input.isLoggedIn,
     trustLocalDuringCooldown: trustLocalShellOrder,
@@ -164,6 +169,28 @@ export async function pullMoabomServerState(input: {
       customized: orderAfterUnpinned.customized || localMainAppOrderCustomized,
       unpinnedGeneratedIds: mergedUnpinned,
     }, true);
+  }
+
+  const localRecentAppIds = loadJsonSanitizedIds(STORAGE_KEY_RECENT_APPS, []).slice(0, 10);
+  const serverRecentAppIds = extractServerRecentAppIds(payload.settings);
+  const mergedRecentAppIds = mergeRecentAppIdsFromPull({
+    isLoggedIn: input.isLoggedIn,
+    trustLocalDuringCooldown: trustLocalShellOrder,
+    localIds: localRecentAppIds,
+    serverIds: serverRecentAppIds,
+  });
+
+  if (mergedRecentAppIds.join('\0') !== localRecentAppIds.join('\0')) {
+    saveJson(STORAGE_KEY_RECENT_APPS, mergedRecentAppIds);
+  }
+
+  if (
+    input.isLoggedIn
+    && !trustLocalShellOrder
+    && serverRecentAppIds === null
+    && mergedRecentAppIds.length > 0
+  ) {
+    queueSaveRecentAppIds(mergedRecentAppIds, true);
   }
 
   writeStoredMoabomDefaultsRevision(serverRev);

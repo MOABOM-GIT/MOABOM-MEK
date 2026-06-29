@@ -36,7 +36,7 @@ import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShe
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX, MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
-import { resolveMoabomSiteLogoFallbackUrl, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
+import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
 import AppLoadingSpinner from './AppLoadingSpinner';
 
@@ -244,7 +244,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     [createdApps, sharedApps],
   );
 
-  /** 앱순위 — 좌측 유저앱 카탈로그(기본+공유 생성앱)에 없는 id는 표시하지 않음 */
+  /** 앱순위 — 좌측 공개 앱 카탈로그(기본+공유 생성앱)에 없는 id는 표시하지 않음 */
   const visibleAppRankings = useMemo(() => {
     const allowedIds = new Set(rankingLibraryApps.map(app => app.id));
     return appRankings.filter(item => allowedIds.has(item.app_id));
@@ -439,12 +439,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       {/* 로고 */}
       <Div className="glass p-6 shrink-0 flex flex-col items-center gap-2 rounded-2xl relative">
         <Img
+          key={logoSrc}
           src={logoSrc}
           alt="SMARTCARE"
           className="h-8 mb-2 object-contain cursor-pointer"
           onClick={() => (window.location.href = '/')}
           onError={() => {
-            setLogoSrc(resolveMoabomSiteLogoFallbackUrl(isDark ? 'dark' : 'light'));
+            setLogoSrc(prev => resolveMoabomSiteLogoImgRecoveryUrl(prev, isDark ? 'dark' : 'light'));
           }}
         />
         <Div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'color-mix(in srgb, var(--moa-point-color) 8%, transparent)' }}>

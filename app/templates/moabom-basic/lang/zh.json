@@ -66,7 +66,7 @@
     "friend_request_cancel_confirm": "确定取消向 {name} 发送的好友请求吗？",
     "friend_request_cancelled": "已取消向 {name} 发送的好友请求。",
     "toast_confirm_yes": "是",
-    "chat": "聊天",
+    "chat": "消息",
     "chat_block_on": "已拒绝",
     "chat_block_off": "拒绝聊天",
     "chat_blocked": "已拒绝聊天。",
@@ -111,11 +111,11 @@
         "desc": "余额与记录"
       },
       "library": {
-        "label": "应用库",
+        "label": "图书馆",
         "desc": "管理已保存应用"
       },
       "activity": {
-        "label": "我的动态",
+        "label": "帖子管理",
         "desc": "帖子、评论、互动"
       },
       "account": {
@@ -219,9 +219,9 @@
       "transaction_fallback": "点数变动"
     },
     "library": {
-      "created_title": "我创建的应用",
+      "created_title": "我的应用",
       "created_guest_msg": "登录后可使用此功能。",
-      "created_empty": "暂无您创建的应用。",
+      "created_empty": "暂无我的应用。",
       "created_loading": "正在加载应用列表…",
       "edit_app": "编辑应用",
       "delete_app": "删除应用",
@@ -243,7 +243,7 @@
       "filter_interactions": "收到的互动",
       "likes_notice": "点赞与推荐将在论坛模块提供数据后显示于此。",
       "admin_session_notice": "您正以管理员账号登录。以下活动按当前登录的会员账号显示。",
-      "loading": "正在加载动态…",
+      "loading": "正在加载帖子…",
       "empty": "暂无动态。",
       "load_more": "加载更多",
       "loading_more": "正在加载更多…"
@@ -304,7 +304,7 @@
     "msg": {
       "profile_load_failed": "无法加载资料，请重新登录。",
       "credit_load_failed": "无法加载点数。",
-      "activity_load_failed": "无法加载动态。",
+      "activity_load_failed": "无法加载帖子。",
       "email_missing_field": "无法读取邮箱，请在账号中核对。",
       "email_missing_toast": "请重新加载账号信息后再保存。",
       "save_failed": "保存失败。",
@@ -334,7 +334,7 @@
       "badge_update": "更新"
     },
     "nav": {
-      "launcher": "所有应用",
+      "launcher": "探索",
       "economy": "排行",
       "myapp": "我的应用",
       "notice": "公告"
@@ -342,9 +342,9 @@
     "left": {
       "close_panel": "关闭左侧面板",
       "tabs_basic_apps": "基础应用",
-      "tabs_user_apps": "用户应用",
+      "tabs_user_apps": "公开应用",
       "tabs_rank_apps": "应用排行",
-      "tabs_rank_users": "用户排行",
+      "tabs_rank_users": "活动排行",
       "tabs_favorites": "收藏",
       "tabs_my_apps": "我的应用",
       "tabs_notices": "公告",
@@ -353,7 +353,7 @@
       "empty_myapps": "暂无已注册应用",
       "myapps_loading": "正在加载应用列表…",
       "empty_basic_apps": "暂无基础应用",
-      "empty_user_apps": "暂无用户应用",
+      "empty_user_apps": "暂无公开应用",
       "notice_view_all": "查看全部公告",
       "notice_loading": "正在加载帖子",
       "empty_notices": "暂无公告",
@@ -414,9 +414,9 @@
       "board_window": "论坛 · {slug}",
       "board_loading": "正在加载论坛…",
       "user_profile_window": "用户资料",
-      "user_profile_tab_profile": "资料",
-      "user_profile_tab_posts": "动态",
-      "user_profile_tab_chat": "聊天",
+      "user_profile_tab_profile": "介绍",
+      "user_profile_tab_posts": "活动",
+      "user_profile_tab_chat": "消息",
       "user_profile_loading": "正在加载资料…",
       "user_profile_error": "无法加载资料",
       "error_window": "错误 · {code}",
@@ -556,10 +556,12 @@
     "min_length": "请至少输入2个字符。",
     "result_count": "“{query}” 的搜索结果 {count} 条",
     "section_system_apps": "全部应用",
-    "section_generated_apps": "创作应用",
+    "section_generated_apps": "我的应用·公开应用",
+    "section_public_apps": "公开应用",
     "section_boards": "公告板",
     "empty_system_apps": "没有匹配的应用。",
-    "empty_generated_apps": "没有匹配的创作应用。",
+    "empty_generated_apps": "没有匹配的我的应用或公开应用。",
+    "empty_public_apps": "没有匹配的公开应用。",
     "empty_boards": "没有匹配的帖子。"
   },
   "moa_apps_ai": {

@@ -160,6 +160,40 @@
             ]
           },
           {
+            "id": "tab_navigation",
+            "type": "composite",
+            "name": "TabNavigation",
+            "props": {
+              "tabs": [
+                {
+                  "id": "menus",
+                  "label": "$t:moabom-system.admin.settings.menus"
+                },
+                {
+                  "id": "appearance",
+                  "label": "$t:moabom-system.admin.settings.appearance"
+                },
+                {
+                  "id": "preferences",
+                  "label": "$t:moabom-system.admin.settings.preferences"
+                }
+              ],
+              "activeTabId": "{{_global.activeMoabomSystemSettingsTab || 'menus'}}",
+              "variant": "default"
+            },
+            "actions": [
+              {
+                "event": "onTabChange",
+                "type": "change",
+                "handler": "setState",
+                "params": {
+                  "target": "global",
+                  "activeMoabomSystemSettingsTab": "{{$args[0]}}"
+                }
+              }
+            ]
+          },
+          {
             "id": "readonly_banner",
             "type": "basic",
             "name": "Div",
@@ -228,41 +262,6 @@
                     "text": "{{typeof _local.errors === 'string' ? _local.errors : '$t:moabom-system.admin.settings.save_error'}}"
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "id": "tab_navigation",
-            "type": "composite",
-            "name": "TabNavigation",
-            "props": {
-              "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 pt-2",
-              "tabs": [
-                {
-                  "id": "menus",
-                  "label": "$t:moabom-system.admin.settings.menus"
-                },
-                {
-                  "id": "appearance",
-                  "label": "$t:moabom-system.admin.settings.appearance"
-                },
-                {
-                  "id": "preferences",
-                  "label": "$t:moabom-system.admin.settings.preferences"
-                }
-              ],
-              "activeTabId": "{{_global.activeMoabomSystemSettingsTab || 'menus'}}",
-              "variant": "default"
-            },
-            "actions": [
-              {
-                "event": "onTabChange",
-                "type": "change",
-                "handler": "setState",
-                "params": {
-                  "target": "global",
-                  "activeMoabomSystemSettingsTab": "{{$args[0]}}"
-                }
               }
             ]
           },

@@ -147,6 +147,8 @@ class StoreUserSystemSettingsRequest extends FormRequest
             'shell.home.mainAppOrderCustomized' => ['sometimes', 'boolean'],
             'shell.home.mainUnpinnedGeneratedIds' => ['sometimes', 'array', 'max:64'],
             'shell.home.mainUnpinnedGeneratedIds.*' => ['string', 'max:128', 'regex:/^generated-app-[0-9]+$/'],
+            'shell.home.recentAppIds' => ['sometimes', 'array', 'max:10'],
+            'shell.home.recentAppIds.*' => ['string', 'max:128', 'regex:/^[a-z0-9][a-z0-9-]*$/'],
         ];
     }
 }

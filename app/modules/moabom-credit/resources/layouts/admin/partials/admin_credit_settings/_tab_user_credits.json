@@ -1,0 +1,313 @@
+{
+  "meta": {
+    "is_partial": true,
+    "description": "Credit management - user credits tab"
+  },
+  "id": "user_credits_tab",
+  "type": "basic",
+  "name": "Div",
+  "if": "{{(query.tab || 'settings') === 'users'}}",
+  "props": {
+    "className": "mt-6 space-y-4"
+  },
+  "children": [
+    {
+      "type": "basic",
+      "name": "Div",
+      "props": {
+        "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-4"
+      },
+      "children": [
+        {
+          "type": "basic",
+          "name": "P",
+          "props": {
+            "className": "text-sm text-gray-600 dark:text-gray-300 mb-4"
+          },
+          "text": "$t:moabom-credit.admin.user_credits.description"
+        },
+        {
+          "type": "basic",
+          "name": "Div",
+          "props": {
+            "className": "flex flex-col sm:flex-row gap-2"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Input",
+              "props": {
+                "type": "search",
+                "value": "{{_local.userCreditSearch ?? query.search ?? ''}}",
+                "placeholder": "$t:moabom-credit.admin.user_credits.search_placeholder",
+                "className": "flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              },
+              "actions": [
+                {
+                  "type": "change",
+                  "handler": "setState",
+                  "params": {
+                    "target": "local",
+                    "userCreditSearch": "{{$event.target.value}}"
+                  }
+                },
+                {
+                  "type": "keydown",
+                  "handler": "navigate",
+                  "params": {
+                    "path": "/admin/platform/settings/credit",
+                    "replace": true,
+                    "query": {
+                      "tab": "users",
+                      "search": "{{$event.target.value || ''}}",
+                      "page": 1
+                    },
+                    "transition_overlay_target": "user_credits_grid__body"
+                  },
+                  "condition": "{{$event.key === 'Enter'}}"
+                }
+              ]
+            },
+            {
+              "type": "basic",
+              "name": "Button",
+              "props": {
+                "type": "button",
+                "className": "px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium"
+              },
+              "text": "$t:moabom-credit.admin.user_credits.search_button",
+              "actions": [
+                {
+                  "type": "click",
+                  "handler": "navigate",
+                  "params": {
+                    "path": "/admin/platform/settings/credit",
+                    "replace": true,
+                    "query": {
+                      "tab": "users",
+                      "search": "{{_local.userCreditSearch || ''}}",
+                      "page": 1
+                    },
+                    "transition_overlay_target": "user_credits_grid__body"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user_credits_grid",
+      "type": "composite",
+      "name": "DataGrid",
+      "blur_until_loaded": true,
+      "props": {
+        "data": "{{userCredits?.data?.items ?? []}}",
+        "loading": "{{!!userCredits?.loading}}",
+        "emptyMessage": "$t:moabom-credit.admin.user_credits.empty",
+        "idField": "user_id",
+        "pagination": true,
+        "alwaysShowPagination": true,
+        "pageSize": 20,
+        "serverSidePagination": true,
+        "serverCurrentPage": "{{userCredits?.data?.pagination?.current_page ?? 1}}",
+        "serverTotalPages": "{{userCredits?.data?.pagination?.last_page ?? 1}}",
+        "columns": [
+          {
+            "field": "name",
+            "header": "$t:moabom-credit.admin.user_credits.columns.name",
+            "sortable": false,
+            "cellChildren": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Span",
+                    "props": {
+                      "className": "font-medium text-gray-900 dark:text-white"
+                    },
+                    "text": "{{row.name}}"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "if": "{{row.nickname}}",
+                    "props": {
+                      "className": "text-xs text-gray-500 dark:text-gray-400"
+                    },
+                    "text": "{{row.nickname}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "field": "email",
+            "header": "$t:moabom-credit.admin.user_credits.columns.email",
+            "sortable": false
+          },
+          {
+            "field": "balance",
+            "header": "$t:moabom-credit.admin.user_credits.columns.balance",
+            "sortable": false,
+            "cellChildren": [
+              {
+                "type": "basic",
+                "name": "Span",
+                "props": {
+                  "className": "font-mono text-sm font-semibold text-gray-900 dark:text-white"
+                },
+                "text": "{{row.balance ?? 0}}"
+              }
+            ]
+          },
+          {
+            "field": "ranking_points",
+            "header": "$t:moabom-credit.admin.user_credits.columns.ranking_points",
+            "sortable": false,
+            "cellChildren": [
+              {
+                "type": "basic",
+                "name": "Span",
+                "props": {
+                  "className": "font-mono text-sm text-gray-700 dark:text-gray-300"
+                },
+                "text": "{{row.ranking_points ?? 0}}"
+              }
+            ]
+          },
+          {
+            "field": "actions",
+            "header": "$t:moabom-credit.admin.user_credits.columns.actions",
+            "sortable": false,
+            "cellChildren": [
+              {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "flex flex-wrap items-center gap-2"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "Button",
+                    "if": "{{userCredits?.data?.abilities?.can_adjust === true}}",
+                    "props": {
+                      "type": "button",
+                      "className": "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Icon",
+                        "props": {
+                          "name": "coins",
+                          "className": "w-3.5 h-3.5"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Span",
+                        "text": "$t:moabom-credit.admin.user_credits.adjust"
+                      }
+                    ],
+                    "actions": [
+                      {
+                        "type": "click",
+                        "handler": "sequence",
+                        "actions": [
+                          {
+                            "handler": "setState",
+                            "params": {
+                              "target": "global",
+                              "creditAdjustTarget": "{{row}}",
+                              "creditAdjustForm": {
+                                "direction": "increase",
+                                "amount": "",
+                                "description": ""
+                              },
+                              "creditAdjustError": null,
+                              "creditIsAdjusting": false
+                            }
+                          },
+                          {
+                            "handler": "openModal",
+                            "target": "modal_adjust_credit"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Button",
+                    "if": "{{userCredits?.data?.abilities?.can_delete === true}}",
+                    "props": {
+                      "type": "button",
+                      "className": "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Icon",
+                        "props": {
+                          "name": "trash",
+                          "className": "w-3.5 h-3.5"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Span",
+                        "text": "$t:moabom-credit.admin.user_credits.delete"
+                      }
+                    ],
+                    "actions": [
+                      {
+                        "type": "click",
+                        "handler": "sequence",
+                        "actions": [
+                          {
+                            "handler": "setState",
+                            "params": {
+                              "target": "global",
+                              "creditDeleteTarget": "{{row}}",
+                              "creditIsDeleting": false
+                            }
+                          },
+                          {
+                            "handler": "openModal",
+                            "target": "modal_delete_credit"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "actions": [
+        {
+          "event": "onPageChange",
+          "type": "change",
+          "handler": "navigate",
+          "params": {
+            "path": "/admin/platform/settings/credit",
+            "replace": true,
+            "query": {
+              "tab": "users",
+              "search": "{{query.search || ''}}",
+              "page": "{{$args[0]}}"
+            },
+            "transition_overlay_target": "user_credits_grid__body"
+          }
+        }
+      ]
+    }
+  ]
+}

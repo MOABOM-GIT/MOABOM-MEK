@@ -142,6 +142,50 @@ export function extractServerMainAppOrderCustomized(
   return null;
 }
 
+export function extractServerRecentAppIds(settings: Record<string, unknown> | undefined): string[] | null {
+  if (!settings || typeof settings !== 'object') {
+    return null;
+  }
+
+  const shell = settings.shell;
+  if (!shell || typeof shell !== 'object') {
+    return null;
+  }
+
+  const home = (shell as Record<string, unknown>).home;
+  if (!home || typeof home !== 'object') {
+    return null;
+  }
+
+  const recentIds = (home as Record<string, unknown>).recentAppIds;
+  if (!Array.isArray(recentIds)) {
+    return null;
+  }
+
+  return sanitizeMainAppOrderIds(recentIds);
+}
+
+export function mergeRecentAppIdsFromPull(input: {
+  isLoggedIn: boolean;
+  trustLocalDuringCooldown: boolean;
+  localIds: string[];
+  serverIds: string[] | null;
+}): string[] {
+  if (!input.isLoggedIn) {
+    return input.localIds;
+  }
+
+  if (input.trustLocalDuringCooldown) {
+    return input.localIds;
+  }
+
+  if (input.serverIds !== null) {
+    return input.serverIds;
+  }
+
+  return input.localIds;
+}
+
 /**
  * 로그인 pull 시 메인 order 병합.
  * - 게스트: 로컬만

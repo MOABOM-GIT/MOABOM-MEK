@@ -192,10 +192,15 @@ function normalizeShellBootPayload(raw: Partial<MoabomShellBootData> | undefined
     };
 }
 
-/** Vitest: 메모리 캐시 초기화 */
-export function resetMoabomShellBootCacheForTest(): void {
+/** shell-boot 메모리 캐시 무효화 (PWA 확장 재동기화·테스트 공용). */
+export function invalidateMoabomShellBootCache(): void {
     writeShellBootData(null);
     shellBootLoadPromise = null;
+}
+
+/** Vitest: 메모리 캐시 초기화 */
+export function resetMoabomShellBootCacheForTest(): void {
+    invalidateMoabomShellBootCache();
 }
 
 /** shell-boot 페이로드가 준비됐는지 (네트워크 완료 후) */

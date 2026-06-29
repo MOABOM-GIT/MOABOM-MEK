@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { APP_WINDOW_BODY_CLASS } from '../../apps/appShellTypography';
 import { loadMoabomShellAppComponent } from '../../apps';
-import { getShellAppDeferredExtensionLoad } from '../../apps/shellDeferredExtensions';
+import { ensureShellAppDeferredExtensions } from '../../apps/ensureShellAppDeferredExtensions';
 import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import { setCreateAppEditServerId } from '../../apps/ai-generator/moabomCreateAppEditSession';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
@@ -37,31 +37,10 @@ export const MoabomShellAppFromChunk: React.FC<{
 
     const run = async () => {
       try {
-        const deferred = getShellAppDeferredExtensionLoad(appId);
-        const G7Core = (window as any).G7Core;
-        if (deferred && typeof G7Core?.dispatch === 'function') {
-          const cfg = (window as any).G7Config;
-          for (const identifier of deferred.moduleIdentifiers) {
-            const assets = cfg?.deferredModuleAssets?.[identifier];
-            if (!assets) continue;
-            await G7Core.dispatch({
-              handler: 'reloadModuleHandlers',
-              params: { action: 'add', moduleInfo: { identifier, assets } },
-            });
-          }
-          for (const identifier of deferred.pluginIdentifiers) {
-            const assets = cfg?.deferredPluginAssets?.[identifier];
-            if (!assets) continue;
-            await G7Core.dispatch({
-              handler: 'reloadPluginHandlers',
-              params: { action: 'add', pluginInfo: { identifier, assets } },
-            });
-          }
-        }
-        if (cancelled) {
-          return;
-        }
-        const C = await loadMoabomShellAppComponent(appId);
+        const C = await Promise.all([
+          ensureShellAppDeferredExtensions(appId),
+          loadMoabomShellAppComponent(appId),
+        ]).then(([, component]) => component);
         if (!cancelled) {
           setComp(() => C);
         }

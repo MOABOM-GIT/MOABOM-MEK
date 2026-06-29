@@ -11,11 +11,21 @@ use Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy;
 use Modules\Moabom\System\Models\UserSystemSetting;
 
 /**
- * 공개 프로필 — 사용자 홈 메인 앱 순서(shell.home.mainAppOrder) 기반 자주 쓰는 앱(최대 5).
+ * 공개 프로필 — 최근 실행 앱(shell.home.recentAppIds, 최대 10).
  */
 final class PublicUserFrequentShellAppsService
 {
-    private const DEFAULT_LIMIT = 5;
+    private const DEFAULT_LIMIT = 10;
+
+    /** @var list<string> */
+    private const EXCLUDED_APP_IDS = [
+        'mypage',
+        'login',
+        'register',
+        'forgot-password',
+        'reset-password',
+        'create-app',
+    ];
 
     public function __construct(
         private readonly AppRegistryInterface $appRegistry,
@@ -28,16 +38,16 @@ final class PublicUserFrequentShellAppsService
      */
     public function listForUser(int $userId, int $limit = self::DEFAULT_LIMIT, ?int $viewerUserId = null): array
     {
-        $limit = min(5, max(1, $limit));
-        $order = $this->mainAppOrderForUser($userId);
-        if ($order === []) {
+        $limit = min(self::DEFAULT_LIMIT, max(1, $limit));
+        $recentIds = $this->recentAppIdsForUser($userId);
+        if ($recentIds === []) {
             return ['data' => []];
         }
 
         $shellCatalog = $this->shellCatalogById();
         $items = [];
 
-        foreach (array_slice($order, 0, $limit) as $appId) {
+        foreach (array_slice($recentIds, 0, $limit) as $appId) {
             $resolved = $this->resolveShellAppItem($appId, $shellCatalog, $viewerUserId);
             if ($resolved !== null) {
                 $items[] = $resolved;
@@ -50,21 +60,32 @@ final class PublicUserFrequentShellAppsService
     /**
      * @return list<string>
      */
-    private function mainAppOrderForUser(int $userId): array
+    private function recentAppIdsForUser(int $userId): array
     {
         $settings = UserSystemSetting::query()
             ->where('user_id', $userId)
             ->value('settings');
 
-        $order = Arr::get(is_array($settings) ? $settings : [], 'shell.home.mainAppOrder');
-        if (! is_array($order)) {
+        if (! is_array($settings)) {
+            return [];
+        }
+
+        $home = Arr::get($settings, 'shell.home');
+        if (! is_array($home)) {
+            return [];
+        }
+
+        $recentIds = Arr::get($home, 'recentAppIds');
+        if (! is_array($recentIds)) {
             return [];
         }
 
         return array_values(array_filter(array_map(
             static fn ($id): string => trim((string) $id),
-            $order,
-        ), static fn (string $id): bool => $id !== '' && ! str_starts_with($id, 'moa-shell-')));
+            $recentIds,
+        ), static fn (string $id): bool => $id !== ''
+            && ! str_starts_with($id, 'moa-shell-')
+            && ! in_array($id, self::EXCLUDED_APP_IDS, true)));
     }
 
     /**

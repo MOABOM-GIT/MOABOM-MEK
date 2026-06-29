@@ -82,7 +82,7 @@
       },
       "children": [
         {
-          "comment": "유저 활동 — 제작앱 · 자주 쓰는 앱 · 작성글",
+          "comment": "유저 활동 — 마이앱 · 최근 실행 앱 · 작성글",
           "type": "basic",
           "name": "Div",
           "if": "{{userProfile.data && !userProfile.error}}",
@@ -91,7 +91,7 @@
           },
           "children": [
             {
-              "comment": "제작앱 패널",
+              "comment": "마이앱 패널",
               "type": "basic",
               "name": "Div",
               "props": {
@@ -126,7 +126,7 @@
               ]
             },
             {
-              "comment": "자주 쓰는 앱 패널 (최대 10)",
+              "comment": "최근 실행 앱 패널 (최대 10)",
               "type": "basic",
               "name": "Div",
               "props": {

@@ -17,7 +17,7 @@ export interface Mode {
 
 /** 좌측 패널 하단 네비게이션 아이템 */
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'launcher', icon: 'grip',         label: '모든앱' },
+  { id: 'launcher', icon: 'grip',         label: '탐색' },
   { id: 'economy',  icon: 'chart-simple', label: '랭킹' },
   { id: 'myapp',    icon: 'star',         label: '마이앱' },
   { id: 'notice',   icon: 'bell',         label: '공지' },

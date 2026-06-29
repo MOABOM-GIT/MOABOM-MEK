@@ -12,6 +12,7 @@ import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
 import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
+import { warmMoabomShellAppChunk, hasMoabomShellAppChunk } from '../../apps';
 import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
 
 /** 서브타이틀 마퀴 허용 최대 글자 수 — 초과 시 말줄임만 */
@@ -76,6 +77,15 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
     onOpenApp(app);
   }, [editMode, app, onOpenApp, wasLongPress]);
 
+  const handlePointerEnter = useCallback(() => {
+    if (editMode || isGeneratedApp) {
+      return;
+    }
+    if (hasMoabomShellAppChunk(app.id)) {
+      warmMoabomShellAppChunk(app.id);
+    }
+  }, [app.id, editMode, isGeneratedApp]);
+
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -121,6 +131,7 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
       <Button
         data-testid={isCreateApp ? 'moa-shell-create-app' : undefined}
         onClick={handleClick}
+        onPointerEnter={handlePointerEnter}
         className={`app-btn moa-main-app-btn flex w-full flex-col items-center gap-2.5 p-0 border-0 bg-transparent group ${
           editMode ? 'wiggle is-editing' : ''
         }`}

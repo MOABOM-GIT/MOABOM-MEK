@@ -34,6 +34,7 @@ import {
   APP_SHELL_BODY_CLASS,
   APP_SHELL_DESC_CLASS,
   APP_SHELL_INPUT_CLASS,
+  APP_SHELL_PANEL_BODY_CLASS,
   APP_SHELL_PANEL_STACK_CLASS,
   APP_SHELL_SELECT_TRIGGER_CLASS,
   APP_SHELL_TEXTAREA_CLASS,
@@ -731,7 +732,7 @@ export function AiGeneratorApp() {
 
         <Div
           ref={splitPane.containerRef}
-          className={`${APP_SHELL_PANEL_STACK_CLASS} min-h-0 overflow-hidden relative ${showCodePreviewPanel ? 'moa-ai-split-pane' : ''}`}
+          className={`${APP_SHELL_PANEL_BODY_CLASS} min-h-0 overflow-hidden relative ${showCodePreviewPanel ? 'moa-ai-split-pane' : ''}`}
         >
           {!isWebsiteLink && queueState ? (
             <AiGenerationQueuePanel

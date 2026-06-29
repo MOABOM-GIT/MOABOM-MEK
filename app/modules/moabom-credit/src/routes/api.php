@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Credit\Http\Controllers\Admin\CreditSettingsController;
+use Modules\Moabom\Credit\Http\Controllers\Admin\CreditUserAdminController;
 use Modules\Moabom\Credit\Http\Controllers\CreditController;
 
 /*
@@ -32,4 +33,14 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('settings/clear-cache', [CreditSettingsController::class, 'clearCache'])
         ->middleware('permission:admin,moabom-credit.settings.update')
         ->name('admin.settings.clear-cache');
+
+    Route::get('user-credits', [CreditUserAdminController::class, 'index'])
+        ->middleware('permission:admin,moabom-credit.balances.read')
+        ->name('admin.user-credits.index');
+    Route::post('user-credits/{user}/adjust', [CreditUserAdminController::class, 'adjust'])
+        ->middleware('permission:admin,moabom-credit.balances.adjust')
+        ->name('admin.user-credits.adjust');
+    Route::delete('user-credits/{user}', [CreditUserAdminController::class, 'destroy'])
+        ->middleware('permission:admin,moabom-credit.balances.delete|moabom-credit.balances.adjust,false')
+        ->name('admin.user-credits.destroy');
 });

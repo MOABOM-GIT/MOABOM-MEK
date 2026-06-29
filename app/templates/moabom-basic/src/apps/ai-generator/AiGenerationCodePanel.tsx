@@ -57,7 +57,7 @@ export function AiGenerationCodePanel({
             text={editableCode}
             label={t('moa_apps_ai.copy_code')}
             copiedLabel={t('moa_apps_ai.copy_code_done')}
-            size="xxs"
+            size="sm"
           />
         ) : null}
       </Div>

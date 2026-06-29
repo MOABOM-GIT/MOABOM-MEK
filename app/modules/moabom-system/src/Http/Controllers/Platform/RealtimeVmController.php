@@ -33,4 +33,12 @@ final class RealtimeVmController extends Controller
 
         return ResponseHelper::moduleSuccess('moabom-system', 'messages.realtime_vm_refresh_success', $payload);
     }
+
+    public function metrics(Request $request): JsonResponse
+    {
+        $force = filter_var($request->query('refresh', false), FILTER_VALIDATE_BOOL);
+        $payload = $this->health->metricsSnapshot($force);
+
+        return ResponseHelper::moduleSuccess('moabom-system', 'messages.realtime_vm_metrics_success', $payload);
+    }
 }

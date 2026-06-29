@@ -37,6 +37,7 @@ describe('P4 P-UpdateLifecycle', () => {
 
   beforeEach(() => {
     enqueueMock.mockClear();
+    sessionStorage.clear();
     (window as any).G7Core = {
       t: (key: string) => key,
       toast: {
@@ -47,6 +48,7 @@ describe('P4 P-UpdateLifecycle', () => {
 
   afterEach(() => {
     delete (window as any).G7Core;
+    sessionStorage.clear();
   });
 
   it('동일 lifecycle 에서 이벤트가 여러 번 발생해도 시스템 토스트는 정확히 1개만 발행된다', async () => {
@@ -116,6 +118,7 @@ describe('P4 P-UpdateLifecycle', () => {
     await promise;
 
     expect(reload).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem('moabom:pwa-extension-resync')).toBe('1');
 
     unmount();
   });

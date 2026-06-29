@@ -61,8 +61,10 @@ grep -q '"path": "/admin/saas/hospitals/create"' "${LIST}" \
   || fail "list layout must navigate to create (SPA)"
 grep -q '"wait_for": \["hospitals"\]' "${LIST}" \
   || fail "list layout missing transition_overlay.wait_for hospitals"
-grep -q '"version": "1.2.5"' "${CREATE}" \
-  || fail "admin_saas_hospital_create.json v1.2.5 required (logo FileInput object + multipart + navigate)"
+grep -q '"version": "1.2.7"' "${CREATE}" \
+  || fail "admin_saas_hospital_create.json v1.2.7 required (slug availability + logo multipart + navigate)"
+grep -q 'slug-availability' "${CREATE}" \
+  || fail "create layout missing slug-availability API"
 grep -q 'multipart/form-data' "${CREATE}" \
   || fail "create layout must POST multipart for logo_light/logo_dark"
 grep -q 'logo_light' "${CREATE}" \

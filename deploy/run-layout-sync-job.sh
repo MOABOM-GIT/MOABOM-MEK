@@ -47,7 +47,7 @@ echo "[run-layout-sync-job] tenant language_packs mirror (platform → tenants)"
 moabom_run_artisan_job moabom-tenant-language-pack-sync "${TIMEOUT}" \
   moabom:saas:sync-tenant-language-packs --no-interaction
 
-moabom_run_artisan_job moabom-template-cache-clear 120s template:cache-clear --no-interaction
+bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
 
 # B안 — 위 동기화가 끝난 뒤, platform + 모든 active tenant 의 실제 사용자 표면을 검증한다.
 # (환경설정>언어팩 목록 비어있음·admin_settings 구형 레이아웃 잔존 → Job 실패로 드러냄)

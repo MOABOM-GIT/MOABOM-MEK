@@ -8,7 +8,7 @@ use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 
 /**
  * 셸 앱순위·사용량 ingest — 현재 Host/테넌트에서 카탈로그에 보이는 생성앱만 허용.
- * (좌측 패널 유저앱 = getPublished + GeneratedAppPublishPolicy 와 동일 SSOT)
+ * (좌측 패널 공개 앱 = getPublished + GeneratedAppPublishPolicy 와 동일 SSOT)
  */
 final class ShellRankingGeneratedAppScope
 {

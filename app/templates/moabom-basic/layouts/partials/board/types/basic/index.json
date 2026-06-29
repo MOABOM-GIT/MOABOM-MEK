@@ -265,7 +265,8 @@
                               "type": "basic",
                               "name": "Span",
                               "props": {
-                                "className": "text-sm font-medium truncate {{(post?.status === 'blinded' || post?.deleted_at) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}}"
+                                "className": "moa-board-post-list-title text-sm font-medium truncate min-w-0 {{(post?.status === 'blinded' || post?.deleted_at) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}}",
+                                "title": "{{post?.title ?? ''}}"
                               },
                               "text": "{{post?.title}}"
                             },
@@ -394,7 +395,7 @@
                                 {
                                   "type": "basic",
                                   "name": "Div",
-                                  "props": { "className": "flex items-center gap-2" },
+                                  "props": { "className": "flex items-center gap-2 min-w-0" },
                                   "children": [
                                     {
                                       "comment": "답글 화살표 아이콘",
@@ -429,7 +430,8 @@
                                       "type": "basic",
                                       "name": "Span",
                                       "props": {
-                                        "className": "text-sm font-medium {{(post?.status === 'blinded' || post?.deleted_at) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}}"
+                                        "className": "moa-board-post-list-title text-sm font-medium truncate min-w-0 {{(post?.status === 'blinded' || post?.deleted_at) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}}",
+                                        "title": "{{post?.title ?? ''}}"
                                       },
                                       "text": "{{post?.title}}"
                                     },

@@ -1,9 +1,15 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Div } from '../basic/Div';
 import { Button } from '../basic/Button';
 import { Icon } from '../basic/Icon';
 import { Span } from '../basic/Span';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
+import {
+  exitMobileNativeFullscreen,
+  isMobileNativeFullscreenActive,
+  isMobileNativeFullscreenSupported,
+  requestMobileNativeFullscreen,
+} from '../../utils/mobileNativeFullscreen';
 import { truncateShellWindowTitle } from '../../utils/truncateShellWindowTitle';
 import { isLightShellGradient, shellChromeToneClasses } from '../../utils/shellGradientContrast';
 
@@ -70,6 +76,8 @@ export interface WindowProps {
   onMaximize?: () => void;
   onToggleFavorite?: () => void;
   onFocus?: () => void;
+  /** false 이면 본문 위에 투명 캡처 레이어 — iframe 등이 포커스를 가로채도 클릭 시 앞으로 가져옴 */
+  isForeground?: boolean;
   children?: React.ReactNode;
   className?: string;
   compact?: boolean;
@@ -105,6 +113,7 @@ const WindowComponent: React.FC<WindowProps> = ({
   onMaximize,
   onToggleFavorite,
   onFocus,
+  isForeground = true,
   children,
   className = '',
   compact = false,
@@ -156,6 +165,7 @@ const WindowComponent: React.FC<WindowProps> = ({
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   const windowRef = useRef<HTMLDivElement>(null);
+  const nativeFullscreenOwnedRef = useRef(false);
   const titleBarRef = useRef<HTMLDivElement>(null);
   const fitMeasureRef = useRef<HTMLDivElement>(null);
   /** 사용자가 코너 드래그 중에는 높이 자동 재조정 무시 → 창 크기 변경과 ResizeObserver 간섭 방지 */
@@ -235,6 +245,100 @@ const WindowComponent: React.FC<WindowProps> = ({
   useEffect(() => {
     setIsMaximized(initialMaximized);
   }, [initialMaximized]);
+
+  const handleToggleMaximize = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMaximized = !isMaximized;
+    setIsMaximized(nextMaximized);
+    onMaximize?.();
+
+    if (!compact) {
+      return;
+    }
+
+    const target = windowRef.current;
+    if (nextMaximized && target && isMobileNativeFullscreenSupported()) {
+      void requestMobileNativeFullscreen(target).then(ok => {
+        if (ok) {
+          nativeFullscreenOwnedRef.current = true;
+        }
+      });
+      return;
+    }
+
+    if (!nextMaximized && nativeFullscreenOwnedRef.current) {
+      nativeFullscreenOwnedRef.current = false;
+      void exitMobileNativeFullscreen();
+    }
+  }, [compact, isMaximized, onMaximize]);
+
+  /** 앱 열기 직후 이미 최대화된 모바일 창 — 제스처 체인이 남아 있을 수 있어 1회 시도 */
+  useEffect(() => {
+    if (!compact || !isMaximized || !isMobileNativeFullscreenSupported() || nativeFullscreenOwnedRef.current) {
+      return undefined;
+    }
+
+    const target = windowRef.current;
+    if (!target) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    void requestMobileNativeFullscreen(target).then(ok => {
+      if (!cancelled && ok) {
+        nativeFullscreenOwnedRef.current = true;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [compact, id, isMaximized]);
+
+  /** 복원·닫기·데스크톱 전환 시 네이티브 풀스크린 해제 */
+  useEffect(() => {
+    if (compact && isMaximized) {
+      return undefined;
+    }
+
+    if (!nativeFullscreenOwnedRef.current) {
+      return undefined;
+    }
+
+    nativeFullscreenOwnedRef.current = false;
+    void exitMobileNativeFullscreen();
+    return undefined;
+  }, [compact, isMaximized]);
+
+  useEffect(() => {
+    const syncNativeFullscreenExit = () => {
+      if (!compact || !isMaximized || isMobileNativeFullscreenActive()) {
+        return;
+      }
+      if (!nativeFullscreenOwnedRef.current) {
+        return;
+      }
+      nativeFullscreenOwnedRef.current = false;
+      setIsMaximized(false);
+      onMaximize?.();
+    };
+
+    document.addEventListener('fullscreenchange', syncNativeFullscreenExit);
+    document.addEventListener('webkitfullscreenchange', syncNativeFullscreenExit);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncNativeFullscreenExit);
+      document.removeEventListener('webkitfullscreenchange', syncNativeFullscreenExit);
+    };
+  }, [compact, isMaximized, onMaximize]);
+
+  useEffect(() => {
+    return () => {
+      if (nativeFullscreenOwnedRef.current) {
+        nativeFullscreenOwnedRef.current = false;
+        void exitMobileNativeFullscreen();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (compact) {
@@ -492,7 +596,7 @@ const WindowComponent: React.FC<WindowProps> = ({
                 </Button>
                 <Button
                   type="button"
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsMaximized(!isMaximized); if (onMaximize) onMaximize(); }}
+                  onClick={handleToggleMaximize}
                   className="moa-window-chrome-btn cursor-pointer rounded-full border-0 bg-white/20 transition-all hover:bg-white/35"
                 >
                   <Icon name={isMaximized ? 'compress' : 'expand'} className="moa-window-chrome-icon-slot text-white" />
@@ -552,7 +656,7 @@ const WindowComponent: React.FC<WindowProps> = ({
               </Button>
               <Button
                 type="button"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsMaximized(!isMaximized); if (onMaximize) onMaximize(); }}
+                onClick={handleToggleMaximize}
                 className={`moa-window-chrome-btn cursor-pointer rounded-full border-0 transition-all ${chromeTone.chromeBtn}`}
               >
                 <Icon name={isMaximized ? 'compress' : 'expand'} className={`moa-window-chrome-icon-slot ${chromeTone.icon}`} />
@@ -570,13 +674,37 @@ const WindowComponent: React.FC<WindowProps> = ({
 
         {/* 창 내용 — 스크롤 책임은 이 한 겹만 가진다. */}
         {fitContent && !compact ? (
-          <Div className="moa-app-window-viewport">
+          <Div className="moa-app-window-viewport moa-app-window-viewport--relative">
             <Div ref={fitMeasureRef} className="w-full shrink-0">
               {children}
             </Div>
+            {!isForeground ? (
+              <Div
+                className="moa-window-body-focus-capture"
+                aria-hidden="true"
+                onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onFocus?.();
+                }}
+              />
+            ) : null}
           </Div>
         ) : (
-          <Div className="moa-app-window-viewport">{children}</Div>
+          <Div className="moa-app-window-viewport moa-app-window-viewport--relative">
+            {children}
+            {!isForeground ? (
+              <Div
+                className="moa-window-body-focus-capture"
+                aria-hidden="true"
+                onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onFocus?.();
+                }}
+              />
+            ) : null}
+          </Div>
         )}
 
         {/* 리사이즈 핸들 */}
@@ -613,6 +741,7 @@ function areWindowPropsEqual(prev: WindowProps, next: WindowProps): boolean {
     && prev.onMaximize === next.onMaximize
     && prev.onToggleFavorite === next.onToggleFavorite
     && prev.onFocus === next.onFocus
+    && prev.isForeground === next.isForeground
     && prev.children === next.children
     && prev.className === next.className
     && prev.compact === next.compact

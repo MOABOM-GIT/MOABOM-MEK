@@ -22,19 +22,41 @@ read_disk_percent() {
   df -P / | awk 'NR==2 {gsub("%","",$5); print $5}'
 }
 
-docker_running() {
-  local name="$1"
+docker_container_name() {
+  local prefix="$1"
   if command -v docker >/dev/null 2>&1; then
-    docker ps --format '{{.Names}}' 2>/dev/null | grep -qE "^${name}(-[0-9]+)?$" && echo true || echo false
-  else
-    echo false
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -E "^${prefix}" | head -1
   fi
 }
 
-redis_container() {
-  if command -v docker >/dev/null 2>&1; then
-    docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^moabom-realtime-redis' | head -1
+docker_running() {
+  local name="$1"
+  [[ -n "$(docker_container_name "${name}")" ]] && echo true || echo false
+}
+
+container_stats_json() {
+  local prefix="$1"
+  local c
+  c="$(docker_container_name "${prefix}")"
+  if [[ -z "${c}" ]]; then
+    echo '{"running":false}'
+    return
   fi
+  local stats_line
+  stats_line="$(docker stats --no-stream --format '{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' "${c}" 2>/dev/null || true)"
+  if [[ -z "${stats_line}" ]]; then
+    echo '{"running":true}'
+    return
+  fi
+  IFS='|' read -r cpu mem mem_pct <<< "${stats_line}"
+  cpu="${cpu//\"/}"
+  mem="${mem//\"/}"
+  mem_pct="${mem_pct//\"/}"
+  printf '{"running":true,"cpu":"%s","memory":"%s","memory_percent":"%s","name":"%s"}' "${cpu}" "${mem}" "${mem_pct}" "${c}"
+}
+
+redis_container() {
+  docker_container_name 'moabom-realtime-redis'
 }
 
 redis_clients() {
@@ -77,6 +99,10 @@ cat <<EOF
     "nginx": $(systemctl is-active nginx >/dev/null 2>&1 && echo true || echo false),
     "reverb": $(docker_running moabom-realtime-reverb),
     "redis": $(docker_running moabom-realtime-redis)
+  },
+  "containers": {
+    "reverb": $(container_stats_json moabom-realtime-reverb),
+    "redis": $(container_stats_json moabom-realtime-redis)
   },
   "redis": {
     "connected_clients": $(redis_clients),

@@ -24,7 +24,15 @@ describe('moabomNotificationNavigateUrl', () => {
 
   it('url 이 없으면 type 기반 fallback 을 쓴다', () => {
     expect(resolveNotificationFallbackPath('password_changed')).toBe('/me/account');
+    expect(resolveNotificationFallbackPath('welcome')).toBe('/me/account');
     expect(resolveNotificationNavigatePath(null, 'board.comment_received')).toBe('/me/activity');
     expect(resolveNotificationNavigatePath(null, 'user_registered')).toBe('/me/profile');
+  });
+
+  it('회원가입 환영 알림은 계정 탭으로 보낸다', () => {
+    expect(resolveNotificationNavigatePath('/me/profile', 'welcome')).toBe('/me/account');
+    expect(resolveNotificationNavigatePath('/mypage', 'welcome')).toBe('/me/account');
+    expect(resolveNotificationNavigatePath('https://mek360.com/login', 'welcome')).toBe('/me/account');
+    expect(resolveNotificationNavigatePath(null, 'welcome')).toBe('/me/account');
   });
 });

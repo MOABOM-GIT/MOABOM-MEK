@@ -33,4 +33,14 @@ return [
         'app_review_write_description' => '앱 리뷰 작성 적립',
         'like_received_description' => '게시글 좋아요 적립',
     ],
+    'admin' => [
+        'user_credits_list_success' => '유저 크레딧 목록을 조회했습니다.',
+        'adjust_success' => '유저 크레딧이 조정되었습니다.',
+        'adjust_failed' => '유저 크레딧 조정에 실패했습니다.',
+        'invalid_direction' => '조정 방향이 올바르지 않습니다.',
+        'increase_default_description' => '관리자 수동 증가',
+        'decrease_default_description' => '관리자 수동 차감',
+        'delete_success' => '유저 크레딧 데이터가 삭제되었습니다.',
+        'delete_failed' => '유저 크레딧 데이터 삭제에 실패했습니다.',
+    ],
 ];

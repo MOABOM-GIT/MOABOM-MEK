@@ -22,6 +22,22 @@
   gap: 0;
 }
 
+/** Android 등 네이티브 풀스크린 — 노치·홈 인디케이터 safe-area */
+[data-window-id]:fullscreen,
+[data-window-id]:-webkit-full-screen {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  max-height: none;
+  inset: 0;
+}
+
+[data-window-id]:fullscreen .moa-window-frame,
+[data-window-id]:-webkit-full-screen .moa-window-frame {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .moa-window-frame--maximized .moa-app-window-header.moa-app-panel {
   border-radius: 0;
 }

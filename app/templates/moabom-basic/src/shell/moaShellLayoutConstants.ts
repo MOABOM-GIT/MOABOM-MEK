@@ -19,7 +19,7 @@ export const AUTH_WINDOW_APP_IDS = ['login', 'register', 'forgot-password', 'res
 
 export const MAX_OPEN_WINDOWS = 5;
 export const MAX_TASKBAR_ITEMS = 10;
-export const MAX_RECENT_APPS = 9;
+export const MAX_RECENT_APPS = 10;
 export const DEFAULT_WINDOW_WIDTH = 1280;
 export const DEFAULT_WINDOW_HEIGHT = 800;
 

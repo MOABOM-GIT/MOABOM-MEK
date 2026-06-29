@@ -230,7 +230,8 @@ if [[ "${ASYNC}" -eq 1 ]]; then
   echo "    smoke: MOABOM_STRICT_SMOKE=${STRICT_SMOKE} bash deploy/smoke-after-deploy.sh https://mek360.com"
   if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
     && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
-    echo "    layout DB sync (필수): IMAGE_TAG=${TAG} bash deploy/run-layout-sync-job.sh"
+    echo "    layout DB sync (manifest 변경 시): IMAGE_TAG=${TAG} bash deploy/run-layout-sync-job.sh"
+    echo "    cache-clear (manifest unchanged 시): IMAGE_TAG=${TAG} bash deploy/run-template-cache-clear-job.sh"
   fi
   exit 0
 fi
@@ -315,6 +316,8 @@ if [[ "${SKIP_LAYOUT_SYNC}" -eq 0 ]] \
     moabom_layout_sync_record_success
   else
     echo "==> Post-deploy layout DB sync skipped (manifest unchanged)"
+    echo "==> Post-deploy template:cache-clear (ext.cache_version bump — layout sync 미실행)"
+    IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
   fi
   # shellcheck source=lib/post-deploy-migration-hash.sh
   source "${ROOT}/deploy/lib/post-deploy-migration-hash.sh"

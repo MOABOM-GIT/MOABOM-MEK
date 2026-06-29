@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { APPS, type App } from '../../data/Moa_apps';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../../types/moabomSystem';
-import { MY_APPS_DATA } from '../../data/Moa_mockData';
 import {
   clearValidatedGeneratedLibraryStorage,
   commitSavedGeneratedAppToLibrary,
@@ -24,6 +23,7 @@ import {
 import { pullMoabomServerState } from '../../utils/moabomPullServerState';
 import { useMoabomServerPullTriggers } from '../../utils/useMoabomServerPullTriggers';
 import { persistMainAppOrder } from '../../utils/moabomShellOrderSaveQueue';
+import { queueSaveRecentAppIds } from '../../utils/moabomShellRecentAppsSaveQueue';
 import {
   buildFavoriteApps,
   buildMyApps,
@@ -100,7 +100,7 @@ export function useMoaHomeAppCatalog({
   const libraryScopeRef = useRef<string | null>(null);
 
   const favoriteIdsRef = useRef<string[]>(
-    loadJsonSanitizedIds(STORAGE_KEY_FAVORITES, MY_APPS_DATA.favorites.map(app => app.id)),
+    loadJsonSanitizedIds(STORAGE_KEY_FAVORITES, []),
   );
   const [favoriteApps, setFavoriteApps] = useState<App[]>(() => buildFavoriteApps(favoriteIdsRef.current));
   const recentAppIdsRef = useRef<string[]>(
@@ -464,7 +464,8 @@ export function useMoaHomeAppCatalog({
     recentAppIdsRef.current = next;
     saveJson(STORAGE_KEY_RECENT_APPS, next);
     setRecentApps(buildRecentApps(next, libraryGeneratedApps));
-  }, [libraryGeneratedApps]);
+    queueSaveRecentAppIds(next, isLoggedInRef.current);
+  }, [isLoggedInRef, libraryGeneratedApps]);
 
   const toggleFavoriteApp = useCallback((appId: string) => {
     const current = favoriteIdsRef.current;

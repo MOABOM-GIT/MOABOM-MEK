@@ -7,9 +7,9 @@ namespace Modules\Moabom\Apps\Seo;
 use App\Seo\Contracts\SitemapContributorInterface;
 
 /**
- * 앱 디렉터리(/apps) + 기본 제공 앱 + 전역 공개 제작앱 sitemap 기여자.
+ * 앱 디렉터리(/apps) + 기본 제공 앱 + 전역 공개 마이앱 sitemap 기여자.
  *
- * private/tenant 제작앱은 AppSeoDataService 가드로 자동 제외된다.
+ * private/tenant 마이앱은 AppSeoDataService 가드로 자동 제외된다.
  */
 final class AppsSitemapContributor implements SitemapContributorInterface
 {

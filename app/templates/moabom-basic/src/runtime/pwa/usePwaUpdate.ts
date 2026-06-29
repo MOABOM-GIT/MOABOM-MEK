@@ -8,6 +8,7 @@ import {
   MOABOM_PWA_UPDATE_EVENT,
   peekPendingMoabomPwaUpdate,
 } from './moabomPwaUpdateBridge';
+import { markMoabomPwaExtensionResync } from './moabomPwaExtensionResync';
 
 export interface UsePwaUpdateResult {
   /** waiting 토스트가 현재 사용자에게 노출 중인지. */
@@ -102,6 +103,7 @@ export function useMoabomPwaUpdate(): UsePwaUpdateResult {
     }
 
     reloadedRef.current = true;
+    markMoabomPwaExtensionResync();
     window.location.reload();
   }, []);
 

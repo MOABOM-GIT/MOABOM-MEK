@@ -52,6 +52,8 @@ return [
     'saas' => [
         'hospitals' => [
             'list_success' => 'Company list loaded.',
+            'slug_availability_success' => 'Slug availability checked.',
+            'slug_unavailable' => 'This host is not available.',
             'show_success' => 'Company loaded.',
             'created' => 'Company tenant added.',
             'not_found' => 'Company not found.',
@@ -72,6 +74,7 @@ return [
     ],
     'realtime_vm_status_success' => 'Realtime VM status loaded.',
     'realtime_vm_refresh_success' => 'Realtime VM status refreshed.',
+    'realtime_vm_metrics_success' => 'Realtime VM metrics loaded.',
     // All 'apps.*' keys are moved to dedicated modules (2026-06-02).
     // - apps.ai.*, apps.generated.*: moabom-apps
     // - apps.cpap.*: moabom-cpap

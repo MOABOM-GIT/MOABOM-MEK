@@ -1,7 +1,7 @@
 {
   "meta": {
     "is_partial": true,
-    "description": "공개 프로필 유저 활동 — 셸/제작앱 1행"
+    "description": "공개 프로필 유저 활동 — 셸/마이앱 1행"
   },
   "type": "basic",
   "name": "Button",

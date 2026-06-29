@@ -50,7 +50,7 @@ class SaasTenantRepairCommand extends Command
      * - 마이페이지 설정
      * - SNS 연결 설정
      * - 크레딧 설정
-     * - AI 생성 앱 관리
+     * - 마이앱 관리
      * - 마스크피팅 관리
      *
      * @var list<string>

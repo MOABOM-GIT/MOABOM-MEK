@@ -86,6 +86,58 @@ class Module extends AbstractModule
                         ],
                     ],
                 ],
+                [
+                    'identifier' => 'balances',
+                    'name' => [
+                        'ko' => '유저 크레딧',
+                        'en' => 'User Credits',
+                    ],
+                    'description' => [
+                        'ko' => '유저 크레딧 조회·조정 권한',
+                        'en' => 'User credit list and adjustment permissions',
+                    ],
+                    'permissions' => [
+                        [
+                            'action' => 'read',
+                            'name' => [
+                                'ko' => '유저 크레딧 조회',
+                                'en' => 'Read User Credits',
+                            ],
+                            'description' => [
+                                'ko' => '유저 크레딧 잔액 목록 조회',
+                                'en' => 'Read user credit balance list',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                        [
+                            'action' => 'adjust',
+                            'name' => [
+                                'ko' => '유저 크레딧 조정',
+                                'en' => 'Adjust User Credits',
+                            ],
+                            'description' => [
+                                'ko' => '유저 크레딧 수동 증감',
+                                'en' => 'Manually increase or decrease user credits',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                        [
+                            'action' => 'delete',
+                            'name' => [
+                                'ko' => '유저 크레딧 삭제',
+                                'en' => 'Delete User Credits',
+                            ],
+                            'description' => [
+                                'ko' => '유저 크레딧 잔액·원장·출석 기록 완전 삭제',
+                                'en' => 'Permanently delete user credit balances, ledger, and attendance records',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin'],
+                        ],
+                    ],
+                ],
             ],
         ];
     }
@@ -98,8 +150,8 @@ class Module extends AbstractModule
         return [
             [
                 'name' => [
-                    'ko' => '크레딧 설정',
-                    'en' => 'Credit Settings',
+                    'ko' => '크레딧 관리',
+                    'en' => 'Credit Management',
                 ],
                 'slug' => 'moabom-credit-settings',
                 'parent_slug' => 'platform-settings',

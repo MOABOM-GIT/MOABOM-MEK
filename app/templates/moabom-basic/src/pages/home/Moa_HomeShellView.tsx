@@ -151,6 +151,7 @@ interface ShellWindowFrameProps {
   win: WindowState;
   title: string;
   isFavorite: boolean;
+  isForeground: boolean;
   compactWindow: boolean;
   renderWindowContent: RenderWindowContent;
   onCloseWindow: (win: WindowState) => void;
@@ -164,6 +165,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
   win,
   title,
   isFavorite,
+  isForeground,
   compactWindow,
   renderWindowContent,
   onCloseWindow,
@@ -217,6 +219,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
       onMinimize={handleMinimize}
       onMaximize={handleMaximize}
       onFocus={handleFocus}
+      isForeground={isForeground}
       titleBarVariant={isCreateAppShellWin ? 'create-app' : 'default'}
       titleBarExtraStyle={titleBarExtraStyle}
       onToggleFavorite={canToggleFavorite ? handleToggleFavorite : undefined}
@@ -283,6 +286,7 @@ function areShellWindowFramePropsEqual(
   return prev.win === next.win
     && prev.title === next.title
     && prev.isFavorite === next.isFavorite
+    && prev.isForeground === next.isForeground
     && prev.compactWindow === next.compactWindow
     && prev.renderWindowContent === next.renderWindowContent
     && prev.onCloseWindow === next.onCloseWindow
@@ -386,6 +390,14 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     }),
     [systemState, systemDefaults, setSystemState, setSystemDefaults],
   );
+
+  const foregroundWindowId = useMemo(() => {
+    const visible = windows.filter(item => !item.isMinimized);
+    if (visible.length === 0) {
+      return null;
+    }
+    return [...visible].sort((a, b) => b.zIndex - a.zIndex)[0]?.id ?? null;
+  }, [windows]);
 
   const renderWindowContent = useCallback((win: WindowState) => (
     <Moa_ShellWindowRenderer
@@ -607,6 +619,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
             win={win}
             title={resolveWinTitle(win)}
             isFavorite={favoriteIdsRef.current.includes(win.appId)}
+            isForeground={foregroundWindowId == null || win.id === foregroundWindowId}
             compactWindow={compactWindow}
             renderWindowContent={renderWindowContent}
             onCloseWindow={closeWindow}

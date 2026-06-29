@@ -1166,7 +1166,7 @@
           "apps": {
             "type": "array",
             "required": false,
-            "description": "제작앱·자주 쓰는 앱 API data 배열"
+            "description": "마이앱·최근 실행 앱 API data 배열"
           },
           "className": {
             "type": "string",
@@ -1176,7 +1176,7 @@
           "maxItems": {
             "type": "number",
             "required": false,
-            "description": "표시 상한 (자주 쓰는 앱 등)"
+            "description": "표시 상한 (최근 실행 앱 등)"
           }
         }
       },

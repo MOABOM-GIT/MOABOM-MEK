@@ -13,7 +13,7 @@ use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\PublicUserFrequentShellAppsService;
 
 /**
- * 공개 프로필 — 사용자별 등록·공개 생성 앱 목록.
+ * 공개 프로필 — 사용자별 등록·공개 마이앱 목록.
  */
 final class PublicUserGeneratedAppController extends PublicBaseController
 {
@@ -41,7 +41,7 @@ final class PublicUserGeneratedAppController extends PublicBaseController
 
     public function frequent(Request $request, User $user, PublicUserFrequentShellAppsService $frequentApps): JsonResponse
     {
-        $limit = max(1, min(5, (int) $request->query('limit', 5)));
+        $limit = max(1, min(10, (int) $request->query('limit', 10)));
         $viewerUserId = $this->getCurrentUser()?->id;
 
         return ResponseHelper::moduleSuccess(

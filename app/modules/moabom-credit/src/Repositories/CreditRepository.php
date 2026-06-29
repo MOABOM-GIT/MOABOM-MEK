@@ -3,8 +3,11 @@
 namespace Modules\Moabom\Credit\Repositories;
 
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Modules\Moabom\Credit\Contracts\CreditRepositoryInterface;
+use Modules\Moabom\Credit\Models\CreditAttendance;
 use Modules\Moabom\Credit\Models\CreditBalance;
 use Modules\Moabom\Credit\Models\CreditTransaction;
 
@@ -107,5 +110,71 @@ class CreditRepository implements CreditRepositoryInterface
             'total_earned' => $earned,
             'total_used' => $used,
         ];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function paginateUserBalances(
+        ?string $search,
+        int $page,
+        int $perPage,
+        string $sortBy,
+        string $sortDirection
+    ): LengthAwarePaginator {
+        $direction = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        $safePerPage = max(1, min(100, $perPage));
+        $safePage = max(1, $page);
+        $keyword = trim((string) $search);
+        $balancesTable = DB::getTablePrefix().'moabom_credit_balances';
+
+        $query = User::query()
+            ->select([
+                'users.id',
+                'users.uuid',
+                'users.name',
+                'users.email',
+                'users.nickname',
+                DB::raw("COALESCE({$balancesTable}.balance, 0) as balance"),
+                DB::raw("COALESCE({$balancesTable}.ranking_points, 0) as ranking_points"),
+                'moabom_credit_balances.updated_at as balance_updated_at',
+            ])
+            ->leftJoin('moabom_credit_balances', 'users.id', '=', 'moabom_credit_balances.user_id');
+
+        if ($keyword !== '') {
+            $like = '%'.addcslashes($keyword, '%_\\').'%';
+            $query->where(function ($builder) use ($like): void {
+                $builder->where('users.name', 'like', $like)
+                    ->orWhere('users.email', 'like', $like)
+                    ->orWhere('users.nickname', 'like', $like);
+            });
+        }
+
+        $sortColumn = match ($sortBy) {
+            'email' => 'users.email',
+            'balance' => 'balance',
+            'ranking_points' => 'ranking_points',
+            default => 'users.name',
+        };
+
+        return $query
+            ->orderBy($sortColumn, $direction)
+            ->paginate($safePerPage, ['*'], 'page', $safePage);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function deleteAllDataForUser(User $user): array
+    {
+        return DB::transaction(function () use ($user): array {
+            $userId = $user->id;
+
+            return [
+                'transactions' => CreditTransaction::query()->where('user_id', $userId)->delete(),
+                'attendances' => CreditAttendance::query()->where('user_id', $userId)->delete(),
+                'balances' => CreditBalance::query()->where('user_id', $userId)->delete(),
+            ];
+        });
     }
 }

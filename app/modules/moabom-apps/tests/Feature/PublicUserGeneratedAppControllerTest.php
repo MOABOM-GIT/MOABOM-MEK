@@ -64,7 +64,7 @@ class PublicUserGeneratedAppControllerTest extends ModuleTestCase
             ->assertJsonPath('data.data.0.shell_id', 'generated-app-'.$published->id);
     }
 
-    public function test_guest_can_list_frequent_shell_apps_for_user(): void
+    public function test_guest_can_list_recent_shell_apps_for_user(): void
     {
         $this->ensureUserSettingsTable();
         $user = User::factory()->create();
@@ -74,18 +74,28 @@ class PublicUserGeneratedAppControllerTest extends ModuleTestCase
             'settings' => [
                 'shell' => [
                     'home' => [
-                        'mainAppOrder' => ['hospital-info', 'cpap-mask', 'mypage'],
+                        'recentAppIds' => ['cpap-mask', 'hospital-info', 'mypage'],
                     ],
                 ],
             ],
         ]);
 
-        $this->getJson("/api/modules/moabom-apps/users/{$user->uuid}/frequent-apps?limit=5")
+        $this->getJson("/api/modules/moabom-apps/users/{$user->uuid}/frequent-apps?limit=10")
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(3, 'data.data')
-            ->assertJsonPath('data.data.0.id', 'hospital-info')
-            ->assertJsonPath('data.data.1.id', 'cpap-mask');
+            ->assertJsonCount(2, 'data.data')
+            ->assertJsonPath('data.data.0.id', 'cpap-mask')
+            ->assertJsonPath('data.data.1.id', 'hospital-info');
+    }
+
+    public function test_recent_apps_empty_for_user_without_settings(): void
+    {
+        $user = User::factory()->create();
+
+        $this->getJson("/api/modules/moabom-apps/users/{$user->uuid}/frequent-apps?limit=10")
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(0, 'data.data');
     }
 
     private function ensureUserSettingsTable(): void

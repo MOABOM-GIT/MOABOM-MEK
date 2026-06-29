@@ -18,7 +18,9 @@ import { Textarea } from '../basic/Textarea';
 import AppLoadingSpinner from './AppLoadingSpinner';
 import { formatChatListTimestamp } from '../../utils/formatChatTimestamp';
 import {
+  Moa_ChatConversationContextMenu,
   Moa_ChatMessageContextMenu,
+  useChatConversationContextMenu,
   useChatMessageContextMenu,
 } from './Moa_ChatMessageContextMenu';
 import { getShellAuthUserUuid } from '../../utils/presenceSettingsSync';
@@ -161,13 +163,17 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
   }, [chat.removeOwnMessage]);
 
   const messageMenu = useChatMessageContextMenu(handleDeleteOwnMessage);
+  const conversationMenu = useChatConversationContextMenu(handleRemoveConversation);
 
   const selectConversation = useCallback((conversation: ChatConversation) => {
+    if (conversationMenu.shouldSuppressFollowUpClick()) {
+      return;
+    }
     void chat.selectConversation(conversation);
     if (isNarrow) {
       setMobileListOpen(false);
     }
-  }, [chat.selectConversation, isNarrow]);
+  }, [chat.selectConversation, conversationMenu, isNarrow]);
 
   useEffect(() => {
     if (!isNarrow) {
@@ -206,11 +212,6 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
       .filter(shouldShowChatMemberRealName)
       .map(member => chatMemberRealName(member))
   ), [activePeerMembers]);
-
-  const headerTimestamp = useMemo(
-    () => formatChatListTimestamp(chat.activeConversation?.latest_message?.created_at, t),
-    [chat.activeConversation?.latest_message?.created_at, t],
-  );
 
   const panelClassName = [
     'moa-chat-panel',
@@ -357,6 +358,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                     selectConversation(conversation);
                   }
                 }}
+                {...conversationMenu.bindConversationInteractions(conversation.uuid)}
               >
                 <Span className="moa-chat-conversation-item__title-row">
                   <Span className="moa-chat-conversation-item__title">
@@ -368,34 +370,14 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                       />
                     ) : conversation.display_title}
                   </Span>
-                  <Span className="moa-chat-conversation-item__meta">
-                    {conversation.unread_count > 0 ? (
+                  {conversation.unread_count > 0 ? (
+                    <Span className="moa-chat-conversation-item__meta">
                       <Span className="moa-chat-unread-badge">{conversation.unread_count}</Span>
-                    ) : null}
-                    <Button
-                      type="button"
-                      className="moa-btn-xxs moa-chat-conversation-item__delete"
-                      aria-label={t('moa_chat.delete_conversation')}
-                      disabled={deletingConversationUuid === conversation.uuid}
-                      onClick={event => {
-                        event.stopPropagation();
-                        void handleRemoveConversation(conversation.uuid);
-                      }}
-                    >
-                      <Icon name="trash" className="text-xs" aria-hidden />
-                    </Button>
-                  </Span>
+                    </Span>
+                  ) : null}
                 </Span>
                 <Span className="moa-chat-conversation-item__preview">
                   {conversation.latest_message?.body ?? t('moa_chat.no_messages')}
-                </Span>
-                <Span className="moa-chat-conversation-item__time-row">
-                  <Span className="moa-chat-conversation-item__time">
-                    {formatChatListTimestamp(conversation.latest_message?.created_at, t)}
-                  </Span>
-                  {conversation.unread_count > 0 ? (
-                    <Span className="moa-chat-unread-label">{t('moa_chat.unread_label')}</Span>
-                  ) : null}
                 </Span>
               </Div>
             );
@@ -432,9 +414,6 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                     </Span>
                   ))}
               </Div>
-            ) : null}
-            {headerTimestamp ? (
-              <Div className="moa-chat-header__time">{headerTimestamp}</Div>
             ) : null}
           </Div>
           <Div className="moa-chat-header__actions flex items-center gap-2">
@@ -483,26 +462,56 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
               {chat.isPeerTyping ? (
                 <Div className="moa-chat-typing-hint text-xs text-muted px-2 py-1">{t('moa_chat.typing')}</Div>
               ) : null}
-              {chat.messages.map((item) => {
+              {chat.messages.map((item, messageIndex) => {
                 const isOwn = item.sender?.user_uuid && item.sender.user_uuid === currentUserUuid;
                 const menuOpen = messageMenu.menu?.messageUuid === item.uuid;
+                const messageTime = formatChatListTimestamp(item.created_at, t);
+                const isUnreadByPeer = Boolean(
+                  isOwn && !item.pending && !chat.isMessageReadByPeer(item),
+                );
+                const showUnreadLabel = isUnreadByPeer && !chat.messages.slice(messageIndex + 1).some(later => (
+                  later.sender?.user_uuid === currentUserUuid
+                  && !later.pending
+                  && !chat.isMessageReadByPeer(later)
+                ));
                 const interactions = !item.pending && item.uuid && !item.uuid.startsWith('pending-')
                   ? messageMenu.bindMessageInteractions(item.uuid, item.body, Boolean(isOwn))
                   : {};
                 return (
                   <Div
                     key={item.uuid}
-                    className={`moa-chat-bubble glass-panel ${isOwn ? 'moa-chat-bubble--own' : 'moa-chat-bubble--other'}${item.pending ? ' moa-chat-bubble--pending' : ''}${menuOpen ? ' moa-chat-bubble--menu-open' : ''}`}
-                    {...interactions}
+                    className={`moa-chat-message-row ${isOwn ? 'moa-chat-message-row--own' : 'moa-chat-message-row--other'}`}
                   >
-                    <Div className="moa-chat-bubble__sender">
-                      <ChatProfileNicknameButton
-                        userUuid={item.sender?.user_uuid}
-                        displayName={item.sender?.display_name ?? t('moa_chat.unknown_sender')}
-                        className="text-xs font-medium text-muted"
-                      />
+                    {isOwn ? (
+                      <Span className="moa-chat-message-row__meta">
+                        {showUnreadLabel ? (
+                          <Span className="moa-chat-message-row__unread">{t('moa_chat.unread_label')}</Span>
+                        ) : null}
+                        {messageTime ? (
+                          <Span className="moa-chat-message-row__time">{messageTime}</Span>
+                        ) : null}
+                      </Span>
+                    ) : null}
+                    <Div
+                      className={`moa-chat-bubble glass-panel ${isOwn ? 'moa-chat-bubble--own' : 'moa-chat-bubble--other'}${item.pending ? ' moa-chat-bubble--pending' : ''}${menuOpen ? ' moa-chat-bubble--menu-open' : ''}`}
+                      {...interactions}
+                    >
+                      <Div className="moa-chat-bubble__sender">
+                        <ChatProfileNicknameButton
+                          userUuid={item.sender?.user_uuid}
+                          displayName={item.sender?.display_name ?? t('moa_chat.unknown_sender')}
+                          className="text-xs font-medium text-muted"
+                        />
+                      </Div>
+                      <Div className="moa-chat-bubble__body">{item.body}</Div>
                     </Div>
-                    <Div className="moa-chat-bubble__body">{item.body}</Div>
+                    {!isOwn ? (
+                      <Span className="moa-chat-message-row__meta">
+                        {messageTime ? (
+                          <Span className="moa-chat-message-row__time">{messageTime}</Span>
+                        ) : null}
+                      </Span>
+                    ) : null}
                   </Div>
                 );
               })}
@@ -547,7 +556,14 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
         copyLabel={t('moa_chat.menu_copy')}
         deleteLabel={t('moa_chat.delete_message')}
         onClose={messageMenu.closeMenu}
-        onDelete={handleDeleteOwnMessage}
+        onDelete={messageMenu.handleDelete}
+      />
+      <Moa_ChatConversationContextMenu
+        menu={conversationMenu.menu}
+        deleteLabel={t('moa_chat.delete_conversation')}
+        deleting={deletingConversationUuid != null}
+        onClose={conversationMenu.closeMenu}
+        onDelete={conversationMenu.handleDelete}
       />
     </Div>
   );

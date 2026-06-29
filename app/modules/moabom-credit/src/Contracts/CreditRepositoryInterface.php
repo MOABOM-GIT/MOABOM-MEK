@@ -3,6 +3,7 @@
 namespace Modules\Moabom\Credit\Contracts;
 
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Moabom\Credit\Models\CreditBalance;
 use Modules\Moabom\Credit\Models\CreditTransaction;
@@ -54,4 +55,22 @@ interface CreditRepositoryInterface
      * @return array<string, int>
      */
     public function getSummary(User $user): array;
+
+    /**
+     * 관리자용 — 사용자별 크레딧 잔액 목록을 페이지네이션합니다.
+     */
+    public function paginateUserBalances(
+        ?string $search,
+        int $page,
+        int $perPage,
+        string $sortBy,
+        string $sortDirection
+    ): LengthAwarePaginator;
+
+    /**
+     * 사용자의 크레딧 잔액·거래 원장·출석 기록을 모두 삭제합니다.
+     *
+     * @return array{transactions: int, attendances: int, balances: int}
+     */
+    public function deleteAllDataForUser(User $user): array;
 }

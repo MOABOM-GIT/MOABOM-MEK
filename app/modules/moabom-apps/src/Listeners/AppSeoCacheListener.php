@@ -10,7 +10,7 @@ use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 
 /**
- * 전역 공개 제작앱 변경 시 /app/generated-app-{id} SEO 캐시를 무효화한다.
+ * 전역 공개 마이앱 변경 시 /app/generated-app-{id} SEO 캐시를 무효화한다.
  *
  * 코어에 별도 publish/update 훅이 없으므로 GeneratedApp 모델 이벤트(saved/deleted)에
  * 직접 연결한다(우리 모듈 소유 모델). 무거운 동기 재렌더 대신 캐시 무효화만 수행하여

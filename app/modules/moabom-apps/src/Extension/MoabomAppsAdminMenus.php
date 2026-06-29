@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\Apps\Extension;
 
 /**
- * AI 생성앱 admin 메뉴 — Host 무관 동일 url·slug.
+ * 마이앱 admin 메뉴 — Host 무관 동일 url·slug.
  */
 final class MoabomAppsAdminMenus
 {
@@ -16,7 +16,7 @@ final class MoabomAppsAdminMenus
     {
         return [
             [
-                'name' => ['ko' => 'AI 생성 앱 관리', 'en' => 'AI Generated Apps'],
+                'name' => ['ko' => '마이앱 관리', 'en' => 'My app management'],
                 'slug' => 'moabom-apps-generated',
                 'parent_slug' => 'platform-settings',
                 'url' => '/admin/apps/generated',

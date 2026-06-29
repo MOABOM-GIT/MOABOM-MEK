@@ -33,4 +33,14 @@ return [
         'app_review_write_description' => 'App review write reward',
         'like_received_description' => 'Received like reward',
     ],
+    'admin' => [
+        'user_credits_list_success' => 'User credit list loaded.',
+        'adjust_success' => 'User credits adjusted.',
+        'adjust_failed' => 'Failed to adjust user credits.',
+        'invalid_direction' => 'Invalid adjustment direction.',
+        'increase_default_description' => 'Manual increase by admin',
+        'decrease_default_description' => 'Manual decrease by admin',
+        'delete_success' => 'User credit data deleted.',
+        'delete_failed' => 'Failed to delete user credit data.',
+    ],
 ];

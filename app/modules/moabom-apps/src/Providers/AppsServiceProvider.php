@@ -35,7 +35,6 @@ use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
 use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
 use Modules\Moabom\Apps\Support\ShellRankingGeneratedAppScope;
-use Modules\Moabom\Apps\Support\ShellRankingReviewBoost;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
 {
@@ -133,7 +132,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
     }
 
     /**
-     * 앱 SEO/AI 노출 — core.seo.* 훅, sitemap 기여자, 제작앱 캐시 무효화 리스너.
+     * 앱 SEO/AI 노출 — core.seo.* 훅, sitemap 기여자, 공개 마이앱 캐시 무효화 리스너.
      */
     private function registerAppSeo(): void
     {
@@ -155,9 +154,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
     private function registerShellRankingScopeHooks(): void
     {
         $filterScores = function (array $scores): array {
-            $scoped = app(ShellRankingGeneratedAppScope::class)->filterAppScoreRows($scores);
-
-            return app(ShellRankingReviewBoost::class)->apply($scoped);
+            return app(ShellRankingGeneratedAppScope::class)->filterAppScoreRows($scores);
         };
 
         $allowIngest = function (bool $allowed, string $appId): bool {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { resolveMoabomExtensionCacheVersion } from '../i18n/moabomTemplateLangJsonFetch';
 import { getMoabomShellBootData } from '../runtime/moabomShellBoot';
 import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../i18n/moabomShellEvents';
 
@@ -22,8 +23,56 @@ export function isMoabomCustomAttachmentLogoUrl(url: string): boolean {
   return url.startsWith(ATTACHMENT_LOGO_PREFIX);
 }
 
+export function isMoabomBundledSiteLogoUrl(url: string): boolean {
+  const path = url.split('?')[0] ?? url;
+
+  return /^\/api\/templates\/assets\/moabom-basic\/img\/logo_smartcare(?:_w)?\.svg$/.test(path);
+}
+
+/** 템플릿 번들 SVG — extension cache version 쿼리로 SW·브라우저 캐시 무효화. */
+export function withMoabomBundledLogoCacheVersion(url: string): string {
+  if (!isMoabomBundledSiteLogoUrl(url)) {
+    return url;
+  }
+
+  const cv = resolveMoabomExtensionCacheVersion();
+  if (cv <= 0) {
+    return url.split('?')[0] ?? url;
+  }
+
+  const base = url.split('?')[0] ?? url;
+
+  return `${base}?v=${cv}`;
+}
+
+export function normalizeMoabomSiteLogoUrl(url: string): string {
+  if (isMoabomCustomAttachmentLogoUrl(url)) {
+    return url;
+  }
+
+  return withMoabomBundledLogoCacheVersion(url);
+}
+
 export function resolveMoabomSiteLogoFallbackUrl(mode: 'light' | 'dark'): string {
-  return mode === 'dark' ? MOABOM_DEFAULT_LOGO_DARK : MOABOM_DEFAULT_LOGO_LIGHT;
+  const base = mode === 'dark' ? MOABOM_DEFAULT_LOGO_DARK : MOABOM_DEFAULT_LOGO_LIGHT;
+
+  return withMoabomBundledLogoCacheVersion(base);
+}
+
+/** `<img onError>` — 동일 src 재설정만으로는 재시도가 안 되므로 retry 쿼리 또는 버전 URL로 복구. */
+export function resolveMoabomSiteLogoImgRecoveryUrl(
+  currentSrc: string,
+  mode: 'light' | 'dark',
+): string {
+  const fallback = resolveMoabomSiteLogoFallbackUrl(mode);
+  const fallbackBase = fallback.split('?')[0] ?? fallback;
+  const currentBase = currentSrc.split('?')[0] ?? currentSrc;
+
+  if (currentBase === fallbackBase) {
+    return appendLogoRetryQuery(fallback);
+  }
+
+  return fallback;
 }
 
 /** attachment URL은 preload 전까지 번들 SVG를 노출해 엑박을 막는다. */
@@ -32,11 +81,11 @@ export function resolveMoabomSiteLogoDisplayUrls(): MoabomSiteBrandingUrls {
 
   return {
     lightUrl: isMoabomCustomAttachmentLogoUrl(raw.lightUrl)
-      ? MOABOM_DEFAULT_LOGO_LIGHT
-      : raw.lightUrl,
+      ? resolveMoabomSiteLogoFallbackUrl('light')
+      : normalizeMoabomSiteLogoUrl(raw.lightUrl),
     darkUrl: isMoabomCustomAttachmentLogoUrl(raw.darkUrl)
-      ? MOABOM_DEFAULT_LOGO_DARK
-      : raw.darkUrl,
+      ? resolveMoabomSiteLogoFallbackUrl('dark')
+      : normalizeMoabomSiteLogoUrl(raw.darkUrl),
   };
 }
 
@@ -54,26 +103,38 @@ function preloadImageUrl(url: string): Promise<boolean> {
 }
 
 /**
- * 커스텀 site_logo attachment 는 cold start 등으로 간헐 실패할 수 있어
- * 1회 재시도 후 번들 SVG로 폴백한다. 번들 asset URL은 그대로 반환한다.
+ * site_logo attachment·번들 SVG 모두 cold start·SW 캐시 비운 직후 간헐 실패할 수 있어
+ * preload·1회 재시도 후 폴백(attachment) 또는 버전 URL(번들)을 반환한다.
  */
 export async function preloadMoabomSiteLogoUrl(
   url: string,
   fallbackUrl: string,
 ): Promise<string> {
-  if (!isMoabomCustomAttachmentLogoUrl(url)) {
-    return url;
+  const versionedFallback = normalizeMoabomSiteLogoUrl(fallbackUrl);
+
+  if (isMoabomCustomAttachmentLogoUrl(url)) {
+    if (await preloadImageUrl(url)) {
+      return url;
+    }
+
+    if (await preloadImageUrl(appendLogoRetryQuery(url))) {
+      return url;
+    }
+
+    return versionedFallback;
   }
 
-  if (await preloadImageUrl(url)) {
-    return url;
+  const versioned = normalizeMoabomSiteLogoUrl(url);
+
+  if (await preloadImageUrl(versioned)) {
+    return versioned;
   }
 
-  if (await preloadImageUrl(appendLogoRetryQuery(url))) {
-    return url;
+  if (await preloadImageUrl(appendLogoRetryQuery(versioned))) {
+    return appendLogoRetryQuery(versioned);
   }
 
-  return fallbackUrl;
+  return versionedFallback;
 }
 
 export async function resolveMoabomSiteLogoUrlsWithPreload(): Promise<MoabomSiteBrandingUrls> {
@@ -124,8 +185,8 @@ export function resolveMoabomSiteLogoUrls(): MoabomSiteBrandingUrls {
   const dark = typeof site?.logo_dark_url === 'string' ? site.logo_dark_url.trim() : '';
 
   return {
-    lightUrl: light !== '' ? light : MOABOM_DEFAULT_LOGO_LIGHT,
-    darkUrl: dark !== '' ? dark : MOABOM_DEFAULT_LOGO_DARK,
+    lightUrl: normalizeMoabomSiteLogoUrl(light !== '' ? light : MOABOM_DEFAULT_LOGO_LIGHT),
+    darkUrl: normalizeMoabomSiteLogoUrl(dark !== '' ? dark : MOABOM_DEFAULT_LOGO_DARK),
   };
 }
 

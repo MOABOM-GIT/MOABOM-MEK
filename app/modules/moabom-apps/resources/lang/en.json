@@ -1,14 +1,14 @@
 {
   "admin": {
     "generated": {
-      "title": "AI Generated App Management",
+      "title": "My app management",
       "description": "Manage registration, visibility, and apps owned by withdrawn members.",
-      "list_description": "Same screen on master and company hosts to list and manage AI generated apps.",
+      "list_description": "Same screen on master and company hosts to list and manage my apps.",
       "loading": "Loading list...",
       "load_error": "Failed to load the list.",
       "auth_required": "Sign in required.",
-      "permission_denied": "You do not have permission to manage AI generated apps.",
-      "empty_title": "No generated apps to show.",
+      "permission_denied": "You do not have permission to manage my apps.",
+      "empty_title": "No my apps to show.",
       "empty_description": "Try changing filters or refreshing.",
       "filter_search": "Search title",
       "filter_search_placeholder": "App title",

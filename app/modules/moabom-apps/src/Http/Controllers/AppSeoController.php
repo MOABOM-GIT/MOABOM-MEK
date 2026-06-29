@@ -13,7 +13,7 @@ use Modules\Moabom\Apps\Seo\AppSeoDataService;
 /**
  * 공개 앱 SEO 데이터 API (인증 불필요).
  *
- * 기본 제공 앱 + 전역 공개 제작앱만 노출한다. 외부 검색·AI 소비자 및
+ * 기본 제공 앱 + 전역 공개 마이앱만 노출한다. 외부 검색·AI 소비자 및
  * (선택적) 레이아웃 meta.seo.data_sources 가 사용한다.
  */
 class AppSeoController extends PublicBaseController

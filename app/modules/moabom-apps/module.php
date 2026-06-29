@@ -22,30 +22,30 @@ class Module extends AbstractModule
                 'en' => 'Moabom Apps',
             ],
             'description' => [
-                'ko' => 'AI 생성앱 및 앱 모듈 권한',
-                'en' => 'AI generated apps and apps module permissions',
+                'ko' => '마이앱 및 앱 모듈 권한',
+                'en' => 'My apps and apps module permissions',
             ],
             'categories' => [
                 [
                     'identifier' => 'generated',
                     'name' => [
-                        'ko' => 'AI 생성앱',
-                        'en' => 'AI Generated Apps',
+                        'ko' => '마이앱',
+                        'en' => 'My apps',
                     ],
                     'description' => [
-                        'ko' => '관리자용 AI 생성앱 관리 권한',
-                        'en' => 'Admin permissions for AI generated apps',
+                        'ko' => '관리자용 마이앱 관리 권한',
+                        'en' => 'Admin permissions for my app management',
                     ],
                     'permissions' => [
                         [
                             'action' => 'read',
                             'name' => [
-                                'ko' => '생성앱 조회',
-                                'en' => 'Read Generated Apps',
+                                'ko' => '마이앱 조회',
+                                'en' => 'Read my apps',
                             ],
                             'description' => [
-                                'ko' => 'AI 생성앱 목록·상세 조회',
-                                'en' => 'List and view AI generated apps',
+                                'ko' => '마이앱 목록·상세 조회',
+                                'en' => 'List and view my apps',
                             ],
                             'type' => 'admin',
                             'roles' => ['admin'],
@@ -53,8 +53,8 @@ class Module extends AbstractModule
                         [
                             'action' => 'manage',
                             'name' => [
-                                'ko' => '생성앱 관리',
-                                'en' => 'Manage Generated Apps',
+                                'ko' => '마이앱 관리',
+                                'en' => 'Manage my apps',
                             ],
                             'description' => [
                                 'ko' => '공개 범위 변경·완전 삭제',
@@ -126,7 +126,7 @@ class Module extends AbstractModule
                 'hook_prefix' => 'moabom-apps',
                 'name' => ['ko' => '앱 리뷰 등록 알림', 'en' => 'App Review Notification'],
                 'description' => [
-                    'ko' => '내가 만든 앱에 새 리뷰가 등록되면 앱 제작자에게 발송합니다.',
+                    'ko' => '마이앱에 새 리뷰가 등록되면 앱 제작자에게 발송합니다.',
                     'en' => 'Sent to the app creator when a new review is posted on their app.',
                 ],
                 'channels' => ['database'],

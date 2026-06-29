@@ -129,6 +129,9 @@ Route::prefix('platform/realtime-vm')
         Route::get('/', [RealtimeVmController::class, 'show'])
             ->middleware('permission:admin,moabom-system.realtime.read')
             ->name('platform.realtime-vm.show');
+        Route::get('metrics', [RealtimeVmController::class, 'metrics'])
+            ->middleware('permission:admin,moabom-system.realtime.read')
+            ->name('platform.realtime-vm.metrics');
         Route::post('refresh', [RealtimeVmController::class, 'refresh'])
             ->middleware('permission:admin,moabom-system.realtime.read')
             ->name('platform.realtime-vm.refresh');

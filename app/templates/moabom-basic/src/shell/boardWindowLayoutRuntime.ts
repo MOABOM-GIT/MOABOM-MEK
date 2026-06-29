@@ -92,6 +92,11 @@ type G7CoreLike = {
 
 const TEMPLATE_ID = 'moabom-basic';
 
+/** 셸 게시판 윈도우 refetchDataSource 라우팅용 세션 키 */
+export function buildBoardSessionKey(route: Record<string, string>): string {
+  return `${route.slug ?? ''}:${route.id ?? ''}`;
+}
+
 function getG7Core(): G7CoreLike | undefined {
   return (window as { G7Core?: G7CoreLike }).G7Core;
 }
@@ -374,12 +379,18 @@ async function runBoardSourceErrorHandling(
   return 'handled';
 }
 
-async function fetchBoardDataSources(
-  sources: BoardDataSource[],
-  route: Record<string, string>,
-  query: Record<string, string | string[]>,
-  globalState: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+type BoardFetchContext = {
+  route: Record<string, string>;
+  query: Record<string, string | string[]>;
+  globalState: Record<string, unknown>;
+  localState?: Record<string, unknown>;
+  priorFetched?: Record<string, unknown>;
+};
+
+async function fetchSingleBoardDataSource(
+  source: BoardDataSource,
+  ctx: BoardFetchContext,
+): Promise<unknown> {
   const G7Core = getG7Core();
   const engine = G7Core?.getDataBindingEngine?.();
   const api = G7Core?.api;
@@ -387,75 +398,206 @@ async function fetchBoardDataSources(
     throw new Error('G7Core engine unavailable');
   }
 
+  if (source.type === 'websocket' || source.auto_fetch === false) {
+    return undefined;
+  }
+
   const baseCtx: Record<string, unknown> = {
-    route,
-    query,
-    _global: globalState,
-    _local: {},
+    route: ctx.route,
+    query: ctx.query,
+    _global: ctx.globalState,
+    _local: ctx.localState ?? {},
+    ...(ctx.priorFetched ?? {}),
   };
 
-  const result: Record<string, unknown> = {};
+  if (source.if) {
+    const ok = evalBindingValue(`{{${source.if.replace(/^\{\{|\}\}$/g, '')}}}`, baseCtx, engine);
+    if (!ok) {
+      return undefined;
+    }
+  }
+  if (!source.endpoint) {
+    return undefined;
+  }
 
+  const endpoint = resolveEndpoint(source.endpoint, baseCtx, engine);
+  const method = (source.method ?? 'GET').toUpperCase();
+  const params: Record<string, unknown> = {};
+  if (source.params) {
+    for (const [key, val] of Object.entries(source.params)) {
+      const resolved = evalBindingValue(val, baseCtx, engine);
+      if (resolved !== '' && resolved != null) {
+        params[key] = resolved;
+      }
+    }
+  }
+
+  const normalized = endpoint.startsWith('/api/')
+    ? endpoint.substring(4)
+    : endpoint.startsWith('/api')
+      ? endpoint.substring(4) || '/'
+      : endpoint;
+
+  try {
+    const data = method === 'GET'
+      ? await boardApiGet(api, normalized, params)
+      : await boardApiGet(api, normalized, params);
+    return normalizeBoardApiResponse(data);
+  } catch (error) {
+    await runBoardSourceOnError(source);
+    const status = extractHttpStatus(error);
+    if (status != null) {
+      const handled = await runBoardSourceErrorHandling(source, status);
+      if (handled === 'handled' && source.fallback !== undefined) {
+        return source.fallback;
+      }
+      if (handled === 'handled') {
+        return null;
+      }
+    }
+    if (source.fallback !== undefined) {
+      return source.fallback;
+    }
+    throw error;
+  }
+}
+
+async function fetchBoardDataSources(
+  sources: BoardDataSource[],
+  route: Record<string, string>,
+  query: Record<string, string | string[]>,
+  globalState: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
   setGlobalShellFlag({ hasError: false });
 
-  const fetchOneSource = async (source: BoardDataSource): Promise<void> => {
-    if (source.type === 'websocket' || source.auto_fetch === false) {
-      return;
+  await Promise.all(sources.map(async source => {
+    const data = await fetchSingleBoardDataSource(source, {
+      route,
+      query,
+      globalState,
+      priorFetched: result,
+    });
+    if (data !== undefined) {
+      result[source.id] = data;
     }
-    if (source.if) {
-      const ok = evalBindingValue(`{{${source.if.replace(/^\{\{|\}\}$/g, '')}}}`, baseCtx, engine);
-      if (!ok) return;
-    }
-    if (!source.endpoint) return;
-
-    const endpoint = resolveEndpoint(source.endpoint, { ...baseCtx, ...result }, engine);
-    const method = (source.method ?? 'GET').toUpperCase();
-    const params: Record<string, unknown> = {};
-    if (source.params) {
-      for (const [key, val] of Object.entries(source.params)) {
-        const resolved = evalBindingValue(val, { ...baseCtx, ...result }, engine);
-        if (resolved !== '' && resolved != null) {
-          params[key] = resolved;
-        }
-      }
-    }
-
-    const normalized = endpoint.startsWith('/api/')
-      ? endpoint.substring(4)
-      : endpoint.startsWith('/api')
-        ? endpoint.substring(4) || '/'
-        : endpoint;
-
-    try {
-      const data = method === 'GET'
-        ? await boardApiGet(api, normalized, params)
-        : await boardApiGet(api, normalized, params);
-      result[source.id] = normalizeBoardApiResponse(data);
-    } catch (error) {
-      await runBoardSourceOnError(source);
-      const status = extractHttpStatus(error);
-      if (status != null) {
-        const handled = await runBoardSourceErrorHandling(source, status);
-        if (handled === 'handled' && source.fallback !== undefined) {
-          result[source.id] = source.fallback;
-          return;
-        }
-        if (handled === 'handled') {
-          result[source.id] = null;
-          return;
-        }
-      }
-      if (source.fallback !== undefined) {
-        result[source.id] = source.fallback;
-        return;
-      }
-      throw error;
-    }
-  };
-
-  await Promise.all(sources.map(source => fetchOneSource(source)));
+  }));
 
   return result;
+}
+
+/**
+ * layout JSON `computed` 블록을 평가해 _computed / $computed 에 넣을 객체를 만든다.
+ * (TemplateApp.calculateComputed 와 동일 목적 — 셸 윈도우 런타임 전용)
+ */
+export function calculateBoardLayoutComputed(
+  computedDefs: Record<string, string> | undefined,
+  dataContext: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!computedDefs || Object.keys(computedDefs).length === 0) {
+    return {};
+  }
+
+  const engine = getG7Core()?.getDataBindingEngine?.();
+  if (!engine) {
+    return {};
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, expression] of Object.entries(computedDefs)) {
+    if (typeof expression !== 'string') {
+      continue;
+    }
+    try {
+      const trimmed = expression.trim();
+      if (trimmed.startsWith('{{') && trimmed.endsWith('}}')) {
+        result[key] = engine.evaluateExpression(trimmed.slice(2, -2).trim(), dataContext);
+      }
+    } catch {
+      /* 단일 computed 실패는 전체 피드를 막지 않음 */
+    }
+  }
+  return result;
+}
+
+export function mergeBoardComputedIntoContext(
+  dataContext: Record<string, unknown>,
+  computedDefs: Record<string, string> | undefined,
+): Record<string, unknown> {
+  const computedData = calculateBoardLayoutComputed(computedDefs, dataContext);
+  if (Object.keys(computedData).length === 0) {
+    return dataContext;
+  }
+  return {
+    ...dataContext,
+    _computed: computedData,
+    $computed: computedData,
+  };
+}
+
+export type BoardWindowRefetchOptions = {
+  globalStateOverride?: Record<string, unknown>;
+  localStateOverride?: Record<string, unknown>;
+};
+
+/**
+ * 셸 게시판 윈도우 전용 data source refetch — post 등 단일 소스 갱신 후 computed 재계산.
+ */
+export async function refetchBoardWindowDataSource(
+  sources: BoardDataSource[],
+  computedDefs: Record<string, string> | undefined,
+  dataSourceId: string,
+  route: Record<string, string>,
+  query: Record<string, string | string[]>,
+  currentContext: Record<string, unknown>,
+  options?: BoardWindowRefetchOptions,
+): Promise<Record<string, unknown> | null> {
+  const source = sources.find(item => item.id === dataSourceId);
+  if (!source) {
+    return null;
+  }
+
+  const globalState = {
+    ...(typeof currentContext._global === 'object' && currentContext._global != null
+      ? currentContext._global as Record<string, unknown>
+      : {}),
+    ...(options?.globalStateOverride ?? {}),
+  };
+  const localState = {
+    ...(typeof currentContext._local === 'object' && currentContext._local != null
+      ? currentContext._local as Record<string, unknown>
+      : {}),
+    ...(options?.localStateOverride ?? {}),
+  };
+
+  const priorFetched: Record<string, unknown> = {};
+  for (const key of Object.keys(currentContext)) {
+    if (!key.startsWith('_') && key !== 'route' && key !== 'query' && key !== '$computed') {
+      priorFetched[key] = currentContext[key];
+    }
+  }
+
+  const fetched = await fetchSingleBoardDataSource(source, {
+    route,
+    query,
+    globalState,
+    localState,
+    priorFetched,
+  });
+  if (fetched === undefined) {
+    return null;
+  }
+
+  const nextContext: Record<string, unknown> = {
+    ...priorFetched,
+    [dataSourceId]: fetched,
+    _local: localState,
+    _global: globalState,
+    route,
+    query,
+  };
+
+  return mergeBoardComputedIntoContext(nextContext, computedDefs);
 }
 
 function extractDataSourcePayload(raw: unknown): unknown {
@@ -575,6 +717,12 @@ export interface BoardWindowRenderPayload {
   translationEngine: unknown;
   actionDispatcher: unknown;
   layoutName: string;
+  /** refetchDataSource 셸 라우팅·computed 재계산용 */
+  boardSessionKey: string;
+  layoutDataSources: BoardDataSource[];
+  layoutComputed?: Record<string, string>;
+  route: Record<string, string>;
+  query: Record<string, string | string[]>;
 }
 
 function resolveBoardLayoutPath(slug: string, postId?: string, mode?: BoardWindowMode): string {
@@ -678,28 +826,37 @@ export async function loadG7LayoutWindowPayload(
     baseLocal,
   );
 
-  const draftContext: Record<string, unknown> = {
-    ...fetched,
-    _local: localWithInit,
-    _global: { ...globalState, ...(layoutData.initGlobal ?? {}) },
-    route,
-    query,
-    $computed: layoutData.computed ?? {},
-  };
+  const boardSessionKey = buildBoardSessionKey(route);
+  localWithInit.__boardSessionKey = boardSessionKey;
+
+  const draftContext: Record<string, unknown> = mergeBoardComputedIntoContext(
+    {
+      ...fetched,
+      _local: localWithInit,
+      _global: { ...globalState, ...(layoutData.initGlobal ?? {}) },
+      route,
+      query,
+    },
+    layoutData.computed,
+  );
 
   const localState = await runBoardInitActions(layoutData, draftContext);
+  localState.__boardSessionKey = boardSessionKey;
 
-  const dataContext: Record<string, unknown> = {
-    ...draftContext,
-    _local: localState,
-    _localInit:
-      Object.keys(localState).length > 0
-        ? {
-            ...localState,
-            ...(forceLocalInit ? { _forceLocalInit: Date.now() } : {}),
-          }
-        : undefined,
-  };
+  const dataContext: Record<string, unknown> = mergeBoardComputedIntoContext(
+    {
+      ...draftContext,
+      _local: localState,
+      _localInit:
+        Object.keys(localState).length > 0
+          ? {
+              ...localState,
+              ...(forceLocalInit ? { _forceLocalInit: Date.now() } : {}),
+            }
+          : undefined,
+    },
+    layoutData.computed,
+  );
 
   const components = extractBoardComponents(layoutData);
 
@@ -716,6 +873,11 @@ export async function loadG7LayoutWindowPayload(
     translationEngine: G7Core?.getTranslationEngine?.(),
     actionDispatcher: templateApp?.getActionDispatcher?.() ?? G7Core?.getActionDispatcher?.(),
     layoutName: layoutData.layout_name ?? layoutPath,
+    boardSessionKey,
+    layoutDataSources: layoutData.data_sources ?? [],
+    layoutComputed: layoutData.computed,
+    route,
+    query,
   };
 }
 

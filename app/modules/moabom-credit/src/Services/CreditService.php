@@ -65,13 +65,14 @@ class CreditService
         ?string $description = null,
         ?string $sourceType = null,
         ?string $sourceId = null,
-        ?array $meta = null
+        ?array $meta = null,
+        bool $skipDailyEarnLimit = false,
     ): CreditTransaction {
         if ($amount === 0) {
             throw new InvalidArgumentException(__('moabom-credit::messages.invalid_amount'));
         }
 
-        return DB::transaction(function () use ($user, $type, $amount, $description, $sourceType, $sourceId, $meta) {
+        return DB::transaction(function () use ($user, $type, $amount, $description, $sourceType, $sourceId, $meta, $skipDailyEarnLimit) {
             $balance = $this->creditRepository->getOrCreateBalanceForUpdate($user);
             $signedAmount = $this->normalizeAmount($type, $amount);
             $nextBalance = $balance->balance + $signedAmount;
@@ -80,7 +81,7 @@ class CreditService
                 throw new InvalidArgumentException(__('moabom-credit::messages.insufficient_balance'));
             }
 
-            if ($signedAmount > 0) {
+            if ($signedAmount > 0 && ! $skipDailyEarnLimit) {
                 $this->ensureDailyEarnLimit($user, $signedAmount);
             }
 

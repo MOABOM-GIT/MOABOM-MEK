@@ -70,11 +70,27 @@ function mapLegacyMypagePath(pathname: string): string | null {
   return '/me/profile';
 }
 
+function isWelcomeNotificationType(notificationType?: string | null): boolean {
+  return (notificationType ?? '').trim() === 'welcome';
+}
+
+function isLoginLikeNotificationPath(pathname: string): boolean {
+  const base = normalizePathname(pathname);
+  return base === '/login'
+    || base === '/auth/login'
+    || base === '/register'
+    || base === '/auth/register';
+}
+
 /** 알림 type 기반 fallback (click_url 없거나 레거시 `/mypage`만 있을 때) */
 export function resolveNotificationFallbackPath(notificationType?: string | null): string {
   const type = (notificationType ?? '').trim();
   if (!type) {
     return '/me/profile';
+  }
+
+  if (type === 'welcome') {
+    return '/me/account';
   }
 
   if (type === 'password_changed') {
@@ -106,17 +122,39 @@ export function resolveNotificationNavigatePath(
   url: string | null | undefined,
   notificationType?: string | null,
 ): string | null {
+  if (isWelcomeNotificationType(notificationType)) {
+    return '/me/account';
+  }
+
   const raw = extractNotificationPath(url);
   if (!raw) {
     return resolveNotificationFallbackPath(notificationType);
   }
 
   if (/^https?:\/\//i.test(raw)) {
+    if (isWelcomeNotificationType(notificationType)) {
+      try {
+        const parsed = new URL(raw);
+        if (
+          typeof window !== 'undefined'
+          && parsed.origin === window.location.origin
+          && isLoginLikeNotificationPath(parsed.pathname)
+        ) {
+          return '/me/account';
+        }
+      } catch {
+        // fall through
+      }
+    }
     return raw;
   }
 
   const pathname = normalizePathname(raw.split(/[?#]/)[0] ?? raw);
   const suffix = raw.slice(pathname.length);
+
+  if (isWelcomeNotificationType(notificationType) && isLoginLikeNotificationPath(pathname)) {
+    return '/me/account';
+  }
 
   const mapped = mapLegacyMypagePath(pathname);
   if (mapped) {

@@ -3,6 +3,8 @@
 namespace Modules\Moabom\System\Http\Requests\Platform;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Modules\Moabom\System\Rules\SaasSlugAvailableRule;
+use Modules\Moabom\System\Saas\SaasSlugAvailabilityService;
 
 class StoreSaasHospitalRequest extends FormRequest
 {
@@ -17,7 +19,12 @@ class StoreSaasHospitalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'slug' => ['required', 'string', 'regex:/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/'],
+            'slug' => [
+                'required',
+                'string',
+                'regex:/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/',
+                new SaasSlugAvailableRule($this->container->make(SaasSlugAvailabilityService::class)),
+            ],
             'name' => ['required', 'string', 'max:200'],
             'region' => ['nullable', 'string', 'max:100'],
             'note' => ['nullable', 'string', 'max:100'],

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 회원가입 환영 알림 클릭 시 `/me/account`로 이동해 계정 정보를 입력할 수 있게 함.
+- 신규 사용자 앱 보관함 기본값에서 더미 즐겨찾기(cpap-mask·consulting) 제거.
+- 셸 앱 실행 속도 — 호버·창 오픈 시 청크 preload·warm, 지연 확장 병렬 로드, 최근 앱 idle 선로딩.
+
 ### Added
 
 - **날씨 lazy host** — `Moa_WeatherEffectHost` + dynamic import(`Moa_WeatherEffectHostInner`). `weather`·`animation` OFF 시 Canvas·엔진 청크·런타임 훅 미마운트. 마이페이지 설정 진입 시 `requestIdleCallback` 으로 청크 선로딩.
@@ -9,12 +15,15 @@
 
 ### Changed
 
+- 좌측 패널 SMARTCARE 로고 — 캐시 비운 직후 간헐 엑박 방지: 번들 SVG에 extension cache version 쿼리·preload 재시도·`onError` 시 retry URL 복구 (`moabomSiteBranding.ts`, `Moa_LeftPanel.tsx`).
+- **채팅 UI** — 대화목록 시간·헤더 시간 제거, 말풍선 옆(카카오톡 스타일) 시간·미읽음 `안읽음` 표시, 말풍선 내부 읽음 표시 없음 (`Moa_ChatPanel.tsx`).
+- **채팅 롱프레스 메뉴** — 대화목록·말풍선 노출 삭제 버튼 제거, 롱프레스(또는 우클릭)로 메시지 복사·삭제·대화 삭제 메뉴 (`Moa_ChatMessageContextMenu.tsx`, `Moa_ChatPanel.tsx`).
 - **실시간 REST 동기화** — 접속자·친구·알림·채팅 catch-up 요청을 key 단위로 합쳐 WS 재연결·포커스 복귀·폴링이 겹칠 때 중복 네트워크 요청을 줄였습니다.
 - **날씨 마이페이지 상태** — 15초 상시 폴링 제거, 이벤트 + bounded 재시도(800ms/2.5s/6s)로 전환.
 
 ### Fixed
 
-- **접속자 실시간 갱신** — presence revision invalidate 구독이 하나만 유지되어 프로필·우측 패널 중 마지막 구독만 동작할 수 있던 문제를 다중 구독으로 수정했습니다.
+- **PWA 다시 불러오기** — SW/JS 갱신만 되고 routes·layout·번역이 남을 수 있던 문제. reload 직전 `g7_cache_version` 제거 + reload 후 `TemplateApp.reloadExtensionState()`·shell-boot 재fetch·현재 경로 재렌더 (`moabomPwaExtensionResync.ts`, `usePwaUpdate.ts`). — presence revision invalidate 구독이 하나만 유지되어 프로필·우측 패널 중 마지막 구독만 동작할 수 있던 문제를 다중 구독으로 수정했습니다.
 - **WebSocket 연결 감시** — Echo/Pusher 초기화 지연 시 200ms 무한 재시도하던 감시 루프를 bounded backoff와 auth 재동기화 복구 경로로 안정화했습니다.
 - **생성앱 타이틀바** — 새로고침·딥링크 시 `App #n` placeholder 제목으로 그라데이션 해시가 달라지던 문제. `serverId` 단일 SSOT + 카탈로그 로드 후 윈도우 chrome 동기화.
 - **접속자 활동(앱)** — 생성앱 이용 시 우측 접속 목록에 `App #n 이용 중` placeholder가 남던 문제. presence foreground·카탈로그·API 로드 후 실제 앱 이름으로 동기화.

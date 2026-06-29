@@ -15,7 +15,7 @@ use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
  * 앱 SEO 데이터 SSOT.
  *
  * 기본 제공 앱(AppRegistry app.json + config 보강) + 전역 공개(visibility=global)
- * 제작앱만 SEO 디스크립터로 정규화한다. private/tenant 제작앱은 이 서비스에서
+ * 공개 마이앱만 SEO 디스크립터로 정규화한다. private/tenant 마이앱은 이 서비스에서
  * 절대 노출되지 않는다(단일 가드 지점).
  *
  * @phpstan-type AppSeoDescriptor array{
@@ -50,7 +50,7 @@ final class AppSeoDataService
     }
 
     /**
-     * 공개 앱 디스크립터 전체(기본앱 + 전역 공개 제작앱).
+     * 공개 앱 디스크립터 전체(기본앱 + 전역 공개 마이앱).
      *
      * @return list<array<string, mixed>>
      */
@@ -154,7 +154,7 @@ final class AppSeoDataService
     }
 
     /**
-     * 전역 공개 제작앱 디스크립터.
+     * 전역 공개 마이앱 디스크립터.
      *
      * @return list<array<string, mixed>>
      */

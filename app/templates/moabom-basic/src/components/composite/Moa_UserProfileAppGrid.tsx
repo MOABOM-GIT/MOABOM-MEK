@@ -15,7 +15,7 @@ import { mapUserProfileAppItemToLibraryApp } from './userProfile/mapUserProfileA
 export interface MoaUserProfileAppGridProps {
   apps?: unknown[] | null;
   className?: string;
-  /** 표시 상한 (자주 쓰는 앱 등) */
+  /** 표시 상한 (최근 실행 앱 등) */
   maxItems?: number;
 }
 

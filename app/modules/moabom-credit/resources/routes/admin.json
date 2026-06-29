@@ -6,7 +6,7 @@
       "layout": "admin_credit_settings",
       "auth_required": true,
       "meta": {
-        "title": "$t:moabom-credit.admin.settings.title",
+        "title": "$t:moabom-credit.admin.credit.title",
         "permission": "moabom-credit.settings.read"
       }
     }

@@ -5,6 +5,8 @@ export interface MoabomShellHomeSettings {
   mainAppOrderCustomized?: boolean;
   /** 메인에서 제거한 AI 생성 앱 id — order 저장 실패 시에도 새로고침 후 숨김 유지 */
   mainUnpinnedGeneratedIds?: string[];
+  /** 최근 실행 앱 id (최신순, 최대 10) — 공개 프로필 노출용 */
+  recentAppIds?: string[];
 }
 
 export interface MoabomShellSettings {

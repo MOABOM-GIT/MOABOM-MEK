@@ -36,6 +36,19 @@ body.moa-home-active {
   color: var(--moa-text-primary);
 }
 
+.moa-app-window-viewport--relative {
+  position: relative;
+}
+
+/** iframe 등 별도 문서에 포인터가 빠지는 창 — 비활성 시 본문 클릭으로 앞으로 가져오기 */
+.moa-window-body-focus-capture {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  cursor: default;
+  background: transparent;
+}
+
 /**
  * 창 본문 직계 루트 — flex 세로 스택·gap 만 담당 (패딩 X).
  * `.moa-shell-app-window` 는 레거시 별칭, 신규는 `.moa-app-window-body` 권장.

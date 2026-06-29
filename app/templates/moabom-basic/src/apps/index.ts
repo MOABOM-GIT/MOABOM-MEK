@@ -56,7 +56,69 @@ declare global {
 }
 
 const shellLoadPromises = new Map<string, Promise<ComponentType>>();
+const prefetchedChunkUrls = new Set<string>();
 const SHELL_APP_CHUNK_LOAD_TIMEOUT_MS = 15_000;
+
+function resolveShellChunkFile(appId: string): string | null {
+  return SHELL_APP_CHUNK_FILES[appId] ?? shellBootChunkFileFor(appId) ?? null;
+}
+
+/**
+ * 셸 앱 IIFE를 브라우저 preload 큐에 넣어 클릭 전에 네트워크를 시작한다.
+ * 중복 호출·이미 로드된 앱은 무시한다.
+ */
+export function prefetchMoabomShellAppChunk(appId: string): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (window.moabomShellApps?.[appId]) {
+    return;
+  }
+
+  const file = resolveShellChunkFile(appId);
+  if (!file) {
+    return;
+  }
+
+  const chunkUrl = shellChunkUrl(file);
+  if (prefetchedChunkUrls.has(chunkUrl)) {
+    return;
+  }
+  prefetchedChunkUrls.add(chunkUrl);
+
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'script';
+  link.href = chunkUrl;
+  document.head.appendChild(link);
+  postMoabomLazyPrecache([chunkUrl], appId);
+}
+
+/**
+ * 호버·창 오픈 직전에 청크 fetch·실행까지 백그라운드로 시작한다.
+ */
+export function warmMoabomShellAppChunk(appId: string): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (window.moabomShellApps?.[appId]) {
+    return;
+  }
+  if (!resolveShellChunkFile(appId)) {
+    return;
+  }
+
+  prefetchMoabomShellAppChunk(appId);
+  void loadMoabomShellAppComponent(appId).catch(() => {
+    // 사용자가 실제로 열 때 MoabomShellAppFromChunk 가 재시도한다.
+  });
+}
+
+/** Vitest 격리 */
+export function resetMoabomShellAppChunkCacheForTest(): void {
+  shellLoadPromises.clear();
+  prefetchedChunkUrls.clear();
+}
 
 function readComponentsBundleQuery(): string {
   if (typeof document === 'undefined') {
@@ -92,6 +154,8 @@ export function loadMoabomShellAppComponent(appId: string): Promise<ComponentTyp
   if (!file) {
     return Promise.reject(new Error(`Unknown moabom shell app: ${appId}`));
   }
+
+  prefetchMoabomShellAppChunk(appId);
 
   const existing = typeof window !== 'undefined' ? window.moabomShellApps?.[appId] : undefined;
   if (existing) {

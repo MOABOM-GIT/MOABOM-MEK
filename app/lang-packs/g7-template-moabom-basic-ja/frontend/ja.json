@@ -51,11 +51,11 @@
         "desc": "残高と履歴"
       },
       "library": {
-        "label": "アプリライブラリ",
+        "label": "ライブラリ",
         "desc": "保存したアプリを管理"
       },
       "activity": {
-        "label": "マイアクティビティ",
+        "label": "投稿管理",
         "desc": "投稿・コメント・反応"
       },
       "account": {
@@ -135,9 +135,9 @@
       "transaction_fallback": "クレジット取引"
     },
     "library": {
-      "created_title": "作成したアプリ",
+      "created_title": "マイアプリ",
       "created_guest_msg": "ログインするとご利用いただけます。",
-      "created_empty": "作成したアプリはありません。",
+      "created_empty": "マイアプリがありません。",
       "recent_title": "最近使ったアプリ",
       "recent_empty": "最近使ったアプリはありません。",
       "favorites_title": "お気に入り",
@@ -239,7 +239,7 @@
       "badge_event": "イベント"
     },
     "nav": {
-      "launcher": "ライブラリ",
+      "launcher": "探索",
       "economy": "ランキング",
       "myapp": "マイアプリ",
       "notice": "お知らせ"
@@ -247,9 +247,9 @@
     "left": {
       "close_panel": "左パネルを閉じる",
       "tabs_basic_apps": "基本アプリ",
-      "tabs_user_apps": "ユーザーアプリ",
+      "tabs_user_apps": "公開アプリ",
       "tabs_rank_apps": "アプリ順位",
-      "tabs_rank_users": "ユーザーランキング",
+      "tabs_rank_users": "活動ランキング",
       "tabs_favorites": "お気に入り",
       "tabs_my_apps": "マイアプリ",
       "tabs_notices": "お知らせ",

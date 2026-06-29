@@ -147,7 +147,7 @@ grep -q 'loadMoabomShellAppComponent' "${BASIC}/src/pages/home/MoabomShellAppFro
 grep -q 'postMoabomLazyPrecache' "${BASIC}/src/apps/index.ts"   || fail "shell chunk loader must post lazy precache"
 grep -q 'MOABOM_LAZY_PRECACHE' "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js"   || fail "PWA SW lazy precache handler missing"
 grep -q 'template-engine.min.js' "${ROOT}/deploy/nginx-cloudrun.conf"   || fail "nginx gzip/static policy must mention template-engine.min.js"
-grep -q 'reloadModuleHandlers' "${BASIC}/src/pages/home/MoabomShellAppFromChunk.tsx"   || fail "shell window must preload deferred modules via G7 reloadModuleHandlers"
+grep -qE 'reloadModuleHandlers|ensureShellAppDeferredExtensions' "${BASIC}/src/pages/home/MoabomShellAppFromChunk.tsx"   || fail "shell window must preload deferred modules via G7 reloadModuleHandlers"
 grep -q 'reloadPluginHandlers' "${BASIC}/src/runtime/sirsoftEcommerceLayoutPrefetch.ts"   || fail "layout prefetch must preload deferred plugins via G7 reloadPluginHandlers"
 ok "network-first shell/PWA invariants"
 

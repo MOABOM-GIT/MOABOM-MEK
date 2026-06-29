@@ -74,6 +74,13 @@ grep -q 'moabom-apps' "${ROOT}/deploy/run-layout-sync-job.sh" \
 ok "RF-13/RF-14b: run-layout-sync-job.sh (template + module layouts)"
 ok "RF-14d: run-layout-sync-job module declarations SSOT (moabom-apps 포함)"
 
+[[ -x "${ROOT}/deploy/run-template-cache-clear-job.sh" ]] \
+  || fail "RF-23: run-template-cache-clear-job.sh 없음 또는 실행 불가"
+grep -q 'run-template-cache-clear-job.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-23: build-and-deploy.sh — layout skip 시 cache-clear Job 없음"
+grep -q 'run-template-cache-clear-job.sh' "${ROOT}/deploy/run-layout-sync-job.sh" \
+  || fail "RF-23: run-layout-sync-job.sh — cache-clear Job SSOT 미사용"
+
 grep -q 'moabom:saas:sync-module-layouts' "${ENTRY}" "${DEFERRED}" \
   || fail "RF-14b: entrypoint 에 moabom:saas:sync-module-layouts 없음"
 grep -q 'MOABOM_SYNC_MODULE_LAYOUTS' "${ENTRY}" "${DEFERRED}" \

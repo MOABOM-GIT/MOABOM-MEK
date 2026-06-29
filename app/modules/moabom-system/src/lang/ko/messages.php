@@ -53,6 +53,7 @@ return [
         'hospitals' => [
             'list_success' => '등록된 업체 목록을 조회했습니다.',
             'slug_availability_success' => '슬러그 사용 가능 여부를 조회했습니다.',
+            'slug_unavailable' => '이 호스트는 사용할 수 없습니다.',
             'show_success' => '업체 정보를 조회했습니다.',
             'created' => '업체 테넌트를 추가했습니다.',
             'not_found' => '업체를 찾을 수 없습니다.',
@@ -73,6 +74,7 @@ return [
     ],
     'realtime_vm_status_success' => 'Realtime VM 상태를 조회했습니다.',
     'realtime_vm_refresh_success' => 'Realtime VM 상태를 새로고침했습니다.',
+    'realtime_vm_metrics_success' => 'Realtime VM 메트릭을 조회했습니다.',
     // 'apps.*' 키 전체는 별도 모듈로 분리되었다(2026-06-02).
     // - apps.ai.*, apps.generated.*: moabom-apps
     // - apps.cpap.*: moabom-cpap

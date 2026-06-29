@@ -931,7 +931,8 @@
                                         "guest_reply_password": "",
                                         "replyToCommentId": null,
                                         "replyToCommentDepth": null,
-                                        "commentSubmitting": false
+                                        "commentSubmitting": false,
+                                        "collapsedReplies": "{{Object.assign({}, _local.collapsedReplies || {}, {[comment?.id]: false})}}"
                                       }
                                     },
                                     {

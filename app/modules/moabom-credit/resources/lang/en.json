@@ -1,8 +1,17 @@
 {
   "admin": {
+    "credit": {
+      "title": "Credit Management",
+      "description": "Manage credit reward policies and user balances.",
+      "tabs": {
+        "settings": "Credit Settings",
+        "users": "User Credits"
+      }
+    },
     "settings": {
-      "title": "Credit Settings",
-      "description": "Manage reward amounts and limits for user credit events.",
+      "title": "Credit Management",
+      "description": "Manage credit reward policies and user balances.",
+      "page_intro": "Reward events, daily limits, and ad settings apply to My Page credits and attendance checks.",
       "read_only_message": "You do not have permission to update credit settings. This page is read-only.",
       "save_error": "An error occurred while saving credit settings.",
       "validation_error": "Please check the entered values.",
@@ -26,6 +35,8 @@
         "max_post_write_rewards_per_day": "Post write rewards per day",
         "max_like_received_rewards_per_day": "Like rewards per day",
         "max_comment_write_rewards_per_day": "Comment write rewards per day",
+        "max_app_review_write_rewards_per_day": "App review write rewards per day",
+        "app_review_write_amount": "App review write reward",
         "attendance_requires_ad": "Require ad before attendance reward",
         "attendance_ad_provider": "Ad provider",
         "attendance_ad_reward_multiplier": "Ad reward multiplier"
@@ -33,6 +44,50 @@
       "hints": {
         "daily_earn_limit": "Use 0 if you want to treat the limit as unlimited.",
         "ads": "The My Page button rewards immediately for now. Enable this later when the ad viewing flow is connected."
+      }
+    },
+    "user_credits": {
+      "title": "User Credits",
+      "description": "View user balances and manually increase or decrease credits.",
+      "search_placeholder": "Search by name, email, or nickname",
+      "search_button": "Search",
+      "empty": "No users match your search.",
+      "columns": {
+        "name": "User",
+        "email": "Email",
+        "balance": "Balance",
+        "ranking_points": "Ranking points",
+        "actions": "Actions"
+      },
+      "adjust": "Adjust credits",
+      "delete": "Delete data",
+      "modal": {
+        "title": "Adjust Credits",
+        "description": "Increase or decrease credits for the selected user.",
+        "current_balance": "Current balance",
+        "direction": "Adjustment type",
+        "direction_increase": "Increase",
+        "direction_decrease": "Decrease",
+        "amount": "Amount",
+        "amount_placeholder": "e.g. 100",
+        "description_label": "Reason (optional)",
+        "description_placeholder": "Admin note",
+        "preview_balance": "Estimated balance after adjustment",
+        "submit": "Apply",
+        "submitting": "Applying…",
+        "success": "Credits adjusted successfully.",
+        "error": "Failed to adjust credits.",
+        "invalid_amount": "Enter an amount of 1 or more.",
+        "insufficient_balance": "Balance would fall below zero."
+      },
+      "delete_modal": {
+        "title": "Delete Credit Data",
+        "description": "Permanently delete the selected user's balance, transaction ledger, and attendance records.",
+        "warning": "Deleted credit data cannot be recovered. The user account remains; only credit records are removed.",
+        "submit": "Delete permanently",
+        "submitting": "Deleting…",
+        "success": "Credit data deleted successfully.",
+        "error": "Failed to delete credit data."
       }
     }
   }

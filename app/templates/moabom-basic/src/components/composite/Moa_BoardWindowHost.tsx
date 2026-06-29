@@ -7,6 +7,10 @@ import {
   type BoardWindowRenderPayload,
 } from '../../shell/boardWindowLayoutRuntime';
 import {
+  invalidateBoardWindowBindingCache,
+  registerBoardWindowDataSession,
+} from '../../shell/boardWindowDataBridge';
+import {
   buildBoardPayloadCacheKey,
   resolveBoardWindowQuery,
 } from '../../shell/boardWindowPrefetch';
@@ -44,10 +48,13 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
   const [loading, setLoading] = useState(true);
   const [refetching, setRefetching] = useState(false);
   const [payload, setPayload] = useState<BoardWindowRenderPayload | null>(null);
+  const [dataContext, setDataContext] = useState<Record<string, unknown> | null>(null);
   const [urlEpoch, setUrlEpoch] = useState(0);
   const payloadRef = useRef<BoardWindowRenderPayload | null>(null);
+  const dataContextRef = useRef<Record<string, unknown> | null>(null);
   const payloadCacheRef = useRef<Map<string, BoardWindowRenderPayload>>(new Map());
   payloadRef.current = payload;
+  dataContextRef.current = dataContext;
 
   useEffect(() => {
     const onUrl = () => setUrlEpoch(v => v + 1);
@@ -70,6 +77,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
 
     if (cached) {
       setPayload(cached);
+      setDataContext(cached.dataContext);
       setLoading(false);
       setRefetching(false);
       setError(null);
@@ -87,6 +95,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
       const next = await loadBoardWindowRenderPayload(boardSlug, boardPostId, boardMode, query);
       payloadCacheRef.current.set(cacheKey, next);
       setPayload(next);
+      setDataContext(next.dataContext);
 
       const fetched: Record<string, unknown> = {};
       for (const key of Object.keys(next.dataContext)) {
@@ -113,6 +122,32 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+
+    const unregister = registerBoardWindowDataSession(payload, next => {
+      invalidateBoardWindowBindingCache(payload.bindingEngine);
+      setDataContext(next);
+      const cacheKey = buildBoardPayloadCacheKey(
+        boardSlug,
+        boardPostId,
+        boardMode,
+        resolveBoardWindowQuery(),
+        authStateKey,
+      );
+      const cached = payloadCacheRef.current.get(cacheKey);
+      if (cached) {
+        payloadCacheRef.current.set(cacheKey, { ...cached, dataContext: next });
+      }
+    });
+
+    return unregister;
+  }, [authStateKey, boardMode, boardPostId, boardSlug, payload]);
+
+  const activeDataContext = dataContext ?? payload?.dataContext ?? null;
+
   if (loading && !payload) {
     return (
       <Div className={`${APP_WINDOW_BODY_CLASS} flex min-h-0 min-w-0 flex-1 flex-col`}>
@@ -135,14 +170,13 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     );
   }
 
-  if (!payload) {
+  if (!payload || !activeDataContext) {
     return null;
   }
 
   const {
     DynamicRenderer,
     componentDefs,
-    dataContext,
     translationContext,
     registry,
     bindingEngine,
@@ -177,7 +211,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
                     : `board-window-${index}_${layoutName}`
                 }
                 componentDef={componentDef}
-                dataContext={dataContext}
+                dataContext={activeDataContext}
                 translationContext={translationContext}
                 registry={registry}
                 bindingEngine={bindingEngine}

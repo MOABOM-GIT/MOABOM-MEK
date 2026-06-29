@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.8.20] - 2026-06-29
+
+### Fixed
+
+- 플랫폼 **Realtime VM** 대시보드 layout `1.0.4` — 패널별 `_computed`를 스칼라 키로 통일하고 `P`+`text` 바인딩으로 교체해 WebSocket·런타임·프로세스·인프라 카드가 비어 보이던 문제 수정.
+- `RealtimeVmHealthService` WebSocket probe — Cloud Run PHP curl이 Pusher 프레임을 못 읽어도 HTTP 101이면 정상으로 판정 (브라우저 wss와 정합).
+
+## [0.8.19] - 2026-06-29
+
+### Fixed
+
+- 플랫폼 **Realtime VM** 대시보드 — `moabom-admin_basic`에 없는 `Dl`/`Dt`/`Dd` 컴포넌트를 `Div`/`Span`으로 교체해 WebSocket·런타임·프로세스·인프라 카드가 비어 보이던 문제 수정.
+- WebSocket probe 실패 시 `error` 사유를 API·대시보드에 노출해 전체 상태 **이상** 판정 원인을 확인할 수 있도록 보강.
+
+## [0.8.18] - 2026-06-29
+
+### Fixed
+
+- 플랫폼 **Realtime VM** 대시보드 — `computed`가 다른 computed 키를 참조해 수치가 비어 보이던 문제와 UI `_computed.` 바인딩 누락을 수정하고, VM 메트릭 데이터 소스를 blocking 로드로 맞춰 초기 렌더 시 게이지·프로세스·컨테이너 지표가 함께 표시되도록 정합.
+
+## [0.8.17] - 2026-06-29
+
+### Changed
+
+- 회원가입 환영 알림 database 채널 `click_url`을 `/me/account`로 정규화해 계정 정보 입력 화면으로 연결.
+
+## [0.8.16] - 2026-06-29
+
+### Fixed
+
+- 플랫폼 **Realtime VM** 대시보드 — `computed`가 데이터 소스가 아닌 다른 computed 키를 참조하고 UI 바인딩이 `_computed.` 접두사 없이 작성되어 전체·WebSocket·VM 메트릭 수치가 비어 보이던 문제 수정 (앱 리뷰 목록·업체 목록 레이아웃 패턴과 동일).
+
+## [0.8.15] - 2026-06-29
+
+### Changed
+
+- 플랫폼 **Realtime VM** 대시보드 — FCM 패널·SSH/docker stats 안내 제거, VM CPU/메모리/디스크 게이지·프로세스·Docker 컨테이너 지표 표시.
+- `RealtimeVmHealthService` — VM 메트릭 15s 캐시·기본 URL·`GET platform/realtime-vm/metrics` 경량 API.
+
+## [0.8.14] - 2026-06-29
+
+### Added
+
+- 업체 추가 화면에서 슬러그 입력 시 예상 호스트 사용 가능 여부를 실시간으로 표시 (기존 테넌트·시스템 예약 슬러그·보호 슬러그 포함).
+- `GET platform/saas/hospitals/slug-availability` API 및 `SaasSlugAvailabilityService` SSOT.
+- 업체 생성 요청 시 슬러그 호스트 중복·예약명 서버 검증.
+
 ## [0.8.13] - 2026-06-29
 
 ### Added

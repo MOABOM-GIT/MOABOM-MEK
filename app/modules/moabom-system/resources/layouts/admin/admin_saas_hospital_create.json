@@ -1,5 +1,5 @@
 {
-  "version": "1.2.5",
+  "version": "1.2.7",
   "layout_name": "admin_saas_hospital_create",
   "permissions": [
     "moabom-system.saas.create"
@@ -17,8 +17,10 @@
     "baseDomain": "{{_local?.baseDomain || 'mek360.com'}}",
     "previewHost": "{{((_local?.form?.slug || '').toLowerCase()) ? ((_local?.form?.slug || '').toLowerCase() + '.' + (_local?.baseDomain || 'mek360.com')) : ''}}",
     "slugAvailability": "{{slugCheck?.data || {}}}",
-    "slugHostUnavailable": "{{_computed.slugIsValid && slugAvailability && slugAvailability.available === false}}",
-    "submitDisabled": "{{_local?.isSaving || !_local?.form?.slug || !_local?.form?.name || !(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase())) || _computed.slugHostUnavailable}}"
+    "slugHostChecking": "{{!!_local?.slugHostChecking && !!_local?.form?.slug && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase())}}",
+    "slugHostUnavailable": "{{(slugCheck?.data?.slug === ((_local?.form?.slug || '') + '').trim().toLowerCase()) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(((_local?.form?.slug || '') + '').trim().toLowerCase()) && slugCheck?.data?.available === false}}",
+    "slugHostAvailable": "{{(slugCheck?.data?.slug === ((_local?.form?.slug || '') + '').trim().toLowerCase()) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(((_local?.form?.slug || '') + '').trim().toLowerCase()) && slugCheck?.data?.available === true}}",
+    "submitDisabled": "{{_local?.isSaving || !_local?.form?.slug || !_local?.form?.name || !(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test((_local?.form?.slug || '').toLowerCase())) || ((slugCheck?.data?.slug === ((_local?.form?.slug || '') + '').trim().toLowerCase()) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(((_local?.form?.slug || '') + '').trim().toLowerCase()) && slugCheck?.data?.available === false)}}"
   },
   "data_sources": [
     {
@@ -26,7 +28,8 @@
       "type": "api",
       "endpoint": "/api/modules/moabom-system/platform/saas/hospitals/slug-availability?slug={{_local.form.slug || ''}}",
       "method": "GET",
-      "auto_fetch": true,
+      "auto_fetch": false,
+      "loading_strategy": "background",
       "auth_required": true
     }
   ],
@@ -41,6 +44,7 @@
       "logo_dark": null
     },
     "baseDomain": "mek360.com",
+    "slugHostChecking": false,
     "isSaving": false,
     "successHospital": null,
     "errors": null
@@ -291,7 +295,7 @@
                           "label": "$t:moabom-system.admin.saas.hospitals.field_slug",
                           "required": true,
                           "helperText": "$t:moabom-system.admin.saas.hospitals.field_slug_hint",
-                          "error": "{{(typeof _local.errors === 'object' && _local.errors?.slug?.[0]) || (_computed.slugShowInvalid ? '$t:moabom-system.admin.saas.hospitals.field_slug_invalid' : '')}}"
+                          "error": "{{(typeof _local.errors === 'object' && _local.errors?.slug?.[0]) || (_computed.slugShowInvalid ? '$t:moabom-system.admin.saas.hospitals.field_slug_invalid' : '') || (_computed.slugHostUnavailable ? '$t:moabom-system.admin.saas.hospitals.host_unavailable' : '')}}"
                         },
                         "children": [
                           {
@@ -308,10 +312,49 @@
                             "actions": [
                               {
                                 "type": "change",
-                                "handler": "setState",
+                                "handler": "sequence",
+                                "debounce": 300,
                                 "params": {
-                                  "target": "local",
-                                  "form.slug": "{{($event.target.value || '').toLowerCase().replace(/[^a-z0-9-]/g, '')}}"
+                                  "actions": [
+                                    {
+                                      "handler": "setState",
+                                      "params": {
+                                        "target": "local",
+                                        "form.slug": "{{($event.target.value || '').toLowerCase().replace(/[^a-z0-9-]/g, '')}}",
+                                        "slugHostChecking": false
+                                      }
+                                    },
+                                    {
+                                      "handler": "conditions",
+                                      "conditions": [
+                                        {
+                                          "if": "{{/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(((_local?.form?.slug || '') + '').trim().toLowerCase())}}",
+                                          "then": [
+                                            {
+                                              "handler": "setState",
+                                              "params": {
+                                                "target": "local",
+                                                "slugHostChecking": true
+                                              }
+                                            },
+                                            {
+                                              "handler": "refetchDataSource",
+                                              "params": {
+                                                "dataSourceId": "slugCheck"
+                                              }
+                                            },
+                                            {
+                                              "handler": "setState",
+                                              "params": {
+                                                "target": "local",
+                                                "slugHostChecking": false
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
                                 }
                               }
                             ]
@@ -322,7 +365,7 @@
                         "type": "basic",
                         "name": "Div",
                         "props": {
-                          "className": "px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 flex items-center gap-2 text-sm"
+                          "className": "px-3 py-2 rounded-md border flex items-center gap-2 text-sm {{_computed.slugHostUnavailable ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : (_computed.slugHostAvailable ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-gray-50 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700')}}"
                         },
                         "children": [
                           {
@@ -354,11 +397,29 @@
                           {
                             "type": "basic",
                             "name": "Span",
+                            "if": "{{_computed.slugHostChecking}}",
+                            "props": {
+                              "className": "text-sm text-gray-500 dark:text-gray-400 italic"
+                            },
+                            "text": "$t:moabom-system.admin.saas.hospitals.host_checking"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Span",
                             "if": "{{_computed.slugHostUnavailable}}",
                             "props": {
                               "className": "text-sm font-medium text-red-600 dark:text-red-400"
                             },
                             "text": "$t:moabom-system.admin.saas.hospitals.host_unavailable"
+                          },
+                          {
+                            "type": "basic",
+                            "name": "Span",
+                            "if": "{{_computed.slugHostAvailable}}",
+                            "props": {
+                              "className": "text-sm font-medium text-green-600 dark:text-green-400"
+                            },
+                            "text": "$t:moabom-system.admin.saas.hospitals.host_available"
                           }
                         ]
                       },
