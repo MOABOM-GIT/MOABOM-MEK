@@ -253,7 +253,7 @@ class WebsiteLinkResolveService
      */
     private function extractLinkIconCandidates(string $body): array
     {
-        if (preg_match_all('/<link\b([^>]*?)>/i', $body, $matches) !== 1) {
+        if (preg_match_all('/<link\b([^>]*?)>/i', $body, $matches) === false) {
             return [];
         }
 
@@ -407,7 +407,7 @@ class WebsiteLinkResolveService
             return null;
         }
 
-        if (preg_match_all('/(\d+)x(\d+)/', $normalized, $matches) !== 1) {
+        if (preg_match_all('/(\d+)x(\d+)/', $normalized, $matches) === false || $matches[1] === []) {
             return null;
         }
 

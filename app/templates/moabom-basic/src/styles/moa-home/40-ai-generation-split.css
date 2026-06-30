@@ -1,8 +1,8 @@
 /**
  * AI 앱 만들기 — 좌·우 패널 레이아웃 + 코드/미리보기 세로 분할.
- * - 1열(모바일): 미리보기 패널이 창 높이(70cqh)를 채우고 본문은 viewport 스크롤
+ * - 1열(`sm` 미만, 640px): 미리보기 패널이 창 높이(70cqh)를 채우고 본문은 viewport 스크롤
  *   (그리드를 강제 풀하이트로 고정하지 않아 좌·우 패널 콘텐츠 겹침 방지).
- * - 2열(@xl): 단일 행 stretch, 좌·우 패널 풀하이트 + 내부 스크롤.
+ * - 2열(`sm` 이상): 마이페이지·앱 공통 티어 — 단일 행 stretch, 좌·우 패널 풀하이트 + 내부 스크롤.
  */
 
 .moa-ai-generator-layout {
@@ -53,7 +53,7 @@
   text-align: center;
 }
 
-@container moa-app-window (width >= 1280px) {
+@container moa-app-window (width >= 640px) {
   .moa-ai-generator-layout {
     grid-template-columns: 380px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);

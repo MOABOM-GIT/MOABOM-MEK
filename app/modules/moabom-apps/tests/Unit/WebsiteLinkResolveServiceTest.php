@@ -113,6 +113,27 @@ HTML, 200),
         $this->assertSame('#005eb8', $resolved['theme_color']);
     }
 
+    public function test_resolve_picks_icon_when_head_has_many_non_icon_links(): void
+    {
+        Http::fake([
+            'https://example.com' => Http::response(<<<'HTML'
+<!DOCTYPE html><html><head>
+<link rel="stylesheet" href="https://example.com/app.css"/>
+<link rel="canonical" href="https://example.com/"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<link rel="icon" sizes="16x16 32x32" href="https://example.com/favicon-16.png"/>
+</head><body></body></html>
+HTML, 200),
+        ]);
+
+        $service = new WebsiteLinkResolveService;
+
+        $resolved = $service->resolve('https://example.com');
+
+        $this->assertSame('https://example.com/favicon-16.png', $resolved['icon_url']);
+        $this->assertFalse($resolved['icon_from_title']);
+    }
+
     public function test_resolve_ignores_placeholder_data_icon_and_uses_title_icon(): void
     {
         Http::fake([

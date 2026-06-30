@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.22] - 2026-06-30
+
+### Fixed
+
+- 플랫폼 **Realtime VM** 대시보드 — platform DB에 구형 layout(v1.0.2 등)이나 `admin_realtime_vm` 단축명 orphan·stale template override가 남아 WebSocket·런타임·프로세스·인프라 패널이 비어 보이던 문제. `moabom:saas:sync-module-layouts` 가 filesystem v1.0.6 으로 강제 정합·캐시 무효화하도록 보강.
+
 ## [0.8.21] - 2026-06-30
 
 ### Changed

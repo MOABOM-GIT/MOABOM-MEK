@@ -611,7 +611,7 @@ export function AiGeneratorApp() {
             />
           </Label>
 
-          <Div className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @xl:grid-cols-1">
+          <Div className="grid grid-cols-1 gap-3">
             <Label className="block">
               <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_type')}</Div>
               <Select

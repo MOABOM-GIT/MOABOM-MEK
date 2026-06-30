@@ -20,8 +20,8 @@ version = str(layout.get("version", "0"))
 parts = [int(x) for x in version.split(".") if x.isdigit()]
 while len(parts) < 3:
     parts.append(0)
-if tuple(parts) < (1, 0, 5):
-    sys.exit(f"version {version} < 1.0.5 (DB sync 전 구형 바인딩 패턴)")
+if tuple(parts) < (1, 0, 4):
+    sys.exit(f"version {version} < 1.0.4 (DB sync 전 구형 바인딩 패턴)")
 
 computed = set(layout.get("computed", {}).keys())
 text = json.dumps(layout, ensure_ascii=False)

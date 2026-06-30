@@ -152,7 +152,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
             ));
 
             if ($moduleId === 'moabom-system') {
-                $this->forceRealtimeVmModuleLayoutFromFilesystem($layoutService);
+                $this->forceRealtimeVmModuleLayoutFromFilesystem($layoutService, $layoutResolver);
                 if (! $this->assertRealtimeVmLayoutSynced($label, $layoutResolver, $layoutService)) {
                     return false;
                 }
@@ -215,6 +215,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
             return true;
         }
 
+        $this->purgeOrphanRealtimeVmShortNameLayouts($template, $label, $layoutService);
         $this->purgeStaleRealtimeVmTemplateOverride($template, $label, $fileVersion, $layoutService);
 
         $layout = $layoutResolver->resolve(self::REALTIME_VM_LAYOUT_NAME, $template->id);
@@ -264,30 +265,48 @@ final class SaasSyncModuleLayoutsCommand extends Command
         string $fileVersion,
         LayoutService $layoutService,
     ): void {
-        $override = TemplateLayout::query()
+        $overrides = TemplateLayout::query()
             ->where('template_id', $template->id)
             ->whereIn('name', [self::REALTIME_VM_LAYOUT_NAME, 'admin_realtime_vm'])
             ->fromTemplates()
-            ->whereNotNull('source_identifier')
+            ->get();
+
+        foreach ($overrides as $override) {
+            $content = is_array($override->content)
+                ? $override->content
+                : json_decode((string) $override->content, true);
+
+            if (! is_array($content) || ! $this->realtimeVmLayoutContentIsStale($content, $fileVersion)) {
+                continue;
+            }
+
+            $overrideVersion = (string) ($content['version'] ?? '0');
+            $layoutService->clearDependentLayoutsCache($template->id, (string) $override->name);
+            $override->forceDelete();
+
+            $this->warn("  [{$label}] stale template override 제거: {$override->name} v{$overrideVersion}");
+        }
+    }
+
+    private function purgeOrphanRealtimeVmShortNameLayouts(
+        Template $template,
+        string $label,
+        LayoutService $layoutService,
+    ): void {
+        $orphan = TemplateLayout::query()
+            ->where('template_id', $template->id)
+            ->where('name', 'admin_realtime_vm')
             ->first();
 
-        if ($override === null) {
+        if ($orphan === null) {
             return;
         }
 
-        $content = is_array($override->content)
-            ? $override->content
-            : json_decode((string) $override->content, true);
-
-        if (! is_array($content) || ! $this->realtimeVmLayoutContentIsStale($content, $fileVersion)) {
-            return;
-        }
-
-        $overrideVersion = (string) ($content['version'] ?? '0');
+        $layoutService->clearDependentLayoutsCache($template->id, 'admin_realtime_vm');
         $layoutService->clearDependentLayoutsCache($template->id, self::REALTIME_VM_LAYOUT_NAME);
-        $override->forceDelete();
+        $orphan->forceDelete();
 
-        $this->warn("  [{$label}] stale template override 제거: ".self::REALTIME_VM_LAYOUT_NAME." v{$overrideVersion}");
+        $this->warn("  [{$label}] orphan short-name layout 삭제: admin_realtime_vm (SSOT: ".self::REALTIME_VM_LAYOUT_NAME.')');
     }
 
     /**
@@ -348,8 +367,10 @@ final class SaasSyncModuleLayoutsCommand extends Command
         return is_array($fileData) ? (string) ($fileData['version'] ?? '0') : '0';
     }
 
-    private function forceRealtimeVmModuleLayoutFromFilesystem(LayoutService $layoutService): void
-    {
+    private function forceRealtimeVmModuleLayoutFromFilesystem(
+        LayoutService $layoutService,
+        LayoutResolverService $layoutResolver,
+    ): void {
         $filePath = base_path('modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json');
         if (! is_readable($filePath)) {
             return;
@@ -371,6 +392,9 @@ final class SaasSyncModuleLayoutsCommand extends Command
             return;
         }
 
+        $this->purgeOrphanRealtimeVmShortNameLayouts($template, 'platform', $layoutService);
+        $this->purgeStaleRealtimeVmTemplateOverride($template, 'platform', $fileVersion, $layoutService);
+
         $moduleLayout = TemplateLayout::query()
             ->where('template_id', $template->id)
             ->where('name', self::REALTIME_VM_LAYOUT_NAME)
@@ -391,7 +415,13 @@ final class SaasSyncModuleLayoutsCommand extends Command
 
         $dbVersion = (string) ($content['version'] ?? '0');
 
-        if ($content === $fileData || version_compare($dbVersion, $fileVersion, '>=')) {
+        if (
+            $content === $fileData
+            || (
+                version_compare($dbVersion, $fileVersion, '>=')
+                && $this->realtimeVmLayoutContentIsValid($content, $fileVersion)
+            )
+        ) {
             return;
         }
 
@@ -401,6 +431,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
         ]);
 
         $layoutService->clearDependentLayoutsCache($template->id, self::REALTIME_VM_LAYOUT_NAME);
+        $layoutResolver->clearResolutionCache(self::REALTIME_VM_LAYOUT_NAME, $template->id);
     }
 
     /**
