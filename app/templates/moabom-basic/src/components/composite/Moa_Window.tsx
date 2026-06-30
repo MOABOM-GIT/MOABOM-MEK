@@ -331,6 +331,15 @@ const WindowComponent: React.FC<WindowProps> = ({
     };
   }, [compact, isMaximized, onMaximize]);
 
+  const handleTitleBarDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      handleToggleMaximize(e);
+    },
+    [handleToggleMaximize],
+  );
+
   useEffect(() => {
     return () => {
       if (nativeFullscreenOwnedRef.current) {
@@ -574,6 +583,7 @@ const WindowComponent: React.FC<WindowProps> = ({
             className={`moa-window-title-bar-create shrink-0 cursor-move select-none ${isEdgeToEdge ? 'rounded-none' : 'rounded-2xl'}`}
             style={titleBarExtraStyle}
             onPointerDown={handlePointerDownDrag}
+            onDoubleClick={handleTitleBarDoubleClick}
           >
             <Div
               className={`moa-window-title-bar-create__inner flex items-center justify-between px-4 py-2.5 ${
@@ -619,6 +629,7 @@ const WindowComponent: React.FC<WindowProps> = ({
             style={{ background: titleBarBackground }}
             data-shell-chrome-tone={lightTitleBar ? 'light' : 'dark'}
             onPointerDown={handlePointerDownDrag}
+            onDoubleClick={handleTitleBarDoubleClick}
           >
             <Div className="flex min-w-0 flex-1 items-center gap-2">
               {icon && <Icon name={icon} className={`shrink-0 text-base ${chromeTone.icon}`} />}
