@@ -39,6 +39,11 @@ class GeneratedAppWebsiteIconController extends PublicBaseController
 
         $response = $this->iconStorageService->response($app);
         if ($response === null) {
+            $app = $this->aiAppService->repairWebsiteLinkIcon($app);
+            $response = $this->iconStorageService->response($app);
+        }
+
+        if ($response === null) {
             abort(404);
         }
 

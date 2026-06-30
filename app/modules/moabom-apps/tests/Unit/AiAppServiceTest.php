@@ -429,7 +429,7 @@ PATCH;
     {
         Http::fake([
             'https://example.com/icon.png' => Http::response(
-                'png-bytes',
+                "\x89PNG\r\n\x1a\n",
                 200,
                 ['Content-Type' => 'image/png'],
             ),

@@ -352,6 +352,19 @@ PROMPT;
         return $this->findVisibleForUser($userId, $id) !== null ? $id : null;
     }
 
+    public function repairWebsiteLinkIcon(GeneratedApp $app): GeneratedApp
+    {
+        if ($app->app_type !== 'website_link') {
+            return $app;
+        }
+
+        if ($this->websiteLinkIconStorage->storedIconPath((int) $app->id) !== null) {
+            return $app->fresh() ?? $app;
+        }
+
+        return $this->syncWebsiteLinkIcon($app, is_array($app->metadata) ? $app->metadata : []);
+    }
+
     /**
      * @param  array<string, mixed>|null  $metadata
      */

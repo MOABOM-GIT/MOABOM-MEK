@@ -3,21 +3,32 @@
 namespace Modules\Moabom\Apps\Tests\Unit;
 
 use Illuminate\Support\Facades\Http;
+use Modules\Moabom\Apps\Services\WebsiteLinkIconBinaryValidator;
+use Modules\Moabom\Apps\Services\WebsiteLinkIconExtractionService;
 use Modules\Moabom\Apps\Services\WebsiteLinkResolveService;
+use Modules\Moabom\Apps\Services\WebsiteLinkUrlGuard;
 use Modules\Moabom\Apps\Tests\ModuleTestCase;
 
 class WebsiteLinkResolveServiceTest extends ModuleTestCase
 {
+    private function makeService(): WebsiteLinkResolveService
+    {
+        $urlGuard = new WebsiteLinkUrlGuard;
+        $extraction = new WebsiteLinkIconExtractionService($urlGuard, new WebsiteLinkIconBinaryValidator);
+
+        return new WebsiteLinkResolveService($urlGuard, $extraction);
+    }
+
     public function test_normalize_url_adds_https_scheme(): void
     {
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $this->assertSame('https://www.naver.com', $service->normalizeUrl('www.naver.com'));
     }
 
     public function test_normalize_url_rejects_invalid_value(): void
     {
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $this->expectException(\InvalidArgumentException::class);
         $service->normalizeUrl('not a url');
@@ -28,9 +39,12 @@ class WebsiteLinkResolveServiceTest extends ModuleTestCase
         Http::fake([
             'https://example.com' => Http::response('', 404),
             'https://example.com/favicon.ico' => Http::response('', 404),
+            'https://example.com/favicon.png' => Http::response('', 404),
+            'https://example.com/apple-touch-icon.png' => Http::response('', 404),
+            'https://example.com/apple-touch-icon-precomposed.png' => Http::response('', 404),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -50,9 +64,14 @@ class WebsiteLinkResolveServiceTest extends ModuleTestCase
 <link rel="icon" sizes="32x32" href="https://example.com/favicon-32.png"/>
 </head><body></body></html>
 HTML, 200),
+            'https://example.com/apple-57.png' => Http::response(
+                "\x89PNG\r\n\x1a\n",
+                200,
+                ['Content-Type' => 'image/png'],
+            ),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -69,9 +88,14 @@ HTML, 200),
 <link rel="icon" sizes="16x16" href="https://example.com/icon-16.png"/>
 </head><body></body></html>
 HTML, 200),
+            'https://example.com/shortcut.ico' => Http::response(
+                "\0\0\1\0",
+                200,
+                ['Content-Type' => 'image/x-icon'],
+            ),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -83,10 +107,14 @@ HTML, 200),
     {
         Http::fake([
             'https://example.com' => Http::response('<html><head><title>x</title></head></html>', 200),
-            'https://example.com/favicon.ico' => Http::response('', 200, ['Content-Type' => 'image/x-icon']),
+            'https://example.com/favicon.ico' => Http::response(
+                "\0\0\1\0",
+                200,
+                ['Content-Type' => 'image/x-icon'],
+            ),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -103,10 +131,14 @@ HTML, 200),
 <link rel="shortcut icon" href="/favicon.ico"/>
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/favicon.ico' => Http::response('', 200, ['Content-Type' => 'image/x-icon']),
+            'https://example.com/favicon.ico' => Http::response(
+                "\0\0\1\0",
+                200,
+                ['Content-Type' => 'image/x-icon'],
+            ),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -124,9 +156,14 @@ HTML, 200),
 <link rel="icon" sizes="16x16 32x32" href="https://example.com/favicon-16.png"/>
 </head><body></body></html>
 HTML, 200),
+            'https://example.com/favicon-16.png' => Http::response(
+                "\x89PNG\r\n\x1a\n",
+                200,
+                ['Content-Type' => 'image/png'],
+            ),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
@@ -143,9 +180,12 @@ HTML, 200),
 </head><body></body></html>
 HTML, 200),
             'https://example.com/favicon.ico' => Http::response('', 404),
+            'https://example.com/favicon.png' => Http::response('', 404),
+            'https://example.com/apple-touch-icon.png' => Http::response('', 404),
+            'https://example.com/apple-touch-icon-precomposed.png' => Http::response('', 404),
         ]);
 
-        $service = new WebsiteLinkResolveService;
+        $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 

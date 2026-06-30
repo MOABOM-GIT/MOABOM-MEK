@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { App } from '../../data/Moa_apps';
 import { Div } from '../basic/Div';
@@ -30,18 +31,21 @@ export function Moa_AppShellIconSurface({
   isCreateApp = false,
 }: Moa_AppShellIconSurfaceProps) {
   const iconImageUrl = resolveIconImageUrl(app);
+  const [iconImageFailed, setIconImageFailed] = useState(false);
+  const showIconImage = Boolean(iconImageUrl) && !iconImageFailed;
 
   return (
     <Div
       className={`relative flex items-center justify-center overflow-hidden ${className}`.trim()}
       style={isCreateApp ? style : { background: app.gradient, ...style }}
     >
-      {iconImageUrl ? (
+      {showIconImage ? (
         <img
-          src={iconImageUrl}
+          src={iconImageUrl ?? ''}
           alt=""
           className="moa-app-shell-icon-image"
           draggable={false}
+          onError={() => setIconImageFailed(true)}
         />
       ) : (
         <Icon name={app.icon} className={symbolClassName} />
