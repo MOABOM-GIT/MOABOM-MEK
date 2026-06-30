@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Moabom\System\Console\Commands;
 
+use App\Models\Template;
+use App\Models\TemplateLayout;
 use App\Services\ModuleService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -22,6 +24,13 @@ use Modules\Moabom\System\Saas\TenantRecord;
  */
 final class SaasSyncModuleLayoutsCommand extends Command
 {
+    private const REALTIME_VM_LAYOUT_NAME = 'moabom-system.admin_realtime_vm';
+
+    private const REALTIME_VM_MIN_VERSION = '1.0.4';
+
+    /** @var list<string> */
+    private const LEGACY_REALTIME_VM_COMPUTED = ['wsProbe', 'runtimeConfig', 'vmMetricsData'];
+
     protected $signature = 'moabom:saas:sync-module-layouts
         {slug? : 생략·* = platform + active tenants, 또는 tenant slug 1건}
         {--module= : 모듈 identifier; 생략·* = layout JSON 보유 활성 모듈 전체}
@@ -132,12 +141,112 @@ final class SaasSyncModuleLayoutsCommand extends Command
                 (int) ($result['deleted'] ?? 0),
             ));
 
+            if ($moduleId === 'moabom-system' && $label === 'platform') {
+                if (! $this->assertRealtimeVmLayoutSynced($label)) {
+                    return false;
+                }
+            }
+
             return true;
         } catch (\Throwable $e) {
             $this->error("  [{$label}] {$e->getMessage()}");
 
             return false;
         }
+    }
+
+    private function assertRealtimeVmLayoutSynced(string $label): bool
+    {
+        $filePath = base_path('modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json');
+        if (! is_readable($filePath)) {
+            $this->warn("  [{$label}] admin_realtime_vm.json 없음 — 검증 생략");
+
+            return true;
+        }
+
+        $fileData = json_decode((string) file_get_contents($filePath), true);
+        if (! is_array($fileData)) {
+            $this->error("  [{$label}] admin_realtime_vm.json 파싱 실패");
+
+            return false;
+        }
+
+        $fileVersion = (string) ($fileData['version'] ?? '0');
+
+        $template = Template::query()
+            ->where('identifier', 'moabom-admin_basic')
+            ->where('type', 'admin')
+            ->first();
+
+        if ($template === null) {
+            $this->warn("  [{$label}] moabom-admin_basic 없음 — realtime_vm 검증 생략");
+
+            return true;
+        }
+
+        $layout = TemplateLayout::query()
+            ->where('template_id', $template->id)
+            ->where('name', self::REALTIME_VM_LAYOUT_NAME)
+            ->first();
+
+        if ($layout === null) {
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 레이아웃 없음');
+
+            return false;
+        }
+
+        $dbContent = is_array($layout->content)
+            ? $layout->content
+            : json_decode((string) $layout->content, true);
+
+        if (! is_array($dbContent)) {
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' DB content 파싱 실패');
+
+            return false;
+        }
+
+        $dbVersion = (string) ($dbContent['version'] ?? '0');
+
+        if (version_compare($dbVersion, $fileVersion, '<')) {
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME." DB v{$dbVersion} < filesystem v{$fileVersion}");
+
+            return false;
+        }
+
+        if (version_compare($dbVersion, self::REALTIME_VM_MIN_VERSION, '<')) {
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' DB v'.$dbVersion.' < min '.self::REALTIME_VM_MIN_VERSION);
+
+            return false;
+        }
+
+        $computed = $dbContent['computed'] ?? [];
+        if (is_array($computed)) {
+            foreach (self::LEGACY_REALTIME_VM_COMPUTED as $legacyKey) {
+                if (array_key_exists($legacyKey, $computed)) {
+                    $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME." 구형 computed.{$legacyKey} 잔존");
+
+                    return false;
+                }
+            }
+        }
+
+        $serialized = json_encode($dbContent, JSON_UNESCAPED_UNICODE);
+        if ($serialized !== false) {
+            if (str_contains($serialized, '"name": "Dl"') || str_contains($serialized, '"iteration":{"data"')) {
+                $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 구형 UI 바인딩(Dl/iteration.data) 잔존');
+
+                return false;
+            }
+            if (! str_contains($serialized, '_computed.wsHttpStatus')) {
+                $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 스칼라 _computed.wsHttpStatus 바인딩 없음');
+
+                return false;
+            }
+        }
+
+        $this->line("  [{$label}] admin_realtime_vm layout OK (v{$dbVersion})");
+
+        return true;
     }
 
     /**

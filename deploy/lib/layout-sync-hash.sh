@@ -7,6 +7,58 @@ source "${_LAYOUT_SYNC_HASH_ROOT}/deploy/lib/content-manifest-hash.sh"
 
 MOABOM_LAYOUT_SYNC_MANIFEST="${MOABOM_LAYOUT_SYNC_MANIFEST:-${_LAYOUT_SYNC_HASH_ROOT}/deploy/ssot/layout-sync-manifest.sha256}"
 MOABOM_LAYOUT_SYNC_MANIFEST_LABEL="layout-sync"
+MOABOM_PLATFORM_DB_LAYOUT_VERSIONS="${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS:-${_LAYOUT_SYNC_HASH_ROOT}/deploy/ssot/platform-db-layout-versions.env}"
+MOABOM_REALTIME_VM_LAYOUT_JSON="${_LAYOUT_SYNC_HASH_ROOT}/app/modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json"
+
+moabom_platform_db_layout_version() {
+  local key="$1"
+  if [[ ! -f "${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS}" ]]; then
+    echo ""
+    return 0
+  fi
+  grep -E "^${key}=" "${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS}" 2>/dev/null | tail -1 | cut -d= -f2- || true
+}
+
+moabom_filesystem_realtime_vm_layout_version() {
+  if [[ ! -f "${MOABOM_REALTIME_VM_LAYOUT_JSON}" ]]; then
+    echo ""
+    return 0
+  fi
+  python3 - "${MOABOM_REALTIME_VM_LAYOUT_JSON}" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    print(str(json.load(f).get("version", "")))
+PY
+}
+
+# aggregate manifest 가 같아도 platform DB module layout 이 구형이면 sync 필수 (RF-14 realtime-vm)
+moabom_platform_module_layout_version_stale() {
+  local fs_version db_version
+  fs_version="$(moabom_filesystem_realtime_vm_layout_version)"
+  db_version="$(moabom_platform_db_layout_version admin_realtime_vm)"
+  if [[ -z "${fs_version}" ]]; then
+    return 1
+  fi
+  if [[ -z "${db_version}" || "${db_version}" != "${fs_version}" ]]; then
+    echo "layout-sync: platform DB marker admin_realtime_vm=${db_version:-∅} != filesystem ${fs_version}"
+    return 0
+  fi
+  return 1
+}
+
+moabom_layout_sync_record_platform_layout_versions() {
+  local fs_version versions_file tmp
+  fs_version="$(moabom_filesystem_realtime_vm_layout_version)"
+  [[ -n "${fs_version}" ]] || return 0
+  versions_file="${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS}"
+  mkdir -p "$(dirname "${versions_file}")"
+  tmp="$(mktemp)"
+  if [[ -f "${versions_file}" ]]; then
+    grep -v '^admin_realtime_vm=' "${versions_file}" > "${tmp}" || true
+  fi
+  printf 'admin_realtime_vm=%s\n' "${fs_version}" >> "${tmp}"
+  mv "${tmp}" "${versions_file}"
+}
 
 moabom_layout_sync_collect_files() {
   local root="${_LAYOUT_SYNC_HASH_ROOT}"
@@ -48,6 +100,9 @@ moabom_layout_sync_needed() {
     echo "layout-sync: forced (MOABOM_FORCE_LAYOUT_SYNC=1)"
     return 0
   fi
+  if moabom_platform_module_layout_version_stale; then
+    return 0
+  fi
   local current stored current_hash
   current="$(moabom_layout_sync_compute_digest)"
   current_hash="${current##*:}"
@@ -69,5 +124,6 @@ moabom_layout_sync_record_success() {
   current="$(moabom_layout_sync_compute_digest)"
   digest="${current##*:}"
   moabom_content_manifest_write_entry "${MOABOM_LAYOUT_SYNC_MANIFEST}" "${MOABOM_LAYOUT_SYNC_MANIFEST_LABEL}" "${digest}"
+  moabom_layout_sync_record_platform_layout_versions
   echo "layout-sync manifest updated: ${digest:0:12}…"
 }

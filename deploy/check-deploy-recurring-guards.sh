@@ -204,6 +204,10 @@ grep -q '_SKIP_INNER_CHECK=true' "${BUILD_DEPLOY}" \
   || fail "RF-23: build-and-deploy.sh 가 Cloud Build inner check skip 미전달"
 grep -q 'moabom_layout_sync_needed' "${BUILD_DEPLOY}" \
   || fail "RF-23: build-and-deploy.sh 가 layout sync 해시 게이트 없음"
+grep -q 'moabom_platform_module_layout_version_stale' "${ROOT}/deploy/lib/layout-sync-hash.sh" \
+  || fail "RF-23: layout-sync platform DB version gate 없음"
+[[ -f "${ROOT}/deploy/ssot/platform-db-layout-versions.env" ]] \
+  || fail "RF-23: platform-db-layout-versions.env SSOT 없음"
 grep -q 'MOABOM_CRJ_BOOT_SLEEP:-10' "${ROOT}/deploy/lib/cloud-run-artisan-job.sh" \
   || fail "RF-23: cloud-run-artisan-job.sh boot_sleep 기본 10s 아님"
 grep -q 'MOABOM_SMOKE_PROFILE' "${ROOT}/deploy/smoke-after-deploy.sh" \
