@@ -233,15 +233,25 @@
 /**
  * 게시판 최대화(PC) — 타이틀 바·본문 간격, 가운데 열 + 양쪽 % 여백.
  * 창 본문 `@container moa-app-window` md(768px) 미만(모바일·좁은 창)은 기존 풀폭 유지.
+ *
+ * 스크롤은 `.moa-app-window-viewport` 단일 책임 — 호스트 `overflow-x:hidden` 은 Y축을 auto 로
+ * 만들고 flex `min-h-0` 체인과 맞물려 84% 열 우측에 스크롤바가 붙으므로, 최대화 시 높이·overflow 를 풀어 본문이 뷰포트를 키우게 한다.
  */
 @container moa-app-window (width >= 768px) {
+  .moa-window-frame--maximized .moa-app-window-viewport > .moa-app-window-body:has(> .moa-board-window-host) {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
   .moa-window-frame--maximized .moa-g7-window-host.moa-board-window-host {
     box-sizing: border-box;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     align-self: center;
     width: 84%;
-    max-width: 72rem;
+    max-width: 100rem;
     margin-top: 1rem;
     margin-inline: auto;
+    min-height: auto;
+    overflow: visible;
   }
 }

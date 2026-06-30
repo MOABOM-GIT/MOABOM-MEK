@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Moabom\System\Console\Commands;
 
+use App\Enums\LayoutSourceType;
 use App\Models\Template;
 use App\Models\TemplateLayout;
+use App\Services\LayoutResolverService;
+use App\Services\LayoutService;
 use App\Services\ModuleService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -43,6 +46,8 @@ final class SaasSyncModuleLayoutsCommand extends Command
         PlatformRuntimeConfigurator $platformRuntimeConfigurator,
         TenantDatabaseConfigurator $databaseConfigurator,
         ModuleService $moduleService,
+        LayoutResolverService $layoutResolver,
+        LayoutService $layoutService,
     ): int {
         $slugArg = (string) ($this->argument('slug') ?? '*');
         if ($slugArg === '' || $slugArg === 'all') {
@@ -74,7 +79,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
         foreach ($moduleIds as $moduleId) {
             if (! $skipPlatform && ($slugArg === '*' || $slugArg === '')) {
                 $this->info("=== platform (module layouts: {$moduleId}) ===");
-                if (! $this->refreshModule($moduleService, $moduleId, 'platform')) {
+                if (! $this->refreshModule($moduleService, $moduleId, 'platform', $layoutResolver, $layoutService)) {
                     $failures++;
                 }
                 $this->newLine();
@@ -102,7 +107,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
                     continue;
                 }
 
-                if (! $this->refreshModule($moduleService, $moduleId, $tenant->slug)) {
+                if (! $this->refreshModule($moduleService, $moduleId, $tenant->slug, $layoutResolver, $layoutService)) {
                     $failures++;
                 }
 
@@ -123,8 +128,13 @@ final class SaasSyncModuleLayoutsCommand extends Command
         return self::SUCCESS;
     }
 
-    private function refreshModule(ModuleService $moduleService, string $moduleId, string $label): bool
-    {
+    private function refreshModule(
+        ModuleService $moduleService,
+        string $moduleId,
+        string $label,
+        LayoutResolverService $layoutResolver,
+        LayoutService $layoutService,
+    ): bool {
         try {
             $result = $moduleService->refreshModuleLayouts($moduleId);
             if ($result === null) {
@@ -141,8 +151,8 @@ final class SaasSyncModuleLayoutsCommand extends Command
                 (int) ($result['deleted'] ?? 0),
             ));
 
-            if ($moduleId === 'moabom-system' && $label === 'platform') {
-                if (! $this->assertRealtimeVmLayoutSynced($label)) {
+            if ($moduleId === 'moabom-system') {
+                if (! $this->assertRealtimeVmLayoutSynced($label, $layoutResolver, $layoutService)) {
                     return false;
                 }
             }
@@ -155,8 +165,11 @@ final class SaasSyncModuleLayoutsCommand extends Command
         }
     }
 
-    private function assertRealtimeVmLayoutSynced(string $label): bool
-    {
+    private function assertRealtimeVmLayoutSynced(
+        string $label,
+        LayoutResolverService $layoutResolver,
+        LayoutService $layoutService,
+    ): bool {
         $filePath = base_path('modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json');
         if (! is_readable($filePath)) {
             $this->warn("  [{$label}] admin_realtime_vm.json 없음 — 검증 생략");
@@ -184,13 +197,38 @@ final class SaasSyncModuleLayoutsCommand extends Command
             return true;
         }
 
-        $layout = TemplateLayout::query()
+        $layoutExists = TemplateLayout::query()
             ->where('template_id', $template->id)
             ->where('name', self::REALTIME_VM_LAYOUT_NAME)
-            ->first();
+            ->exists();
+
+        if (! $layoutExists) {
+            if ($label === 'platform') {
+                $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 레이아웃 없음');
+
+                return false;
+            }
+
+            $this->line("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 없음 — 검증 생략');
+
+            return true;
+        }
+
+        $this->purgeStaleRealtimeVmTemplateOverride($template, $label, $fileVersion, $layoutService);
+
+        $layout = $layoutResolver->resolve(self::REALTIME_VM_LAYOUT_NAME, $template->id);
 
         if ($layout === null) {
-            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 레이아웃 없음');
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' resolve 실패 (레이아웃 없음)');
+
+            return false;
+        }
+
+        if (
+            $layout->source_type === LayoutSourceType::Template
+            && $layout->source_identifier !== null
+        ) {
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' — template override 가 module layout 을 가림 (purge 후에도 잔존)');
 
             return false;
         }
@@ -200,51 +238,105 @@ final class SaasSyncModuleLayoutsCommand extends Command
             : json_decode((string) $layout->content, true);
 
         if (! is_array($dbContent)) {
-            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' DB content 파싱 실패');
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' served content 파싱 실패');
+
+            return false;
+        }
+
+        if (! $this->realtimeVmLayoutContentIsValid($dbContent, $fileVersion)) {
+            $dbVersion = (string) ($dbContent['version'] ?? '0');
+            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME." served v{$dbVersion} — 구형 바인딩 (min ".self::REALTIME_VM_MIN_VERSION.', filesystem v'.$fileVersion.')');
 
             return false;
         }
 
         $dbVersion = (string) ($dbContent['version'] ?? '0');
+        $source = $layout->source_type?->value ?? 'unknown';
+        $this->line("  [{$label}] admin_realtime_vm layout OK (served v{$dbVersion} via {$source}, filesystem v{$fileVersion})");
 
-        if (version_compare($dbVersion, self::REALTIME_VM_MIN_VERSION, '<')) {
-            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' DB v'.$dbVersion.' < min '.self::REALTIME_VM_MIN_VERSION);
+        return true;
+    }
 
+    private function purgeStaleRealtimeVmTemplateOverride(
+        Template $template,
+        string $label,
+        string $fileVersion,
+        LayoutService $layoutService,
+    ): void {
+        $override = TemplateLayout::query()
+            ->where('template_id', $template->id)
+            ->where('name', self::REALTIME_VM_LAYOUT_NAME)
+            ->fromTemplates()
+            ->whereNotNull('source_identifier')
+            ->first();
+
+        if ($override === null) {
+            return;
+        }
+
+        $content = is_array($override->content)
+            ? $override->content
+            : json_decode((string) $override->content, true);
+
+        if (! is_array($content) || ! $this->realtimeVmLayoutContentIsStale($content, $fileVersion)) {
+            return;
+        }
+
+        $overrideVersion = (string) ($content['version'] ?? '0');
+        $layoutService->clearDependentLayoutsCache($template->id, self::REALTIME_VM_LAYOUT_NAME);
+        $override->forceDelete();
+
+        $this->warn("  [{$label}] stale template override 제거: ".self::REALTIME_VM_LAYOUT_NAME." v{$overrideVersion}");
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
+     */
+    private function realtimeVmLayoutContentIsStale(array $content, string $fileVersion): bool
+    {
+        if (! $this->realtimeVmLayoutContentIsValid($content, $fileVersion)) {
+            return true;
+        }
+
+        $version = (string) ($content['version'] ?? '0');
+
+        return version_compare($version, $fileVersion, '<');
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
+     */
+    private function realtimeVmLayoutContentIsValid(array $content, string $fileVersion): bool
+    {
+        $version = (string) ($content['version'] ?? '0');
+
+        if (version_compare($version, self::REALTIME_VM_MIN_VERSION, '<')) {
             return false;
         }
 
-        $computed = $dbContent['computed'] ?? [];
+        if (version_compare($version, $fileVersion, '<')) {
+            return false;
+        }
+
+        $computed = $content['computed'] ?? [];
         if (is_array($computed)) {
             foreach (self::LEGACY_REALTIME_VM_COMPUTED as $legacyKey) {
                 if (array_key_exists($legacyKey, $computed)) {
-                    $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME." 구형 computed.{$legacyKey} 잔존");
-
                     return false;
                 }
             }
         }
 
-        $serialized = json_encode($dbContent, JSON_UNESCAPED_UNICODE);
-        if ($serialized !== false) {
-            if (str_contains($serialized, '"name": "Dl"') || str_contains($serialized, '"iteration":{"data"')) {
-                $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 구형 UI 바인딩(Dl/iteration.data) 잔존');
-
-                return false;
-            }
-            if (! str_contains($serialized, '_computed.wsHttpStatus')) {
-                $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' 스칼라 _computed.wsHttpStatus 바인딩 없음');
-
-                return false;
-            }
+        $serialized = json_encode($content, JSON_UNESCAPED_UNICODE);
+        if ($serialized === false) {
+            return false;
         }
 
-        $this->line("  [{$label}] admin_realtime_vm layout OK (v{$dbVersion}, filesystem v{$fileVersion})");
-
-        if (version_compare($dbVersion, $fileVersion, '<')) {
-            $this->warn("  [{$label}] DB layout 버전이 filesystem 보다 낮음 — module:refresh-layout 이 updated=0 이면 수동 확인");
+        if (str_contains($serialized, '"name": "Dl"') || str_contains($serialized, '"iteration":{"data"')) {
+            return false;
         }
 
-        return true;
+        return str_contains($serialized, '_computed.wsHttpStatus');
     }
 
     /**
