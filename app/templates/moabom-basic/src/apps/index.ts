@@ -15,17 +15,22 @@ export type MoabomShellAppComponent = ComponentType;
  * create-app(ai-generator)만 폴더명≠id 라 명시 등록한다.
  */
 const metadataModules = import.meta.glob<Record<string, unknown>>('./*/metadata.ts', { eager: true });
-const shellRegisterModules = import.meta.glob('./*/shellRegister.ts');
 
-function shellRegisterFolderId(path: string): string | null {
-  const match = path.match(/^\.\/([^/]+)\/shellRegister\.ts$/);
-  return match?.[1] ?? null;
-}
-
-/** `build-shell-apps.cjs` 가 실제로 빌드하는 앱 폴더 id (ai-generator 제외 — create-app 전용 config). */
-const SHELL_REGISTERED_APP_IDS = Object.keys(shellRegisterModules)
-  .map(shellRegisterFolderId)
-  .filter((id): id is string => id != null && id !== 'ai-generator');
+/**
+ * `scripts/build-shell-apps.cjs` discoverApps() 와 동기화 (shellRegister.ts 있는 폴더).
+ * import.meta.glob(shellRegister) 는 메인 번들에 셸 앱 UI 전체가 끌려 들어가 예산을 초과한다.
+ */
+const SHELL_REGISTERED_APP_IDS = [
+  'as-request',
+  'consulting',
+  'cpap-mask',
+  'cpap-rental',
+  'cpap-return',
+  'global-search',
+  'refurb-request',
+  'rental-dashboard',
+  'settlement',
+] as const;
 
 function isAppMetadata(value: unknown): value is App {
   return (
