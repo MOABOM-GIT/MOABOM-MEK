@@ -216,13 +216,12 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
   const panelClassName = [
     'moa-chat-panel',
     'rounded-lg',
-    'glass-panel',
     isNarrow && mobileListOpen ? 'moa-chat-panel--mobile-list' : '',
   ].filter(Boolean).join(' ');
 
   return (
     <Div ref={panelRef} className={panelClassName}>
-      <Div className="moa-chat-sidebar moa-group">
+      <Div className="moa-chat-sidebar moa-group border border-gray-200 dark:border-gray-700">
         <Div className="moa-chat-sidebar__header">
           {isNarrow && mobileListOpen ? (
             <Button

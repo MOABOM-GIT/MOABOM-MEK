@@ -10,11 +10,22 @@ export type MoabomShellAppComponent = ComponentType;
 /**
  * 셸 앱 메타데이터 자동 발견 (컨벤션 기반 — 앱 추가 시 이 파일 무수정).
  *
- * 규약: `src/apps/<id>/metadata.ts` 가 App 1개를 export, 폴더명 == metadata.id,
- *       청크 = `moabom-shell-<id>.iife.js`. (빌드는 scripts/build-shell-apps.cjs 가 동일 규약으로 수행)
- *       create-app(ai-generator)만 폴더명≠id 라 명시 등록한다.
+ * 규약: `src/apps/<id>/metadata.ts` 가 App 1개를 export, 폴더명 == metadata.id.
+ * 별도 IIFE 청크는 `shellRegister.ts` 가 있는 앱만 (`scripts/build-shell-apps.cjs`).
+ * create-app(ai-generator)만 폴더명≠id 라 명시 등록한다.
  */
 const metadataModules = import.meta.glob<Record<string, unknown>>('./*/metadata.ts', { eager: true });
+const shellRegisterModules = import.meta.glob('./*/shellRegister.ts');
+
+function shellRegisterFolderId(path: string): string | null {
+  const match = path.match(/^\.\/([^/]+)\/shellRegister\.ts$/);
+  return match?.[1] ?? null;
+}
+
+/** `build-shell-apps.cjs` 가 실제로 빌드하는 앱 폴더 id (ai-generator 제외 — create-app 전용 config). */
+const SHELL_REGISTERED_APP_IDS = Object.keys(shellRegisterModules)
+  .map(shellRegisterFolderId)
+  .filter((id): id is string => id != null && id !== 'ai-generator');
 
 function isAppMetadata(value: unknown): value is App {
   return (
@@ -31,12 +42,12 @@ export const MOABOM_SHELL_APP_METADATA: App[] = Object.values(metadataModules)
   .filter(isAppMetadata)
   .filter(meta => meta.id !== createAppShellMetadata.id);
 
-/** 앱 id → 별도 번들 파일명 (메인 `components.iife.js`에 포함하지 않음) */
+/** 앱 id → 별도 번들 파일명 (`shellRegister.ts` 또는 create-app 전용 빌드만). */
 const SHELL_APP_CHUNK_FILES: Record<string, string> = {
   // create-app 은 폴더명(ai-generator)≠id 라 별도 vite config(moabom-shell-create-app)로 빌드.
   [createAppShellMetadata.id]: 'moabom-shell-create-app.iife.js',
   ...Object.fromEntries(
-    MOABOM_SHELL_APP_METADATA.map(meta => [meta.id, `moabom-shell-${meta.id}.iife.js`]),
+    SHELL_REGISTERED_APP_IDS.map(id => [id, `moabom-shell-${id}.iife.js`]),
   ),
 };
 
