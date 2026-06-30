@@ -73,12 +73,7 @@ body.moa-home-active {
 
 /** 앱 창 본문 내부 블록(섹션) 그리드 */
 .moa-app-stack-grid {
-  gap: 1rem;
+  gap: var(--moa-app-stack-gap);
   min-height: 0;
   flex: 1 1 auto;
-}
-
-.moa-ai-preview-panel {
-  flex: 1 1 auto;
-  min-height: 0;
 }

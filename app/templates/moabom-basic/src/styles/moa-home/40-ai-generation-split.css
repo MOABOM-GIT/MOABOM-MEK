@@ -1,23 +1,71 @@
 /**
- * AI 앱 만들기 — 좌·우 패널 그리드.
- * 가로 2열(@xl): 단일 행 stretch + 미리보기 height 100%.
+ * AI 앱 만들기 — 좌·우 패널 레이아웃 + 코드/미리보기 세로 분할.
+ * - 1열(모바일): 미리보기 패널이 창 높이(70cqh)를 채우고 본문은 viewport 스크롤
+ *   (그리드를 강제 풀하이트로 고정하지 않아 좌·우 패널 콘텐츠 겹침 방지).
+ * - 2열(@xl): 단일 행 stretch, 좌·우 패널 풀하이트 + 내부 스크롤.
  */
 
-@container moa-app-window (width >= 1280px) {
-  .moa-ai-generator-layout {
-    grid-template-rows: minmax(0, 1fr);
-  }
-
-  .moa-ai-preview-panel {
-    height: 100%;
-  }
+.moa-ai-generator-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--moa-app-stack-gap);
+  /* 1열: 콘텐츠 높이 유지(shrink 금지) → 넘치면 viewport 스크롤, 행 겹침 방지 */
+  flex: 0 0 auto;
 }
 
-.moa-ai-split-pane {
+.moa-ai-form-panel {
+  min-height: 0;
+}
+
+.moa-ai-preview-panel {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  height: 70cqh;
+  overflow: hidden;
+}
+
+.moa-ai-preview-stage {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+}
+
+.moa-ai-preview-frame {
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 60%);
+  background: #fff;
+}
+
+.moa-ai-preview-empty {
+  display: flex;
+  flex: 1 1 0%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+@container moa-app-window (width >= 1280px) {
+  .moa-ai-generator-layout {
+    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .moa-ai-form-panel,
+  .moa-ai-preview-panel,
+  .moa-ai-preview-stage {
+    height: 100%;
+  }
 }
 
 .moa-ai-split-pane__code,

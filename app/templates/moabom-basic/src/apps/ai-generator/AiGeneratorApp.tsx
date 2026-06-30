@@ -38,7 +38,6 @@ import {
   APP_SHELL_PANEL_STACK_CLASS,
   APP_SHELL_SELECT_TRIGGER_CLASS,
   APP_SHELL_TEXTAREA_CLASS,
-  APP_STACK_GRID_CLASS,
   APP_WINDOW_BODY_CLASS,
 } from '../appShellTypography';
 import { buildGenerationDraftView, resolveGenerationSource } from './aiGenerationDraft';
@@ -600,8 +599,8 @@ export function AiGeneratorApp() {
         />
       ) : null}
 
-      <Div className={`${APP_STACK_GRID_CLASS} moa-ai-generator-layout grid min-h-0 flex-1 grid-cols-1 @xl:grid-cols-[380px_minmax(0,1fr)]`}>
-        <Div className={`${APP_SHELL_PANEL_STACK_CLASS} min-h-0 @xl:h-full`}>
+      <Div className="moa-ai-generator-layout">
+        <Div className={`${APP_SHELL_PANEL_STACK_CLASS} moa-ai-form-panel`}>
           <Label className="block">
             <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_title')}</Div>
             <Input
@@ -732,7 +731,7 @@ export function AiGeneratorApp() {
 
         <Div
           ref={splitPane.containerRef}
-          className={`${APP_SHELL_PANEL_BODY_CLASS} moa-ai-preview-panel flex min-h-0 flex-1 flex-col overflow-hidden relative @xl:h-full ${showCodePreviewPanel ? 'moa-ai-split-pane' : ''}`}
+          className={`${APP_SHELL_PANEL_BODY_CLASS} moa-ai-preview-panel`}
         >
           {!isWebsiteLink && queueState ? (
             <AiGenerationQueuePanel
@@ -774,13 +773,13 @@ export function AiGeneratorApp() {
           ) : null}
 
           <Div
-            className={`flex min-h-0 flex-1 flex-col @xl:h-full ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
+            className={`moa-ai-preview-stage ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
             style={splitPane.enabled && splitPane.previewFlex ? { flex: `1 1 ${splitPane.previewFlex}` } : undefined}
           >
             {isWebsiteLink && websitePreviewUrl ? (
               <iframe
                 title={title.trim() || t('moa_apps_ai.preview_title')}
-                className="min-h-0 w-full flex-1 rounded-2xl border border-white/60 bg-white"
+                className="moa-ai-preview-frame"
                 src={websitePreviewUrl}
                 sandbox={generatedAppFrameSandbox(websitePreviewUrl, 'website_link')}
               />
@@ -788,12 +787,12 @@ export function AiGeneratorApp() {
               <iframe
                 ref={previewIframeRef}
                 title={t('moa_apps_ai.preview_title')}
-                className="min-h-0 w-full flex-1 rounded-2xl border border-white/60 bg-white"
+                className="moa-ai-preview-frame"
                 srcDoc={previewHtml}
                 sandbox="allow-scripts allow-downloads"
               />
             ) : (
-              <Div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center">
+              <Div className="moa-ai-preview-empty">
                 <Icon name="file-alt" className="text-4xl text-faint" />
                 <Div className={APP_SHELL_BODY_CLASS}>{t('moa_apps_ai.preview_empty_title')}</Div>
                 <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>
