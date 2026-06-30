@@ -152,6 +152,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
             ));
 
             if ($moduleId === 'moabom-system') {
+                $this->forceRealtimeVmModuleLayoutFromFilesystem($layoutService);
                 if (! $this->assertRealtimeVmLayoutSynced($label, $layoutResolver, $layoutService)) {
                     return false;
                 }
@@ -265,7 +266,7 @@ final class SaasSyncModuleLayoutsCommand extends Command
     ): void {
         $override = TemplateLayout::query()
             ->where('template_id', $template->id)
-            ->where('name', self::REALTIME_VM_LAYOUT_NAME)
+            ->whereIn('name', [self::REALTIME_VM_LAYOUT_NAME, 'admin_realtime_vm'])
             ->fromTemplates()
             ->whereNotNull('source_identifier')
             ->first();
@@ -314,10 +315,6 @@ final class SaasSyncModuleLayoutsCommand extends Command
             return false;
         }
 
-        if (version_compare($version, $fileVersion, '<')) {
-            return false;
-        }
-
         $computed = $content['computed'] ?? [];
         if (is_array($computed)) {
             foreach (self::LEGACY_REALTIME_VM_COMPUTED as $legacyKey) {
@@ -337,6 +334,73 @@ final class SaasSyncModuleLayoutsCommand extends Command
         }
 
         return str_contains($serialized, '_computed.wsHttpStatus');
+    }
+
+    private function readRealtimeVmFilesystemVersion(): string
+    {
+        $filePath = base_path('modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json');
+        if (! is_readable($filePath)) {
+            return '0';
+        }
+
+        $fileData = json_decode((string) file_get_contents($filePath), true);
+
+        return is_array($fileData) ? (string) ($fileData['version'] ?? '0') : '0';
+    }
+
+    private function forceRealtimeVmModuleLayoutFromFilesystem(LayoutService $layoutService): void
+    {
+        $filePath = base_path('modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json');
+        if (! is_readable($filePath)) {
+            return;
+        }
+
+        $fileData = json_decode((string) file_get_contents($filePath), true);
+        if (! is_array($fileData)) {
+            return;
+        }
+
+        $fileVersion = (string) ($fileData['version'] ?? '0');
+
+        $template = Template::query()
+            ->where('identifier', 'moabom-admin_basic')
+            ->where('type', 'admin')
+            ->first();
+
+        if ($template === null) {
+            return;
+        }
+
+        $moduleLayout = TemplateLayout::query()
+            ->where('template_id', $template->id)
+            ->where('name', self::REALTIME_VM_LAYOUT_NAME)
+            ->fromModules()
+            ->first();
+
+        if ($moduleLayout === null) {
+            return;
+        }
+
+        $content = is_array($moduleLayout->content)
+            ? $moduleLayout->content
+            : json_decode((string) $moduleLayout->content, true);
+
+        if (! is_array($content)) {
+            return;
+        }
+
+        $dbVersion = (string) ($content['version'] ?? '0');
+
+        if ($content === $fileData || version_compare($dbVersion, $fileVersion, '>=')) {
+            return;
+        }
+
+        $moduleLayout->update([
+            'content' => $fileData,
+            'extends' => $fileData['extends'] ?? $moduleLayout->extends,
+        ]);
+
+        $layoutService->clearDependentLayoutsCache($template->id, self::REALTIME_VM_LAYOUT_NAME);
     }
 
     /**
