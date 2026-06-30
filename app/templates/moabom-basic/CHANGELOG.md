@@ -20,6 +20,7 @@
 - 좌측 패널 SMARTCARE 로고 — 캐시 비운 직후 간헐 엑박 방지: 번들 SVG에 extension cache version 쿼리·preload 재시도·`onError` 시 retry URL 복구 (`moabomSiteBranding.ts`, `Moa_LeftPanel.tsx`).
 - **채팅 UI** — 대화목록 시간·헤더 시간 제거, 말풍선 옆(카카오톡 스타일) 시간·미읽음 `안읽음` 표시, 말풍선 내부 읽음 표시 없음 (`Moa_ChatPanel.tsx`).
 - **채팅 롱프레스 메뉴** — 말풍선 노출 삭제 버튼 제거, 롱프레스(또는 우클릭)로 메시지 복사·삭제; 좌측 대화목록은 롱프레스·우클릭 메뉴와 호버(터치는 상시) 휴지통 병행 (`Moa_ChatMessageContextMenu.tsx`, `Moa_ChatPanel.tsx`).
+- **게시판 최대화(PC)** — 공지 등 게시판 창을 최대화했을 때 본문 상단 `1rem` 여백(타이틀·버튼 붙음 방지), 본문 열 `84%`·`max-width: 72rem` 가운데 정렬. 모바일 창 폭(`<768px`)은 변경 없음 (`31-board-window.css`).
 - **실시간 REST 동기화** — 접속자·친구·알림·채팅 catch-up 요청을 key 단위로 합쳐 WS 재연결·포커스 복귀·폴링이 겹칠 때 중복 네트워크 요청을 줄였습니다.
 - **날씨 마이페이지 상태** — 15초 상시 폴링 제거, 이벤트 + bounded 재시도(800ms/2.5s/6s)로 전환.
 

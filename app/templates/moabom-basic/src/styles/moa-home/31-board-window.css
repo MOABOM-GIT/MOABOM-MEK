@@ -229,3 +229,19 @@
     padding-right: 1rem;
   }
 }
+
+/**
+ * 게시판 최대화(PC) — 타이틀 바·본문 간격, 가운데 열 + 양쪽 % 여백.
+ * 창 본문 `@container moa-app-window` md(768px) 미만(모바일·좁은 창)은 기존 풀폭 유지.
+ */
+@container moa-app-window (width >= 768px) {
+  .moa-window-frame--maximized .moa-g7-window-host.moa-board-window-host {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    align-self: center;
+    width: 84%;
+    max-width: 72rem;
+    margin-top: 1rem;
+    margin-inline: auto;
+  }
+}
