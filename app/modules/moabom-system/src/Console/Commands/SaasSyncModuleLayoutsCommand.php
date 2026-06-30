@@ -207,12 +207,6 @@ final class SaasSyncModuleLayoutsCommand extends Command
 
         $dbVersion = (string) ($dbContent['version'] ?? '0');
 
-        if (version_compare($dbVersion, $fileVersion, '<')) {
-            $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME." DB v{$dbVersion} < filesystem v{$fileVersion}");
-
-            return false;
-        }
-
         if (version_compare($dbVersion, self::REALTIME_VM_MIN_VERSION, '<')) {
             $this->error("  [{$label}] ".self::REALTIME_VM_LAYOUT_NAME.' DB v'.$dbVersion.' < min '.self::REALTIME_VM_MIN_VERSION);
 
@@ -244,7 +238,11 @@ final class SaasSyncModuleLayoutsCommand extends Command
             }
         }
 
-        $this->line("  [{$label}] admin_realtime_vm layout OK (v{$dbVersion})");
+        $this->line("  [{$label}] admin_realtime_vm layout OK (v{$dbVersion}, filesystem v{$fileVersion})");
+
+        if (version_compare($dbVersion, $fileVersion, '<')) {
+            $this->warn("  [{$label}] DB layout 버전이 filesystem 보다 낮음 — module:refresh-layout 이 updated=0 이면 수동 확인");
+        }
 
         return true;
     }

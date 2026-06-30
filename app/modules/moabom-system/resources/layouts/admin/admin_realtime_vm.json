@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.4",
   "layout_name": "admin_realtime_vm",
   "permissions": ["moabom-system.realtime.read"],
   "extends": "_admin_base",
