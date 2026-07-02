@@ -56,6 +56,8 @@ echo "[entrypoint] Ensuring platform SNS master settings..."
 php artisan moabom:social-auth:seed-platform-master --no-interaction || true
 
 mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+# Cloud Run CACHE_STORE=file — 인스턴스 로컬 캐시가 layout sync Job 과 분리되어 구형 layout 이 남을 수 있음
+rm -rf storage/framework/cache/data/* 2>/dev/null || true
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache
 

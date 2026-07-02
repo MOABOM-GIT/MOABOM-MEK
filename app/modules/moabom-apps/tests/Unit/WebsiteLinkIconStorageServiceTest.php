@@ -7,7 +7,7 @@ namespace Modules\Moabom\Apps\Tests\Unit;
 use App\Contracts\Extension\StorageInterface;
 use Illuminate\Support\Facades\Http;
 use Modules\Moabom\Apps\Models\GeneratedApp;
-use Modules\Moabom\Apps\Services\WebsiteLinkIconBinaryValidator;
+use Modules\Moabom\Apps\Support\WebsiteLinkIconBinaryValidator;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconExtractionService;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
 use Modules\Moabom\Apps\Services\WebsiteLinkUrlGuard;
@@ -35,6 +35,7 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
 
         $storage = $this->createMock(StorageInterface::class);
         $storage->method('files')->willReturn([]);
+        $storage->method('exists')->willReturn(false);
         $storage->expects($this->once())
             ->method('put')
             ->with(
@@ -52,7 +53,7 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
 
         $metadata = $service->persistForApp($app, [
             'website_url' => 'https://example.com',
-            'icon_url' => 'https://example.com/favicon.png',
+            'icon_source_url' => 'https://example.com/favicon.png',
             'icon_from_title' => false,
         ]);
 
@@ -61,14 +62,25 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $this->assertSame('12/website-icon.png', $metadata['stored_icon_path']);
     }
 
-    public function test_persist_for_app_skips_title_icon_fallback(): void
+    public function test_persist_for_app_fetches_even_when_client_sent_icon_from_title(): void
     {
+        Http::fake([
+            'https://example.com' => Http::response('<html><head><link rel="icon" href="https://example.com/favicon.png"/></head></html>', 200),
+            'https://example.com/favicon.png' => Http::response(
+                "\x89PNG\r\n\x1a\n",
+                200,
+                ['Content-Type' => 'image/png'],
+            ),
+        ]);
+
         $storage = $this->createMock(StorageInterface::class);
-        $storage->expects($this->never())->method('put');
+        $storage->method('files')->willReturn([]);
+        $storage->method('exists')->willReturn(false);
+        $storage->expects($this->once())->method('put')->willReturn(true);
 
         $service = $this->makeService($storage);
         $app = new GeneratedApp([
-            'id' => 3,
+            'id' => 4,
             'app_type' => 'website_link',
         ]);
 
@@ -77,8 +89,72 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
             'icon_from_title' => true,
         ]);
 
-        $this->assertTrue($metadata['icon_from_title']);
-        $this->assertArrayNotHasKey('stored_icon_path', $metadata);
+        $this->assertFalse($metadata['icon_from_title']);
+        $this->assertStringContainsString('/apps/generated/4/website-icon', $metadata['icon_url']);
+    }
+
+    public function test_persist_reuses_stored_icon_when_website_url_is_unchanged(): void
+    {
+        Http::fake();
+
+        $storage = $this->createMock(StorageInterface::class);
+        $storage->method('exists')
+            ->with('generated-apps', '9/website-icon.png')
+            ->willReturn(true);
+        $storage->expects($this->never())->method('put');
+
+        $service = $this->makeService($storage);
+        $app = new GeneratedApp([
+            'id' => 9,
+            'app_type' => 'website_link',
+            'metadata' => [
+                'website_url' => 'https://example.com',
+                'icon_source_url' => 'https://example.com/favicon.png',
+                'stored_icon_path' => '9/website-icon.png',
+                'icon_mime' => 'image/png',
+            ],
+        ]);
+
+        $metadata = $service->persistForApp($app, [
+            'website_url' => 'https://example.com',
+            'icon_source_url' => 'https://example.com/favicon.png',
+            'icon_from_title' => false,
+        ]);
+
+        $this->assertSame('9/website-icon.png', $metadata['stored_icon_path']);
+        $this->assertStringContainsString('/apps/generated/9/website-icon', $metadata['icon_url']);
+    }
+
+    public function test_persist_keeps_existing_icon_when_refetch_fails_for_same_website(): void
+    {
+        Http::fake([
+            'https://example.com' => Http::response('', 500),
+            'https://example.com/favicon.ico' => Http::response('', 500),
+        ]);
+
+        $storage = $this->createMock(StorageInterface::class);
+        $storage->method('exists')
+            ->with('generated-apps', '11/website-icon.png')
+            ->willReturn(true);
+        $storage->expects($this->never())->method('put');
+
+        $service = $this->makeService($storage);
+        $app = new GeneratedApp([
+            'id' => 11,
+            'app_type' => 'website_link',
+            'metadata' => [
+                'website_url' => 'https://example.com',
+                'stored_icon_path' => '11/website-icon.png',
+                'icon_source_url' => 'https://example.com/favicon.png',
+            ],
+        ]);
+
+        $metadata = $service->persistForApp($app, [
+            'website_url' => 'https://example.com',
+        ]);
+
+        $this->assertSame('11/website-icon.png', $metadata['stored_icon_path']);
+        $this->assertFalse($metadata['icon_from_title']);
     }
 
     public function test_normalize_metadata_for_response_uses_internal_url_when_file_exists(): void
@@ -87,9 +163,6 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $storage->method('exists')
             ->with('generated-apps', '9/website-icon.png')
             ->willReturn(true);
-        $storage->method('files')
-            ->with('generated-apps', '9')
-            ->willReturn(['moabom-apps/generated-apps/9/website-icon.png']);
 
         $service = $this->makeService($storage);
         $app = new GeneratedApp([
@@ -106,7 +179,7 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $this->assertStringContainsString('/apps/generated/9/website-icon', $metadata['icon_url']);
     }
 
-    public function test_normalize_metadata_strips_internal_url_when_file_missing(): void
+    public function test_normalize_metadata_applies_title_fallback_when_file_missing(): void
     {
         $storage = $this->createMock(StorageInterface::class);
         $storage->method('exists')->willReturn(false);
@@ -125,8 +198,8 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
 
         $metadata = $service->normalizeMetadataForResponse($app, $app->metadata ?? []);
 
+        $this->assertTrue($metadata['icon_from_title']);
         $this->assertArrayNotHasKey('icon_url', $metadata);
-        $this->assertArrayNotHasKey('stored_icon_path', $metadata);
     }
 
     public function test_response_uses_metadata_stored_path_with_disk_absolute_listing(): void

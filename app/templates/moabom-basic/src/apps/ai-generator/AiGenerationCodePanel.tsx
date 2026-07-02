@@ -65,7 +65,7 @@ export function AiGenerationCodePanel({
       {isStreaming ? (
         <Div
           ref={codePanelRef}
-          className="max-h-36 overflow-auto rounded-2xl bg-black/5 p-3 dark:bg-white/5 @xl:max-h-40"
+          className="moa-ai-code-panel__stream min-h-0 flex-1 overflow-auto rounded-2xl bg-black/5 p-3 dark:bg-white/5"
         >
           <pre className="whitespace-pre-wrap break-words font-mono text-xs text-secondary">{codePreview}</pre>
         </Div>

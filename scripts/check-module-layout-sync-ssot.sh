@@ -58,7 +58,10 @@ if grep -q '"module_refresh_layout"' "${PKG}"; then
   fi
 fi
 
-chmod +x "${ROOT}/scripts/check-realtime-vm-layout-bindings.sh" 2>/dev/null || true
+grep -q 'PlatformModuleLayoutReconciler' "${SYNC_CMD}" \
+  || fail "SaasSyncModuleLayoutsCommand 가 PlatformModuleLayoutReconciler 미사용"
+grep -q 'reconcile-platform-module-layouts' "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh" \
+  || fail "run-platform-module-layout-reconcile-job.sh 없음 또는 reconcile 커맨드 미호출"
 "${ROOT}/scripts/check-realtime-vm-layout-bindings.sh"
 
 echo "OK: admin route layouts + module sync catalog SSOT"

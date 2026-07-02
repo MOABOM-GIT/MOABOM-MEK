@@ -30,6 +30,9 @@ import { Input } from '../../components/basic/Input';
 import { Label } from '../../components/basic/Label';
 import { Select } from '../../components/basic/Select';
 import { Textarea } from '../../components/basic/Textarea';
+import { Checkbox } from '../../components/basic/Checkbox';
+import { Span } from '../../components/basic/Span';
+import { appendHostedModernStoragePrompt } from './aiGeneratorPrompt';
 import {
   APP_SHELL_BODY_CLASS,
   APP_SHELL_DESC_CLASS,
@@ -55,13 +58,16 @@ import { useAiAppStream } from './useAiAppStream';
 import { readAiGenerationResumeFormFields } from './aiGenerationResumeForm';
 import type { AiGenerationSession } from '../../api/moabomAppsApi';
 import {
+  buildWebsiteLinkSaveMetadata,
   buildWebsiteLinkStoredHtml,
   isWebsiteLinkAppType,
   normalizeWebsiteUrl,
   readWebsiteIconFromMetadata,
+  readWebsiteLinkPreviewFromMetadata,
   readWebsitePointColorFromMetadata,
   isWebsiteTitleIconFromMetadata,
   readWebsiteUrlFromMetadata,
+  stripWebsiteLinkIconServingMetadata,
 } from './websiteLinkApp';
 
 const appTierOptions: Array<{ value: AppTier; labelKey: string }> = [
@@ -108,6 +114,7 @@ export function AiGeneratorApp() {
   const [prompt, setPrompt] = useState('');
   const [appType, setAppType] = useState<AiAppType>('general');
   const [appTier, setAppTier] = useState<AppTier>('standard');
+  const [hostedModernStoragePrompt, setHostedModernStoragePrompt] = useState(true);
   const [modelId, setModelId] = useState('claude-sonnet');
   const [draftHtml, setDraftHtml] = useState('');
   const [notice, setNotice] = useState('');
@@ -330,7 +337,10 @@ export function AiGeneratorApp() {
   const previewHtml = draftView.previewHtml;
   const codePreview = isStreaming ? draftSource : (draftHtml || debouncedPrepared.html);
   const showCodePreviewPanel = !isWebsiteLink && (isStreaming || Boolean(codePreview));
-  const splitPane = useVerticalSplitPane({ enabled: showCodePreviewPanel && Boolean(previewHtml || isStreaming) });
+  const hasPreviewContent = Boolean(previewHtml);
+  const splitPane = useVerticalSplitPane({
+    enabled: showCodePreviewPanel && hasPreviewContent && !isStreaming,
+  });
   const isEditingExisting = loadedEditId != null;
   const isRemixingExisting = remixSourceId != null;
   const needsRecovery = !isWebsiteLink && !isStreaming && persistPrepared.canContinue;
@@ -403,7 +413,12 @@ export function AiGeneratorApp() {
         : persistPrepared.html || '';
 
       await runStream({
-        prompt: prompt.trim(),
+        prompt: appendHostedModernStoragePrompt(
+          prompt.trim(),
+          appTier,
+          hostedModernStoragePrompt,
+          t('moa_apps_ai.hosted_modern_storage_prompt_addon'),
+        ),
         title: title.trim(),
         currentHtml: currentHtml || null,
         continueGeneration,
@@ -487,7 +502,9 @@ export function AiGeneratorApp() {
 
     const isDraftSave = !isWebsiteLink && saveCompleteness === 'partial';
     const metadataBase = isEditingExisting && loadedSourceApp?.metadata && typeof loadedSourceApp.metadata === 'object'
-      ? loadedSourceApp.metadata as Record<string, unknown>
+      ? (isWebsiteLink
+        ? stripWebsiteLinkIconServingMetadata(loadedSourceApp.metadata as Record<string, unknown>)
+        : loadedSourceApp.metadata as Record<string, unknown>)
       : undefined;
 
     const payload = {
@@ -501,12 +518,13 @@ export function AiGeneratorApp() {
         source: 'moabom-shell',
         generation_status: isWebsiteLink ? 'complete' : saveCompleteness,
         generation_complete: isWebsiteLink ? true : saveCompleteness === 'complete',
-        ...(isWebsiteLink ? {
-          website_url: nextWebsiteUrl,
-          icon_url: nextIconUrl || undefined,
-          theme_color: nextThemeColor || undefined,
-          icon_from_title: nextIconFromTitle || undefined,
-        } : {}),
+        ...(isWebsiteLink ? buildWebsiteLinkSaveMetadata({
+          websiteUrl: nextWebsiteUrl,
+          resolvedIconUrl: nextIconUrl,
+          themeColor: nextThemeColor,
+          iconFromTitle: nextIconFromTitle,
+          appId: loadedEditId,
+        }) : {}),
         ...(sessionId ? { ai_generation_session_id: sessionId } : {}),
         ...(isEditingExisting ? { updated: true } : {}),
         ...(isRemixingExisting ? { remix_source_id: remixSourceId } : {}),
@@ -517,18 +535,26 @@ export function AiGeneratorApp() {
     setIsSaving(true);
     try {
       let savedAppId: number;
+      let savedApp: Awaited<ReturnType<typeof storeGeneratedApp>>;
       if (loadedEditId != null) {
-        const updated = await updateGeneratedApp(loadedEditId, payload);
-        savedAppId = updated.id;
-        notifyGeneratedAppSaved(updated);
+        savedApp = await updateGeneratedApp(loadedEditId, payload);
+        savedAppId = savedApp.id;
+        notifyGeneratedAppSaved(savedApp);
         setSavedMessage(isDraftSave ? t('moa_apps_ai.recovery.save_draft_success') : t('moa_apps_ai.update_success'));
       } else {
-        const saved = await storeGeneratedApp(payload);
-        savedAppId = saved.id;
-        setLoadedEditId(saved.id);
+        savedApp = await storeGeneratedApp(payload);
+        savedAppId = savedApp.id;
+        setLoadedEditId(savedApp.id);
         setRemixSourceId(null);
-        notifyGeneratedAppSaved(saved);
+        notifyGeneratedAppSaved(savedApp);
         setSavedMessage(isDraftSave ? t('moa_apps_ai.recovery.save_draft_success') : t('moa_apps_ai.save_success'));
+      }
+
+      if (isWebsiteLink && savedApp.metadata && typeof savedApp.metadata === 'object') {
+        const preview = readWebsiteLinkPreviewFromMetadata(savedApp.metadata as Record<string, unknown>);
+        setResolvedIconUrl(preview.iconUrl);
+        setResolvedIconFromTitle(preview.iconFromTitle);
+        setResolvedThemeColor(preview.themeColor);
       }
       invalidateVisibleGeneratedAppSession(savedAppId);
       setDraftHtml(resolvedSaveHtml);
@@ -646,10 +672,28 @@ export function AiGeneratorApp() {
                     className={APP_SHELL_SELECT_TRIGGER_CLASS}
                     value={appTier}
                     options={appTierOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
-                    onChange={(event) => setAppTier(event.target.value as AppTier)}
+                    onChange={(event) => {
+                      const nextTier = event.target.value as AppTier;
+                      setAppTier(nextTier);
+                      if (nextTier === 'hosted') {
+                        setHostedModernStoragePrompt(true);
+                      }
+                    }}
                     disabled={isEditingExisting}
                   />
                 </Label>
+                {appTier === 'hosted' ? (
+                  <Label className="flex items-start gap-2">
+                    <Checkbox
+                      className="mt-1"
+                      checked={hostedModernStoragePrompt}
+                      onChange={(event) => setHostedModernStoragePrompt(event.target.checked)}
+                    />
+                    <Span className={APP_SHELL_BODY_CLASS}>
+                      {t('moa_apps_ai.hosted_modern_storage_prompt_option')}
+                    </Span>
+                  </Label>
+                ) : null}
                 <Label className="block">
                   <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_model')}</Div>
                   <Select
@@ -744,7 +788,13 @@ export function AiGeneratorApp() {
           {showCodePreviewPanel ? (
             <Div
               className="moa-ai-split-pane__code"
-              style={splitPane.enabled && splitPane.codeFlex ? { flex: `0 0 ${splitPane.codeFlex}` } : undefined}
+              style={
+                splitPane.enabled && splitPane.codeFlex
+                  ? { flex: `0 0 ${splitPane.codeFlex}` }
+                  : isStreaming
+                    ? { flex: '1 1 0%', minHeight: 0 }
+                    : undefined
+              }
             >
               <AiGenerationCodePanel
                 isStreaming={isStreaming}
@@ -759,7 +809,7 @@ export function AiGeneratorApp() {
             </Div>
           ) : null}
 
-          {showCodePreviewPanel && (previewHtml || isStreaming) ? (
+          {showCodePreviewPanel && splitPane.enabled && hasPreviewContent ? (
             <AiGenerationSplitHandle
               ariaLabel={t('moa_apps_ai.split_resize')}
               nudgeUpLabel={t('moa_apps_ai.split_nudge_up')}
@@ -774,7 +824,13 @@ export function AiGeneratorApp() {
 
           <Div
             className={`moa-ai-preview-stage ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
-            style={splitPane.enabled && splitPane.previewFlex ? { flex: `1 1 ${splitPane.previewFlex}` } : undefined}
+            style={
+              splitPane.enabled && splitPane.previewFlex
+                ? { flex: `1 1 ${splitPane.previewFlex}` }
+                : isStreaming && !hasPreviewContent
+                  ? { flex: '0 0 auto' }
+                  : undefined
+            }
           >
             {isWebsiteLink && websitePreviewUrl ? (
               <iframe

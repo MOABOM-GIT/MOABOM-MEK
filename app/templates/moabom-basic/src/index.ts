@@ -27,12 +27,15 @@ import { schedulePrefetchRecentMoabomShellAppChunks } from './runtime/moabomShel
 import * as MoabomShellI18n from './i18n/moabomShellI18nSingleton';
 import * as MoabomShellOverlay from './i18n/moabomShellOverlaySingleton';
 import * as MoabomCreateAppEdit from './apps/ai-generator/moabomCreateAppEditSession';
+import * as MoabomAiGenerationActivity from './apps/ai-generator/aiGenerationActivity';
 if (typeof window !== 'undefined') {
   (window as unknown as { __MoabomShellI18n?: typeof MoabomShellI18n }).__MoabomShellI18n = MoabomShellI18n;
   (window as unknown as { __MoabomShellOverlay?: typeof MoabomShellOverlay }).__MoabomShellOverlay =
     MoabomShellOverlay;
   (window as unknown as { __MoabomCreateAppEdit?: typeof MoabomCreateAppEdit }).__MoabomCreateAppEdit =
     MoabomCreateAppEdit;
+  (window as unknown as { __MoabomAiGenerationActivity?: typeof MoabomAiGenerationActivity }).__MoabomAiGenerationActivity =
+    MoabomAiGenerationActivity;
 }
 
 // Basic Components (Header, Footer는 composite에서 사용하므로 여기서는 별도 이름으로 export)

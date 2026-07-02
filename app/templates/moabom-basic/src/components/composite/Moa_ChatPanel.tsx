@@ -375,8 +375,6 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                     ) : null}
                     <Button
                       type="button"
-                      variant="danger-outline"
-                      size="xxs"
                       className="moa-chat-conversation-item__delete"
                       disabled={deletingConversationUuid === conversation.uuid}
                       aria-label={t('moa_chat.delete_conversation')}
@@ -388,7 +386,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
                         void handleRemoveConversation(conversation.uuid);
                       }}
                     >
-                      <Icon name="trash" className="text-sm" aria-hidden />
+                      <Icon name="trash" className="text-xs" aria-hidden />
                     </Button>
                   </Span>
                 </Span>

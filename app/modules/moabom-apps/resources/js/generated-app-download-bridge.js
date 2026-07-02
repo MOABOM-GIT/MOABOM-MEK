@@ -5,9 +5,11 @@
   window.__moabomDownloadBridge = true;
 
   var MAX_BYTES = 10 * 1024 * 1024;
+  // HTML 인라인 <script> 주입 시 regex \/\\ 이 깨지는 회귀 방지 — 백슬래시 리터럴 금지.
+  var PATH_BACKSLASH = String.fromCharCode(92);
 
   function sanitizeFilename(name) {
-    var base = String(name || 'download').replace(/\\/g, '/').split('/').pop() || 'download';
+    var base = String(name || 'download').split(PATH_BACKSLASH).join('/').split('/').pop() || 'download';
     base = base.replace(/[^\w.\- ()[\]\uAC00-\uD7A3]+/g, '_').slice(0, 180);
     return base || 'download';
   }

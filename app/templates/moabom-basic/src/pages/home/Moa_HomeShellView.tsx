@@ -215,6 +215,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
       initialY={isAuthWin ? undefined : win.initialY}
       isMaximized={win.isMaximized}
       isMinimized={win.isMinimized}
+      preserveContentWhenMinimized={isCreateAppShellWin && Boolean(win.isGenerationBackground)}
       onClose={handleClose}
       onMinimize={handleMinimize}
       onMaximize={handleMaximize}

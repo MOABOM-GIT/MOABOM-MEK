@@ -8,6 +8,7 @@ import {
   syncShellAppFocus,
 } from '../../shell/moaShellAppUsageTracker';
 import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
+import { isAiGenerationBusy } from 'moabom-ai-generation-activity';
 import { hasMoabomShellAppChunk, warmMoabomShellAppChunk } from '../../apps';
 import { setCreateAppEditServerId } from '../../apps/ai-generator/moabomCreateAppEditSession';
 import { resolveAppStrings, resolveWindowTitle } from '../../i18n/resolveAppStrings';
@@ -408,6 +409,7 @@ export function useMoaShellWindows({
             ...w,
             zIndex,
             isMinimized: false,
+            isGenerationBackground: false,
             ...(w.appId === 'mypage' ? { gradient: MOA_SHELL_POINT_TITLE_GRADIENT } : {}),
             ...(catalogChrome ?? {}),
           }
@@ -432,6 +434,7 @@ export function useMoaShellWindows({
       zIndex,
       isMaximized: resolveShellWindowMaximized(),
       isMinimized: false,
+      isGenerationBackground: false,
     };
     commitWindows(prev => [...prev, restored]);
     setNextZIndex(zIndex + 1);
@@ -602,11 +605,50 @@ export function useMoaShellWindows({
     });
   }, [commitWindows, isLoggedIn, restoreTaskbarWindow, t]);
 
+  const minimizeCreateAppForBackground = useCallback((target: WindowState) => {
+    if (taskbarItemsRef.current.length >= MAX_TASKBAR_ITEMS) {
+      pushWarningToast(t('moa_shell.home.toast_max_taskbar', { max: MAX_TASKBAR_ITEMS }));
+      return;
+    }
+
+    pushInfoToast(t('moa_apps_ai.toast_generation_background'));
+
+    const backgroundWin: WindowState = {
+      ...target,
+      isMaximized: false,
+      isMinimized: true,
+      isGenerationBackground: true,
+    };
+
+    setTaskbarItems(prev => {
+      if (prev.some(w => w.id === target.id)) {
+        return prev;
+      }
+      return [...prev, toTaskbarItem(backgroundWin)];
+    });
+
+    commitWindows(prev => prev.map(w => (
+      w.id === target.id ? backgroundWin : w
+    )));
+
+    if (typeof window !== 'undefined') {
+      const { pathname, search } = window.location;
+      if (doesShellLocationMatchWindow(pathname, search, target)) {
+        replaceShellPath('/');
+      }
+    }
+  }, [commitWindows, t]);
+
   const openCreateAppShell = useCallback((
     sync: ShellUrlSync = {},
     editGeneratedAppId?: number,
   ) => {
     if (editMode) return;
+
+    if (editGeneratedAppId != null && isAiGenerationBusy()) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_edit_blocked'));
+      return;
+    }
 
     const app = createAppShellMetadata;
     const existing = windowsRef.current.find(w => w.appId === app.id);
@@ -637,6 +679,10 @@ export function useMoaShellWindows({
 
     setCreateAppEditServerId(editGeneratedAppId);
     const { name: resolvedTitle } = resolveAppStrings(app, language);
+    const existingInWindows = windowsRef.current.find(w => w.appId === app.id);
+    if (existingInWindows?.isGenerationBackground) {
+      setTaskbarItems(prev => prev.filter(w => w.id !== existingInWindows.id));
+    }
     commitWindows(prev => {
       const ex = prev.find(w => w.appId === app.id);
       if (ex) {
@@ -645,6 +691,7 @@ export function useMoaShellWindows({
               ...w,
               zIndex: nextZIndex,
               isMinimized: false,
+              isGenerationBackground: false,
               editGeneratedAppId,
             }
           : w);
@@ -674,8 +721,12 @@ export function useMoaShellWindows({
   }, [commitWindows, editMode, language, nextZIndex, restoreTaskbarWindow, t]);
 
   const openEditGeneratedApp = useCallback((serverId: number) => {
+    if (isAiGenerationBusy()) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_edit_blocked'));
+      return;
+    }
     openCreateAppShell({}, serverId);
-  }, [openCreateAppShell]);
+  }, [openCreateAppShell, t]);
 
   const openApp = useCallback((app: App, sync: ShellUrlSync = {}) => {
     if (editMode) return;
@@ -1333,6 +1384,11 @@ export function useMoaShellWindows({
   }, []);
 
   const closeWindow = useCallback((win: WindowState) => {
+    if (win.appId === createAppShellMetadata.id && isAiGenerationBusy()) {
+      minimizeCreateAppForBackground(win);
+      return;
+    }
+
     const remaining = commitWindows(prev => prev.filter(w => w.id !== win.id));
 
     if (typeof window === 'undefined') {
@@ -1351,11 +1407,16 @@ export function useMoaShellWindows({
     }
 
     replaceShellPath('/');
-  }, [commitWindows]);
+  }, [commitWindows, minimizeCreateAppForBackground]);
 
   const minimizeWindow = useCallback((id: string) => {
     const target = windowsRef.current.find(w => w.id === id);
     if (!target) return;
+
+    if (target.appId === createAppShellMetadata.id && isAiGenerationBusy()) {
+      minimizeCreateAppForBackground(target);
+      return;
+    }
 
     if (taskbarItemsRef.current.length >= MAX_TASKBAR_ITEMS) {
       pushWarningToast(t('moa_shell.home.toast_max_taskbar', { max: MAX_TASKBAR_ITEMS }));
@@ -1367,7 +1428,7 @@ export function useMoaShellWindows({
       if (prev.some(w => w.id === id)) return prev;
       return [...prev, toTaskbarItem(target)];
     });
-  }, [t]);
+  }, [minimizeCreateAppForBackground, t]);
 
   const toggleMaximize = useCallback((id: string) => {
     setWindows(p => p.map(w => {

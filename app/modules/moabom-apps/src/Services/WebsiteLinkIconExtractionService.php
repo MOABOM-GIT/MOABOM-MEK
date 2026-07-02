@@ -7,15 +7,17 @@ namespace Modules\Moabom\Apps\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Modules\Moabom\Apps\DTO\WebsiteLinkIconFetchResult;
 use Modules\Moabom\Apps\Support\WebsiteLinkIconBinaryValidator;
 
 /**
  * 웹사이트 연결 앱 파비콘 단계별 추출 파이프라인.
  *
- * 1. HTML head `<link rel="*icon*">` 후보 (apple-touch → shortcut → icon → fluid → ms tile)
- * 2. origin well-known 경로 (/favicon.ico, /favicon.png, /apple-touch-icon*.png)
- * 3. 각 후보 GET + 매직 바이트 검증 — 첫 성공 URL 반환
- * 4. 모두 실패 → icon_from_title
+ * ## probe (resolve API — 빠른 미리보기)
+ * HTML head 1회 → 후보 URL 목록 → 첫 후보만 반환 (GET 없음)
+ *
+ * ## fetch (저장·repair — 확정)
+ * HTML head 1회 → 후보 URL 순회 → GET + 매직 바이트 검증 → 첫 성공 바이너리 반환
  */
 class WebsiteLinkIconExtractionService
 {
@@ -42,26 +44,50 @@ class WebsiteLinkIconExtractionService
     }
 
     /**
+     * resolve API용 — HTML 파싱만 수행하고 후보 URL을 반환합니다 (바이너리 GET 없음).
+     *
      * @return array{icon_url: ?string, icon_from_title: bool}
      */
-    public function resolveIconFromWebsite(string $websiteUrl, ?string $documentBody = null): array
+    public function probeIconCandidate(string $websiteUrl): array
     {
         $url = $this->urlGuard->normalizeUrl($websiteUrl);
-        $body = $documentBody ?? $this->urlGuard->fetchDocumentBody($url);
+        $body = $this->urlGuard->fetchDocumentBody($url);
+        $candidates = $this->collectCandidateUrls($body, $url);
 
-        foreach ($this->collectCandidateUrls($body, $url) as $candidateUrl) {
-            if ($this->fetchIconBinary($candidateUrl) !== null) {
-                return [
-                    'icon_url' => $candidateUrl,
-                    'icon_from_title' => false,
-                ];
-            }
+        if ($candidates === []) {
+            return [
+                'icon_url' => null,
+                'icon_from_title' => true,
+            ];
         }
 
         return [
-            'icon_url' => null,
-            'icon_from_title' => true,
+            'icon_url' => $candidates[0],
+            'icon_from_title' => false,
         ];
+    }
+
+    /**
+     * 저장·repair용 — 후보 URL을 GET 검증하여 바이너리를 반환합니다.
+     */
+    public function fetchIconForWebsite(string $websiteUrl, ?string $preferredSourceUrl = null): ?WebsiteLinkIconFetchResult
+    {
+        $url = $this->urlGuard->normalizeUrl($websiteUrl);
+        $body = $this->urlGuard->fetchDocumentBody($url);
+        $candidates = $this->collectCandidateUrls($body, $url);
+
+        if ($preferredSourceUrl !== null && trim($preferredSourceUrl) !== '') {
+            $candidates = $this->prioritizeCandidate($candidates, trim($preferredSourceUrl));
+        }
+
+        foreach ($candidates as $candidateUrl) {
+            $binary = $this->fetchIconBinary($candidateUrl);
+            if ($binary !== null) {
+                return new WebsiteLinkIconFetchResult($candidateUrl, $binary);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -95,6 +121,10 @@ class WebsiteLinkIconExtractionService
      */
     public function fetchIconBinary(string $rawUrl): ?array
     {
+        if (str_starts_with(strtolower(trim($rawUrl)), 'data:')) {
+            return null;
+        }
+
         try {
             $url = $this->urlGuard->assertFetchableUrl($rawUrl);
         } catch (InvalidArgumentException) {
@@ -141,6 +171,23 @@ class WebsiteLinkIconExtractionService
             'mime' => $detected['mime'],
             'ext' => $detected['ext'],
         ];
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     * @return list<string>
+     */
+    private function prioritizeCandidate(array $candidates, string $preferredSourceUrl): array
+    {
+        $preferred = strtolower($preferredSourceUrl);
+
+        return $this->dedupeUrls([
+            $preferredSourceUrl,
+            ...array_values(array_filter(
+                $candidates,
+                static fn (string $candidate): bool => strtolower($candidate) !== $preferred,
+            )),
+        ]);
     }
 
     /**
@@ -381,7 +428,7 @@ class WebsiteLinkIconExtractionService
         }
 
         if (str_starts_with(strtolower($trimmed), 'data:')) {
-            return strlen($trimmed) >= 120 ? $trimmed : null;
+            return null;
         }
 
         if (preg_match('#^https?://#i', $trimmed)) {

@@ -66,6 +66,106 @@ export function readWebsiteIconFromMetadata(metadata: Record<string, unknown> | 
   return typeof iconUrl === 'string' ? iconUrl.trim() : '';
 }
 
+export function isInternalWebsiteIconUrl(url: string, appId?: number | null): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (trimmed.includes('/website-icon')) {
+    return true;
+  }
+
+  if (appId != null && appId > 0) {
+    return trimmed.includes(`/apps/generated/${appId}/website-icon`);
+  }
+
+  return /\/apps\/generated\/\d+\/website-icon/.test(trimmed);
+}
+
+/** 저장 API용 — 내부 서빙 URL이 아닌 외부 파비콘 원본 URL */
+export function readWebsiteIconSourceFromMetadata(
+  metadata: Record<string, unknown> | undefined | null,
+  appId?: number | null,
+): string {
+  if (!metadata) {
+    return '';
+  }
+
+  const iconSource = metadata.icon_source_url;
+  if (typeof iconSource === 'string') {
+    const trimmed = iconSource.trim();
+    if (trimmed && !isInternalWebsiteIconUrl(trimmed, appId)) {
+      return trimmed;
+    }
+  }
+
+  const iconUrl = readWebsiteIconFromMetadata(metadata);
+  if (iconUrl && !isInternalWebsiteIconUrl(iconUrl, appId)) {
+    return iconUrl;
+  }
+
+  return '';
+}
+
+export function buildWebsiteLinkSaveMetadata(input: {
+  websiteUrl: string;
+  resolvedIconUrl: string;
+  themeColor: string;
+  iconFromTitle: boolean;
+  appId?: number | null;
+}): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {
+    website_url: input.websiteUrl,
+    icon_from_title: input.iconFromTitle,
+  };
+
+  const themeColor = input.themeColor.trim();
+  if (themeColor) {
+    metadata.theme_color = themeColor;
+  }
+
+  const externalSource = readWebsiteIconSourceFromMetadata(
+    {
+      icon_source_url: input.iconFromTitle ? undefined : input.resolvedIconUrl,
+      icon_url: input.iconFromTitle ? undefined : input.resolvedIconUrl,
+    },
+    input.appId,
+  );
+  if (externalSource) {
+    metadata.icon_source_url = externalSource;
+  }
+
+  return metadata;
+}
+
+/** 저장 시 merge 잔존을 막기 위해 서버 SSOT 아이콘 필드를 제거합니다. */
+export function stripWebsiteLinkIconServingMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...metadata };
+  delete next.icon_url;
+  delete next.stored_icon_path;
+  delete next.icon_mime;
+  delete next.iconImageUrl;
+  return next;
+}
+
+/** 저장 API 응답 metadata → 생성기 미리보기 상태 동기화 */
+export function readWebsiteLinkPreviewFromMetadata(
+  metadata: Record<string, unknown> | undefined | null,
+): {
+  iconUrl: string;
+  iconFromTitle: boolean;
+  themeColor: string;
+} {
+  return {
+    iconUrl: readWebsiteIconFromMetadata(metadata),
+    iconFromTitle: isWebsiteTitleIconFromMetadata(metadata),
+    themeColor: readWebsitePointColorFromMetadata(metadata),
+  };
+}
+
 export function readWebsitePointColorFromMetadata(metadata: Record<string, unknown> | undefined | null): string {
   if (!metadata) {
     return '';

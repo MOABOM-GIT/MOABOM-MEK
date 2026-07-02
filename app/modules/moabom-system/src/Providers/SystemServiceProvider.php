@@ -47,6 +47,9 @@ use Modules\Moabom\System\Console\Commands\SaasTenantProvisionCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantShowCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncPackageExtensionsCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncModuleLayoutsCommand;
+use Modules\Moabom\System\Console\Commands\SaasReconcilePlatformModuleLayoutsCommand;
+use Modules\Moabom\System\Console\Commands\DiagnosePlatformModuleLayoutsCommand;
+use Modules\Moabom\System\Console\Commands\DiagnoseRealtimeVmLayoutCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncModuleDeclarationsCommand;
 use Modules\Moabom\System\Console\Commands\SaasSyncTemplateLayoutsCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantRegisterCommand;
@@ -95,6 +98,7 @@ use Modules\Moabom\System\Saas\Deprovision\TenantOperationLogger;
 use Modules\Moabom\System\Saas\Usage\TenantUsageReporter;
 use Modules\Moabom\System\Saas\SaasCachedConfigBridge;
 use Modules\Moabom\System\Saas\TenantContextSwitcher;
+use Modules\Moabom\System\Saas\PlatformModuleLayoutReconciler;
 use Modules\Moabom\System\Saas\TenantRuntimeBootstrap;
 use Modules\Moabom\System\Saas\Queue\TenantQueueBootstrapper;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
@@ -153,6 +157,9 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasSyncPackageExtensionsCommand::class,
         SaasSyncTemplateLayoutsCommand::class,
         SaasSyncModuleLayoutsCommand::class,
+        SaasReconcilePlatformModuleLayoutsCommand::class,
+        DiagnosePlatformModuleLayoutsCommand::class,
+        DiagnoseRealtimeVmLayoutCommand::class,
         SaasSyncModuleDeclarationsCommand::class,
         SaasTenantReconcileCommand::class,
         SaasSetupSharedLanguagePacksCommand::class,
@@ -225,6 +232,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         $this->app->singleton(TenantFilesystemConfigurator::class);
         $this->app->singleton(PlatformFilesystemSnapshot::class);
         $this->app->singleton(PlatformRuntimeConfigurator::class);
+        $this->app->singleton(PlatformModuleLayoutReconciler::class);
         // ConfigRepositoryInterface(scoped) 주입 — singleton 이면 Run 워커에서 platform general memo 가 tenant 요청에 새어남
         $this->app->scoped(SaasCoreSettingsHydrator::class);
         $this->app->singleton(TenantRuntimeBootstrap::class);

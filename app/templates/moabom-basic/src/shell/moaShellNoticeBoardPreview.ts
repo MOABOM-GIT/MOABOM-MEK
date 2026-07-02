@@ -140,6 +140,10 @@ export function clearShellNoticeBoardPreviewCacheForTest(): void {
   noticePreviewInFlight = null;
 }
 
+export function invalidateShellNoticeBoardPreviewCache(): void {
+  noticePreviewCache = null;
+}
+
 export async function fetchShellNoticeBoardPreview(
   signal?: AbortSignal,
 ): Promise<ShellNoticePreviewPayload> {

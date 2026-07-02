@@ -14,6 +14,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * 웹사이트 연결 앱 파비콘을 모듈 스토리지에 저장·서빙·삭제합니다.
  *
  * 경로: generated-apps/{appId}/website-icon.{ext}
+ *
+ * persist 정책:
+ * - website_url 미변경 + 저장 파일 존재 → 네트워크 재다운로드 생략
+ * - 다운로드 실패 + 기존 파일 존재 → 기존 아이콘 유지
+ * - 클라이언트 icon_from_title 힌트는 무시, 서버가 website_url 기준으로 판정
  */
 class WebsiteLinkIconStorageService
 {
@@ -33,40 +38,55 @@ class WebsiteLinkIconStorageService
      */
     public function persistForApp(GeneratedApp $app, array $metadata): array
     {
-        if ($app->app_type !== 'website_link' || ($metadata['icon_from_title'] ?? false) === true) {
+        if ($app->app_type !== 'website_link') {
+            return $metadata;
+        }
+
+        $websiteUrl = trim((string) ($metadata['website_url'] ?? ''));
+        if ($websiteUrl === '') {
             return $this->finalizeMetadata($app, $metadata);
         }
 
-        $sourceUrl = $this->resolveSourceUrl($metadata, (int) $app->id);
-        if ($sourceUrl === null) {
-            $sourceUrl = $this->reextractSourceUrl($metadata);
+        $appId = (int) $app->id;
+        $previousMetadata = is_array($app->metadata) ? $app->metadata : [];
+        $storedPath = $this->resolveStoredPath($app, $metadata);
+
+        if ($storedPath !== null && $this->shouldReuseStoredIcon($websiteUrl, $previousMetadata, $metadata, $appId)) {
+            return $this->applyStoredIconMetadata($metadata, $appId, $storedPath, $websiteUrl, $previousMetadata);
         }
 
-        if ($sourceUrl === null) {
-            return $this->finalizeMetadata($app, $this->stripBrokenInternalIcon($metadata, (int) $app->id));
+        $preferredSource = $this->resolvePreferredSourceUrl($metadata, $appId);
+        $fetched = $this->iconExtractionService->fetchIconForWebsite($websiteUrl, $preferredSource);
+
+        if ($fetched === null) {
+            if ($storedPath !== null && strcasecmp(trim((string) ($previousMetadata['website_url'] ?? '')), $websiteUrl) === 0) {
+                Log::info('moabom-apps.website_link.icon_persist_reuse_existing', [
+                    'app_id' => $appId,
+                    'website_url' => $websiteUrl,
+                ]);
+
+                return $this->applyStoredIconMetadata($metadata, $appId, $storedPath, $websiteUrl, $previousMetadata);
+            }
+
+            return $this->finalizeMetadata($app, $this->applyTitleIconFallback($metadata));
         }
 
-        $downloaded = $this->iconExtractionService->fetchIconBinary($sourceUrl);
-        if ($downloaded === null) {
-            Log::info('moabom-apps.website_link.icon_persist_skipped', [
-                'app_id' => $app->id,
-                'source_url' => $sourceUrl,
-            ]);
+        $this->deleteStoredIcon($appId);
 
-            return $this->finalizeMetadata($app, $this->stripBrokenInternalIcon($metadata, (int) $app->id));
+        $path = $appId.'/'.self::ICON_FILENAME_PREFIX.'.'.$fetched->binary['ext'];
+        if (! $this->storage->put(self::STORAGE_CATEGORY, $path, $fetched->binary['content'])) {
+            if ($storedPath !== null) {
+                return $this->applyStoredIconMetadata($metadata, $appId, $storedPath, $websiteUrl, $previousMetadata);
+            }
+
+            return $this->finalizeMetadata($app, $this->applyTitleIconFallback($metadata));
         }
 
-        $this->deleteStoredIcon((int) $app->id);
-
-        $path = $app->id.'/'.self::ICON_FILENAME_PREFIX.'.'.$downloaded['ext'];
-        if (! $this->storage->put(self::STORAGE_CATEGORY, $path, $downloaded['content'])) {
-            return $this->finalizeMetadata($app, $this->stripBrokenInternalIcon($metadata, (int) $app->id));
-        }
-
-        $metadata['icon_source_url'] = $sourceUrl;
+        $metadata['website_url'] = $websiteUrl;
+        $metadata['icon_source_url'] = $fetched->sourceUrl;
         $metadata['stored_icon_path'] = $path;
-        $metadata['icon_mime'] = $downloaded['mime'];
-        $metadata['icon_url'] = $this->iconRoutePath((int) $app->id);
+        $metadata['icon_mime'] = $fetched->binary['mime'];
+        $metadata['icon_url'] = $this->iconRoutePath($appId);
         $metadata['icon_from_title'] = false;
         unset($metadata['iconImageUrl']);
 
@@ -125,11 +145,10 @@ class WebsiteLinkIconStorageService
         return route('api.modules.moabom-apps.apps.generated.website_icon', ['id' => $appId], false);
     }
 
-    public function storedIconPath(int $appId): ?string
+    public function storedIconPath(int $appId, ?GeneratedApp $app = null): ?string
     {
-        $metadataPath = $this->metadataStoredIconPath($appId, []);
-        if ($metadataPath !== null && $this->storage->exists(self::STORAGE_CATEGORY, $metadataPath)) {
-            return $metadataPath;
+        if ($app !== null) {
+            return $this->resolveStoredPath($app);
         }
 
         return $this->discoverStoredIconPath($appId);
@@ -222,19 +241,95 @@ class WebsiteLinkIconStorageService
 
     /**
      * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $previousMetadata
+     */
+    private function shouldReuseStoredIcon(
+        string $websiteUrl,
+        array $previousMetadata,
+        array $metadata,
+        int $appId,
+    ): bool {
+        $previousWebsiteUrl = trim((string) ($previousMetadata['website_url'] ?? ''));
+        if ($previousWebsiteUrl === '' || strcasecmp($previousWebsiteUrl, $websiteUrl) !== 0) {
+            return false;
+        }
+
+        $incoming = $this->resolvePreferredSourceUrl($metadata, $appId);
+        $previous = trim((string) ($previousMetadata['icon_source_url'] ?? ''));
+
+        return ! ($incoming !== null && $previous !== '' && strcasecmp($incoming, $previous) !== 0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $previousMetadata
+     * @return array<string, mixed>
+     */
+    private function applyStoredIconMetadata(
+        array $metadata,
+        int $appId,
+        string $storedPath,
+        string $websiteUrl,
+        array $previousMetadata,
+    ): array {
+        $metadata['website_url'] = $websiteUrl;
+        $metadata['stored_icon_path'] = $storedPath;
+        $metadata['icon_url'] = $this->iconRoutePath($appId);
+        $metadata['icon_from_title'] = false;
+
+        $iconSource = trim((string) ($metadata['icon_source_url'] ?? ''));
+        if ($iconSource === '' || $this->isInternalIconUrl($iconSource, $appId)) {
+            $previousSource = trim((string) ($previousMetadata['icon_source_url'] ?? ''));
+            if ($previousSource !== '' && ! $this->isInternalIconUrl($previousSource, $appId)) {
+                $metadata['icon_source_url'] = $previousSource;
+            }
+        }
+
+        $iconMime = trim((string) ($metadata['icon_mime'] ?? ''));
+        if ($iconMime === '') {
+            $previousMime = trim((string) ($previousMetadata['icon_mime'] ?? ''));
+            if ($previousMime !== '') {
+                $metadata['icon_mime'] = $previousMime;
+            }
+        }
+
+        unset($metadata['iconImageUrl']);
+
+        return $metadata;
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
      * @return array<string, mixed>
      */
     private function finalizeMetadata(GeneratedApp $app, array $metadata): array
     {
-        if ($app->app_type !== 'website_link' || ($metadata['icon_from_title'] ?? false) === true) {
+        if ($app->app_type !== 'website_link') {
             return $metadata;
         }
 
-        if ($this->resolveStoredPath($app, $metadata) === null) {
-            return $this->stripBrokenInternalIcon($metadata, (int) $app->id);
+        $storedPath = $this->resolveStoredPath($app, $metadata);
+        if ($storedPath === null) {
+            return $this->applyTitleIconFallback($metadata);
         }
 
-        $metadata['icon_url'] = $this->iconRoutePath((int) $app->id);
+        return $this->applyStoredIconMetadata(
+            $metadata,
+            (int) $app->id,
+            $storedPath,
+            trim((string) ($metadata['website_url'] ?? '')),
+            is_array($app->metadata) ? $app->metadata : [],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>
+     */
+    private function applyTitleIconFallback(array $metadata): array
+    {
+        unset($metadata['icon_url'], $metadata['stored_icon_path'], $metadata['icon_mime'], $metadata['iconImageUrl'], $metadata['icon_source_url']);
+        $metadata['icon_from_title'] = true;
 
         return $metadata;
     }
@@ -242,7 +337,7 @@ class WebsiteLinkIconStorageService
     /**
      * @param  array<string, mixed>  $metadata
      */
-    private function resolveSourceUrl(array $metadata, int $appId): ?string
+    private function resolvePreferredSourceUrl(array $metadata, int $appId): ?string
     {
         $iconSource = $metadata['icon_source_url'] ?? null;
         if (is_string($iconSource) && trim($iconSource) !== '' && ! $this->isInternalIconUrl(trim($iconSource), $appId)) {
@@ -260,35 +355,6 @@ class WebsiteLinkIconStorageService
         }
 
         return $iconUrl;
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     */
-    private function reextractSourceUrl(array $metadata): ?string
-    {
-        $websiteUrl = trim((string) ($metadata['website_url'] ?? ''));
-        if ($websiteUrl === '') {
-            return null;
-        }
-
-        $icon = $this->iconExtractionService->resolveIconFromWebsite($websiteUrl);
-
-        return $icon['icon_from_title'] ? null : $icon['icon_url'];
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array<string, mixed>
-     */
-    private function stripBrokenInternalIcon(array $metadata, int $appId): array
-    {
-        $iconUrl = $metadata['icon_url'] ?? null;
-        if (is_string($iconUrl) && $this->isInternalIconUrl(trim($iconUrl), $appId)) {
-            unset($metadata['icon_url'], $metadata['stored_icon_path'], $metadata['icon_mime'], $metadata['iconImageUrl']);
-        }
-
-        return $metadata;
     }
 
     private function isInternalIconUrl(string $url, int $appId): bool

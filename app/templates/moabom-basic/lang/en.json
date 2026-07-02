@@ -673,6 +673,8 @@
     "tier_standard_hint": "Stored in local storage.",
     "tier_hosted_hint": "Stored on the dedicated app server.",
     "tier_hosted_provision_hint": "Hosted apps get a dedicated URL only after a successful save. Interrupted generation is not stored on the server.",
+    "hosted_modern_storage_prompt_option": "Modern UI/UX + online/offline storage (recommended)",
+    "hosted_modern_storage_prompt_addon": "Design a modern UI/UX.\nFor the app-server save option, support both online storage (*.apps.mek360.com API) and offline storage (localStorage).",
     "models": {
       "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
@@ -683,6 +685,8 @@
     "generate": "Generate",
     "modify": "Regenerate changes",
     "generating": "Generating...",
+    "toast_generation_in_progress_edit_blocked": "An AI app is being generated. You can edit after generation completes.",
+    "toast_generation_background": "AI generation continues in the background.",
     "stop_generate": "Stop generation",
     "save": "Save",
     "saving": "Saving...",

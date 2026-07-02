@@ -460,4 +460,14 @@ PATCH;
         $this->assertTrue($service->deleteForUser($user->id, $fresh->id));
         $this->assertNull($iconStorage->storedIconPath((int) $fresh->id));
     }
+
+    public function test_hosted_system_prompt_requires_moabom_app_storage(): void
+    {
+        $service = $this->app->make(AiAppService::class);
+        $prompt = $service->systemPromptForType('general', 'hosted');
+
+        $this->assertStringContainsString('MoabomAppStorage', $prompt);
+        $this->assertStringContainsString('whenReady', $prompt);
+        $this->assertStringContainsString('Do NOT use raw localStorage/sessionStorage', $prompt);
+    }
 }

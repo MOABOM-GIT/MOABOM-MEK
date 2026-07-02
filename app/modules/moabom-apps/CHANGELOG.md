@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.7] - 2026-07-03
+
+### Fixed
+
+- 웹사이트 연결 앱 저장 후 `/website-icon` 404·빈 아이콘 문제를 단계별 파비콘 추출 아키텍처로 정리했습니다. 미리보기(resolve)와 저장(persist)을 분리하고, head·well-known 경로 순회·매직 바이트 검증 후에만 내부 아이콘 URL을 노출합니다. 파일이 없으면 타이틀 아이콘으로 폴백합니다.
+
+## [0.5.6] - 2026-07-03
+
+### Added
+
+- Hosted(앱 서버에 저장) 생성앱에 `MoabomAppStorage` 런타임 브릿지 — localStorage 오프라인 캐시와 `*.apps.mek360.com` `/api/data` 온라인 동기화를 플랫폼이 자동 주입. AI가 `localStorage`만 써도 미러 스냅샷으로 기기 간 복구를 시도한다.
+- AI 앱 만들기 Hosted 티어 권장 옵션 — 현대적 UI/UX + 온·오프라인 저장 가이드 프롬프트를 생성 요청에 덧붙일 수 있다.
+
+### Changed
+
+- Hosted AI 시스템 프롬프트 — 앱 데이터는 `MoabomAppStorage.load/save` 사용을 SSOT로 명시하고 raw `localStorage` 사용을 금지한다.
+
+### Fixed
+
+- 생성앱 iframe 다운로드 브릿지(`generated-app-download-bridge.js`)가 HTML 인라인 주입 시 `sanitizeFilename` 정규식이 깨져 `missing ) after argument list` SyntaxError 가 나던 문제 — 백슬래시 경로 정규화를 `String.fromCharCode(92)` 기반으로 교체.
+
+## [0.5.5] - 2026-06-30
+
+### Fixed
+
+- 웹사이트 연결 앱 파비콘이 처음 저장 후 재저장·조회 시 사라지던 문제를 수정했습니다. resolve(미리보기)와 persist(저장)를 분리하고, URL 미변경 시 기존 아이콘 재사용·다운로드 실패 시 기존 파일 보존·클라이언트 `icon_from_title` 힌트 무시 후 서버 재판정으로 안정화했습니다.
+
 ## [0.5.4] - 2026-06-30
 
 ### Fixed

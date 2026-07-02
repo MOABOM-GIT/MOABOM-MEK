@@ -401,24 +401,27 @@
 
 .moa-chat-conversation-item__delete {
   flex-shrink: 0;
-  min-width: 1.75rem;
-  padding-inline: 0.375rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.16s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--moa-text-muted, #9ca3af);
+  cursor: pointer;
+  transition: color 0.16s ease;
 }
 
-.moa-chat-conversation-item:hover .moa-chat-conversation-item__delete,
-.moa-chat-conversation-item:focus-within .moa-chat-conversation-item__delete {
-  opacity: 1;
-  pointer-events: auto;
+.moa-chat-conversation-item__delete:hover:not(:disabled) {
+  color: #ef4444;
 }
 
-@media (hover: none) {
-  .moa-chat-conversation-item__delete {
-    opacity: 1;
-    pointer-events: auto;
-  }
+.moa-chat-conversation-item__delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .moa-chat-conversation-item__title {

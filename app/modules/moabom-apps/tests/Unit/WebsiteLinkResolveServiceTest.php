@@ -3,7 +3,7 @@
 namespace Modules\Moabom\Apps\Tests\Unit;
 
 use Illuminate\Support\Facades\Http;
-use Modules\Moabom\Apps\Services\WebsiteLinkIconBinaryValidator;
+use Modules\Moabom\Apps\Support\WebsiteLinkIconBinaryValidator;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconExtractionService;
 use Modules\Moabom\Apps\Services\WebsiteLinkResolveService;
 use Modules\Moabom\Apps\Services\WebsiteLinkUrlGuard;
@@ -34,14 +34,10 @@ class WebsiteLinkResolveServiceTest extends ModuleTestCase
         $service->normalizeUrl('not a url');
     }
 
-    public function test_resolve_uses_title_icon_when_document_and_favicon_are_missing(): void
+    public function test_resolve_falls_back_to_well_known_favicon_when_document_is_missing(): void
     {
         Http::fake([
             'https://example.com' => Http::response('', 404),
-            'https://example.com/favicon.ico' => Http::response('', 404),
-            'https://example.com/favicon.png' => Http::response('', 404),
-            'https://example.com/apple-touch-icon.png' => Http::response('', 404),
-            'https://example.com/apple-touch-icon-precomposed.png' => Http::response('', 404),
         ]);
 
         $service = $this->makeService();
@@ -49,8 +45,8 @@ class WebsiteLinkResolveServiceTest extends ModuleTestCase
         $resolved = $service->resolve('https://example.com');
 
         $this->assertSame('https://example.com', $resolved['url']);
-        $this->assertNull($resolved['icon_url']);
-        $this->assertTrue($resolved['icon_from_title']);
+        $this->assertSame('https://example.com/favicon.ico', $resolved['icon_url']);
+        $this->assertFalse($resolved['icon_from_title']);
     }
 
     public function test_resolve_prefers_smallest_apple_touch_icon_over_generic_icon(): void
@@ -64,11 +60,6 @@ class WebsiteLinkResolveServiceTest extends ModuleTestCase
 <link rel="icon" sizes="32x32" href="https://example.com/favicon-32.png"/>
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/apple-57.png' => Http::response(
-                "\x89PNG\r\n\x1a\n",
-                200,
-                ['Content-Type' => 'image/png'],
-            ),
         ]);
 
         $service = $this->makeService();
@@ -88,11 +79,6 @@ HTML, 200),
 <link rel="icon" sizes="16x16" href="https://example.com/icon-16.png"/>
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/shortcut.ico' => Http::response(
-                "\0\0\1\0",
-                200,
-                ['Content-Type' => 'image/x-icon'],
-            ),
         ]);
 
         $service = $this->makeService();
@@ -107,11 +93,6 @@ HTML, 200),
     {
         Http::fake([
             'https://example.com' => Http::response('<html><head><title>x</title></head></html>', 200),
-            'https://example.com/favicon.ico' => Http::response(
-                "\0\0\1\0",
-                200,
-                ['Content-Type' => 'image/x-icon'],
-            ),
         ]);
 
         $service = $this->makeService();
@@ -131,11 +112,6 @@ HTML, 200),
 <link rel="shortcut icon" href="/favicon.ico"/>
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/favicon.ico' => Http::response(
-                "\0\0\1\0",
-                200,
-                ['Content-Type' => 'image/x-icon'],
-            ),
         ]);
 
         $service = $this->makeService();
@@ -156,11 +132,6 @@ HTML, 200),
 <link rel="icon" sizes="16x16 32x32" href="https://example.com/favicon-16.png"/>
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/favicon-16.png' => Http::response(
-                "\x89PNG\r\n\x1a\n",
-                200,
-                ['Content-Type' => 'image/png'],
-            ),
         ]);
 
         $service = $this->makeService();
@@ -179,17 +150,13 @@ HTML, 200),
 <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head><body></body></html>
 HTML, 200),
-            'https://example.com/favicon.ico' => Http::response('', 404),
-            'https://example.com/favicon.png' => Http::response('', 404),
-            'https://example.com/apple-touch-icon.png' => Http::response('', 404),
-            'https://example.com/apple-touch-icon-precomposed.png' => Http::response('', 404),
         ]);
 
         $service = $this->makeService();
 
         $resolved = $service->resolve('https://example.com');
 
-        $this->assertNull($resolved['icon_url']);
-        $this->assertTrue($resolved['icon_from_title']);
+        $this->assertSame('https://example.com/favicon.ico', $resolved['icon_url']);
+        $this->assertFalse($resolved['icon_from_title']);
     }
 }

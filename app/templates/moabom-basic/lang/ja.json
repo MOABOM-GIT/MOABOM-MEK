@@ -590,6 +590,8 @@
     "tier_standard_hint": "ローカルストレージに保存されます。",
     "tier_hosted_hint": "アプリ専用サーバーに保存されます。",
     "tier_hosted_provision_hint": "Hostedアプリは保存完了後にのみ専用URLが作成されます。生成中断時はサーバーに保存されません。",
+    "hosted_modern_storage_prompt_option": "モダンUI/UX + オンライン・オフライン保存（推奨）",
+    "hosted_modern_storage_prompt_addon": "モダンなデザインでUI/UXを設計してください。\nアプリサーバー保存では、オンライン（*.apps.mek360.com APIストレージ）とオフライン（localStorage）の両方に対応してください。",
     "models": {
       "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",

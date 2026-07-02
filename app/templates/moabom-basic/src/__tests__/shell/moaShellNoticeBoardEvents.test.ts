@@ -29,6 +29,37 @@ describe('moaShellNoticeBoardEvents', () => {
     unsubscribe();
   });
 
+  it('notice 보드 변경 시 프리뷰 캐시를 무효화한다', async () => {
+    const { fetchShellNoticeBoardPreview, invalidateShellNoticeBoardPreviewCache, clearShellNoticeBoardPreviewCacheForTest } =
+      await import('../moaShellNoticeBoardPreview');
+
+    clearShellNoticeBoardPreviewCacheForTest();
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      data: { data: [] },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+    await fetchShellNoticeBoardPreview();
+    expect(fetchSpy).toHaveBeenCalled();
+
+    fetchSpy.mockClear();
+    await fetchShellNoticeBoardPreview();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    notifyShellNoticeBoardChanged({
+      slug: MOA_SHELL_NOTICE_BOARD_SLUG,
+      postId: '99',
+      action: 'created',
+    });
+
+    await fetchShellNoticeBoardPreview();
+    expect(fetchSpy).toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+    invalidateShellNoticeBoardPreviewCache();
+    clearShellNoticeBoardPreviewCacheForTest();
+  });
+
   it('notice 보드가 아니면 이벤트를 무시한다', () => {
     const handler = vi.fn();
     const listener = vi.fn();

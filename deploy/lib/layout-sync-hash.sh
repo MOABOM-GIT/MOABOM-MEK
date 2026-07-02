@@ -8,7 +8,6 @@ source "${_LAYOUT_SYNC_HASH_ROOT}/deploy/lib/content-manifest-hash.sh"
 MOABOM_LAYOUT_SYNC_MANIFEST="${MOABOM_LAYOUT_SYNC_MANIFEST:-${_LAYOUT_SYNC_HASH_ROOT}/deploy/ssot/layout-sync-manifest.sha256}"
 MOABOM_LAYOUT_SYNC_MANIFEST_LABEL="layout-sync"
 MOABOM_PLATFORM_DB_LAYOUT_VERSIONS="${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS:-${_LAYOUT_SYNC_HASH_ROOT}/deploy/ssot/platform-db-layout-versions.env}"
-MOABOM_REALTIME_VM_LAYOUT_JSON="${_LAYOUT_SYNC_HASH_ROOT}/app/modules/moabom-system/resources/layouts/admin/admin_realtime_vm.json"
 
 moabom_platform_db_layout_version() {
   local key="$1"
@@ -19,45 +18,47 @@ moabom_platform_db_layout_version() {
   grep -E "^${key}=" "${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS}" 2>/dev/null | tail -1 | cut -d= -f2- || true
 }
 
-moabom_filesystem_realtime_vm_layout_version() {
-  if [[ ! -f "${MOABOM_REALTIME_VM_LAYOUT_JSON}" ]]; then
-    echo ""
-    return 0
-  fi
-  python3 - "${MOABOM_REALTIME_VM_LAYOUT_JSON}" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    print(str(json.load(f).get("version", "")))
-PY
-}
-
-# aggregate manifest 가 같아도 platform DB module layout 이 구형이면 sync 필수 (RF-14 realtime-vm)
+# aggregate manifest 가 같아도 platform module layouts 는 별도 reconcile Job(RF-13b)이 매 배포 처리한다.
+# 아래 marker 는 reconcile 성공 후 기록용이며, layout sync skip 판정에는 사용하지 않는다.
 moabom_platform_module_layout_version_stale() {
-  local fs_version db_version
-  fs_version="$(moabom_filesystem_realtime_vm_layout_version)"
-  db_version="$(moabom_platform_db_layout_version admin_realtime_vm)"
-  if [[ -z "${fs_version}" ]]; then
-    return 1
-  fi
-  if [[ -z "${db_version}" || "${db_version}" != "${fs_version}" ]]; then
-    echo "layout-sync: platform DB marker admin_realtime_vm=${db_version:-∅} != filesystem ${fs_version}"
-    return 0
-  fi
   return 1
 }
 
 moabom_layout_sync_record_platform_layout_versions() {
-  local fs_version versions_file tmp
-  fs_version="$(moabom_filesystem_realtime_vm_layout_version)"
-  [[ -n "${fs_version}" ]] || return 0
+  local versions_file tmp
   versions_file="${MOABOM_PLATFORM_DB_LAYOUT_VERSIONS}"
   mkdir -p "$(dirname "${versions_file}")"
   tmp="$(mktemp)"
-  if [[ -f "${versions_file}" ]]; then
-    grep -v '^admin_realtime_vm=' "${versions_file}" > "${tmp}" || true
-  fi
-  printf 'admin_realtime_vm=%s\n' "${fs_version}" >> "${tmp}"
-  mv "${tmp}" "${versions_file}"
+  python3 - "${_LAYOUT_SYNC_HASH_ROOT}" > "${tmp}" <<'PY'
+import glob
+import json
+import os
+import sys
+
+root = sys.argv[1]
+entries = []
+for path in sorted(glob.glob(os.path.join(root, "app/modules/*/resources/layouts/admin/*.json"))):
+    module = path.split("/modules/")[1].split("/")[0]
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    base = str(data.get("layout_name") or os.path.splitext(os.path.basename(path))[0])
+    version = str(data.get("version", "0"))
+    entries.append(f"{module}.{base}={version}\n")
+for path in sorted(glob.glob(os.path.join(root, "app/modules/*/resources/layouts/user/*.json"))):
+    module = path.split("/modules/")[1].split("/")[0]
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    base = str(data.get("layout_name") or os.path.splitext(os.path.basename(path))[0])
+    version = str(data.get("version", "0"))
+    entries.append(f"{module}.{base}={version}\n")
+sys.stdout.writelines(entries)
+PY
+  {
+    echo "# platform DB module layouts — reconcile Job 성공 후 기록 (운영 DB 실측 SSOT 아님, 감사용)"
+    echo "# layout sync skip 판정은 manifest 해시만 사용. module layout 정합은 run-platform-module-layout-reconcile-job.sh 가 매 배포 수행."
+    cat "${tmp}"
+  } > "${versions_file}"
+  rm -f "${tmp}"
 }
 
 moabom_layout_sync_collect_files() {

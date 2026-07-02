@@ -111,6 +111,10 @@
         "reason": "Admin active menu API must send no-store headers for shell navigation freshness."
       },
       {
+        "path": "app/Http/Controllers/Api/Public/PublicLayoutController.php",
+        "reason": "Permissioned admin layouts must not use public HTTP cache; serving cache keys must invalidate without version suffix."
+      },
+      {
         "path": "app/Http/Controllers/Api/Public/PublicTemplateController.php",
         "reason": "Cloud Run public boot cache version fallback is needed before a cleaner upstream cache hook exists."
       },
@@ -121,6 +125,10 @@
       {
         "path": "app/Providers/PluginRouteServiceProvider.php",
         "reason": "Cloud Run boot without .env guard is required during Laravel bootstrap."
+      },
+      {
+        "path": "app/Services/LayoutService.php",
+        "reason": "Layout serving cache must forget unversioned PublicLayoutController keys after module layout DB sync."
       },
       {
         "path": "bootstrap/app.php",

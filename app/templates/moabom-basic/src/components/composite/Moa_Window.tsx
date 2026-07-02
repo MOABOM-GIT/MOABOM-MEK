@@ -70,6 +70,8 @@ export interface WindowProps {
   minHeight?: number;
   isMaximized?: boolean;
   isMinimized?: boolean;
+  /** true 이면 최소화 시에도 children 을 숨김 호스트에 마운트 유지 (AI 생성 백그라운드) */
+  preserveContentWhenMinimized?: boolean;
   zIndex?: number;
   onClose?: () => void;
   onMinimize?: () => void;
@@ -107,6 +109,7 @@ const WindowComponent: React.FC<WindowProps> = ({
   minHeight = 300,
   isMaximized: initialMaximized = false,
   isMinimized: initialMinimized = false,
+  preserveContentWhenMinimized = false,
   zIndex = 1000,
   onClose,
   onMinimize,
@@ -549,6 +552,14 @@ const WindowComponent: React.FC<WindowProps> = ({
     }
   }, [isDragging, isResizing, dragStart, resizeStart, minWidth, minHeight, size.width, size.height]);
 
+  if (isMinimized && preserveContentWhenMinimized) {
+    return (
+      <Div className="moa-create-app-bg-host" aria-hidden="true">
+        {children}
+      </Div>
+    );
+  }
+
   if (isMinimized) return null;
 
   /** 뷰포트에 맞춤(최대화)일 때 모서리 반경 0 — 데스크톱·모바일(compact) 공통 */
@@ -746,6 +757,7 @@ function areWindowPropsEqual(prev: WindowProps, next: WindowProps): boolean {
     && prev.minHeight === next.minHeight
     && prev.isMaximized === next.isMaximized
     && prev.isMinimized === next.isMinimized
+    && prev.preserveContentWhenMinimized === next.preserveContentWhenMinimized
     && prev.zIndex === next.zIndex
     && prev.onClose === next.onClose
     && prev.onMinimize === next.onMinimize

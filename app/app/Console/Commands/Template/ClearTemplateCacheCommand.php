@@ -7,6 +7,7 @@ use App\Extension\TemplateManager;
 use App\Extension\Traits\ClearsTemplateCaches;
 use App\Models\Template;
 use App\Models\TemplateLayout;
+use App\Services\LayoutService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -28,7 +29,8 @@ class ClearTemplateCacheCommand extends Command
      */
     public function __construct(
         private TemplateManager $templateManager,
-        private CacheInterface $cache
+        private CacheInterface $cache,
+        private LayoutService $layoutService,
     ) {
         parent::__construct();
     }
@@ -152,6 +154,7 @@ class ClearTemplateCacheCommand extends Command
             foreach ($layouts as $layout) {
                 $this->cache->forget("layout.{$identifier}.{$layout->name}{$versionSuffix}");
                 $this->cache->forget("layout.{$identifier}.{$layout->name}");
+                $this->layoutService->clearDependentLayoutsCache($templateRecord->id, (string) $layout->name);
                 $clearedCount += 2;
             }
         }

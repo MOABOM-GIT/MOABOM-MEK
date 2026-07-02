@@ -32,6 +32,7 @@ class GeneratedAppHtmlService
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-backdrop-probe["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-download-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-data-api-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
+        $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-hosted-storage["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<base\b[^>]*>/i', '', $html);
         $html = (string) preg_replace('/<link\b[^>]*\brel=["\']manifest["\'][^>]*>/i', '', $html);
 
@@ -50,6 +51,7 @@ class GeneratedAppHtmlService
         $cspAndRuntime .= $this->downloadBridgeScript();
         if ($injectHostedDataApiBridge) {
             $cspAndRuntime .= $this->dataApiBridgeScript();
+            $cspAndRuntime .= $this->hostedStorageBridgeScript();
         }
 
         if (! str_contains($html, 'http-equiv="Content-Security-Policy"')) {
@@ -192,6 +194,26 @@ JS;
         }
 
         return '<script id="moabom-app-data-api-bridge">'.$js.'</script>';
+    }
+
+    /**
+     * Hosted 앱 MoabomAppStorage — localStorage + /api/data 이중 동기화.
+     *
+     * @see resources/js/generated-app-hosted-storage.js
+     */
+    private function hostedStorageBridgeScript(): string
+    {
+        $path = dirname(__DIR__, 2).'/resources/js/generated-app-hosted-storage.js';
+        if (! is_readable($path)) {
+            return '';
+        }
+
+        $js = (string) file_get_contents($path);
+        if ($js === '') {
+            return '';
+        }
+
+        return '<script id="moabom-app-hosted-storage">'.$js.'</script>';
     }
 
     private function injectAfterHeadOpen(string $html, string $injection): string

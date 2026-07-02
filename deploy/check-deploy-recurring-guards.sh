@@ -204,8 +204,14 @@ grep -q '_SKIP_INNER_CHECK=true' "${BUILD_DEPLOY}" \
   || fail "RF-23: build-and-deploy.sh 가 Cloud Build inner check skip 미전달"
 grep -q 'moabom_layout_sync_needed' "${BUILD_DEPLOY}" \
   || fail "RF-23: build-and-deploy.sh 가 layout sync 해시 게이트 없음"
-grep -q 'moabom_platform_module_layout_version_stale' "${ROOT}/deploy/lib/layout-sync-hash.sh" \
-  || fail "RF-23: layout-sync platform DB version gate 없음"
+grep -q 'run-platform-module-layout-reconcile-job.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-13b: build-and-deploy.sh 가 platform module layout reconcile Job 없음"
+[[ -x "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh" ]] \
+  || fail "RF-13b: run-platform-module-layout-reconcile-job.sh 없음 또는 실행 불가"
+grep -q 'reconcile-platform-module-layouts' "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh" \
+  || fail "RF-13b: reconcile Job 이 moabom:saas:reconcile-platform-module-layouts 호출 안 함"
+grep -q 'run-serving-cache-bust.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-13b: build-and-deploy.sh 가 매 배포 serving cache bust 없음"
 [[ -f "${ROOT}/deploy/ssot/platform-db-layout-versions.env" ]] \
   || fail "RF-23: platform-db-layout-versions.env SSOT 없음"
 grep -q 'MOABOM_CRJ_BOOT_SLEEP:-10' "${ROOT}/deploy/lib/cloud-run-artisan-job.sh" \

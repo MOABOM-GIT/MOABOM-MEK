@@ -245,6 +245,15 @@ grep -q 'hospitals\?\.data\?\.hospitals' "${LIST_LAYOUT}" \
   || fail "admin_saas_hospitals.json — API data path hospitals.data.hospitals 누락"
 grep -q 'moabom:saas:sync-module-layouts' "${SYNC_JOB}" \
   || fail "run-layout-sync-job.sh 에 moabom:saas:sync-module-layouts 없음"
+RECONCILE_JOB="${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh"
+[[ -x "${RECONCILE_JOB}" ]] \
+  || fail "run-platform-module-layout-reconcile-job.sh 없음 또는 실행 불가"
+grep -q 'reconcile-platform-module-layouts' "${RECONCILE_JOB}" \
+  || fail "reconcile Job 이 moabom:saas:reconcile-platform-module-layouts 미호출"
+grep -q 'SaasReconcilePlatformModuleLayoutsCommand' "${APP}/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
+  || fail "SaasReconcilePlatformModuleLayoutsCommand 미등록"
+grep -q 'PlatformModuleLayoutReconciler' "${APP}/modules/moabom-system/src/Saas/PlatformModuleLayoutReconciler.php" \
+  || fail "PlatformModuleLayoutReconciler SSOT 없음"
 grep -q 'moabom:saas:sync-module-declarations' "${SYNC_JOB}" \
   || fail "run-layout-sync-job.sh 에 moabom:saas:sync-module-declarations 없음"
 grep -q 'SaasSyncModuleDeclarationsCommand' "${APP}/modules/moabom-system/src/Providers/SystemServiceProvider.php" \
@@ -995,8 +1004,14 @@ grep -q 'RestrictToGeneratedAppHostedHost' "${APP}/modules/moabom-apps/src/Provi
   || fail "RestrictToGeneratedAppHostedHost 미들웨어 연동 누락"
 [[ -f "${APP}/modules/moabom-apps/resources/js/generated-app-data-api-bridge.js" ]] \
   || fail "generated-app-data-api-bridge.js SSOT 누락"
+[[ -f "${APP}/modules/moabom-apps/resources/js/generated-app-hosted-storage.js" ]] \
+  || fail "generated-app-hosted-storage.js SSOT 누락"
 grep -q 'moabom-app-data-api-bridge' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
   || fail "GeneratedAppHtmlService data API bridge 주입 누락"
+grep -q 'moabom-app-hosted-storage' "${APP}/modules/moabom-apps/src/Services/GeneratedAppHtmlService.php" \
+  || fail "GeneratedAppHtmlService hosted storage bridge 주입 누락"
+grep -q 'MoabomAppStorage' "${APP}/modules/moabom-apps/src/Services/AiAppService.php" \
+  || fail "AiAppService Hosted 프롬프트 MoabomAppStorage SSOT 누락"
 grep -q 'shellFrameAncestors' "${APP}/modules/moabom-apps/src/Support/GeneratedAppPreviewRouting.php" \
   || fail "GeneratedAppPreviewRouting shellFrameAncestors (테넌트 셸 frame-ancestors) 누락"
 grep -q 'frame-ancestors' "${APP}/modules/moabom-apps/src/Services/GeneratedAppPreviewService.php" \

@@ -891,6 +891,7 @@ class LayoutService
         $identifier = $template->identifier;
         $cacheVersion = (int) $this->cache->get('ext.cache_version', 0);
         $this->cache->forget("layout.{$identifier}.{$layoutName}.v{$cacheVersion}");
+        $this->cache->forget("layout.{$identifier}.{$layoutName}");
     }
 
     /**

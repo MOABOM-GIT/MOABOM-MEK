@@ -1,16 +1,29 @@
 diff --git a/app/Console/Commands/Template/ClearTemplateCacheCommand.php b/app/Console/Commands/Template/ClearTemplateCacheCommand.php
-index 8c8a863..a9dd853 100644
+index 8c8a863..789a7a4 100644
 --- a/app/Console/Commands/Template/ClearTemplateCacheCommand.php
 +++ b/app/Console/Commands/Template/ClearTemplateCacheCommand.php
-@@ -4,6 +4,7 @@
+@@ -4,8 +4,10 @@
  
  use App\Contracts\Extension\CacheInterface;
  use App\Extension\TemplateManager;
 +use App\Extension\Traits\ClearsTemplateCaches;
  use App\Models\Template;
  use App\Models\TemplateLayout;
++use App\Services\LayoutService;
  use Illuminate\Console\Command;
-@@ -78,33 +79,18 @@ private function clearSingleTemplateCache(string $identifier): void
+ use Illuminate\Support\Facades\Log;
+ 
+@@ -27,7 +29,8 @@ class ClearTemplateCacheCommand extends Command
+      */
+     public function __construct(
+         private TemplateManager $templateManager,
+-        private CacheInterface $cache
++        private CacheInterface $cache,
++        private LayoutService $layoutService,
+     ) {
+         parent::__construct();
+     }
+@@ -78,33 +81,18 @@ private function clearSingleTemplateCache(string $identifier): void
  
          $clearedCount = 0;
  
@@ -49,7 +62,7 @@ index 8c8a863..a9dd853 100644
          $this->info('✅ '.__('templates.commands.cache_clear.success_single', [
              'template' => $identifier,
              'count' => $clearedCount,
-@@ -124,35 +110,25 @@ private function clearAllTemplateCache(): void
+@@ -124,35 +112,25 @@ private function clearAllTemplateCache(): void
          $this->info(__('templates.commands.cache_clear.clearing_all'));
  
          $clearedCount = 0;
@@ -93,7 +106,7 @@ index 8c8a863..a9dd853 100644
          $this->info('✅ '.__('templates.commands.cache_clear.success_all', [
              'count' => $clearedCount,
          ]));
-@@ -161,4 +137,44 @@ private function clearAllTemplateCache(): void
+@@ -161,4 +139,45 @@ private function clearAllTemplateCache(): void
              'count' => $clearedCount,
          ]));
      }
@@ -112,6 +125,7 @@ index 8c8a863..a9dd853 100644
 +            foreach ($layouts as $layout) {
 +                $this->cache->forget("layout.{$identifier}.{$layout->name}{$versionSuffix}");
 +                $this->cache->forget("layout.{$identifier}.{$layout->name}");
++                $this->layoutService->clearDependentLayoutsCache($templateRecord->id, (string) $layout->name);
 +                $clearedCount += 2;
 +            }
 +        }
@@ -138,6 +152,28 @@ index 8c8a863..a9dd853 100644
 +        $this->cache->put('ext.cache_version', time());
 +    }
  }
+diff --git a/app/Events/GenericBroadcastEvent.php b/app/Events/GenericBroadcastEvent.php
+index ade5e9a..b58a587 100644
+--- a/app/Events/GenericBroadcastEvent.php
++++ b/app/Events/GenericBroadcastEvent.php
+@@ -5,7 +5,7 @@
+ use Illuminate\Broadcasting\Channel;
+ use Illuminate\Broadcasting\InteractsWithSockets;
+ use Illuminate\Broadcasting\PrivateChannel;
+-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
++use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+ use Illuminate\Foundation\Events\Dispatchable;
+ use Illuminate\Queue\SerializesModels;
+ 
+@@ -15,7 +15,7 @@
+  * 외부에서 직접 사용하지 않습니다.
+  * 반드시 HookManager::broadcast()를 통해 호출하세요.
+  */
+-class GenericBroadcastEvent implements ShouldBroadcast
++class GenericBroadcastEvent implements ShouldBroadcastNow
+ {
+     use Dispatchable, InteractsWithSockets, SerializesModels;
+ 
 diff --git a/app/Http/Controllers/Api/Admin/MenuController.php b/app/Http/Controllers/Api/Admin/MenuController.php
 index 2ea4e92..45db4bd 100644
 --- a/app/Http/Controllers/Api/Admin/MenuController.php
@@ -156,6 +192,25 @@ index 2ea4e92..45db4bd 100644
          } catch (\Exception $e) {
              return $this->error('menu.active_fetch_failed', 500, $e->getMessage());
          }
+diff --git a/app/Http/Controllers/Api/Public/PublicLayoutController.php b/app/Http/Controllers/Api/Public/PublicLayoutController.php
+index d1a8675..d02a795 100644
+--- a/app/Http/Controllers/Api/Public/PublicLayoutController.php
++++ b/app/Http/Controllers/Api/Public/PublicLayoutController.php
+@@ -83,10 +83,13 @@ public function serve(string $templateIdentifier, string $layoutName): JsonRespo
+             );
+ 
+             // ETag 및 Cache-Control 헤더와 함께 응답 반환
++            // 권한이 필요한 레이아웃은 public CDN/브라우저 공유 캐시 금지 (인증별 필터링과 충돌)
++            $maxAge = empty($mergedLayout['permissions'] ?? []) ? self::CACHE_TTL : 0;
++
+             return $this->successWithCache(
+                 'templates.messages.layout_served',
+                 $mergedLayout,
+-                self::CACHE_TTL
++                $maxAge
+             );
+         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+             // 레이아웃 또는 부모 레이아웃을 찾을 수 없음 - 예외 메시지 전달
 diff --git a/app/Http/Controllers/Api/Public/PublicTemplateController.php b/app/Http/Controllers/Api/Public/PublicTemplateController.php
 index 2445226..05d469d 100644
 --- a/app/Http/Controllers/Api/Public/PublicTemplateController.php
@@ -604,6 +659,18 @@ index 36cc9a1..0874764 100644
          'cache' => 'file',
          'session' => 'database',
          'queue' => 'database',
+diff --git a/app/Services/LayoutService.php b/app/Services/LayoutService.php
+index 8ba02a7..7afc656 100644
+--- a/app/Services/LayoutService.php
++++ b/app/Services/LayoutService.php
+@@ -891,6 +891,7 @@ private function clearPublicServingCache(int $templateId, string $layoutName): v
+         $identifier = $template->identifier;
+         $cacheVersion = (int) $this->cache->get('ext.cache_version', 0);
+         $this->cache->forget("layout.{$identifier}.{$layoutName}.v{$cacheVersion}");
++        $this->cache->forget("layout.{$identifier}.{$layoutName}");
+     }
+ 
+     /**
 diff --git a/app/Services/SettingsService.php b/app/Services/SettingsService.php
 index 829817d..6e93427 100644
 --- a/app/Services/SettingsService.php
@@ -2269,25 +2336,3 @@ index 14867b2..b33154e 100644
                      }@endif
                  });
              } else {
-diff --git a/app/Events/GenericBroadcastEvent.php b/app/Events/GenericBroadcastEvent.php
-index 8a1f2c3..b4e9d1a 100644
---- a/app/Events/GenericBroadcastEvent.php
-+++ b/app/Events/GenericBroadcastEvent.php
-@@ -5,7 +5,7 @@ namespace App\Events;
- use Illuminate\Broadcasting\Channel;
- use Illuminate\Broadcasting\InteractsWithSockets;
- use Illuminate\Broadcasting\PrivateChannel;
--use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
- use Illuminate\Foundation\Events\Dispatchable;
- use Illuminate\Queue\SerializesModels;
- 
-@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
-  * 외부에서 직접 사용하지 않습니다.
-  * 반드시 HookManager::broadcast()를 통해 호출하세요.
-  */
--class GenericBroadcastEvent implements ShouldBroadcast
-+class GenericBroadcastEvent implements ShouldBroadcastNow
- {
-     use Dispatchable, InteractsWithSockets, SerializesModels;
- 

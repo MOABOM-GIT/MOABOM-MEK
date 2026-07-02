@@ -57,6 +57,10 @@ class WebsiteLinkIconBinaryValidator
             return ['mime' => 'image/x-icon', 'ext' => 'ico'];
         }
 
+        if ($this->looksLikeIcoContainer($content)) {
+            return ['mime' => 'image/x-icon', 'ext' => 'ico'];
+        }
+
         $trimmed = ltrim($content);
         if (str_starts_with($trimmed, '<svg') || str_starts_with($trimmed, '<?xml')) {
             if (preg_match('/<svg\b/i', $trimmed) === 1) {
@@ -96,6 +100,23 @@ class WebsiteLinkIconBinaryValidator
         }
 
         return null;
+    }
+
+    private function looksLikeIcoContainer(string $content): bool
+    {
+        if (strlen($content) < 6) {
+            return false;
+        }
+
+        $reserved = unpack('vreserved/vtype/vcount', substr($content, 0, 6));
+        if (! is_array($reserved)) {
+            return false;
+        }
+
+        return ($reserved['reserved'] ?? -1) === 0
+            && ($reserved['type'] ?? -1) === 1
+            && ($reserved['count'] ?? 0) >= 1
+            && ($reserved['count'] ?? 0) <= 256;
     }
 
     /**

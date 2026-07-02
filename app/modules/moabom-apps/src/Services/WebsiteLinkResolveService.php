@@ -27,7 +27,7 @@ class WebsiteLinkResolveService
 
         $body = $this->urlGuard->fetchDocumentBody($url);
         $themeColor = $body !== null ? $this->extractThemeColor($body) : null;
-        $icon = $this->iconExtractionService->resolveIconFromWebsite($url, $body);
+        $icon = $this->iconExtractionService->probeIconCandidate($url);
 
         return [
             'url' => $url,

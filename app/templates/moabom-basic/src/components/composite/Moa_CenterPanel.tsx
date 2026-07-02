@@ -42,6 +42,8 @@ export interface WindowState {
   myPageInitialTab?: MyPageTab;
   /** create-app 셸에서 편집 중인 저장 AI 앱 id */
   editGeneratedAppId?: number;
+  /** AI 생성 중 태스크바 최소화 시 본문을 숨긴 채 마운트 유지 */
+  isGenerationBackground?: boolean;
   /** moa-shell-board:{slug} 윈도우 — 게시판 슬러그 */
   boardSlug?: string;
   /** moa-shell-user:{uuid} 윈도우 — 공개 프로필 사용자 UUID */

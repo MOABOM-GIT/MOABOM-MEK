@@ -14,6 +14,7 @@ export default defineConfig({
       '@components': path.resolve(__dirname, 'src/components'),
       'moabom-shell-i18n': path.resolve(__dirname, 'src/i18n/moabomShellI18nSingleton.ts'),
       'moabom-create-app-edit': path.resolve(__dirname, 'src/apps/ai-generator/moabomCreateAppEditSession.ts'),
+      'moabom-ai-generation-activity': path.resolve(__dirname, 'src/apps/ai-generator/aiGenerationActivity.ts'),
     },
   },
   build: {
@@ -30,7 +31,7 @@ export default defineConfig({
       formats: ['iife'],
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime', 'moabom-shell-i18n', 'moabom-create-app-edit'],
+      external: ['react', 'react-dom', 'react/jsx-runtime', 'moabom-shell-i18n', 'moabom-create-app-edit', 'moabom-ai-generation-activity'],
       output: {
         globals: {
           react: 'React',
@@ -38,6 +39,7 @@ export default defineConfig({
           'react/jsx-runtime': 'ReactJSXRuntime',
           'moabom-shell-i18n': '__MoabomShellI18n',
           'moabom-create-app-edit': '__MoabomCreateAppEdit',
+          'moabom-ai-generation-activity': '__MoabomAiGenerationActivity',
         },
         exports: 'named',
         extend: true,

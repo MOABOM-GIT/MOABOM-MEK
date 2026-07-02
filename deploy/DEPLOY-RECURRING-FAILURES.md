@@ -215,12 +215,14 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | | |
 |---|---|
-| **기본** | `./deploy/build-and-deploy.sh` — layout·module JSON **해시 변경 시에만** `run-layout-sync-job.sh` (`deploy/ssot/layout-sync-manifest.sha256`) |
-| **강제** | `MOABOM_FORCE_LAYOUT_SYNC=1` 또는 `--skip-layout-sync` 반대로 sync 생략은 `--skip-layout-sync` |
-| **부팅 백업** | `cloudrun-entrypoint.sh` — 3회 재시도, 실패 시 ERROR 로그 (`\|\| true` 제거) |
-| **수동만 필요** | `--async` 후 deploy·smoke를 직접 할 때 → 출력 안내의 `run-layout-sync-job.sh` 1회 |
-| **생략** | `--skip-layout-sync` (비권장, 디버그용) |
-| **성공 로그** | `admin_settings memory 바인딩 OK` · `template layout sync 완료` |
+| **기본** | `./deploy/build-and-deploy.sh` — **매 배포** `run-platform-module-layout-reconcile-job.sh` (platform module layouts SSOT) + layout·module JSON **해시 변경 시에만** `run-layout-sync-job.sh` |
+| **강제** | `MOABOM_FORCE_LAYOUT_SYNC=1` · 전체 sync 생략은 `--skip-layout-sync` |
+| **캐시** | **매 배포** `run-serving-cache-bust.sh` (서빙 file cache 분리 완화) |
+| **부팅 백업** | `MOABOM_ENTRYPOINT_DEFERRED_SYNC=false`(운영) — 배포 Job SSOT |
+| **수동** | `--async` 후 → reconcile Job + (manifest 변경 시) layout sync Job + serving cache bust |
+| **성공 로그** | `platform module layout reconcile 완료` · `template layout sync 완료` |
+
+> **RF-13b Platform module layouts:** `moabom:saas:reconcile-platform-module-layouts` — 전 활성 모듈의 admin/user layout JSON filesystem → platform DB 정합. override purge·orphan 단축명 제거·served content 검증. hash 게이트와 **분리**되어 manifest 미변경 배포에서도 구형 layout 고착을 방지한다.
 
 > **SaaS module layouts:** `admin_saas_*`·`admin_mypage_settings` 는 **`moabom:saas:sync-module-layouts`** (platform + tenants). `module:refresh-layout` 단독은 RF-14b 원인 → [RF-14](#rf-14-saas-hospitals--모듈-레이아웃-db-미동기화) · [RF-14b](#rf-14b-테넌트-db에-구-tenant-settings-endpoint-잔류).
 

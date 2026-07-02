@@ -29,13 +29,16 @@ class AiAppService
 
     private const HOSTED_STATIC_PROMPT = <<<'PROMPT'
 
-HOSTED APP RULES (dedicated app origin — app server storage):
+HOSTED APP RULES (dedicated app origin — {id}.apps.mek360.com):
 - Personal data only: each signed-in member has isolated storage. Never mix users.
 - Read window.__MOABOM_APP_RUNTIME__ for appId, userId, tenantSlug, storagePrefix.
-- Data API: same-origin fetch('/api/data/{table_key}'). Moabom injects X-Moabom-Preview-Token from preview_token query for /api/data/* automatically.
-- Writes must POST/PUT/DELETE JSON body: { "payload": { ... } } with Content-Type application/json.
-- Optional helper: window.__MOABOM_SHELL__.dataApiFetch('table_key', init).
-- Use stable snake_case table_key names. Never call the Moabom shell API from inside the app.
+- PERSISTENCE SSOT: window.MoabomAppStorage (platform-injected). Do NOT use raw localStorage/sessionStorage for app data.
+- await MoabomAppStorage.whenReady() before the first data read on startup.
+- MoabomAppStorage.load('table_key') → Promise<document|null> — offline local cache, then online sync from /api/data/{table_key} when signed in.
+- MoabomAppStorage.save('table_key', document) → Promise<void> — writes offline immediately and syncs online when available.
+- Use one stable snake_case table_key per logical document (e.g. notes, app_state, day_entries).
+- Low-level fallback: same-origin fetch('/api/data/{table_key}') with JSON { "payload": { ... } } (preview token is injected automatically).
+- Never call the Moabom shell API from inside the app.
 PROMPT;
 
     private const STANDARD_STORAGE_PROMPT = <<<'PROMPT'
@@ -358,7 +361,7 @@ PROMPT;
             return $app;
         }
 
-        if ($this->websiteLinkIconStorage->storedIconPath((int) $app->id) !== null) {
+        if ($this->websiteLinkIconStorage->storedIconPath((int) $app->id, $app) !== null) {
             return $app->fresh() ?? $app;
         }
 

@@ -159,6 +159,7 @@ export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowStat
         isMinimized: true,
         myPageInitialTab: item.myPageInitialTab,
         editGeneratedAppId: item.editGeneratedAppId,
+        isGenerationBackground: item.isGenerationBackground,
         boardSlug: item.boardSlug,
         boardPostId: item.boardPostId,
         appCommunityServerId: item.appCommunityServerId,

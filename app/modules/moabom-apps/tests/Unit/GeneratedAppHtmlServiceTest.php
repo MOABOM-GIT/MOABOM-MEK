@@ -30,6 +30,9 @@ class GeneratedAppHtmlServiceTest extends TestCase
         $this->assertStringContainsString('id="moabom-app-download-bridge"', $out);
         $this->assertStringContainsString('__moabomDownloadBridge', $out);
         $this->assertStringContainsString('file-download', $out);
+        $this->assertStringContainsString('PATH_BACKSLASH', $out);
+        $this->assertStringNotContainsString('.replace(/\\/g', $out);
+        $this->assertStringNotContainsString('.replace(/\/g', $out);
     }
 
     public function test_harden_injects_data_api_bridge_for_hosted_apps(): void
@@ -41,6 +44,8 @@ class GeneratedAppHtmlServiceTest extends TestCase
 
         $this->assertStringContainsString('id="moabom-app-data-api-bridge"', $out);
         $this->assertStringContainsString('__moabomDataApiBridge', $out);
+        $this->assertStringContainsString('id="moabom-app-hosted-storage"', $out);
+        $this->assertStringContainsString('MoabomAppStorage', $out);
     }
 
     public function test_harden_skips_csp_when_already_present(): void

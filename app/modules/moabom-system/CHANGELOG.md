@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.8.25] - 2026-07-03
+
+### Changed
+
+- **Platform module layout reconcile (RF-13b 일반화)** — `RealtimeVmLayoutReconciler`·`moabom:saas:reconcile-realtime-vm-layout` 를 전 모듈 대상 `PlatformModuleLayoutReconciler`·`moabom:saas:reconcile-platform-module-layouts` 로 대체. `ModuleLayoutSyncCatalog` 기준 admin/user layout JSON 전체에 orphan 단축명·stale override purge·filesystem 강제 반영·resolver 검증 적용.
+- `moabom:diagnose:platform-module-layouts` — 단일/전체 module layout DB·resolve·filesystem 진단. `moabom:diagnose:realtime-vm-layout` 은 위 커맨드로 위임.
+- 배포 Job — `run-platform-module-layout-reconcile-job.sh` (매 배포). `platform-db-layout-versions.env` 키를 `{module}.{layout_name}` 형식으로 기록.
+
+## [0.8.24] - 2026-07-03
+
+### Added
+
+- platform module layout reconcile 파이프라인 초안 (0.8.25 에서 전 모듈로 일반화).
+
+### Changed
+
+- 배포 파이프라인 — reconcile Job·serving cache bust를 layout hash 게이트와 분리해 **매 배포** 실행.
+
+## [0.8.23] - 2026-06-30
+
+### Fixed
+
+- 플랫폼 **Realtime VM** — layout DB sync Job 은 v1.0.5+ 로 검증 통과하는데 브라우저 layout API 가 v1.0.2 를 받는 split-brain. 원인: `CACHE_STORE=file` 인 Cloud Run 서빙 인스턴스 로컬 캐시가 Job `template:cache-clear`·merged layout 캐시 무효화와 분리됨. `template:cache-clear` 가 merged layout 캐시까지 정리, sync 종료 시 cache-clear, entrypoint 부팅 시 file cache 초기화, layout sync 후 serving revision recycle(`MOABOM_LAYOUT_CACHE_BUST`) 추가. 권한 layout API 는 `Cache-Control: public` 제거.
+
+### Added
+
+- `moabom:diagnose:realtime-vm-layout` — DB·resolver·getLayout 병합 버전 진단 커맨드.
+
 ## [0.8.22] - 2026-06-30
 
 ### Fixed

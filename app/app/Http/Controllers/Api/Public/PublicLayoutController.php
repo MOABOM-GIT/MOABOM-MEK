@@ -83,10 +83,13 @@ class PublicLayoutController extends PublicBaseController
             );
 
             // ETag 및 Cache-Control 헤더와 함께 응답 반환
+            // 권한이 필요한 레이아웃은 public CDN/브라우저 공유 캐시 금지 (인증별 필터링과 충돌)
+            $maxAge = empty($mergedLayout['permissions'] ?? []) ? self::CACHE_TTL : 0;
+
             return $this->successWithCache(
                 'templates.messages.layout_served',
                 $mergedLayout,
-                self::CACHE_TTL
+                $maxAge
             );
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // 레이아웃 또는 부모 레이아웃을 찾을 수 없음 - 예외 메시지 전달

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { setAiGenerationBusy } from 'moabom-ai-generation-activity';
 import {
   cancelAiGenerationSession,
   cancelAiGenerationQueue,
@@ -48,6 +49,14 @@ export function useAiAppStream({
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    setAiGenerationBusy(isStreaming || queueState !== null);
+  }, [isStreaming, queueState]);
+
+  useEffect(() => () => {
+    setAiGenerationBusy(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

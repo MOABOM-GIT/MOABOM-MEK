@@ -230,8 +230,10 @@ if [[ "${ASYNC}" -eq 1 ]]; then
   echo "    smoke: MOABOM_STRICT_SMOKE=${STRICT_SMOKE} bash deploy/smoke-after-deploy.sh https://mek360.com"
   if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
     && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
+    echo "    platform module layout reconcile (every deploy): IMAGE_TAG=${TAG} bash deploy/run-platform-module-layout-reconcile-job.sh"
     echo "    layout DB sync (manifest 변경 시): IMAGE_TAG=${TAG} bash deploy/run-layout-sync-job.sh"
-    echo "    cache-clear (manifest unchanged 시): IMAGE_TAG=${TAG} bash deploy/run-template-cache-clear-job.sh"
+    echo "    cache-clear (layout sync skipped 시): IMAGE_TAG=${TAG} bash deploy/run-template-cache-clear-job.sh"
+    echo "    serving cache bust (every deploy): bash deploy/run-serving-cache-bust.sh"
   fi
   exit 0
 fi
@@ -304,21 +306,29 @@ else
   run_smoke "${URL}"
 fi
 
-# SaaS: layout·module JSON 변경 시에만 DB sync Job 실행 (RF-13)
+# SaaS: platform module layout reconcile(매 배포) + layout·module JSON hash 게이트(RF-13)
 if [[ "${SKIP_LAYOUT_SYNC}" -eq 0 ]] \
   && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
   && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
   # shellcheck source=lib/layout-sync-hash.sh
   source "${ROOT}/deploy/lib/layout-sync-hash.sh"
+
+  echo "==> Post-deploy platform module layout reconcile (platform DB — every deploy)"
+  IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh"
+  moabom_layout_sync_record_platform_layout_versions
+
   if moabom_layout_sync_needed; then
     echo "==> Post-deploy layout DB sync (moabom-admin_basic → platform + tenants)"
     IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-layout-sync-job.sh"
     moabom_layout_sync_record_success
   else
     echo "==> Post-deploy layout DB sync skipped (manifest unchanged)"
-    echo "==> Post-deploy template:cache-clear (ext.cache_version bump — layout sync 미실행)"
+    echo "==> Post-deploy template:cache-clear (ext.cache_version bump)"
     IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
   fi
+
+  echo "==> Post-deploy serving cache bust (Cloud Run revision recycle — every deploy)"
+  bash "${ROOT}/deploy/run-serving-cache-bust.sh"
   # shellcheck source=lib/post-deploy-migration-hash.sh
   source "${ROOT}/deploy/lib/post-deploy-migration-hash.sh"
   if moabom_post_deploy_phase_e_changed; then
