@@ -83,7 +83,7 @@
 | 알림 | `notification.received` | notifications API | 인박스와 채널 공유 (설계상 OK) | 2 |
 | 접속자 | `presence.revision` | summary, online, heartbeat | Provider 전역 리렌더 | 2 |
 | 친구 | revision 간접 | friends API | friendship 시 3-way refetch | 2 |
-| 앱 커뮤니티 | `app_community.revision` | community API | `ShouldBroadcast`(큐) 지연 | 3 |
+| 앱 커뮤니티 | `app_community.revision` | community API | ~~큐 지연~~ **Now** (v0.5.9) | 3 ✓ |
 | 게시판 | 없음 | sirsoft-board | 창마다 layout fetch | 4 |
 | 리뷰 | 없음 | sirsoft-ecommerce | moabom WS 없음 | 4 |
 | AI 앱 | SSE | generate/stream | concurrency 제한 | — |
@@ -98,7 +98,7 @@
 | `core.user.notifications.{uuid}` | `chat.inbox.updated` | Now | coordinator → inbox cache |
 | `core.user.notifications.{uuid}` | `notification.received` | Now | notification bridge |
 | `module.moabom-presence.tenant.{slug}.revision` | `presence.revision` | Now, public | PresenceProvider |
-| `moabom-app-community.{appId}` | `app_community.revision` | **큐** (수정 예정) | `useAppCommunity` |
+| `moabom-app-community.{appId}` | `app_community.revision` | **Now** | `useAppCommunity` |
 
 ---
 
@@ -115,16 +115,17 @@
 - [x] `moabom-basic` CHANGELOG
 - [x] Cloud Build 배포 (v424)
 
-### Phase 2 — P0/P1 Presence·렌더 (완료)
+### Phase 2 — P0/P1 Presence·렌더 (완료, v425)
 
 - [x] `MoabomPresenceProvider` Context 분할 (summary / online / friends / settings)
 - [x] `presence.revision` reason별 선택 refetch
 - [x] WS 재연결 refetch를 `ShellRealtimeStore` coalescer로 통합
+- [x] Cloud Build 배포 v425
 
-### Phase 3 — P1 앱 커뮤니티·이벤트 정합
+### Phase 3 — P1 앱 커뮤니티·이벤트 정합 (완료)
 
-- [ ] `AppCommunityRevisionBroadcastEvent` → `ShouldBroadcastNow`
-- [ ] 단위 테스트 갱신
+- [x] `AppCommunityRevisionBroadcastEvent` → `ShouldBroadcastNow`
+- [x] 단위 테스트 갱신
 
 ### Phase 4 — P2 Shell Surface·Visitor
 

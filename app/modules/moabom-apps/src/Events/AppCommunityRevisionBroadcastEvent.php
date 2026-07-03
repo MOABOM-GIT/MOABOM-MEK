@@ -6,14 +6,14 @@ namespace Modules\Moabom\Apps\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
  * 앱 이야기 revision bump — public 채널 (비로그인 읽기 창 구독 가능).
  */
-final class AppCommunityRevisionBroadcastEvent implements ShouldBroadcast
+final class AppCommunityRevisionBroadcastEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.9] - 2026-07-03
+
+### Fixed
+
+- 앱 이야기 `app_community.revision` 브로드캐스트를 `ShouldBroadcastNow`로 전환해 DB 큐 지연 없이 Reverb로 즉시 publish 합니다 (presence·채팅과 동일).
+
 ## [0.5.8] - 2026-07-03
 
 ### Fixed
