@@ -33,6 +33,8 @@ import {
   noteShellPresenceRevision,
   registerShellPlatformSummaryInvalidate,
   registerShellPresenceInvalidate,
+  scheduleShellPresenceCatchUp,
+  type PresenceRefetchTargets,
 } from '../shell/ShellRealtimeStore';
 import {
   installMoabomShellRealtimeCoordinator,
@@ -113,7 +115,37 @@ export interface MoabomPresenceContextValue {
   removeFriend: (userUuid: string) => Promise<void>;
 }
 
-const MoabomPresenceContext = createContext<MoabomPresenceContextValue | null>(null);
+export interface MoabomPresenceSummarySlice {
+  summary: PresenceSummary | null;
+}
+
+export interface MoabomPresenceOnlineSlice {
+  onlineUsers: PresenceOnlineUser[];
+  ownPresence: OwnPresenceState | null;
+  loadingOnline: boolean;
+  refreshOnline: () => Promise<void>;
+}
+
+export interface MoabomPresenceFriendsSlice {
+  friends: PresenceFriend[];
+  loadingFriends: boolean;
+  refreshFriends: () => Promise<void>;
+  addFriend: (userUuid: string) => Promise<void>;
+  acceptFriend: (userUuid: string) => Promise<void>;
+  removeFriend: (userUuid: string) => Promise<void>;
+}
+
+export interface MoabomPresenceSettingsSlice {
+  presenceSettings: PresenceSettings | null;
+  presenceSettingsHydrated: boolean;
+  presenceSettingsLoading: boolean;
+  applyPresenceSettingsSnapshot: (settings: PresenceSettings) => void;
+}
+
+const MoabomPresenceSummaryContext = createContext<MoabomPresenceSummarySlice | null>(null);
+const MoabomPresenceOnlineContext = createContext<MoabomPresenceOnlineSlice | null>(null);
+const MoabomPresenceFriendsContext = createContext<MoabomPresenceFriendsSlice | null>(null);
+const MoabomPresenceSettingsContext = createContext<MoabomPresenceSettingsSlice | null>(null);
 
 export interface MoabomPresenceProviderProps {
   isLoggedIn: boolean;
@@ -553,13 +585,25 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   useEffect(() => {
     return subscribeMoabomWebSocketConnectionChange(() => {
       if (isMoabomWebSocketConnected()) {
-        void Promise.all([refreshSummary(), refreshOnline()]);
+        scheduleShellPresenceCatchUp();
       }
     });
-  }, [refreshOnline, refreshSummary]);
+  }, []);
 
-  const invalidatePresenceFromRevision = useCallback(() => {
-    void Promise.all([refreshSummary(), refreshOnline(), refreshFriends()]);
+  const invalidatePresenceFromRevision = useCallback((targets: PresenceRefetchTargets) => {
+    const tasks: Promise<void>[] = [];
+    if (targets.summary) {
+      tasks.push(refreshSummary());
+    }
+    if (targets.online) {
+      tasks.push(refreshOnline());
+    }
+    if (targets.friends) {
+      tasks.push(refreshFriends());
+    }
+    if (tasks.length > 0) {
+      void Promise.all(tasks);
+    }
   }, [refreshFriends, refreshOnline, refreshSummary]);
 
   useEffect(() => registerShellPresenceInvalidate(invalidatePresenceFromRevision), [
@@ -679,18 +723,20 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     await Promise.all([refreshOnline(), refreshFriends()]);
   }, [refreshFriends, refreshOnline]);
 
-  const value = useMemo<MoabomPresenceContextValue>(() => ({
+  const summaryValue = useMemo<MoabomPresenceSummarySlice>(() => ({
     summary,
+  }), [summary]);
+
+  const onlineValue = useMemo<MoabomPresenceOnlineSlice>(() => ({
     onlineUsers,
-    friends,
     ownPresence,
-    presenceSettings,
-    presenceSettingsHydrated,
-    presenceSettingsLoading,
-    applyPresenceSettingsSnapshot,
     loadingOnline,
-    loadingFriends,
     refreshOnline,
+  }), [loadingOnline, onlineUsers, ownPresence, refreshOnline]);
+
+  const friendsValue = useMemo<MoabomPresenceFriendsSlice>(() => ({
+    friends,
+    loadingFriends,
     refreshFriends,
     addFriend,
     acceptFriend,
@@ -698,36 +744,135 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   }), [
     acceptFriend,
     addFriend,
-    applyPresenceSettingsSnapshot,
     friends,
     loadingFriends,
-    loadingOnline,
-    onlineUsers,
-    ownPresence,
+    refreshFriends,
+    removeFriend,
+  ]);
+
+  const settingsValue = useMemo<MoabomPresenceSettingsSlice>(() => ({
     presenceSettings,
     presenceSettingsHydrated,
     presenceSettingsLoading,
-    refreshFriends,
-    refreshOnline,
-    removeFriend,
-    summary,
+    applyPresenceSettingsSnapshot,
+  }), [
+    applyPresenceSettingsSnapshot,
+    presenceSettings,
+    presenceSettingsHydrated,
+    presenceSettingsLoading,
   ]);
 
   return (
-    <MoabomPresenceContext.Provider value={value}>
-      {children}
-    </MoabomPresenceContext.Provider>
+    <MoabomPresenceSummaryContext.Provider value={summaryValue}>
+      <MoabomPresenceOnlineContext.Provider value={onlineValue}>
+        <MoabomPresenceFriendsContext.Provider value={friendsValue}>
+          <MoabomPresenceSettingsContext.Provider value={settingsValue}>
+            {children}
+          </MoabomPresenceSettingsContext.Provider>
+        </MoabomPresenceFriendsContext.Provider>
+      </MoabomPresenceOnlineContext.Provider>
+    </MoabomPresenceSummaryContext.Provider>
   );
 }
 
-export function useMoabomPresenceContext(): MoabomPresenceContextValue {
-  const ctx = useContext(MoabomPresenceContext);
+export function useMoabomPresenceSummary(): MoabomPresenceSummarySlice {
+  const ctx = useContext(MoabomPresenceSummaryContext);
   if (!ctx) {
-    throw new Error('useMoabomPresenceContext must be used within MoabomPresenceProvider');
+    throw new Error('useMoabomPresenceSummary must be used within MoabomPresenceProvider');
   }
   return ctx;
 }
 
+export function useMoabomPresenceOnline(): MoabomPresenceOnlineSlice {
+  const ctx = useContext(MoabomPresenceOnlineContext);
+  if (!ctx) {
+    throw new Error('useMoabomPresenceOnline must be used within MoabomPresenceProvider');
+  }
+  return ctx;
+}
+
+export function useMoabomPresenceFriends(): MoabomPresenceFriendsSlice {
+  const ctx = useContext(MoabomPresenceFriendsContext);
+  if (!ctx) {
+    throw new Error('useMoabomPresenceFriends must be used within MoabomPresenceProvider');
+  }
+  return ctx;
+}
+
+export function useMoabomPresenceSettings(): MoabomPresenceSettingsSlice {
+  const ctx = useContext(MoabomPresenceSettingsContext);
+  if (!ctx) {
+    throw new Error('useMoabomPresenceSettings must be used within MoabomPresenceProvider');
+  }
+  return ctx;
+}
+
+export function useMoabomPresenceSummaryOptional(): MoabomPresenceSummarySlice | null {
+  return useContext(MoabomPresenceSummaryContext);
+}
+
+export function useMoabomPresenceOnlineOptional(): MoabomPresenceOnlineSlice | null {
+  return useContext(MoabomPresenceOnlineContext);
+}
+
+export function useMoabomPresenceFriendsOptional(): MoabomPresenceFriendsSlice | null {
+  return useContext(MoabomPresenceFriendsContext);
+}
+
+export function useMoabomPresenceSettingsOptional(): MoabomPresenceSettingsSlice | null {
+  return useContext(MoabomPresenceSettingsContext);
+}
+
+export function useMoabomPresenceContext(): MoabomPresenceContextValue {
+  const summarySlice = useMoabomPresenceSummary();
+  const onlineSlice = useMoabomPresenceOnline();
+  const friendsSlice = useMoabomPresenceFriends();
+  const settingsSlice = useMoabomPresenceSettings();
+
+  return useMemo<MoabomPresenceContextValue>(() => ({
+    summary: summarySlice.summary,
+    onlineUsers: onlineSlice.onlineUsers,
+    friends: friendsSlice.friends,
+    ownPresence: onlineSlice.ownPresence,
+    presenceSettings: settingsSlice.presenceSettings,
+    presenceSettingsHydrated: settingsSlice.presenceSettingsHydrated,
+    presenceSettingsLoading: settingsSlice.presenceSettingsLoading,
+    applyPresenceSettingsSnapshot: settingsSlice.applyPresenceSettingsSnapshot,
+    loadingOnline: onlineSlice.loadingOnline,
+    loadingFriends: friendsSlice.loadingFriends,
+    refreshOnline: onlineSlice.refreshOnline,
+    refreshFriends: friendsSlice.refreshFriends,
+    addFriend: friendsSlice.addFriend,
+    acceptFriend: friendsSlice.acceptFriend,
+    removeFriend: friendsSlice.removeFriend,
+  }), [friendsSlice, onlineSlice, settingsSlice, summarySlice]);
+}
+
 export function useMoabomPresenceContextOptional(): MoabomPresenceContextValue | null {
-  return useContext(MoabomPresenceContext);
+  const summarySlice = useContext(MoabomPresenceSummaryContext);
+  const onlineSlice = useContext(MoabomPresenceOnlineContext);
+  const friendsSlice = useContext(MoabomPresenceFriendsContext);
+  const settingsSlice = useContext(MoabomPresenceSettingsContext);
+
+  if (!summarySlice || !onlineSlice || !friendsSlice || !settingsSlice) {
+    return null;
+  }
+
+  return {
+    summary: summarySlice.summary,
+    onlineUsers: onlineSlice.onlineUsers,
+    friends: friendsSlice.friends,
+    ownPresence: onlineSlice.ownPresence,
+    presenceSettings: settingsSlice.presenceSettings,
+    presenceSettingsHydrated: settingsSlice.presenceSettingsHydrated,
+    presenceSettingsLoading: settingsSlice.presenceSettingsLoading,
+    applyPresenceSettingsSnapshot: settingsSlice.applyPresenceSettingsSnapshot,
+    loadingOnline: onlineSlice.loadingOnline,
+    loadingFriends: friendsSlice.loadingFriends,
+    refreshOnline: onlineSlice.refreshOnline,
+    refreshFriends: friendsSlice.refreshFriends,
+    addFriend: friendsSlice.addFriend,
+    acceptFriend: friendsSlice.acceptFriend,
+    removeFriend: friendsSlice.removeFriend,
+  };
 }

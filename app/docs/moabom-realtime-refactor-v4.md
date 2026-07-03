@@ -113,13 +113,13 @@
 
 - [x] `useMoabomChat` 단일 구독 Effect
 - [x] `moabom-basic` CHANGELOG
-- [ ] Cloud Build 배포
+- [x] Cloud Build 배포 (v424)
 
-### Phase 2 — P0/P1 Presence·렌더
+### Phase 2 — P0/P1 Presence·렌더 (완료)
 
-- [ ] `MoabomPresenceProvider` Context 분할 (summary / online / friends)
-- [ ] `presence.revision` reason별 선택 refetch
-- [ ] WS 재연결 refetch를 `ShellRealtimeStore` coalescer로 통합
+- [x] `MoabomPresenceProvider` Context 분할 (summary / online / friends / settings)
+- [x] `presence.revision` reason별 선택 refetch
+- [x] WS 재연결 refetch를 `ShellRealtimeStore` coalescer로 통합
 
 ### Phase 3 — P1 앱 커뮤니티·이벤트 정합
 

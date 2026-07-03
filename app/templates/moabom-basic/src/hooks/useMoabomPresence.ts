@@ -4,7 +4,7 @@ import {
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
-import { useMoabomPresenceContext } from './MoabomPresenceProvider';
+import { useMoabomPresenceFriends, useMoabomPresenceOnline, useMoabomPresenceSummary } from './MoabomPresenceProvider';
 
 interface UseMoabomPresenceOptions {
   connectTabActive: boolean;
@@ -68,19 +68,21 @@ export function useMoabomPresence({
   connectTabActive,
   friendTabActive,
 }: UseMoabomPresenceOptions) {
+  const { summary } = useMoabomPresenceSummary();
   const {
-    summary,
     onlineUsers,
-    friends,
     ownPresence,
     loadingOnline,
-    loadingFriends,
     refreshOnline,
+  } = useMoabomPresenceOnline();
+  const {
+    friends,
+    loadingFriends,
     refreshFriends,
     addFriend,
     acceptFriend,
     removeFriend,
-  } = useMoabomPresenceContext();
+  } = useMoabomPresenceFriends();
 
   useTabListPolling(connectTabActive, refreshOnline);
   useTabListPolling(friendTabActive, refreshFriends);

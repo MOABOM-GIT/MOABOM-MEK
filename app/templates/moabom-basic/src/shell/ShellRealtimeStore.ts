@@ -1,5 +1,10 @@
 import type { ShellNotificationReceivedPayload } from '../runtime/moabomShellNotificationSocket';
 import type { ChatMessageCreatedPayload } from '../runtime/moabomChatSocket';
+import {
+  mergePresenceRefetchTargets,
+  resolvePresenceRefetchTargets,
+  type PresenceRefetchTargets,
+} from './presenceRevisionInvalidation';
 
 export type PresenceRevisionPayload = {
   tenant_slug: string;
@@ -7,11 +12,11 @@ export type PresenceRevisionPayload = {
   reason?: string;
 };
 
-export type { ShellNotificationReceivedPayload };
+export type { ShellNotificationReceivedPayload, PresenceRefetchTargets };
 
 const DEBOUNCE_MS = 300;
 
-type InvalidateHandler = () => void;
+type InvalidateHandler = (targets: PresenceRefetchTargets) => void;
 type SummaryOnlyHandler = () => void;
 type NotificationHandler = (payload: ShellNotificationReceivedPayload) => void;
 type ChatInboxHandler = (payload: ChatMessageCreatedPayload) => void;
@@ -20,6 +25,7 @@ let lastKnownTenantRevision = 0;
 let lastKnownPlatformRevision = 0;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let platformDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingRefetchTargets: PresenceRefetchTargets | null = null;
 const invalidateHandlers = new Set<InvalidateHandler>();
 const platformSummaryHandlers = new Set<SummaryOnlyHandler>();
 let notificationHandlers = new Set<NotificationHandler>();
@@ -48,17 +54,32 @@ export function noteShellPresenceRevision(revision: number | undefined | null): 
   }
 }
 
-function schedulePresenceInvalidate(): void {
+function flushPresenceInvalidate(): void {
+  const targets = pendingRefetchTargets ?? resolvePresenceRefetchTargets();
+  pendingRefetchTargets = null;
+  invalidateHandlers.forEach(handler => handler(targets));
+}
+
+function schedulePresenceInvalidate(reason?: string): void {
   if (invalidateHandlers.size === 0) {
     return;
   }
+  pendingRefetchTargets = mergePresenceRefetchTargets(
+    pendingRefetchTargets,
+    resolvePresenceRefetchTargets(reason),
+  );
   if (debounceTimer) {
     clearTimeout(debounceTimer);
   }
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
-    invalidateHandlers.forEach(handler => handler());
+    flushPresenceInvalidate();
   }, DEBOUNCE_MS);
+}
+
+/** WS 재연결·탭 복귀 catch-up — revision debounce 와 동일 큐. */
+export function scheduleShellPresenceCatchUp(): void {
+  schedulePresenceInvalidate('ws_reconnect');
 }
 
 function schedulePlatformSummaryInvalidate(): void {
@@ -96,7 +117,7 @@ export function handleShellPresenceRevisionEvent(raw: unknown): void {
     return;
   }
   lastKnownTenantRevision = payload.revision;
-  schedulePresenceInvalidate();
+  schedulePresenceInvalidate(payload.reason);
 }
 
 export function registerShellNotificationHandler(handler: NotificationHandler | null): () => void {
@@ -140,6 +161,7 @@ export function unsubscribeShellNotification(): void {
 export function resetShellRealtimeStoreForTest(): void {
   lastKnownTenantRevision = 0;
   lastKnownPlatformRevision = 0;
+  pendingRefetchTargets = null;
   if (debounceTimer) {
     clearTimeout(debounceTimer);
     debounceTimer = null;

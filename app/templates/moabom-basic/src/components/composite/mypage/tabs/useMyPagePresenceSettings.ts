@@ -6,7 +6,7 @@ import {
   type PresenceSettings,
   type PresenceSubtitleMode,
 } from '../../../../api/moabomPresenceApi';
-import { useMoabomPresenceContextOptional } from '../../../../hooks/MoabomPresenceProvider';
+import { useMoabomPresenceSettingsOptional } from '../../../../hooks/MoabomPresenceProvider';
 import { showCoreToast } from '../myPageUtils';
 
 export const MOABOM_PRESENCE_SETTINGS_OPTIMISTIC_EVENT = 'moabom-presence-settings-optimistic';
@@ -62,7 +62,7 @@ export function useMyPagePresenceSettings({
   t,
   profileBio = '',
 }: UseMyPagePresenceSettingsOptions) {
-  const presenceContext = useMoabomPresenceContextOptional();
+  const presenceSettingsContext = useMoabomPresenceSettingsOptional();
 
   const [availability, setAvailabilityState] = useState<PresenceAvailability>('online');
   const [subtitleMode, setSubtitleModeState] = useState<PresenceSubtitleMode>('activity');
@@ -111,7 +111,7 @@ export function useMyPagePresenceSettings({
       setSubtitleModeState(saved.subtitle_mode);
       setShowAvatarInConnectListState(saved.show_avatar_in_connect_list ?? true);
       setAcceptChatRequestsState(saved.accept_chat_requests ?? true);
-      presenceContext?.applyPresenceSettingsSnapshot(saved);
+      presenceSettingsContext?.applyPresenceSettingsSnapshot(saved);
       dispatchPresenceOptimistic({
         availability: saved.availability,
         subtitle_mode: saved.subtitle_mode,
@@ -125,7 +125,7 @@ export function useMyPagePresenceSettings({
     } finally {
       setSaving(false);
     }
-  }, [presenceContext, t]);
+  }, [presenceSettingsContext, t]);
 
   const schedulePresenceSave = useCallback((patch: Partial<PresenceSettings>) => {
     pendingSaveRef.current = {
@@ -211,10 +211,10 @@ export function useMyPagePresenceSettings({
       return;
     }
 
-    if (presenceContext) {
-      if (presenceContext.presenceSettingsHydrated && presenceContext.presenceSettings) {
+    if (presenceSettingsContext) {
+      if (presenceSettingsContext.presenceSettingsHydrated && presenceSettingsContext.presenceSettings) {
         applySettingsToLocalState(
-          presenceContext.presenceSettings,
+          presenceSettingsContext.presenceSettings,
           {
             setAvailabilityState,
             setSubtitleModeState,
@@ -227,7 +227,7 @@ export function useMyPagePresenceSettings({
         return;
       }
 
-      if (presenceContext.presenceSettingsLoading) {
+      if (presenceSettingsContext.presenceSettingsLoading) {
         hydratedRef.current = false;
         return;
       }
@@ -274,10 +274,10 @@ export function useMyPagePresenceSettings({
   }, [
     activeTab,
     isLoggedIn,
-    presenceContext,
-    presenceContext?.presenceSettings,
-    presenceContext?.presenceSettingsHydrated,
-    presenceContext?.presenceSettingsLoading,
+    presenceSettingsContext,
+    presenceSettingsContext?.presenceSettings,
+    presenceSettingsContext?.presenceSettingsHydrated,
+    presenceSettingsContext?.presenceSettingsLoading,
     t,
   ]);
 
@@ -316,8 +316,8 @@ export function useMyPagePresenceSettings({
     }
   }, []);
 
-  const loading = presenceContext
-    ? (presenceContext.presenceSettingsLoading && !presenceContext.presenceSettingsHydrated)
+  const loading = presenceSettingsContext
+    ? (presenceSettingsContext.presenceSettingsLoading && !presenceSettingsContext.presenceSettingsHydrated)
     : fallbackLoading;
   const resolvedError = error ?? fallbackError;
 

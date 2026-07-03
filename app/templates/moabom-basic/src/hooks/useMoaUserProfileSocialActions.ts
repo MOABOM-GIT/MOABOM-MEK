@@ -25,13 +25,14 @@ import {
 import { notifyMoabomPresenceFriendsChanged, subscribeMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
 import { registerShellPresenceInvalidate } from '../shell/ShellRealtimeStore';
 import { getShellAuthUserUuid } from '../utils/presenceSettingsSync';
-import { useMoabomPresenceContextOptional } from './MoabomPresenceProvider';
+import { useMoabomPresenceFriendsOptional, useMoabomPresenceOnlineOptional } from './MoabomPresenceProvider';
 
 export type ProfileFriendshipUiState = 'none' | 'pending' | 'accepted' | 'incoming';
 
 export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: string) {
   const { t } = useMoabomShellT();
-  const presence = useMoabomPresenceContextOptional();
+  const onlinePresence = useMoabomPresenceOnlineOptional();
+  const friendsPresence = useMoabomPresenceFriendsOptional();
   const [blocked, setBlocked] = useState(false);
   const [friendState, setFriendState] = useState<ProfileFriendshipUiState>('none');
   const [busyFriend, setBusyFriend] = useState(false);
@@ -43,16 +44,16 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
   const peerDisplayName = displayName?.trim() || t('moa_chat.unknown_sender');
 
   useEffect(() => {
-    if (!userUuid || !presence) {
+    if (!userUuid || !onlinePresence || !friendsPresence) {
       return;
     }
 
-    if (presence.friends.some(friend => friend.user_uuid === userUuid)) {
+    if (friendsPresence.friends.some(friend => friend.user_uuid === userUuid)) {
       setFriendState('accepted');
       return;
     }
 
-    const online = presence.onlineUsers.find(row => row.user_uuid === userUuid);
+    const online = onlinePresence.onlineUsers.find(row => row.user_uuid === userUuid);
     if (online?.friendship === 'accepted') {
       setFriendState('accepted');
     } else if (online?.friendship === 'outgoing_pending') {
@@ -62,7 +63,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     } else {
       setFriendState('none');
     }
-  }, [presence, userUuid]);
+  }, [friendsPresence, onlinePresence, userUuid]);
 
   useEffect(() => {
     if (!userUuid || !getShellAccessToken()) {
@@ -110,28 +111,48 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
   }, []);
 
   const refreshFriendState = useCallback(async () => {
-    if (presence) {
-      await Promise.all([presence.refreshOnline(), presence.refreshFriends()]);
+    if (!onlinePresence || !friendsPresence) {
+      return;
     }
-  }, [presence]);
+    await Promise.all([
+      onlinePresence.refreshOnline(),
+      friendsPresence.refreshFriends(),
+    ]);
+  }, [friendsPresence, onlinePresence]);
 
   useEffect(() => {
     if (!userUuid) {
       return undefined;
     }
 
-    const refresh = () => {
-      void refreshFriendState();
+    const refresh = (targets: { online?: boolean; friends?: boolean }) => {
+      const tasks: Promise<void>[] = [];
+      if (targets.online !== false && onlinePresence) {
+        tasks.push(onlinePresence.refreshOnline());
+      }
+      if (targets.friends !== false && friendsPresence) {
+        tasks.push(friendsPresence.refreshFriends());
+      }
+      if (tasks.length > 0) {
+        void Promise.all(tasks);
+      }
     };
 
-    const unsubscribeFriends = subscribeMoabomPresenceFriendsChanged(refresh);
-    const unsubscribePresence = registerShellPresenceInvalidate(refresh);
+    const unsubscribeFriends = subscribeMoabomPresenceFriendsChanged(() => {
+      refresh({ online: true, friends: true });
+    });
+    const unsubscribePresence = registerShellPresenceInvalidate(targets => {
+      refresh({
+        online: targets.online,
+        friends: targets.friends,
+      });
+    });
 
     return () => {
       unsubscribeFriends();
       unsubscribePresence();
     };
-  }, [refreshFriendState, userUuid]);
+  }, [friendsPresence, onlinePresence, userUuid]);
 
   const removeFriendship = useCallback(async (uuid: string) => {
     setBusyFriend(true);
@@ -195,7 +216,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     try {
       await profileSocialRequestFriend(uuid);
       notifyMoabomPresenceFriendsChanged();
-      if (presence) {
+      if (onlinePresence && friendsPresence) {
         await refreshFriendState();
       } else {
         setFriendState('pending');
@@ -209,7 +230,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     } finally {
       setBusyFriend(false);
     }
-  }, [cancelFriendRequest, ensureUser, friendState, peerDisplayName, presence, refreshFriendState, removeFriendship, t]);
+  }, [cancelFriendRequest, ensureUser, friendState, friendsPresence, onlinePresence, peerDisplayName, refreshFriendState, removeFriendship, t]);
 
   const handleChat = useCallback(async () => {
     const uuid = ensureUser();
