@@ -471,6 +471,11 @@ PROMPT;
         return $this->appRepository->findPublished($id);
     }
 
+    public function findById(int $id): ?GeneratedApp
+    {
+        return $this->appRepository->findById($id);
+    }
+
     /** @deprecated use findPublished() */
     public function findShared(int $id): ?GeneratedApp
     {

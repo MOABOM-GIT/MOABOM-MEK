@@ -183,25 +183,23 @@
                     {
                       "handler": "apiCall",
                       "target": "{{_global.deleteModal.apiEndpoint}}",
-                      "auth_required": true,
+                      "auth_mode": "optional",
                       "params": {
                         "method": "DELETE",
-                        "body": "{{_global.deleteModal.isGuest ? {password: _global.deleteModal.password} : {}}}"
+                        "body": "{{_global.deleteModal.isGuest ? {password: _global.deleteModal.password} : null}}"
                       },
                       "onSuccess": [
                         {
-                          "comment": "삭제 유형을 먼저 보존 (deleteModal 초기화 전)",
                           "handler": "setState",
                           "params": {
                             "target": "local",
                             "deleteSubmitting": false,
-                            "deleteError": "",
-                            "pendingDeleteType": "{{_global.deleteModal.type}}"
+                            "deleteError": ""
                           }
                         },
                         {
                           "comment": "댓글 삭제 시 데이터소스 갱신",
-                          "if": "{{_local.pendingDeleteType === 'comment'}}",
+                          "if": "{{_global.deleteModal.type === 'comment'}}",
                           "handler": "refetchDataSource",
                           "params": {
                             "dataSourceId": "post"
@@ -209,14 +207,14 @@
                         },
                         {
                           "comment": "게시글 삭제 시 목록으로 이동",
-                          "if": "{{_local.pendingDeleteType !== 'comment'}}",
+                          "if": "{{_global.deleteModal.type !== 'comment'}}",
                           "handler": "navigate",
                           "params": {
                             "path": "/board/{{route.slug}}"
                           }
                         },
                         {
-                          "if": "{{_local.pendingDeleteType !== 'comment' && route?.slug === 'notice'}}",
+                          "if": "{{_global.deleteModal.type !== 'comment' && route?.slug === 'notice'}}",
                           "handler": "moabom.notifyShellNoticeBoardChanged",
                           "params": {
                             "slug": "{{route?.slug}}",
@@ -225,25 +223,28 @@
                           }
                         },
                         {
-                          "comment": "모달 상태 초기화",
-                          "handler": "setState",
+                          "comment": "게시글 삭제 시 셸 게시판 캐시 무효화",
+                          "if": "{{_global.deleteModal.type !== 'comment'}}",
+                          "handler": "moabom.invalidateBoardShellPostCache",
                           "params": {
-                            "target": "global",
-                            "deleteModal": null
+                            "slug": "{{route?.slug}}",
+                            "postId": "{{route?.id}}",
+                            "invalidateIndex": true
                           }
                         },
                         {
                           "handler": "toast",
                           "params": {
                             "type": "success",
-                            "message": "{{_local.pendingDeleteType === 'comment' ? '$t:board.comment_deleted' : '$t:board.post_deleted'}}"
+                            "message": "{{_global.deleteModal.type === 'comment' ? '$t:board.comment_deleted' : '$t:board.post_deleted'}}"
                           }
                         },
                         {
+                          "comment": "모달 상태 초기화",
                           "handler": "setState",
                           "params": {
-                            "target": "local",
-                            "pendingDeleteType": null
+                            "target": "global",
+                            "deleteModal": null
                           }
                         },
                         {

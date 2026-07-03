@@ -252,7 +252,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   }, [appRankings, rankingLibraryApps]);
 
   const rankingAbortRef = useRef<AbortController | null>(null);
-  const noticeReloadRef = useRef<(() => void) | null>(null);
+  const noticeReloadRef = useRef<((_detail?: ShellNoticeBoardChangedDetail) => void) | null>(null);
+  const activeNavRef = useRef(activeNav);
+  const noticePreviewStaleRef = useRef(false);
+
+  activeNavRef.current = activeNav;
 
   const reloadRankings = useCallback(() => {
     rankingAbortRef.current?.abort();
@@ -307,6 +311,16 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   }, []);
 
   useEffect(() => {
+    return subscribeShellNoticeBoardChanged(() => {
+      if (activeNavRef.current === 'notice') {
+        noticeReloadRef.current?.();
+        return;
+      }
+      noticePreviewStaleRef.current = true;
+    });
+  }, []);
+
+  useEffect(() => {
     if (activeNav !== 'notice') {
       noticeReloadRef.current = null;
       return;
@@ -347,14 +361,14 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     };
 
     noticeReloadRef.current = reload;
+    if (noticePreviewStaleRef.current) {
+      noticePreviewStaleRef.current = false;
+    }
     reload();
-
-    const unsubscribe = subscribeShellNoticeBoardChanged(reload);
 
     return () => {
       noticeReloadRef.current = null;
       controller.abort();
-      unsubscribe();
     };
   }, [activeNav]);
 

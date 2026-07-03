@@ -803,7 +803,7 @@
                       "handler": "moabom.notifyShellNoticeBoardChanged",
                       "params": {
                         "slug": "{{route?.slug}}",
-                        "postId": "{{result?.data?.id}}",
+                        "postId": "{{response?.data?.id ?? result?.data?.id}}",
                         "action": "{{route?.id ? 'updated' : 'created'}}"
                       }
                     },

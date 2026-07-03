@@ -59,6 +59,11 @@ return [
      * routing=dedicated_host (기본): apps.mek360.com / {id}.apps.mek360.com
      * routing=tenant_path (레거시): {tenant-host}/modules/moabom-apps/preview/...
      */
+    'website_link' => [
+        // 셸 img 서빙용 icon_token TTL(초). 기본 30일 — 저장·조회 시 재발급.
+        'icon_access_token_ttl_seconds' => (int) env('MOABOM_APPS_WEBSITE_ICON_TOKEN_TTL', 2_592_000),
+    ],
+
     'preview' => [
         'routing' => env('MOABOM_APPS_PREVIEW_ROUTING', 'dedicated_host'),
         'scheme' => env('MOABOM_APPS_PREVIEW_SCHEME', 'https'),

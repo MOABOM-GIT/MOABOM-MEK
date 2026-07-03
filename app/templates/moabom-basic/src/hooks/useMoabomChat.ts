@@ -23,7 +23,7 @@ import {
   type ChatPeerRead,
   type ChatUserSearchResult,
 } from '../api/moabomChatApi';
-import { subscribeChatConversation, subscribeChatConversations } from '../runtime/moabomChatSocket';
+import { subscribeChatConversations } from '../runtime/moabomChatSocket';
 import { pushInfoToast, pushWarningToast } from '../runtime/moaShellToasts';
 import {
   notifyMoabomShellChatBlockChanged,
@@ -437,6 +437,23 @@ export function useMoabomChat(
     }));
   }, []);
 
+  const handleConversationRead = useCallback((payload: ChatReadPayload) => {
+    const active = activeConversationRef.current;
+    if (!active?.uuid || payload.conversation_uuid !== active.uuid) {
+      return;
+    }
+    const selfUuid = getShellAuthUserUuid();
+    if (payload.user_uuid && payload.user_uuid !== selfUuid) {
+      applyPeerReadPayload(payload);
+      return;
+    }
+    if (payload.user_uuid === selfUuid) {
+      setConversations(prev => prev.map(item => (
+        item.uuid === active.uuid ? { ...item, unread_count: 0 } : item
+      )));
+    }
+  }, [applyPeerReadPayload]);
+
   const handlePeerTyping = useCallback((payload: ChatTypingPayload) => {
     const peerUuid = payload.user_uuid?.trim();
     const selfUuid = getShellAuthUserUuid();
@@ -736,6 +753,7 @@ export function useMoabomChat(
     const subscription = subscribeChatConversations(channels, {
       onMessageCreated: applyIncomingChatMessage,
       onTyping: handlePeerTyping,
+      onRead: handleConversationRead,
       onMessageDeleted: payload => {
         if (!payload.message_uuid) {
           return;
@@ -749,37 +767,7 @@ export function useMoabomChat(
     }
 
     return () => subscription.unsubscribe();
-  }, [applyIncomingChatMessage, conversationChannelKey, handlePeerTyping, wsAuthEpoch]);
-
-  useEffect(() => {
-    if (!activeConversation?.channel) {
-      return undefined;
-    }
-    const selfUuid = getShellAuthUserUuid();
-    const subscription = subscribeChatConversation(activeConversation.channel, {
-      onMessageCreated: applyIncomingChatMessage,
-      onTyping: handlePeerTyping,
-      onMessageDeleted: payload => {
-        if (!payload.message_uuid) {
-          return;
-        }
-        setMessages(prev => prev.filter(item => item.uuid !== payload.message_uuid));
-      },
-      onRead: payload => {
-        if (payload.conversation_uuid === activeConversation.uuid && payload.user_uuid && payload.user_uuid !== selfUuid) {
-          applyPeerReadPayload(payload);
-          return;
-        }
-        if (payload.conversation_uuid === activeConversation.uuid && payload.user_uuid === selfUuid) {
-          setConversations(prev => prev.map(item => (
-            item.uuid === activeConversation.uuid ? { ...item, unread_count: 0 } : item
-          )));
-        }
-      },
-    });
-
-    return () => subscription?.unsubscribe();
-  }, [activeConversation?.channel, activeConversation?.uuid, applyIncomingChatMessage, applyPeerReadPayload, handlePeerTyping, wsAuthEpoch]);
+  }, [applyIncomingChatMessage, conversationChannelKey, handleConversationRead, handlePeerTyping, wsAuthEpoch]);
 
   return {
     conversations,

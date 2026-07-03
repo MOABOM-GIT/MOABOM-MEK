@@ -29,6 +29,7 @@ class WebsiteLinkIconStorageService
     public function __construct(
         private readonly StorageInterface $storage,
         private readonly WebsiteLinkIconExtractionService $iconExtractionService,
+        private readonly WebsiteLinkIconAccessService $iconAccessService,
     ) {
     }
 
@@ -142,7 +143,9 @@ class WebsiteLinkIconStorageService
 
     public function iconRoutePath(int $appId): string
     {
-        return route('api.modules.moabom-apps.apps.generated.website_icon', ['id' => $appId], false);
+        $path = route('api.modules.moabom-apps.apps.generated.website_icon', ['id' => $appId], false);
+
+        return $this->iconAccessService->appendTokenToIconPath($path, $appId);
     }
 
     public function storedIconPath(int $appId, ?GeneratedApp $app = null): ?string

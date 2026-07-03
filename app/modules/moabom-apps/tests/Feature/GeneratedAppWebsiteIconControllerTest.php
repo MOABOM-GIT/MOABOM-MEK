@@ -42,17 +42,53 @@ HTML, 200),
 
         $response->assertCreated();
         $appId = (int) $response->json('data.id');
+        $iconUrl = (string) $response->json('data.metadata.icon_url');
         $this->assertStringContainsString(
             '/apps/generated/'.$appId.'/website-icon',
-            (string) $response->json('data.metadata.icon_url'),
+            $iconUrl,
         );
+        $this->assertStringContainsString('icon_token=', $iconUrl);
         $this->assertFalse($response->json('data.metadata.icon_from_title'));
 
         $iconStorage = $this->app->make(WebsiteLinkIconStorageService::class);
         $this->assertNotNull($iconStorage->storedIconPath($appId));
 
+        $this->get($iconUrl)->assertOk();
+    }
+
+    public function test_private_website_icon_requires_icon_token_for_guest(): void
+    {
+        Http::fake([
+            'https://example.com' => Http::response(<<<'HTML'
+<!DOCTYPE html><html><head>
+<link rel="icon" href="https://example.com/favicon.png"/>
+</head><body></body></html>
+HTML, 200),
+            'https://example.com/favicon.png' => Http::response(
+                "\x89PNG\r\n\x1a\n",
+                200,
+                ['Content-Type' => 'image/png'],
+            ),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/modules/moabom-apps/apps/generated', [
+            'title' => 'Private site',
+            'app_type' => 'website_link',
+            'html' => '<!DOCTYPE html><html><head></head><body data-moabom-website-link="1"></body></html>',
+            'metadata' => [
+                'website_url' => 'https://example.com',
+                'icon_source_url' => 'https://example.com/favicon.png',
+                'icon_from_title' => false,
+            ],
+        ]);
+
+        $response->assertCreated();
+        $appId = (int) $response->json('data.id');
+
         $this->get('/api/modules/moabom-apps/apps/generated/'.$appId.'/website-icon')
-            ->assertOk();
+            ->assertNotFound();
     }
 
     public function test_website_icon_endpoint_returns_not_found_when_icon_file_is_missing(): void

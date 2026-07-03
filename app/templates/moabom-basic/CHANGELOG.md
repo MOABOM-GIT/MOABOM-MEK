@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- 채팅 실시간 수신 — 활성 대화 전환 시 `useMoabomChat` 이중 WS 구독 cleanup이 전체 대화 채널 리스너를 해제하던 문제 수정 (단일 `subscribeChatConversations` SSOT).
+
 ### Changed
 
 - 코드·레이아웃 메타 주석의 구 UI 명칭(내 활동·앱 보관함·유저 활동·대화하기 등)을 신규 명칭(게시글 관리·라이브러리·활동·메시지)에 맞게 정리했습니다.
@@ -25,6 +29,9 @@
 - **날씨 마이페이지 상태** — 15초 상시 폴링 제거, 이벤트 + bounded 재시도(800ms/2.5s/6s)로 전환.
 
 ### Fixed
+
+- **공지사항 좌측 패널 동기화** — 다른 좌측 탭에 있어도 작성·수정·삭제 이벤트를 구독하고, 공지 탭 재진입 시 목록을 갱신합니다. `is_notice` 글은 카테고리 미지정이어도 공지 탭에 표시됩니다.
+- **공지사항 삭제** — 삭제 모달 `auth_mode: optional`, `deleteModal.type` 기준 분기, notice 보드 캐시·패널 이벤트 연동을 수정했습니다.
 
 - **PWA 다시 불러오기** — SW/JS 갱신만 되고 routes·layout·번역이 남을 수 있던 문제. reload 직전 `g7_cache_version` 제거 + reload 후 `TemplateApp.reloadExtensionState()`·shell-boot 재fetch·현재 경로 재렌더 (`moabomPwaExtensionResync.ts`, `usePwaUpdate.ts`). — presence revision invalidate 구독이 하나만 유지되어 프로필·우측 패널 중 마지막 구독만 동작할 수 있던 문제를 다중 구독으로 수정했습니다.
 - **WebSocket 연결 감시** — Echo/Pusher 초기화 지연 시 200ms 무한 재시도하던 감시 루프를 bounded backoff와 auth 재동기화 복구 경로로 안정화했습니다.

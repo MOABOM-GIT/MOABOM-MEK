@@ -8,6 +8,7 @@ use App\Contracts\Extension\StorageInterface;
 use Illuminate\Support\Facades\Http;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Support\WebsiteLinkIconBinaryValidator;
+use Modules\Moabom\Apps\Services\WebsiteLinkIconAccessService;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconExtractionService;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
 use Modules\Moabom\Apps\Services\WebsiteLinkUrlGuard;
@@ -20,7 +21,11 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $urlGuard = new WebsiteLinkUrlGuard;
         $extraction = new WebsiteLinkIconExtractionService($urlGuard, new WebsiteLinkIconBinaryValidator);
 
-        return new WebsiteLinkIconStorageService($storage, $extraction);
+        return new WebsiteLinkIconStorageService(
+            $storage,
+            $extraction,
+            new WebsiteLinkIconAccessService,
+        );
     }
 
     public function test_persist_for_app_stores_icon_and_rewrites_metadata_url(): void
@@ -59,6 +64,7 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
 
         $this->assertSame('https://example.com/favicon.png', $metadata['icon_source_url']);
         $this->assertStringContainsString('/apps/generated/12/website-icon', $metadata['icon_url']);
+        $this->assertStringContainsString('icon_token=', $metadata['icon_url']);
         $this->assertSame('12/website-icon.png', $metadata['stored_icon_path']);
     }
 

@@ -74,6 +74,20 @@ function createNoticeBadges(post: BoardNoticePreview, category: NoticeBoardCateg
   return badges;
 }
 
+function matchesNoticePreviewCategory(
+  post: BoardNoticePreview,
+  category: NoticeBoardCategory,
+): boolean {
+  if (post.category === category) {
+    return true;
+  }
+  if (category === NOTICE_BOARD_CATEGORIES.notices) {
+    return Boolean(post.is_notice || post.row_type === 'notice');
+  }
+
+  return false;
+}
+
 export function toShellNoticePreviewItem(
   post: BoardNoticePreview,
   category: NoticeBoardCategory,
@@ -81,7 +95,7 @@ export function toShellNoticePreviewItem(
   if (post.id == null || !post.title) {
     return null;
   }
-  if (post.category !== category) {
+  if (!matchesNoticePreviewCategory(post, category)) {
     return null;
   }
 

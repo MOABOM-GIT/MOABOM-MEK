@@ -122,4 +122,34 @@ describe('toShellNoticePreviewItem', () => {
       badges: ['notice'],
     });
   });
+
+  it('카테고리 없이 is_notice인 글도 공지 탭에 포함한다', () => {
+    const item = toShellNoticePreviewItem(
+      {
+        id: 9,
+        title: '긴급 공지',
+        is_notice: true,
+      },
+      '공지사항',
+    );
+
+    expect(item).toMatchObject({
+      title: '긴급 공지',
+      postId: '9',
+      category: '공지사항',
+    });
+  });
+
+  it('업데이트 탭에는 is_notice만으로는 포함하지 않는다', () => {
+    const item = toShellNoticePreviewItem(
+      {
+        id: 10,
+        title: '공지 성격',
+        is_notice: true,
+      },
+      '업데이트',
+    );
+
+    expect(item).toBeNull();
+  });
 });
