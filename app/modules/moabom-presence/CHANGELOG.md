@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.29] - 2026-07-03
+
+### Added
+
+- 접속자 summary API에 `mirror_degraded` 필드를 추가해 플랫폼 DB 미연결 또는 heartbeat mirror 실패 시 UI가 플랫폼 집계 불일치를 인지할 수 있게 했습니다.
+
 ## [0.1.28] - 2026-06-30
 
 ### Changed

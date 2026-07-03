@@ -125,13 +125,14 @@
 ### Phase 3 — P1 앱 커뮤니티·이벤트 정합 (완료)
 
 - [x] `AppCommunityRevisionBroadcastEvent` → `ShouldBroadcastNow`
-- [x] 단위 테스트 갱신
+- [x] Cloud Build 배포 v426
 
-### Phase 4 — P2 Shell Surface·Visitor
+### Phase 4 — P2 Shell Surface·Visitor (완료)
 
-- [ ] `ShellSurfaceController` (profile 싱글톤 remount)
-- [ ] `ShellContextBridge` (`_global.currentUser` 주입)
-- [ ] visitor_id 승격·platform mirror 명시 실패
+- [x] `shellSurfaceController` SSOT · 프로필 remount key
+- [x] `ShellContextBridge` — board·profile layout 경로에서 `publishShellLayoutContext` (기존)
+- [x] `mirror_degraded` — platform mirror 실패 명시 (summary API)
+- [ ] Cloud Build 배포 v427
 
 ### Phase 5 — P3 게시판·캐시
 

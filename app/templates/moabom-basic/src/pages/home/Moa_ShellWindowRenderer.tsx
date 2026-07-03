@@ -17,6 +17,7 @@ import {
   moaShellBoardSlugFromAppId,
   isMoaShellBoardAppId,
 } from '../../shell/moaShellBoardIds';
+import { profileSurfaceRemountKey } from '../../shell/shellSurfaceController';
 import {
   isMoaShellUserProfileAppId,
   moaShellUserProfileUuidFromAppId,
@@ -225,7 +226,10 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
         )}
       >
         <UserProfileWindowHostLazy
-          key={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? win.id}
+          key={profileSurfaceRemountKey(
+            win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined,
+            win.id,
+          )}
           appId={win.appId}
           userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
           userProfileView={win.userProfileView ?? 'profile'}

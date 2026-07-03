@@ -13,6 +13,7 @@ final class PresenceSummaryService
         private PlatformPresenceSessionRepositoryInterface $platformSessions,
         private PresenceChannelNames $channelNames,
         private PresenceRevisionService $revisionService,
+        private PresencePlatformMirrorService $platformMirror,
     ) {}
 
     /**
@@ -20,6 +21,7 @@ final class PresenceSummaryService
      *   platform_total: int,
      *   tenant_active: int,
      *   mirror_ok: bool,
+     *   mirror_degraded: bool,
      *   revision: int,
      *   revision_channel: string,
      *   platform_revision_channel: string,
@@ -45,6 +47,7 @@ final class PresenceSummaryService
             'platform_total' => $platformTotal,
             'tenant_active' => $tenantActive,
             'mirror_ok' => $connectionOk,
+            'mirror_degraded' => ! $connectionOk || $this->platformMirror->isMirrorDegraded(),
             'revision' => $this->revisionService->current(),
             'revision_channel' => $this->channelNames->tenantRevisionChannel(),
             'platform_revision_channel' => $this->channelNames->platformRevisionChannel(),

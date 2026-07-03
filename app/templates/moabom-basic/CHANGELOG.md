@@ -6,6 +6,7 @@
 
 - Presence 실시간 — `presence.revision` reason별 선택 refetch(heartbeat 시 friends 생략), WS 재연결 catch-up을 `ShellRealtimeStore` debounce 큐로 통합.
 - Presence 렌더 — `MoabomPresenceProvider` Context를 summary/online/friends/settings 4분할, 소비자는 slice hook 사용.
+- 셸 Surface SSOT — `shellSurfaceController`·`profileSurfaceRemountKey`, summary `mirror_degraded` 노출.
 - 채팅 실시간 수신 — 활성 대화 전환 시 `useMoabomChat` 이중 WS 구독 cleanup이 전체 대화 채널 리스너를 해제하던 문제 수정 (단일 `subscribeChatConversations` SSOT).
 
 ### Changed

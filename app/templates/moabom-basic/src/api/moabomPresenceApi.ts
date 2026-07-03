@@ -57,6 +57,7 @@ export type PresenceSummary = {
   platform_total: number;
   tenant_active: number;
   mirror_ok?: boolean;
+  mirror_degraded?: boolean;
   revision?: number;
   revision_channel?: string;
   platform_revision_channel?: string;
