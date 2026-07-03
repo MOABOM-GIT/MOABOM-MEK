@@ -4,6 +4,7 @@ import {
   pathNeedsLegacyG7RouterPath,
 } from './moabomLegacyMypagePaths';
 import { navigateMoabomChatNotification } from './moabomChatNotificationNavigate';
+import { invalidateBoardShellCacheForNavigate } from '../shell/invalidateBoardShellCacheForNavigate';
 import { navigateMoabomShellPath } from '../shell/navigateMoabomShellPath';
 
 const MY_PAGE_TABS = [
@@ -212,7 +213,9 @@ export function navigateMoabomNotificationUrl(
 
   const pathname = normalizePathname(target.split(/[?#]/)[0] ?? target);
   const search = target.includes('?') ? target.slice(target.indexOf('?')) : '';
-  if (navigateMoabomShellPath(`${pathname}${search}`)) {
+  const shellPath = `${pathname}${search}`;
+  invalidateBoardShellCacheForNavigate(shellPath, notificationType, notificationData);
+  if (navigateMoabomShellPath(shellPath)) {
     return;
   }
 

@@ -132,12 +132,13 @@
 - [x] `shellSurfaceController` SSOT · 프로필 remount key
 - [x] `ShellContextBridge` — board·profile layout 경로에서 `publishShellLayoutContext` (기존)
 - [x] `mirror_degraded` — platform mirror 실패 명시 (summary API)
-- [ ] Cloud Build 배포 v427
+- [x] Cloud Build 배포 v427 (`mobaom-container-00480-fnn`; smoke weather 503 일시 실패)
 
-### Phase 5 — P3 게시판·캐시
+### Phase 5 — P3 게시판·캐시 (완료)
 
-- [ ] board window payload cache 정합
-- [ ] 알림 navigate 후 선택적 refetch
+- [x] board window payload cache 정합 — 알림 navigate 직전 `invalidateBoardShellCacheForNavigate`
+- [x] 알림 navigate 후 선택적 refetch — `notifyBoardShellUrlChanged` 로 BoardWindowHost urlEpoch 갱신
+- [x] Cloud Build 배포 v428
 
 ---
 

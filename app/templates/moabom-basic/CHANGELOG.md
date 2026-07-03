@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- 게시판 알림 navigate — 클릭 직전 board payload 캐시 무효화·`notifyBoardShellUrlChanged`로 열린 창 refetch (동일 글 재진입 stale 방지).
 - Presence 실시간 — `presence.revision` reason별 선택 refetch(heartbeat 시 friends 생략), WS 재연결 catch-up을 `ShellRealtimeStore` debounce 큐로 통합.
 - Presence 렌더 — `MoabomPresenceProvider` Context를 summary/online/friends/settings 4분할, 소비자는 slice hook 사용.
 - 셸 Surface SSOT — `shellSurfaceController`·`profileSurfaceRemountKey`, summary `mirror_degraded` 노출.
