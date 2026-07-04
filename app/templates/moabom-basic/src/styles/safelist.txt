@@ -16,6 +16,7 @@
 @xl:grid-cols-[380px_minmax(0,1fr)] @lg:grid-cols-[minmax(0,1fr)_320px]
 
 /* G7 JSON 윈도우 호스트 — board partial `sm:`/`lg:` 런타임 `@sm:`/`@lg:` 치환 대응 */
-@sm:flex-row @sm:flex-col @sm:items-center @sm:items-stretch @sm:w-auto @sm:min-w-48 @sm:ml-auto @sm:w-64
+@sm:flex-row @sm:flex-col @sm:items-center @sm:items-stretch @sm:w-auto @sm:min-w-48 @sm:ml-auto @sm:w-64 @sm:inline @sm:gap-2 @sm:px-4 @sm:hidden
+hidden
 @md:grid-cols-2
 @lg:grid @lg:hidden

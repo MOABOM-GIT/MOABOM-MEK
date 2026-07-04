@@ -27,6 +27,7 @@ import { Div } from '../basic/Div';
 import AppLoadingSpinner from './AppLoadingSpinner';
 import { APP_WINDOW_BODY_CLASS } from '../../apps/appShellTypography';
 import { MoaG7ContainerHost } from './Moa_G7ContainerHost';
+import { BoardWindowG7RenderTree, splitBoardWindowComponentDefs } from '../../shell/boardWindowG7RenderTree';
 
 export interface BoardWindowHostProps {
   boardSlug?: string;
@@ -152,6 +153,12 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     return unregister;
   }, [authStateKey, boardMode, boardPostId, boardSlug, payload]);
 
+  const componentDefs = payload?.componentDefs;
+  const { contentDefs, modalDefs } = React.useMemo(
+    () => splitBoardWindowComponentDefs(componentDefs ?? []),
+    [componentDefs],
+  );
+
   const activeDataContext = dataContext ?? payload?.dataContext ?? null;
 
   if (loading && !payload) {
@@ -182,7 +189,6 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
 
   const {
     DynamicRenderer,
-    componentDefs,
     translationContext,
     registry,
     bindingEngine,
@@ -204,29 +210,22 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
       ) : null}
       <MoaG7ContainerHost
         className="moa-board-window-host min-h-0 flex-1 text-primary"
-        layoutRoots={componentDefs}
+        layoutRoots={contentDefs}
         hostTestId="moa-board-window-host"
       >
-        {adaptedDefs => (
-          <>
-            {adaptedDefs.map((componentDef, index) => (
-              <DynamicRenderer
-                key={
-                  componentDef.id
-                    ? `${componentDef.id}_${layoutName}_${dataRevision}`
-                    : `board-window-${index}_${layoutName}_${dataRevision}`
-                }
-                componentDef={componentDef}
-                dataContext={activeDataContext}
-                translationContext={translationContext}
-                registry={registry}
-                bindingEngine={bindingEngine}
-                translationEngine={translationEngine}
-                actionDispatcher={actionDispatcher}
-                isRootRenderer={index === 0}
-              />
-            ))}
-          </>
+        {adaptedContentDefs => (
+          <BoardWindowG7RenderTree
+            componentDefs={[...adaptedContentDefs, ...modalDefs]}
+            dataContext={activeDataContext}
+            translationContext={translationContext}
+            registry={registry}
+            bindingEngine={bindingEngine}
+            translationEngine={translationEngine}
+            actionDispatcher={actionDispatcher}
+            layoutName={layoutName}
+            dataRevision={dataRevision}
+            DynamicRenderer={DynamicRenderer as React.ComponentType<Record<string, unknown>>}
+          />
         )}
       </MoaG7ContainerHost>
     </Div>

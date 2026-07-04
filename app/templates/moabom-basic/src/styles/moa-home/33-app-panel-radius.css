@@ -20,9 +20,10 @@
   border-radius: var(--moa-app-panel-radius-inner);
 }
 
-/* 앱 창 상단 타이틀 */
+/* 앱 창 상단 타이틀 — 본문 flex 스택에서 높이가 줄어들지 않음 (타이틀 클리핑 방지) */
 .moa-app-window-header {
   position: relative;
+  flex-shrink: 0;
   overflow: hidden;
   padding: 1rem 1.25rem;
   background: var(--moa-glass-panel-surface);

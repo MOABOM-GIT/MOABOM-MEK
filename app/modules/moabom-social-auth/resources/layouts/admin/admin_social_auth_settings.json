@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "layout_name": "admin_social_auth_settings",
   "permissions": [
     "moabom-social-auth.settings.read"

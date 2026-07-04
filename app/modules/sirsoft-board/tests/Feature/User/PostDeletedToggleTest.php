@@ -242,4 +242,20 @@ class PostDeletedToggleTest extends BoardTestCase
         $commentIds = collect($response->json('data.comments'))->pluck('id')->toArray();
         $this->assertNotContains($deletedCommentId, $commentIds, '일반 사용자에게는 삭제된 댓글이 노출되지 않아야 합니다');
     }
+
+    /**
+     * manager 권한만 있어도(admin.manage 없이) 게시글 삭제 API 가 허용된다
+     */
+    public function test_manager_can_delete_post_without_admin_manage_permission(): void
+    {
+        $postId = $this->createTestPost(['title' => '매니저 삭제 테스트']);
+
+        $response = $this->actingAs($this->managerUser, 'sanctum')
+            ->deleteJson("/api/modules/sirsoft-board/boards/{$this->board->slug}/posts/{$postId}");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertSoftDeleted('board_posts', ['id' => $postId]);
+    }
 }

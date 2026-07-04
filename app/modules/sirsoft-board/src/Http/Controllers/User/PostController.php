@@ -736,8 +736,11 @@ class PostController extends PublicBaseController
     {
         $slug = $post->board->slug;
 
-        // 1. 게시판 관리자 권한 확인 (admin.manage 권한)
-        if (Auth::check() && $this->checkBoardPermission($slug, 'admin.manage')) {
+        // 1. 게시판 관리자 권한 (admin.manage 또는 user manager — UI abilities.can_manage 와 동일)
+        if (Auth::check() && (
+            $this->checkBoardPermission($slug, 'admin.manage')
+            || $this->checkBoardPermission($slug, 'manager', PermissionType::User)
+        )) {
             return true;
         }
 

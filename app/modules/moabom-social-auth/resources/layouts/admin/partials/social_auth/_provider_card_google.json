@@ -59,7 +59,7 @@
       },
       "children": [
         {
-          "partial": "partials/social_auth/_provider_master_inherit_banner.json"
+          "partial": "_provider_master_inherit_banner.json"
         },
         {
           "type": "basic",

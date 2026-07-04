@@ -874,9 +874,9 @@
                           "type": "basic",
                           "name": "Button",
                           "props": {
-                            "className": "px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                            "className": "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer",
+                            "aria-label": "$t:common.cancel"
                           },
-                          "text": "$t:common.cancel",
                           "actions": [
                             {
                               "type": "click",
@@ -887,14 +887,34 @@
                                 "replyToCommentDepth": null
                               }
                             }
+                          ],
+                          "children": [
+                            {
+                              "type": "composite",
+                              "name": "Icon",
+                              "props": {
+                                "name": "times",
+                                "size": "sm",
+                                "className": "sm:hidden"
+                              }
+                            },
+                            {
+                              "type": "basic",
+                              "name": "Span",
+                              "props": {
+                                "className": "hidden sm:inline"
+                              },
+                              "text": "$t:common.cancel"
+                            }
                           ]
                         },
                         {
                           "type": "basic",
                           "name": "Button",
                           "props": {
-                            "className": "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                            "disabled": "{{_local.commentSubmitting === true}}"
+                            "className": "inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                            "disabled": "{{_local.commentSubmitting === true}}",
+                            "aria-label": "{{_local.commentSubmitting ? '$t:board.comment_submitting' : '$t:board.comment_reply'}}"
                           },
                           "actions": [
                             {
@@ -974,7 +994,7 @@
                               "type": "basic",
                               "name": "Div",
                               "props": {
-                                "className": "flex items-center gap-2"
+                                "className": "flex items-center gap-1 sm:gap-2"
                               },
                               "children": [
                                 {
@@ -999,6 +1019,9 @@
                                 {
                                   "type": "basic",
                                   "name": "Span",
+                                  "props": {
+                                    "className": "hidden sm:inline"
+                                  },
                                   "text": "{{_local.commentSubmitting ? '$t:board.comment_submitting' : '$t:board.comment_reply'}}"
                                 }
                               ]

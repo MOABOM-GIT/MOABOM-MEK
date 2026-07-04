@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "layout_name": "admin_cpap_measurements",
   "permissions": ["moabom-cpap.measurements.read"],
   "extends": "_admin_base",
@@ -99,7 +99,10 @@
             "id": "cpap_measurements_grid",
             "type": "composite",
             "name": "DataGrid",
-            "blur_until_loaded": true,
+            "blur_until_loaded": {
+              "enabled": true,
+              "data_sources": "measurements"
+            },
             "props": {
               "columns": [
                 {

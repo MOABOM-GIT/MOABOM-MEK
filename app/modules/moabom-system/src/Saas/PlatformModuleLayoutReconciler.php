@@ -12,12 +12,15 @@ use App\Services\LayoutResolverService;
 use App\Services\LayoutService;
 use App\Services\ModuleService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * platform DB module layouts — filesystem SSOT 정합 (전 모듈·전 layout).
  *
  * template override·단축명 orphan 제거, module row 강제 반영, resolver 검증.
  * 배포 Job(moabom:saas:reconcile-platform-module-layouts) 및 sync-module-layouts 가 공유한다.
+ *
+ * DB 저장·비교 단위는 partial 해석 완료본(ModuleManager::validateLayoutFiles 와 동일).
  */
 final class PlatformModuleLayoutReconciler
 {
@@ -26,6 +29,7 @@ final class PlatformModuleLayoutReconciler
         private readonly LayoutResolverService $layoutResolver,
         private readonly ModuleService $moduleService,
         private readonly TemplateRepository $templateRepository,
+        private readonly LayoutPersistenceNormalizer $layoutPersistenceNormalizer,
     ) {}
 
     /**
@@ -53,8 +57,20 @@ final class PlatformModuleLayoutReconciler
                     continue;
                 }
 
-                $data = json_decode((string) file_get_contents($path), true);
-                if (! is_array($data)) {
+                $rawData = json_decode((string) file_get_contents($path), true);
+                if (! is_array($rawData)) {
+                    continue;
+                }
+
+                try {
+                    $data = $this->layoutPersistenceNormalizer->normalize($rawData, $path);
+                } catch (\Throwable $e) {
+                    Log::warning('module layout partial 정규화 실패 — reconcile 대상에서 제외', [
+                        'module' => $moduleId,
+                        'path' => $path,
+                        'error' => $e->getMessage(),
+                    ]);
+
                     continue;
                 }
 
@@ -412,8 +428,10 @@ final class PlatformModuleLayoutReconciler
     }
 
     /**
-     * @param  array<string, mixed>  $served
-     * @param  array<string, mixed>  $fileData
+     * DB served content 와 filesystem 정규화본이 일치하는지 검증합니다.
+     *
+     * @param  array<string, mixed>  $served  DB content (partial 해석 완료본)
+     * @param  array<string, mixed>  $fileData  discoverFilesystemLayouts() 의 data (partial 해석 완료본)
      */
     public function servedContentMatchesFilesystem(array $served, array $fileData, string $fileVersion): bool
     {

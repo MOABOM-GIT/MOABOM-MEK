@@ -232,6 +232,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         $this->app->singleton(TenantFilesystemConfigurator::class);
         $this->app->singleton(PlatformFilesystemSnapshot::class);
         $this->app->singleton(PlatformRuntimeConfigurator::class);
+        $this->app->singleton(\Modules\Moabom\System\Saas\LayoutPersistenceNormalizer::class);
         $this->app->singleton(PlatformModuleLayoutReconciler::class);
         // ConfigRepositoryInterface(scoped) 주입 — singleton 이면 Run 워커에서 platform general memo 가 tenant 요청에 새어남
         $this->app->scoped(SaasCoreSettingsHydrator::class);

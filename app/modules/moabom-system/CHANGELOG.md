@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **Platform module layout reconcile (RF-13b)** — `PlatformModuleLayoutReconciler` 가 filesystem raw JSON(partial 참조 포함)을 DB에 덮어써 관리자 화면 본문이 비던 문제 수정. `LayoutPersistenceNormalizer` 로 `ModuleManager::validateLayoutFiles` 와 동일한 partial 해석 후 저장·비교.
+
 ## [0.8.25] - 2026-07-03
 
 ### Changed
