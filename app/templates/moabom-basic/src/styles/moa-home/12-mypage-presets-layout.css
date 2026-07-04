@@ -76,11 +76,11 @@
 }
 
 /**
- * 마이페이지 — PC(2열) 통째 스크롤 + 좌측 배경 stretch + nav sticky.
- *   - `align-items: stretch` — 좌측 moa-group 배경이 우측 높이만큼 아래까지 채움
- *   - sticky 는 `.moa-mypage-sidebar-nav` 만 (배경 패널은 stretch, 메뉴만 고정)
- *   - nav 스크롤 gutter: 좌·우 동일 padding + `scrollbar-gutter: stable both-edges`
- *   - 1열 스택: `--moa-cq-sm` (16-responsive-breakpoints.css) — 앱 공통 `sm`
+ * 마이페이지 — PC(2열): 창 높이 고정 분할 + 좌측 배경 stretch.
+ *   - surface/layout 은 viewport 높이만 차지 (우측 길이로 전체가 늘어나지 않음)
+ *   - 좌측 `moa-mypage-sidebar` 배경은 grid stretch 로 창 세로 전체
+ *   - 우측 `.moa-mypage-content` 만 세로 스크롤
+ *   - 1열 스택: `--moa-cq-sm` 미만 (16-responsive-breakpoints.css)
  */
 .moa-mypage-layout {
   display: grid;
@@ -98,6 +98,7 @@
   flex-direction: column;
   align-self: stretch;
   min-height: 100%;
+  min-width: 0;
   width: 100%;
 }
 
@@ -107,12 +108,38 @@
 }
 
 @container moa-app-window (width >= 640px) {
+  .moa-mypage-surface {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .moa-mypage-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .moa-mypage-sidebar {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .moa-mypage-content {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .moa-mypage-sidebar-nav {
-    position: sticky;
-    /** viewport `.moa-app-window-viewport` padding 과 맞춰 sticky 점프 방지 */
-    top: var(--moa-app-window-body-padding);
-    flex: 0 0 auto;
-    max-height: calc(100cqh - var(--moa-app-window-body-padding));
+    position: static;
+    top: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;

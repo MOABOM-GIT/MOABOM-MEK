@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
@@ -31,10 +31,15 @@ const STEPS: StepDef[] = [
 
 export function ConsultingApp() {
   const companyName = useMoabomSiteDisplayName();
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [activeStep, setActiveStep] = useState<ConsultingStep>('intro');
   const [simInput, setSimInput] = useState<SimulationInput>({ ...SIMULATION_DEFAULTS });
 
   const stepIndex = STEPS.findIndex(s => s.key === activeStep);
+
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [activeStep]);
 
   const goPrev = () => {
     if (stepIndex > 0) setActiveStep(STEPS[stepIndex - 1].key);
@@ -102,11 +107,12 @@ export function ConsultingApp() {
         })}
       </Div>
 
-      <Div className="moa-consult-body">{content}</Div>
+      <Div ref={bodyRef} className="moa-consult-body">{content}</Div>
 
       <Div className="moa-consult-footer">
         <Button
           variant="secondary"
+          size="medium"
           type="button"
           className="moa-consult-btn moa-consult-btn--ghost"
           onClick={goPrev}
@@ -115,7 +121,7 @@ export function ConsultingApp() {
           <Icon name="chevron-left" size="sm" /> 이전
         </Button>
         {activeStep !== 'contract' && (
-          <Button variant="primary" type="button" className="moa-consult-btn moa-consult-btn--primary" onClick={goNext}>
+          <Button variant="primary" size="medium" type="button" onClick={goNext}>
             다음 <Icon name="chevron-right" size="sm" />
           </Button>
         )}

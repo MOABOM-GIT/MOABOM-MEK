@@ -75,7 +75,7 @@
           "name": "Button",
           "if": "{{navigation?.data?.prev?.id}}",
           "props": {
-            "className": "flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all cursor-pointer",
+            "className": "moa-board-post-nav-btn flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all cursor-pointer",
             "aria-label": "$t:board.prev"
           },
           "actions": [
@@ -115,7 +115,7 @@
           "name": "Button",
           "if": "{{navigation?.data?.next?.id}}",
           "props": {
-            "className": "flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all cursor-pointer",
+            "className": "moa-board-post-nav-btn flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-white glass-panel border border-gray-300 dark:border-gray-600 rounded-lg hover:opacity-90 transition-all cursor-pointer",
             "aria-label": "$t:board.next"
           },
           "actions": [

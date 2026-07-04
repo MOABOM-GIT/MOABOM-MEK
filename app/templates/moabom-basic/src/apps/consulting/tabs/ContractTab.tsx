@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '../../../components/basic/Button';
 import { Div } from '../../../components/basic/Div';
 import { Icon } from '../../../components/basic/Icon';
 import { SignaturePad, type SignaturePadHandle } from '../../_shared';
@@ -200,15 +201,17 @@ export function ContractTab({ hospitalName, simInput }: ContractTabProps) {
         </Div>
       )}
 
-      <button
+      <Button
+        variant="primary"
+        size="medium"
         type="button"
-        className="moa-consult-btn moa-consult-btn--primary moa-consult-btn--wide"
+        className="moa-consult-btn--wide w-full"
         onClick={submit}
         disabled={saving}
       >
         <Icon name={saving ? 'spinner' : 'circle-check'} spin={saving} />
         {saving ? '저장 중…' : '계약 확정'}
-      </button>
+      </Button>
 
       <section className="moa-consult-card">
         <Div className="flex items-center justify-between gap-2">

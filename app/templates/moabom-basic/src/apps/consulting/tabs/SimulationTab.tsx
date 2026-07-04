@@ -139,8 +139,9 @@ export function SimulationTab({ hospitalName, input, onInputChange, onProceedToC
         </Div>
         <Button
           variant="primary"
+          size="medium"
           type="button"
-          className="moa-consult-btn moa-consult-btn--primary moa-consult-btn--wide"
+          className="moa-consult-btn--wide w-full"
           onClick={onProceedToContract}
         >
           <Icon name="file-signature" size="sm" /> 이 조건으로 전자계약 진행
