@@ -13,12 +13,37 @@ class WebsocketDriverConfigApplierTest extends PluginTestCase
     public function test_forces_null_broadcast_when_disabled(): void
     {
         Config::set('broadcasting.default', 'reverb');
+        putenv('BROADCAST_CONNECTION=null');
 
-        WebsocketDriverConfigApplier::apply([
-            'websocket_enabled' => false,
-        ]);
+        try {
+            WebsocketDriverConfigApplier::apply([
+                'websocket_enabled' => false,
+            ]);
 
-        $this->assertSame('null', config('broadcasting.default'));
+            $this->assertSame('null', config('broadcasting.default'));
+        } finally {
+            putenv('BROADCAST_CONNECTION');
+        }
+    }
+
+    public function test_env_reverb_enables_broadcast_when_drivers_disabled(): void
+    {
+        Config::set('broadcasting.default', 'null');
+        putenv('BROADCAST_CONNECTION=reverb');
+
+        try {
+            WebsocketDriverConfigApplier::apply([
+                'websocket_enabled' => false,
+                'websocket_app_key' => 'moabom-laravel-key',
+                'websocket_host' => 'realtime.mek360.com',
+                'websocket_port' => 443,
+                'websocket_scheme' => 'https',
+            ]);
+
+            $this->assertSame('reverb', config('broadcasting.default'));
+        } finally {
+            putenv('BROADCAST_CONNECTION');
+        }
     }
 
     public function test_restores_reverb_broadcast_when_enabled_after_boot_disabled_null(): void

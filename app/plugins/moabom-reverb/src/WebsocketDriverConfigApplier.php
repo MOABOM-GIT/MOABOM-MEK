@@ -138,6 +138,11 @@ final class WebsocketDriverConfigApplier
             $drivers['websocket_server_scheme'] = $serverScheme;
         }
 
+        $broadcast = trim((string) env('BROADCAST_CONNECTION', ''));
+        if ($broadcast === 'reverb') {
+            $drivers['websocket_enabled'] = true;
+        }
+
         return $drivers;
     }
 }

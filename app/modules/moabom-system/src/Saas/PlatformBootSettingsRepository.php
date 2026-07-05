@@ -19,9 +19,22 @@ final class PlatformBootSettingsRepository extends JsonConfigRepository
         $base = parent::readCategoryFromStorage($category);
         $fromDb = PlatformG7CoreSettingsReader::categoryPayload($category);
         if ($fromDb === null) {
-            return $base;
+            return $this->normalizeDriversCategory($category, $base);
         }
 
-        return array_merge($base, $fromDb);
+        return $this->normalizeDriversCategory($category, array_merge($base, $fromDb));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalizeDriversCategory(string $category, array $payload): array
+    {
+        if ($category !== 'drivers') {
+            return $payload;
+        }
+
+        return MoabomRuntimeDriverSettings::normalize($payload);
     }
 }

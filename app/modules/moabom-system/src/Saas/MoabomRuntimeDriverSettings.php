@@ -36,7 +36,7 @@ final class MoabomRuntimeDriverSettings
             self::stringValue(env('LOG_LEVEL'), 'warning'),
         );
 
-        $drivers['websocket_enabled'] = self::stringValue(config('broadcasting.default'), 'reverb') === 'reverb';
+        $drivers['websocket_enabled'] = self::broadcastEnabledFromEnv();
         $drivers['websocket_app_id'] = self::stringValue(env('REVERB_APP_ID'), self::stringValue(config('broadcasting.connections.reverb.app_id'), 'moabom-laravel'));
         $drivers['websocket_app_key'] = self::stringValue(env('REVERB_APP_KEY'), self::stringValue(config('broadcasting.connections.reverb.key'), 'moabom-laravel-key'));
         $drivers['websocket_host'] = self::stringValue(env('REVERB_HOST'), self::stringValue(config('g7.websocket.client.host'), 'realtime.mek360.com'));
@@ -75,6 +75,25 @@ final class MoabomRuntimeDriverSettings
         ];
 
         return $drivers;
+    }
+
+    /** Cloud Run 운영 env(BROADCAST_CONNECTION) SSOT — config('broadcasting.default') 역산 금지 */
+    public static function broadcastEnabledFromEnv(): bool
+    {
+        $connection = self::stringValue(env('BROADCAST_CONNECTION'), self::stringValue(config('broadcasting.default'), 'reverb'));
+
+        return $connection === 'reverb';
+    }
+
+    /** Realtime VM 대시보드·진단용 effective broadcast connection */
+    public static function effectiveBroadcastConnection(): string
+    {
+        $fromEnv = trim((string) env('BROADCAST_CONNECTION', ''));
+        if ($fromEnv !== '' && $fromEnv !== 'null') {
+            return $fromEnv;
+        }
+
+        return self::stringValue(config('broadcasting.default'), 'null');
     }
 
     private static function stringValue(mixed $value, string $fallback = ''): string

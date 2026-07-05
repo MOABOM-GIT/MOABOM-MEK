@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Services\Realtime;
 
 use Illuminate\Support\Facades\Cache;
+use Modules\Moabom\System\Saas\MoabomRuntimeDriverSettings;
 
 /**
  * Realtime VM(Reverb) 공개 WebSocket probe — Cloud Run 에서 VM 경로 가용성 SSOT.
@@ -78,7 +79,7 @@ final class RealtimeVmHealthService
     private function runtimeConfig(): array
     {
         return [
-            'broadcast_connection' => (string) config('broadcasting.default', 'null'),
+            'broadcast_connection' => MoabomRuntimeDriverSettings::effectiveBroadcastConnection(),
             'broadcast_immediate' => true,
             'client_host' => (string) env('REVERB_HOST', config('g7.websocket.client.host', 'realtime.mek360.com')),
             'client_port' => (int) env('REVERB_PORT', config('g7.websocket.client.port', 443)),
@@ -181,11 +182,12 @@ final class RealtimeVmHealthService
         // Server-side PHP curl often receives 101 without the first Pusher frame; browser wss is SSOT for frame delivery.
         $ok = $httpStatus === 101;
 
-        if (! $ok && $error === null) {
+        if ($ok) {
+            // 101 이후 curl 타임아웃은 PHP WS 한계 — 성공 판정 시 Error 미표시
+            $error = null;
+        } elseif ($error === null) {
             if ($httpStatus !== 101) {
                 $error = $httpStatus > 0 ? 'http_status_'.$httpStatus : 'no_response';
-            } elseif (! $pusherEstablished) {
-                $error = null;
             }
         }
 
