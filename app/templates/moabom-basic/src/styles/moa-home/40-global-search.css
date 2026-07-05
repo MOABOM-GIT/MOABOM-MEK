@@ -33,11 +33,6 @@
   top: 0;
   z-index: 2;
   padding: 0.5rem 0;
-  background: linear-gradient(
-    to bottom,
-    var(--moa-shell-bg, rgba(255, 255, 255, 0.92)) 70%,
-    transparent
-  );
 }
 
 .moa-global-search-input-wrap {

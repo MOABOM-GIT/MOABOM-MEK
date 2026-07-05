@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  resolveAppCommunityWindowMaximized,
   resolveShellWindowMaximized,
   saveShellWindowMaximized,
 } from './moaShellWindowMaximize';
 import {
+  BREAKPOINT_FULLSCREEN_WINDOW,
   STORAGE_KEY_APP_MAXIMIZED,
   STORAGE_KEY_SHELL_WINDOWS_MAXIMIZED,
 } from './moaShellLayoutConstants';
@@ -40,5 +42,17 @@ describe('moaShellWindowMaximize', () => {
     });
     expect(() => saveShellWindowMaximized(true)).not.toThrow();
     expect(resolveShellWindowMaximized()).toBe(false);
+  });
+
+  it('앱 리뷰 창은 PC 폭에서 전역 최대화를 따르지 않는다', () => {
+    saveShellWindowMaximized(true);
+    vi.stubGlobal('innerWidth', BREAKPOINT_FULLSCREEN_WINDOW + 1);
+    expect(resolveAppCommunityWindowMaximized()).toBe(false);
+  });
+
+  it('앱 리뷰 창은 모바일 폭에서 전역 최대화를 따른다', () => {
+    saveShellWindowMaximized(true);
+    vi.stubGlobal('innerWidth', BREAKPOINT_FULLSCREEN_WINDOW);
+    expect(resolveAppCommunityWindowMaximized()).toBe(true);
   });
 });

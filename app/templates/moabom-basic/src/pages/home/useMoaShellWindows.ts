@@ -83,7 +83,11 @@ import {
   STORAGE_KEY_TASKBAR_ICONS,
   WINDOW_CASCADE_STEP,
 } from '../../shell/moaShellLayoutConstants';
-import { resolveShellWindowMaximized, saveShellWindowMaximized } from '../../shell/moaShellWindowMaximize';
+import {
+  resolveAppCommunityWindowMaximized,
+  resolveShellWindowMaximized,
+  saveShellWindowMaximized,
+} from '../../shell/moaShellWindowMaximize';
 import { loadJson, saveJson } from '../../shell/moaShellLocalStorage';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 import type { MoabomSystemLanguage } from '../../types/moabomSystem';
@@ -1097,7 +1101,7 @@ export function useMoaShellWindows({
         icon: 'comments',
         gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
         zIndex,
-        isMaximized: resolveShellWindowMaximized(),
+        isMaximized: resolveAppCommunityWindowMaximized(),
         isMinimized: false,
         ...position,
       }]);

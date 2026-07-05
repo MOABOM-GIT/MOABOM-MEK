@@ -31,6 +31,7 @@
 .moa-consult-steps {
   display: flex;
   width: 100%;
+  flex-shrink: 0;
   justify-content: center;
   gap: 0.35rem;
   overflow-x: auto;
@@ -165,6 +166,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: 1.25rem;
+  overflow-y: auto;
 }
 
 .moa-consult-section {
@@ -873,10 +875,12 @@
 /* ── 하단 네비 ── */
 .moa-consult-footer {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-top: 0.25rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
 }
 
 .moa-consult-btn {
@@ -922,11 +926,35 @@
     font-size: 0.6875rem;
   }
 
-  .moa-consult-footer {
-    flex-direction: column-reverse;
+  .moa-consult-footer .moa-btn {
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 0.75rem;
+  }
+}
+
+@container moa-app-window (height < 480px) {
+  .moa-consult-steps {
+    gap: 0.2rem;
+    padding-block: 0.15rem;
   }
 
-  .moa-consult-footer .moa-consult-btn {
-    width: 100%;
+  .moa-consult-step {
+    gap: 0.25rem;
+  }
+
+  .moa-consult-step__track {
+    height: 1.5rem;
+  }
+
+  .moa-consult-step__dot {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.625rem;
+  }
+
+  .moa-consult-step__label {
+    font-size: 0.625rem;
+    line-height: 1.2;
   }
 }

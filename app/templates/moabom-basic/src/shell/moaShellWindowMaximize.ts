@@ -1,6 +1,10 @@
 /** 셸 윈도우 전역 최대화 선호 — localStorage (게스트·로그인 공통) */
 
-import { STORAGE_KEY_APP_MAXIMIZED, STORAGE_KEY_SHELL_WINDOWS_MAXIMIZED } from './moaShellLayoutConstants';
+import {
+  BREAKPOINT_FULLSCREEN_WINDOW,
+  STORAGE_KEY_APP_MAXIMIZED,
+  STORAGE_KEY_SHELL_WINDOWS_MAXIMIZED,
+} from './moaShellLayoutConstants';
 import { loadJson } from './moaShellLocalStorage';
 
 function readLegacyPerAppMaximized(): boolean {
@@ -18,6 +22,17 @@ export function resolveShellWindowMaximized(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * 앱 리뷰 창 초기 최대화 — 모바일(창 풀스크린 티어)만 전역 선호를 따른다.
+ * PC에서는 생성앱이 최대화여도 리뷰는 기본 크기로 연다(사용자가 직접 최대화 가능).
+ */
+export function resolveAppCommunityWindowMaximized(): boolean {
+  if (typeof window !== 'undefined' && window.innerWidth > BREAKPOINT_FULLSCREEN_WINDOW) {
+    return false;
+  }
+  return resolveShellWindowMaximized();
 }
 
 /** 사용자가 아무 창이든 최대화/복원할 때 전역 선호를 갱신한다. */
