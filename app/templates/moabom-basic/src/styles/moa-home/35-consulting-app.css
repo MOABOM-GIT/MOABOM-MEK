@@ -13,11 +13,9 @@
   --mc-shadow: 0 1px 2px rgb(15 45 58 / 6%), 0 8px 24px rgb(39 191 193 / 8%);
 
   display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
+  min-height: 100%;
   flex-direction: column;
   gap: 1.25rem;
-  overflow: hidden;
   color: var(--moa-text-primary, var(--mc-ink));
 }
 
@@ -29,11 +27,10 @@
   --mc-shadow: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 24px rgb(0 0 0 / 18%);
 }
 
-/* ── 스텝 네비 — 창 높이 축소 시 세로 클리핑 방지 */
+/* ── 스텝 네비 ── */
 .moa-consult-steps {
   display: flex;
   width: 100%;
-  flex-shrink: 0;
   justify-content: center;
   gap: 0.35rem;
   overflow-x: auto;
@@ -161,16 +158,13 @@
   background: linear-gradient(90deg, var(--mc-mint), var(--mc-blue));
 }
 
-/* ── 본문 — 스텝·푸터 고정, 내용만 스크롤 */
+/* ── 본문 ── */
 .moa-consult-body {
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
   gap: 1.25rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
 .moa-consult-section {
@@ -876,19 +870,13 @@
   background: rgb(255 255 255 / 5%);
 }
 
-/* ── 하단 네비 — 본문 아래 창 바닥 고정 */
+/* ── 하단 네비 ── */
 .moa-consult-footer {
   display: flex;
-  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: auto;
   padding-top: 0.25rem;
-}
-
-.moa-consult-footer > .moa-btn {
-  min-height: 2.75rem;
 }
 
 .moa-consult-btn {

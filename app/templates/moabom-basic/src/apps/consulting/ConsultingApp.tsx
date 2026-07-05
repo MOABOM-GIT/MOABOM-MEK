@@ -31,14 +31,14 @@ const STEPS: StepDef[] = [
 
 export function ConsultingApp() {
   const companyName = useMoabomSiteDisplayName();
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const appRef = useRef<HTMLDivElement>(null);
   const [activeStep, setActiveStep] = useState<ConsultingStep>('intro');
   const [simInput, setSimInput] = useState<SimulationInput>({ ...SIMULATION_DEFAULTS });
 
   const stepIndex = STEPS.findIndex(s => s.key === activeStep);
 
   useEffect(() => {
-    bodyRef.current?.scrollTo({ top: 0 });
+    appRef.current?.closest('.moa-app-window-viewport')?.scrollTo({ top: 0 });
   }, [activeStep]);
 
   const goPrev = () => {
@@ -72,7 +72,7 @@ export function ConsultingApp() {
   }, [activeStep, companyName, simInput]);
 
   return (
-    <Div className={`${APP_WINDOW_BODY_CLASS} moa-consulting-app`}>
+    <Div ref={appRef} className={`${APP_WINDOW_BODY_CLASS} moa-consulting-app`}>
       <AppWindowHeader
         title="스마트 컨설팅"
         subtitle={`${companyName} — 번거로운 운영은 맡기고, 환자 케어와 수익에 집중하세요`}
@@ -107,7 +107,7 @@ export function ConsultingApp() {
         })}
       </Div>
 
-      <Div ref={bodyRef} className="moa-consult-body">{content}</Div>
+      <Div className="moa-consult-body">{content}</Div>
 
       <Div className="moa-consult-footer">
         <Button
