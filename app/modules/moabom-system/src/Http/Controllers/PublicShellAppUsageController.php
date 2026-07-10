@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Moabom\System\Http\Controllers;
 
 use App\Helpers\ResponseHelper;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -56,10 +57,15 @@ final class PublicShellAppUsageController extends Controller
         GetShellRankingsRequest $request,
         ShellRankingService $rankingService,
     ): JsonResponse {
+        $viewer = Auth::guard('sanctum')->user();
+
         return ResponseHelper::moduleSuccess(
             'moabom-system',
             'messages.shell_rankings.users_fetch_success',
-            $rankingService->userRankings($request->resolvedLimit()),
+            $rankingService->userRankings(
+                $request->resolvedLimit(),
+                $viewer instanceof User ? $viewer : null,
+            ),
         );
     }
 }

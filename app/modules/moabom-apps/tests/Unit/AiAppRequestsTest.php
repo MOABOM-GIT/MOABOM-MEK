@@ -66,6 +66,29 @@ class AiAppRequestsTest extends ModuleTestCase
         $this->assertTrue($passes);
     }
 
+    public function test_store_generated_app_request_accepts_html_paste_type(): void
+    {
+        $passes = Validator::make([
+            'title' => '붙여넣기 앱',
+            'app_type' => 'html_paste',
+            'prompt' => '직접 작성한 계산기',
+            'html' => '<!DOCTYPE html><html><head></head><body><h1>calc</h1></body></html>',
+        ], (new StoreGeneratedAppRequest)->rules())->passes();
+
+        $this->assertTrue($passes);
+    }
+
+    public function test_generate_ai_app_request_rejects_html_paste_type(): void
+    {
+        $passes = Validator::make([
+            'prompt' => '붙여넣기만 합니다',
+            'app_type' => 'html_paste',
+            'model_id' => 'claude-sonnet',
+        ], (new GenerateAiAppRequest)->rules())->passes();
+
+        $this->assertFalse($passes);
+    }
+
     public function test_store_generated_app_request_rejects_parent_shell_escape(): void
     {
         $passes = Validator::make([

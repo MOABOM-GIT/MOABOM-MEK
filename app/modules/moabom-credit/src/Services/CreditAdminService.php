@@ -21,6 +21,7 @@ final class CreditAdminService
     public function __construct(
         private readonly CreditRepositoryInterface $creditRepository,
         private readonly CreditService $creditService,
+        private readonly CreditLevelService $levelService,
     ) {}
 
     /**
@@ -119,6 +120,9 @@ final class CreditAdminService
      */
     private function formatUserCreditRow(User $user): array
     {
+        $rankingPoints = (int) ($user->ranking_points ?? 0);
+        $level = $this->levelService->resolve($rankingPoints);
+
         return [
             'user_id' => $user->id,
             'uuid' => $user->uuid,
@@ -126,7 +130,9 @@ final class CreditAdminService
             'email' => $user->email,
             'nickname' => $user->nickname,
             'balance' => (int) ($user->balance ?? 0),
-            'ranking_points' => (int) ($user->ranking_points ?? 0),
+            'ranking_points' => $rankingPoints,
+            'level' => $level['level'],
+            'level_slug' => $level['slug'],
             'balance_updated_at' => $user->balance_updated_at,
         ];
     }

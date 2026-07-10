@@ -125,6 +125,72 @@ class GeneratedAppHostingService
             ->delete() > 0;
     }
 
+    /**
+     * 소유자 데이터 콘솔 — 앱의 table_key 목록(스코프 무시, 앱 단위).
+     *
+     * @return list<array{table_key: string, row_count: int}>
+     */
+    public function listTableKeysForOwner(GeneratedApp $app): array
+    {
+        $rows = GeneratedAppsConnection::rows()
+            ->where('generated_app_id', $app->id)
+            ->selectRaw('table_key, COUNT(*) as row_count')
+            ->groupBy('table_key')
+            ->orderBy('table_key')
+            ->get();
+
+        return $rows->map(static fn ($row): array => [
+            'table_key' => (string) $row->table_key,
+            'row_count' => (int) $row->row_count,
+        ])->all();
+    }
+
+    /**
+     * 소유자 데이터 콘솔 — table_key 전체 행(소유자 스코프: 앱 전체).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listRowsForOwner(GeneratedApp $app, string $tableKey, int $limit = 200): array
+    {
+        $limit = max(1, min(500, $limit));
+
+        return GeneratedAppsConnection::rows()
+            ->where('generated_app_id', $app->id)
+            ->where('table_key', $tableKey)
+            ->latest('id')
+            ->limit($limit)
+            ->get()
+            ->map(static fn (GeneratedAppRow $row): array => self::serializeRow($row))
+            ->all();
+    }
+
+    public function deleteRowForOwner(GeneratedApp $app, string $tableKey, int $rowId): bool
+    {
+        return GeneratedAppsConnection::rows()
+            ->where('generated_app_id', $app->id)
+            ->where('table_key', $tableKey)
+            ->whereKey($rowId)
+            ->delete() > 0;
+    }
+
+    /**
+     * @return array{tables: list<array{table_key: string, row_count: int}>, rows: array<string, list<array<string, mixed>>>}
+     */
+    public function exportForOwner(GeneratedApp $app, int $perTableLimit = 200): array
+    {
+        $tables = $this->listTableKeysForOwner($app);
+        $rowsByTable = [];
+        foreach ($tables as $table) {
+            $key = $table['table_key'];
+            $rowsByTable[$key] = $this->listRowsForOwner($app, $key, $perTableLimit);
+        }
+
+        return [
+            'tables' => $tables,
+            'rows' => $rowsByTable,
+        ];
+    }
+
   /**
      * @return \Illuminate\Database\Eloquent\Builder<GeneratedAppRow>
      */

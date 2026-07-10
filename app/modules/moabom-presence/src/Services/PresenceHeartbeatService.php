@@ -112,7 +112,8 @@ final class PresenceHeartbeatService
             $user = null;
             $releasedAuthenticatedSession = $this->tenantSessions->releaseAuthenticatedSessionForVisitor($visitorId, [
                 'session_key' => $sessionKey,
-                'display_name' => (string) __('moabom-presence::messages.guest_display_name'),
+                // guest 표시명은 저장하지 않는다 — 목록 직렬화 시 요청 로케일로 해석(SSOT).
+                'display_name' => '',
                 'status_text' => null,
                 'client_form_factor' => $clientFormFactor,
                 'client_ip_masked' => $this->clientIpMasker->maskFromRequest($request),
@@ -120,9 +121,10 @@ final class PresenceHeartbeatService
             ]);
         }
 
+        // 회원: 닉네임 스냅샷. guest: 빈 문자열(로케일 문자열을 DB에 고정하지 않음).
         $displayName = $user
             ? (string) ($user->nickname ?: $user->name)
-            : (string) __('moabom-presence::messages.guest_display_name');
+            : '';
 
         $preferences = $user
             ? $this->preferences->getOrCreateForUser($user->id)

@@ -20,7 +20,7 @@ class GenerateAiAppRequest extends FormRequest
     {
         return [
             'prompt' => ['required', 'string', 'min:5', 'max:8000'],
-            'app_type' => ['required', Rule::in(AppType::values())],
+            'app_type' => ['required', Rule::in(AppType::aiGeneratableValues())],
             'model_id' => ['required', Rule::in(['claude-sonnet', 'gpt-chat-latest', 'gpt-4o', 'gemini-flash-lite'])],
             'current_html' => ['sometimes', 'nullable', 'string', 'max:524288'],
         ];

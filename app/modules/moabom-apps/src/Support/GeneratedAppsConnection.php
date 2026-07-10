@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Config;
 use Modules\Moabom\Apps\Models\AppCommunityPost;
 use Modules\Moabom\Apps\Models\GeneratedApp;
+use Modules\Moabom\Apps\Models\GeneratedAppRevision;
 use Modules\Moabom\Apps\Models\GeneratedAppRow;
 use Modules\Moabom\System\Saas\PlatformConnectionFactory;
 
@@ -74,6 +75,18 @@ final class GeneratedAppsConnection
         return $connection !== null
             ? AppCommunityPost::on($connection)->newQuery()
             : AppCommunityPost::query();
+    }
+
+    /**
+     * @return Builder<GeneratedAppRevision>
+     */
+    public static function revisions(): Builder
+    {
+        $connection = self::usesPlatformStore() ? self::NAME : null;
+
+        return $connection !== null
+            ? GeneratedAppRevision::on($connection)->newQuery()
+            : GeneratedAppRevision::query();
     }
 
     public static function tenantSlugForWrite(): string

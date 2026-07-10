@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
 import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
+import { invalidateMoabomActivityLevelCache } from '../../../../hooks/useMoabomActivityLevel';
 import { checkAttendanceApi, fetchUserCreditsApi } from '../myPageApi';
 import type { CreditOverview, MyPageTab, MyPageUser } from '../myPageTypes';
 import { resolveApiMessage, showCoreToast } from '../myPageUtils';
@@ -116,6 +117,8 @@ export function useMyPageCreditTab({
 
       if (result.data?.overview) {
         setCreditOverview(result.data.overview);
+        invalidateMoabomActivityLevelCache();
+        window.dispatchEvent(new CustomEvent('moabom:credit-changed'));
       }
 
       const message = result.message ?? t('moa_mypage.msg.attendance_success');

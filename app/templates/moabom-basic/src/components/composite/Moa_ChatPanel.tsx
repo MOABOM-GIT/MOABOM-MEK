@@ -195,7 +195,7 @@ export const Moa_ChatPanel: React.FC<MoaChatPanelProps> = ({
     [chat.activeConversation?.members, peerMembers],
   );
 
-  const composerWritable = chat.activeConversation?.is_writable !== false;
+  const composerWritable = Boolean(chat.activeConversation);
 
   const headerNickname = useMemo(() => {
     if (activePeerMembers.length === 1) {

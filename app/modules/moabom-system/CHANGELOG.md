@@ -1,11 +1,75 @@
 # Changelog
 
+## [0.8.35] - 2026-07-10
+
+### Changed
+
+- RF-24: module layout reconcile SoftDeletes 계약 고정 — content 읽기/쓰기는 `DB::table` 만, 배포 Job 경로에서 delete/refresh 금지. layout Job 실패 시 재빌드 없이 `run-post-deploy-layout-pipeline.sh` 사용.
+
+## [0.8.34] - 2026-07-10
+
+### Fixed
+
+- module layout reconcile: SoftDeletes 상태에서 `$model->refresh()` 가 `ModelNotFoundException` 을 던지던 경로 제거. content 검증은 `DB::table` 직접 조회만 사용.
+
+## [0.8.33] - 2026-07-10
+
+### Fixed
+
+- module layout reconcile: layout 단위 try/catch + resolver 예외 무시 + DB 직접 content 검증. `No query results for model [TemplateLayout]` 가 sync Job 전체를 깨지 않도록 격리.
+
+## [0.8.32] - 2026-07-10
+
+### Fixed
+
+- module layout reconcile: orphan/duplicate/stale override **삭제 중단**(SoftDeletes findOrFail 충돌). 최신 module row 만 `DB::table` overwrite + `orderByDesc(id)` 검증으로 sync Job 안정화.
+
+## [0.8.31] - 2026-07-10
+
+### Fixed
+
+- module layout purge: Eloquent `forceDelete`/`withTrashed` 대신 `DB::table('template_layouts')->delete` 로 물리 삭제. SoftDeletes observer `findOrFail` 로 인한 `No query results for model [TemplateLayout]` (presence·system) 차단.
+
+## [0.8.30] - 2026-07-10
+
+### Fixed
+
+- module layout duplicate purge: Eloquent `forceDelete()` observer/`findOrFail` 경로를 피해 `withTrashed()->whereKey()->forceDelete()` 로 정리. `moabom-presence` sync 중 `No query results for model [TemplateLayout]` 실패 대응.
+
+## [0.8.29] - 2026-07-10
+
+### Fixed
+
+- module layout reconcile: 중복 module row 정리를 강제 반영 스킵 여부와 무관하게 먼저 수행. 검증 조회도 `orderByDesc(id)` 로 최신 행만 사용 (`admin_realtime_vm` v1.0.0 orphan 고착).
+
+## [0.8.28] - 2026-07-10
+
+### Fixed
+
+- platform module layout force-write: 버전 불일치 시 무조건 filesystem 재저장·중복 module row 정리·저장 후 version 재검증. `admin_realtime_vm` v1.0.0 고착으로 sync Job이 실패하던 문제 대응.
+
+## [0.8.27] - 2026-07-10
+
+### Fixed
+
+- platform module layout reconcile: 강제 반영 후 module row 직접 재조회로 검증(resolver/findById 캐시 잔류로 served≠filesystem 오탐 방지). `admin_credit_settings` sync Job 실패 대응.
+
 ## [Unreleased]
 
 ### Fixed
 
 - Realtime VM 대시보드 `Broadcast · null` — `MoabomRuntimeDriverSettings`·`WebsocketDriverConfigApplier` 가 `BROADCAST_CONNECTION` env SSOT 로 `websocket_enabled`·effective broadcast 를 보정. WebSocket probe 101 성공 시 curl 타임아웃 Error 미표시.
 - **Platform module layout reconcile (RF-13b)** — `PlatformModuleLayoutReconciler` 가 filesystem raw JSON(partial 참조 포함)을 DB에 덮어써 관리자 화면 본문이 비던 문제 수정. `LayoutPersistenceNormalizer` 로 `ModuleManager::validateLayoutFiles` 와 동일한 partial 해석 후 저장·비교.
+
+## [0.8.26] - 2026-07-10
+
+### Added
+
+- 활동 순위 API: 각 행에 `level` 요약 첨부, 로그인 viewer가 top N 밖이면 `is_self` 행 고정(`viewer_outside_top`).
+
+### Changed
+
+- `ShellRankingService::userRankings` 가 optional viewer 를 받아 본인 순위 UX를 보강 (캐시된 top N + per-request 본인 행).
 
 ## [0.8.25] - 2026-07-03
 

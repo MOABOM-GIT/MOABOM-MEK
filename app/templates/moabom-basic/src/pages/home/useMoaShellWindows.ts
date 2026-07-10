@@ -25,7 +25,12 @@ import {
   isMoaShellAppCommunityAppId,
 } from '../../shell/moaShellWindowIds';
 import { resolveAppCommunityParentAppId } from '../../shell/moaShellCommunityUrl';
-import { parseGeneratedLibraryServerId } from '../../apps/generatedAppLibrary';
+import {
+  buildSyntheticGeneratedLibraryApp,
+  isGeneratedLibraryAppId,
+  parseGeneratedLibraryServerId,
+  tryOpenWebsiteLinkExternalWindow,
+} from '../../apps/generatedAppLibrary';
 import { pickGeneratedAppDisplayTitle } from '../../apps/generated/resolveGeneratedAppDisplayTitle';
 import {
   SHELL_PROFILE_SURFACE_APP_ID,
@@ -55,10 +60,6 @@ import {
   replaceShellPath,
   type BoardShellMode,
 } from '../../utils/moabomShellRoutes';
-import {
-  buildSyntheticGeneratedLibraryApp,
-  isGeneratedLibraryAppId,
-} from '../../apps/generatedAppLibrary';
 import { ensureMoabomFullTemplateRoutesMerged } from '../../runtime/moabomGhostRoutesFetch';
 import { normalizeTaskbarItems, toTaskbarItem } from '../../shell/moaShellAppLists';
 import {
@@ -128,25 +129,7 @@ function allocateShellZIndex(
   return maxZ + 1;
 }
 
-function reconcileGeneratedAppWindowChrome(
-  win: WindowState,
-  appsById: Map<string, App>,
-  locale: MoabomSystemLanguage,
-): WindowState {
-  if (!isGeneratedLibraryAppId(win.appId)) {
-    return win;
-  }
-  const app = appsById.get(win.appId);
-  if (!app) {
-    return win;
-  }
-  const resolvedTitle = resolveAppStrings(app, locale).name;
-  if (win.gradient === app.gradient && win.icon === app.icon && win.title === resolvedTitle) {
-    return win;
-  }
-  return { ...win, gradient: app.gradient, icon: app.icon, title: resolvedTitle };
-}
-
+/** open/restore 시 WindowState seed 용 — 렌더 chrome 은 resolveShellWindowChrome 이 SSOT */
 function generatedAppCatalogChromePatch(
   catalogApp: App | undefined,
   locale: MoabomSystemLanguage,
@@ -322,27 +305,6 @@ export function useMoaShellWindows({
       prev.filter(w => !isGuestOnlyAuthMode(w.appId as AuthWindowMode)),
     );
   }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (appsById.size === 0) {
-      return;
-    }
-
-    const syncList = (items: WindowState[]) => {
-      let changed = false;
-      const next = items.map(win => {
-        const synced = reconcileGeneratedAppWindowChrome(win, appsById, language);
-        if (synced !== win) {
-          changed = true;
-        }
-        return synced;
-      });
-      return changed ? next : items;
-    };
-
-    commitWindows(prev => syncList(prev));
-    setTaskbarItems(prev => syncList(prev));
-  }, [appsById, commitWindows, language]);
 
   const removeWindowsByAppId = useCallback((appId: string) => {
     const serverId = parseGeneratedLibraryServerId(appId);
@@ -650,7 +612,7 @@ export function useMoaShellWindows({
     if (editMode) return;
 
     if (editGeneratedAppId != null && isAiGenerationBusy()) {
-      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_edit_blocked'));
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
       return;
     }
 
@@ -726,11 +688,29 @@ export function useMoaShellWindows({
 
   const openEditGeneratedApp = useCallback((serverId: number) => {
     if (isAiGenerationBusy()) {
-      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_edit_blocked'));
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
       return;
     }
     openCreateAppShell({}, serverId);
   }, [openCreateAppShell, t]);
+
+  const keepCreateAppAliveDuringBusyClear = useCallback(() => {
+    const createAppWin = windowsRef.current.find(w => w.appId === createAppShellMetadata.id)
+      ?? taskbarItemsRef.current.find(w => w.appId === createAppShellMetadata.id);
+    if (!createAppWin) {
+      return;
+    }
+    if (createAppWin.isGenerationBackground || createAppWin.isMinimized) {
+      if (typeof window !== 'undefined') {
+        const { pathname, search } = window.location;
+        if (!doesShellLocationMatchWindow(pathname, search, createAppWin) && pathname !== '/') {
+          replaceShellPath('/');
+        }
+      }
+      return;
+    }
+    minimizeCreateAppForBackground(createAppWin);
+  }, [minimizeCreateAppForBackground]);
 
   const openApp = useCallback((app: App, sync: ShellUrlSync = {}) => {
     if (editMode) return;
@@ -766,6 +746,8 @@ export function useMoaShellWindows({
     recordRecentApp(app);
     if (!existing) {
       recordShellAppOpen(app.id);
+      // 새 창을 처음 열 때만 외부 사이트 실행 — 포커스/복원 시 중복 탭 방지
+      tryOpenWebsiteLinkExternalWindow(app);
     }
     const zIndex = allocateShellZIndex(windowsRef.current, taskbarItemsRef.current, nextZIndex);
     const { name: resolvedTitle } = resolveAppStrings(app, language);
@@ -1322,6 +1304,11 @@ export function useMoaShellWindows({
             }
             break;
           }
+          if (isAiGenerationBusy()) {
+            keepCreateAppAliveDuringBusyClear();
+            pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            break;
+          }
           commitWindows(() => []);
           setCreateAppEditServerId(null);
           break;
@@ -1366,6 +1353,11 @@ export function useMoaShellWindows({
           openErrorWindow(route.code as ShellErrorCode, { skipUrl: true });
           break;
         case 'router': {
+          if (isAiGenerationBusy()) {
+            keepCreateAppAliveDuringBusyClear();
+            pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            break;
+          }
           commitWindows(() => []);
           setCreateAppEditServerId(null);
           const routerPath = route.search ? `${route.path}${route.search}` : route.path;
@@ -1376,8 +1368,45 @@ export function useMoaShellWindows({
         }
       }
     },
-    [commitWindows, isLoggedIn, openApp, openAuthWindow, openBoardWindow, openCreateAppShell, openErrorWindow, openMyPage, openUserProfileWindow],
+    [
+      commitWindows,
+      isLoggedIn,
+      keepCreateAppAliveDuringBusyClear,
+      openApp,
+      openAuthWindow,
+      openBoardWindow,
+      openCreateAppShell,
+      openErrorWindow,
+      openMyPage,
+      openUserProfileWindow,
+      t,
+    ],
   );
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isAiGenerationBusy()) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
+  useEffect(() => {
+    const onShellOpenApp = (event: Event) => {
+      const detail = (event as CustomEvent<{ appId?: string }>).detail;
+      const appId = String(detail?.appId ?? '').trim();
+      if (!appId) {
+        return;
+      }
+      openAppById(appId, { skipUrl: true });
+    };
+    window.addEventListener('moabom-shell-open-app', onShellOpenApp as EventListener);
+    return () => window.removeEventListener('moabom-shell-open-app', onShellOpenApp as EventListener);
+  }, [openAppById]);
 
   const closeAuthWindows = useCallback(() => {
     setWindows(prev => prev.filter(item => !(AUTH_WINDOW_APP_IDS as readonly string[]).includes(item.appId)));

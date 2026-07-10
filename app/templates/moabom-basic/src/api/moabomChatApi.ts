@@ -196,15 +196,24 @@ export async function signalChatTyping(conversationUuid: string): Promise<void> 
   });
 }
 
-export async function muteChatConversation(conversationUuid: string, hours?: number | null): Promise<void> {
-  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
+export type ChatMuteState = {
+  conversation_uuid: string;
+  is_muted: boolean;
+  muted_until?: string | null;
+};
+
+export async function muteChatConversation(
+  conversationUuid: string,
+  hours?: number | null,
+): Promise<ChatMuteState> {
+  return chatRequest<ChatMuteState>(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
     method: 'POST',
     body: hours ? { hours } : {},
   });
 }
 
-export async function unmuteChatConversation(conversationUuid: string): Promise<void> {
-  await chatRequest(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
+export async function unmuteChatConversation(conversationUuid: string): Promise<ChatMuteState> {
+  return chatRequest<ChatMuteState>(`user/conversations/${encodeURIComponent(conversationUuid)}/mute`, {
     method: 'DELETE',
   });
 }

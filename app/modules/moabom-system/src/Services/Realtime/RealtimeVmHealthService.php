@@ -78,16 +78,22 @@ final class RealtimeVmHealthService
      */
     private function runtimeConfig(): array
     {
+        $serverHost = (string) env('REVERB_SERVER_HOST', config('broadcasting.connections.reverb.options.host', 'realtime.mek360.com'));
+        $serverScheme = (string) env('REVERB_SERVER_SCHEME', config('broadcasting.connections.reverb.options.scheme', 'https'));
+        $serverPort = (int) env('REVERB_SERVER_PORT', config('broadcasting.connections.reverb.options.port', 443));
+
         return [
             'broadcast_connection' => MoabomRuntimeDriverSettings::effectiveBroadcastConnection(),
             'broadcast_immediate' => true,
             'client_host' => (string) env('REVERB_HOST', config('g7.websocket.client.host', 'realtime.mek360.com')),
             'client_port' => (int) env('REVERB_PORT', config('g7.websocket.client.port', 443)),
             'client_scheme' => (string) env('REVERB_SCHEME', config('g7.websocket.client.scheme', 'https')),
-            'server_host' => (string) env('REVERB_SERVER_HOST', config('broadcasting.connections.reverb.options.host', 'realtime.mek360.com')),
-            'server_port' => (int) env('REVERB_SERVER_PORT', config('broadcasting.connections.reverb.options.port', 443)),
-            'server_scheme' => (string) env('REVERB_SERVER_SCHEME', config('broadcasting.connections.reverb.options.scheme', 'https')),
+            'server_host' => $serverHost,
+            'server_port' => $serverPort,
+            'server_scheme' => $serverScheme,
+            'server_publish_url' => sprintf('%s://%s:%d/apps', $serverScheme, $serverHost, $serverPort),
             'app_key' => (string) env('REVERB_APP_KEY', config('broadcasting.connections.reverb.key', 'moabom-laravel-key')),
+            'app_id' => (string) env('REVERB_APP_ID', config('broadcasting.connections.reverb.app_id', 'moabom-laravel')),
         ];
     }
 
@@ -153,7 +159,8 @@ final class RealtimeVmHealthService
         curl_setopt_array($handle, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
-            CURLOPT_TIMEOUT => 8,
+            // 101 이후 연결이 열린 채 대기하므로 짧게 끊는다. Upgrade 확인만 목적.
+            CURLOPT_TIMEOUT => 3,
             CURLOPT_CONNECTTIMEOUT => 4,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_SSL_VERIFYPEER => true,
@@ -167,20 +174,24 @@ final class RealtimeVmHealthService
         ]);
 
         $raw = curl_exec($handle);
-        if ($raw === false) {
-            $error = curl_error($handle) ?: 'curl_exec_failed';
-        }
+        $curlError = curl_error($handle) ?: null;
         $httpStatus = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $connectMs = (int) round((float) curl_getinfo($handle, CURLINFO_CONNECT_TIME) * 1000);
         curl_close($handle);
+
+        if ($raw === false && $curlError !== null) {
+            $error = $curlError;
+        }
 
         if (is_string($raw)) {
             $body = $raw;
         }
 
-        $latencyMs = (int) round((microtime(true) - $startedAt) * 1000);
+        $probeElapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
         $pusherEstablished = str_contains($body, 'pusher:connection_established');
         // Server-side PHP curl often receives 101 without the first Pusher frame; browser wss is SSOT for frame delivery.
-        $ok = $httpStatus === 101;
+        $upgradeOk = $httpStatus === 101;
+        $ok = $upgradeOk;
 
         if ($ok) {
             // 101 이후 curl 타임아웃은 PHP WS 한계 — 성공 판정 시 Error 미표시
@@ -193,11 +204,19 @@ final class RealtimeVmHealthService
 
         return [
             'ok' => $ok,
+            'upgrade_ok' => $upgradeOk,
+            'probe_kind' => 'server_http_upgrade',
             'host' => $host,
             'url' => $url,
             'http_status' => $httpStatus,
-            'latency_ms' => $latencyMs,
+            'connect_ms' => $connectMs,
+            'probe_elapsed_ms' => $probeElapsedMs,
+            // 하위 호환 — Upgrade 성공 시 connect_ms, 실패 시 전체 경과 시간
+            'latency_ms' => $upgradeOk ? $connectMs : $probeElapsedMs,
             'pusher_established' => $pusherEstablished,
+            'pusher_frame_on_probe' => false,
+            'browser_wss_ssot' => true,
+            'note' => $upgradeOk ? 'server_upgrade_ok_browser_wss_ssot' : null,
             'error' => $error,
         ];
     }

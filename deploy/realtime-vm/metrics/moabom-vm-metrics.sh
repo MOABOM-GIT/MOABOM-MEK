@@ -34,6 +34,43 @@ docker_running() {
   [[ -n "$(docker_container_name "${name}")" ]] && echo true || echo false
 }
 
+native_reverb_running() {
+  pgrep -f '[a]rtisan reverb:start' >/dev/null 2>&1 && echo true || echo false
+}
+
+native_redis_running() {
+  if command -v redis-cli >/dev/null 2>&1 && redis-cli ping 2>/dev/null | grep -q PONG; then
+    echo true
+    return
+  fi
+  pgrep -x redis-server >/dev/null 2>&1 && echo true || echo false
+}
+
+service_state_json() {
+  local role="$1"
+  local docker_prefix="$2"
+  local docker_name
+  docker_name="$(docker_container_name "${docker_prefix}")"
+  if [[ -n "${docker_name}" ]]; then
+    printf '{"ok":true,"mode":"docker","name":"%s"}' "${docker_name}"
+    return
+  fi
+  if [[ "${role}" == "reverb" ]] && [[ "$(native_reverb_running)" == true ]]; then
+    printf '{"ok":true,"mode":"native","name":"artisan-reverb"}'
+    return
+  fi
+  if [[ "${role}" == "redis" ]] && [[ "$(native_redis_running)" == true ]]; then
+    printf '{"ok":true,"mode":"native","name":"redis-server"}'
+    return
+  fi
+  printf '{"ok":false,"mode":"unknown"}'
+}
+
+service_ok() {
+  local json="$1"
+  [[ "${json}" == *'"ok":true'* ]] && echo true || echo false
+}
+
 container_stats_json() {
   local prefix="$1"
   local c
@@ -64,9 +101,13 @@ redis_clients() {
   c="$(redis_container)"
   if [[ -n "${c}" ]]; then
     docker exec "${c}" redis-cli INFO clients 2>/dev/null | awk -F: '/connected_clients/ {gsub("\r","",$2); print $2; exit}' || echo 0
-  else
-    echo 0
+    return
   fi
+  if command -v redis-cli >/dev/null 2>&1; then
+    redis-cli INFO clients 2>/dev/null | awk -F: '/connected_clients/ {gsub("\r","",$2); print $2; exit}' || echo 0
+    return
+  fi
+  echo 0
 }
 
 redis_memory_mb() {
@@ -74,13 +115,23 @@ redis_memory_mb() {
   c="$(redis_container)"
   if [[ -n "${c}" ]]; then
     docker exec "${c}" redis-cli INFO memory 2>/dev/null | awk -F: '/used_memory_human/ {gsub("\r","",$2); print $2; exit}' || echo "0B"
-  else
-    echo "0B"
+    return
   fi
+  if command -v redis-cli >/dev/null 2>&1; then
+    redis-cli INFO memory 2>/dev/null | awk -F: '/used_memory_human/ {gsub("\r","",$2); print $2; exit}' || echo "0B"
+    return
+  fi
+  echo "0B"
 }
 
 load_avg="$(awk '{print $1" "$2" "$3}' /proc/loadavg 2>/dev/null || echo '0 0 0')"
 uptime_sec="$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)"
+
+reverb_service="$(service_state_json reverb moabom-realtime-reverb)"
+redis_service="$(service_state_json redis moabom-realtime-redis)"
+nginx_ok="$(systemctl is-active nginx >/dev/null 2>&1 && echo true || echo false)"
+reverb_ok="$(service_ok "${reverb_service}")"
+redis_ok="$(service_ok "${redis_service}")"
 
 if [[ -n "${GATEWAY_INTERFACE:-}" ]]; then
   printf 'Content-Type: application/json\r\n\r\n'
@@ -96,9 +147,14 @@ cat <<EOF
   "memory_percent": $(read_mem_percent),
   "disk_percent": $(read_disk_percent),
   "processes": {
-    "nginx": $(systemctl is-active nginx >/dev/null 2>&1 && echo true || echo false),
-    "reverb": $(docker_running moabom-realtime-reverb),
-    "redis": $(docker_running moabom-realtime-redis)
+    "nginx": ${nginx_ok},
+    "reverb": ${reverb_ok},
+    "redis": ${redis_ok}
+  },
+  "services": {
+    "nginx": {"ok": ${nginx_ok}, "mode": "systemd"},
+    "reverb": ${reverb_service},
+    "redis": ${redis_service}
   },
   "containers": {
     "reverb": $(container_stats_json moabom-realtime-reverb),

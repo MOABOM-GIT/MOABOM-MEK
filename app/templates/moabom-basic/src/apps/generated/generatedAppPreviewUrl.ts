@@ -76,9 +76,10 @@ export function generatedAppPreviewSandbox(previewUrl: string | null): string {
 /**
  * 외부 HTTPS 웹사이트 연결 iframe sandbox.
  * cross-origin 이므로 Moabom 셸 DOM/쿠키 접근 불가 — 사이트 자체 cookie·storage·위젯 동작만 허용.
+ * allow-modals: 로그인 검증 등 alert/confirm/prompt (없으면 브라우저가 호출을 무시함).
  */
 export const WEBSITE_LINK_FRAME_SANDBOX =
-  'allow-scripts allow-forms allow-popups allow-same-origin';
+  'allow-scripts allow-forms allow-modals allow-popups allow-same-origin';
 
 /** 외부 웹사이트 연결 vs AI 프리뷰 호스트 */
 export function generatedAppFrameSandbox(frameUrl: string | null, appType?: string | null): string {

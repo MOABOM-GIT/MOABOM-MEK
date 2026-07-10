@@ -3,14 +3,45 @@
  * @see window.__MoabomAiGenerationActivity (메인 `src/index.ts`에서 주입)
  */
 let busy = false;
+let busyOwner: symbol | null = null;
 const listeners = new Set<() => void>();
+
+function notifyBusyListeners(): void {
+  listeners.forEach(listener => listener());
+}
 
 export function setAiGenerationBusy(next: boolean): void {
   if (busy === next) {
     return;
   }
+  if (!next) {
+    busyOwner = null;
+  }
   busy = next;
-  listeners.forEach(listener => listener());
+  notifyBusyListeners();
+}
+
+/** 이 인스턴스가 생성 busy를 소유한다. 다른 owner의 release는 무시한다. */
+export function claimAiGenerationBusy(owner: symbol): void {
+  busyOwner = owner;
+  if (busy) {
+    return;
+  }
+  busy = true;
+  notifyBusyListeners();
+}
+
+/** 소유자만 busy를 해제한다. */
+export function releaseAiGenerationBusy(owner: symbol): void {
+  if (busyOwner !== owner) {
+    return;
+  }
+  busyOwner = null;
+  if (!busy) {
+    return;
+  }
+  busy = false;
+  notifyBusyListeners();
 }
 
 export function isAiGenerationBusy(): boolean {

@@ -32,7 +32,8 @@ class CreditController extends AuthBaseController
 
             $this->logApiUsage('moabom-credit.user.credits.index');
 
-            $limit = max(1, min(50, (int) request()->query('limit', 8)));
+            // limit=0 허용: 잔액·레벨만 (셸 프로필). 마이페이지는 기본 8.
+            $limit = max(0, min(50, (int) request()->query('limit', 8)));
             $offset = max(0, (int) request()->query('offset', 0));
 
             return ResponseHelper::moduleSuccess(

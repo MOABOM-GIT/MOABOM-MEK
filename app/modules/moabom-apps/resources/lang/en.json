@@ -34,6 +34,7 @@
       "tier_standard": "Standard",
       "tier_hosted": "Hosted",
       "app_type_general": "Web app",
+      "app_type_html_paste": "Paste HTML",
       "app_type_3d": "3D",
       "app_type_game": "Interaction",
       "app_type_dataviz": "Chart",

@@ -13,11 +13,11 @@
   animation: wiggle 0.3s ease-in-out infinite;
 }
 
-/* 편집모드 삭제 버튼 */
+/* 편집모드 삭제 버튼 — 오프셋은 --moa-main-delete-size 비율 (16-responsive 에서 24/22/20/17px) */
 .edit-delete-btn {
   position: absolute;
   top: calc(var(--moa-main-delete-size, 24px) * -0.25);
-  right: calc(var(--moa-main-delete-size, 24px) * -0.12);
+  right: calc(var(--moa-main-delete-size, 24px) * 0.25);
   z-index: 20;
   width: var(--moa-main-delete-size, 24px);
   height: var(--moa-main-delete-size, 24px);

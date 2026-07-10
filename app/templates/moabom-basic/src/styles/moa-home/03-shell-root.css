@@ -49,6 +49,24 @@ body.moa-home-active {
   background: transparent;
 }
 
+/** 타이틀바 드래그·리사이즈 중 iframe 포인터 탈취 차단 */
+.moa-window-body-pointer-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  cursor: inherit;
+  background: transparent;
+}
+
+/** 타이틀바 파비콘 — FA 아이콘과 동일 슬롯 */
+.moa-window-title-icon-image {
+  box-sizing: border-box;
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 /**
  * 창 본문 직계 루트 — flex 세로 스택·gap 만 담당 (패딩 X).
  * `.moa-shell-app-window` 는 레거시 별칭, 신규는 `.moa-app-window-body` 권장.

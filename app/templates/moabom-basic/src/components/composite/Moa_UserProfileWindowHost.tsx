@@ -66,7 +66,7 @@ function renderPayloadPane(
   } = payload;
 
   return (
-    <Div className={paneClassName}>
+    <Div key={`${subjectUuid}-${view}`} className={paneClassName}>
       <MoaG7ContainerHost
         className="moa-user-profile-window-host flex-1 text-primary"
         layoutRoots={componentDefs}
@@ -121,6 +121,7 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
   const prevUserUuidRef = useRef(userUuid);
   const hostRootRef = useRef<HTMLDivElement>(null);
   const slideViewportRef = useRef<HTMLDivElement>(null);
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     if (prevUserUuidRef.current === userUuid) {
@@ -171,16 +172,21 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
   }, [userUuid]);
 
   const load = useCallback(async () => {
-    if (!userUuid) {
+    const seq = ++loadSeqRef.current;
+    const subjectUuid = userUuid;
+
+    if (!subjectUuid) {
       setError(t('moa_shell.center.user_profile_error'));
       setLoading(false);
       setRefetching(false);
       return;
     }
 
+    invalidateUserProfileShellBindingCache();
+
     const query = resolveUserProfileWindowQuery();
-    const profileKey = buildUserProfilePayloadCacheKey(userUuid, 'profile', query);
-    const postsKey = buildUserProfilePayloadCacheKey(userUuid, 'posts', query);
+    const profileKey = buildUserProfilePayloadCacheKey(subjectUuid, 'profile', query);
+    const postsKey = buildUserProfilePayloadCacheKey(subjectUuid, 'posts', query);
     const cachedProfile = getCachedUserProfilePayload(profileKey);
     const cachedPosts = getCachedUserProfilePayload(postsKey);
     const hasAnyCached = Boolean(cachedProfile || cachedPosts);
@@ -190,9 +196,12 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
     const hasCurrent = Boolean(currentPayload);
 
     if (cachedProfile || cachedPosts) {
+      if (loadSeqRef.current !== seq) {
+        return;
+      }
       setViewPayloads({
-        profile: cachedProfile ?? viewPayloadsRef.current.profile,
-        posts: cachedPosts ?? viewPayloadsRef.current.posts,
+        profile: cachedProfile ?? null,
+        posts: cachedPosts ?? null,
       });
       const active = userProfileView === 'posts'
         ? (cachedPosts ?? cachedProfile)
@@ -225,10 +234,14 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
         needsPosts ? loadView('posts', query) : Promise.resolve(cachedPosts ?? null),
       ]);
 
-      setViewPayloads(prev => ({
-        profile: profileResult ?? prev.profile,
-        posts: postsResult ?? prev.posts,
-      }));
+      if (loadSeqRef.current !== seq) {
+        return;
+      }
+
+      setViewPayloads({
+        profile: profileResult ?? null,
+        posts: postsResult ?? null,
+      });
 
       const activePayload = userProfileView === 'posts'
         ? (postsResult ?? cachedPosts ?? profileResult)
@@ -237,13 +250,18 @@ export const UserProfileWindowHost: React.FC<UserProfileWindowHostProps> = ({
         applyResolvedTitle(activePayload, userProfileView);
       }
     } catch (e) {
+      if (loadSeqRef.current !== seq) {
+        return;
+      }
       if (!hasAnyCached && !hasCurrent) {
         setViewPayloads({ profile: null, posts: null });
       }
       setError(e instanceof Error ? e.message : t('moa_shell.center.user_profile_error'));
     } finally {
-      setLoading(false);
-      setRefetching(false);
+      if (loadSeqRef.current === seq) {
+        setLoading(false);
+        setRefetching(false);
+      }
     }
   }, [applyResolvedTitle, authStateKey, loadView, t, urlEpoch, userProfileView, userUuid]);
 

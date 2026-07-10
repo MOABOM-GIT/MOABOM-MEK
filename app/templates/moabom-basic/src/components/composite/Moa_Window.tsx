@@ -59,6 +59,8 @@ export interface WindowProps {
   id: string;
   title: string;
   icon?: string;
+  /** 웹사이트 연결 등 파비콘 — 타이틀바에서 FA 보다 우선 */
+  iconImageUrl?: string;
   /** 타이틀 바 배경 — 앱 아이콘·태스크바 버튼과 동일한 CSS `linear-gradient(...)`. 미지정 시 `--moa-point-color`. */
   gradient?: string;
   isFavorite?: boolean;
@@ -99,6 +101,7 @@ const WindowComponent: React.FC<WindowProps> = ({
   id,
   title,
   icon,
+  iconImageUrl,
   gradient,
   initialX,
   initialY,
@@ -164,8 +167,15 @@ const WindowComponent: React.FC<WindowProps> = ({
   const [isMinimized, setIsMinimized] = useState(initialMinimized);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [titleIconImageFailed, setTitleIconImageFailed] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const resolvedIconImageUrl = iconImageUrl?.trim() || '';
+  const showTitleIconImage = Boolean(resolvedIconImageUrl) && !titleIconImageFailed;
+
+  useEffect(() => {
+    setTitleIconImageFailed(false);
+  }, [resolvedIconImageUrl]);
 
   const windowRef = useRef<HTMLDivElement>(null);
   const nativeFullscreenOwnedRef = useRef(false);
@@ -602,7 +612,17 @@ const WindowComponent: React.FC<WindowProps> = ({
               }`}
             >
               <Div className="flex min-w-0 flex-1 items-center gap-2">
-                {icon ? <Icon name={icon} className="shrink-0 text-base text-white drop-shadow-sm" /> : null}
+                {showTitleIconImage ? (
+                  <img
+                    src={resolvedIconImageUrl}
+                    alt=""
+                    className="moa-window-title-icon-image shrink-0"
+                    draggable={false}
+                    onError={() => setTitleIconImageFailed(true)}
+                  />
+                ) : icon ? (
+                  <Icon name={icon} className="shrink-0 text-base text-white drop-shadow-sm" />
+                ) : null}
                 <Span className="min-w-0 truncate text-base font-bold text-white drop-shadow-sm" title={title}>
                   {displayTitle}
                 </Span>
@@ -643,7 +663,17 @@ const WindowComponent: React.FC<WindowProps> = ({
             onDoubleClick={handleTitleBarDoubleClick}
           >
             <Div className="flex min-w-0 flex-1 items-center gap-2">
-              {icon && <Icon name={icon} className={`shrink-0 text-base ${chromeTone.icon}`} />}
+              {showTitleIconImage ? (
+                <img
+                  src={resolvedIconImageUrl}
+                  alt=""
+                  className="moa-window-title-icon-image shrink-0"
+                  draggable={false}
+                  onError={() => setTitleIconImageFailed(true)}
+                />
+              ) : (
+                icon && <Icon name={icon} className={`shrink-0 text-base ${chromeTone.icon}`} />
+              )}
               <Span className={`min-w-0 truncate text-base font-bold ${chromeTone.label}`} title={title}>
                 {displayTitle}
               </Span>
@@ -700,7 +730,9 @@ const WindowComponent: React.FC<WindowProps> = ({
             <Div ref={fitMeasureRef} className="w-full shrink-0">
               {children}
             </Div>
-            {!isForeground ? (
+            {(isDragging || isResizing) ? (
+              <Div className="moa-window-body-pointer-shield" aria-hidden="true" />
+            ) : !isForeground ? (
               <Div
                 className="moa-window-body-focus-capture"
                 aria-hidden="true"
@@ -715,7 +747,9 @@ const WindowComponent: React.FC<WindowProps> = ({
         ) : (
           <Div className="moa-app-window-viewport moa-app-window-viewport--relative">
             {children}
-            {!isForeground ? (
+            {(isDragging || isResizing) ? (
+              <Div className="moa-window-body-pointer-shield" aria-hidden="true" />
+            ) : !isForeground ? (
               <Div
                 className="moa-window-body-focus-capture"
                 aria-hidden="true"
@@ -747,6 +781,7 @@ function areWindowPropsEqual(prev: WindowProps, next: WindowProps): boolean {
   return prev.id === next.id
     && prev.title === next.title
     && prev.icon === next.icon
+    && prev.iconImageUrl === next.iconImageUrl
     && prev.gradient === next.gradient
     && prev.isFavorite === next.isFavorite
     && prev.initialX === next.initialX

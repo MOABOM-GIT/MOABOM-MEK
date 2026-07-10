@@ -1,6 +1,124 @@
 # Changelog
 
+## [0.7.30] - 2026-07-10
+
+### Fixed
+
+- 우측 프로필 포인트 게이지를 목업 레이아웃(닉네임+등급 아이콘 / 게이지 / Lv·포인트)으로 복원했습니다.
+- 활동 순위 본인 행 `outline` 제거(배경 하이라이트만 유지).
+- 셸 활동 레벨 조회를 `user/credits?limit=0` 경량 경로로 바꿔 원장 집계를 건너뜁니다.
+
+### Changed
+
+- iframe liquid-glass 오버레이 공통화는 0.7.29 참고.
+
+## [0.7.29] - 2026-07-10
+
+### Changed
+
+- iframe liquid-glass 오버레이(오너 칩·요소 선택·버전 기록·데이터 콘솔)를 `moa-liquid-glass-chip` / `moa-liquid-glass-surface` + `liquidGlassOverlayClass` + `useIframeBackdropTone` 으로 공통화했습니다. 동일 스타일 칩 추가 시 같은 클래스·훅을 재사용합니다.
+
+## [0.7.28] - 2026-07-10
+
+### Fixed
+
+- AI 앱 생성 미리보기 「요소 선택」: opaque-origin iframe 에서 HTML 정적 배경 추정이 실패해 어두운 앱 위 글자가 안 보이던 문제를 `backdrop-probe` 실측으로 수정했습니다.
+
+## [0.7.27] - 2026-07-10
+
+### Added
+
+- 활동 레벨 배지·EXP 바(`Moa_ActivityRankBadge`) — `ranking_points`/`level` SSOT.
+- 우측 패널: 더미 EXP 제거, credit me API 연동. 좌측 활동 순위: 레벨 배지·본인 행 하이라이트·내 순위 요약.
+
+### Changed
+
+- i18n: `moa_shell.rank.levels.*` (ko/en/ja/zh). 앱 순위는 전기간 누적(월간 리셋 없음) 유지.
+
+## [0.7.26] - 2026-07-10
+
+### Changed
+
+- 접속자 목록: guest 표시명을 UI 로케일(`presence_guest_fallback`)로 해석하고, 로그인 시 heartbeat→목록 재조회를 단일 경로로 맞췄습니다.
+
+## [0.7.25] - 2026-07-10
+
+### Changed
+
+- AI 앱 생성기 1열(창 폭 640px 미만): 좌·우 패널 패딩을 p-3으로 줄이고, 프리뷰 패널 고정 높이(70cqh)를 해제했습니다. 코드는 조절 바로 높이 조절, 프리뷰는 min-height로 요소선택 작업 영역을 확보합니다(세로 스크롤).
+
+## [0.7.24] - 2026-07-10
+
+### Fixed
+
+- 날씨 효과 canvas: `syncSurface` 버퍼를 `CSS × dpr` 로 맞춰 DPR transform 과 논리 좌표를 일치시켰습니다. (버퍼=CSS 만이면 비가 굵고 빽빽해 보이던 회귀 수정, 비율 동기화는 유지)
+
+## [0.7.23] - 2026-07-09
+
+### Fixed
+
+- 날씨 효과 canvas: resize 시 2D context 리셋으로 DPR transform 이 사라져 비가 중하단에 쌓이던 문제를 `syncSurface`·매 프레임 transform 재적용으로 수정했습니다.
+
+## [0.7.22] - 2026-07-09
+
+### Changed
+
+- 생성앱 오너(앱 컨트롤) 버튼: 클릭 시 `backdrop-probe`로 배경톤을 재측정해 글자·대비를 맞춥니다(스크롤 옵저버 없음).
+
+## [0.7.21] - 2026-07-09
+
+### Changed
+
+- AI 앱 생성 Inspector 토글·패널에 좌측 하단 오너 버튼과 동일한 `liquid-glass` + 배경톤 readable 대비를 적용했습니다.
+- 요소 선택 안내 문구 타이포를 `text-sm`으로 줄였습니다.
+
+## [0.7.20] - 2026-07-09
+
+### Fixed
+
+- AI 앱 생성 미리보기 Inspector: opaque-origin `srcdoc` 에서 `contentDocument` 접근이 실패하던 문제를 postMessage 브릿지로 교체했습니다.
+- 요소 선택 모드일 때만 클릭을 가로채고, 비활성 시에는 미리보기 앱이 기존처럼 동작합니다. 브릿지 스크립트는 미리보기 전용이며 저장 HTML에는 넣지 않습니다.
+
+## [0.7.19] - 2026-07-09
+
+### Changed
+
+- 생성앱 버전 기록·데이터 콘솔 사이드 패널을 `liquid-glass` + 배경톤 대비 표면으로 통일하고, 리스트를 수평 정렬·모던 레이아웃으로 정리했습니다.
+- 좌측 하단 오너 버튼과 동일하게 `generatedAppLiquidGlassSurfaceClass` 로 톤 클래스를 공유합니다.
+
+## [0.7.18] - 2026-07-09
+
+### Added
+
+- AI 생성앱 프리미엄: 요소 선택 Inspector → 기존 patch 모드 패치.
+- 생성앱 Viewer — 버전 기록(타임머신) 패널, Hosted 데이터 콘솔.
+- iframe 셸 브릿지 allowlist (`shell-toast`, `shell-open-app`).
+
+### Changed
+
+- 메인 order 동기화: dirty ACK + 로컬 ahead(진부분집합) 보호 (이전 작업 포함).
+
+## [0.7.17] - 2026-07-09
+
+### Fixed
+
+- 웹사이트 연결·생성앱 창 타이틀 색이 카탈로그 동기화마다 뒤집히던 문제를, 열린 창 chrome을 카탈로그에서 파생하는 SSOT로 제거했습니다.
+- 메인 패널 파비콘 로드 실패 후 밝은 타일에서 흰 FA 아이콘이 사라지듯 보이던 문제를 URL별 실패 상태·대비 톤으로 수정했습니다.
+- 타이틀바 드래그·리사이즈 중 외부 iframe이 포인터를 가로채 창 이동이 끊기던 문제를 본문 pointer shield로 완화했습니다.
+- 메인에 pin된 생성앱이 owned 목록 한도 밖이면 단건 조회로 카탈로그에 보강합니다.
+
+### Changed
+
+- 생성앱 창·태스크바 chrome은 `resolveShellWindowChrome`로 렌더 시 계산합니다(카탈로그 덮어쓰기 race 제거).
+- 웹사이트 연결 타일/타이틀 그라데이션은 `icon_from_title` 의도만 따르고, 파비콘 로드 성공 여부와 분리했습니다.
+- 타이틀바·태스크바에 웹사이트 연결 파비콘을 표시합니다(실패 시 FA 폴백).
+
 ## [Unreleased]
+
+### Added
+
+- AI 앱 만들기 — `직접 입력 (html)` (`html_paste`) 유형. AI 모델·데이터 저장 옵션 숨김, 우측 CodeMirror HTML 에디터 + 프리뷰로 붙여넣어 저장.
+- 생성 완료 후 코드 패널 — Textarea 대신 CodeMirror 6 HTML 에디터(스트리밍 중은 기존 read-only `pre` 유지).
 
 ### Fixed
 

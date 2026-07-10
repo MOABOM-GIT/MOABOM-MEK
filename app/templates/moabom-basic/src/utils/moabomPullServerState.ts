@@ -7,13 +7,14 @@ import {
   hasLocalMainAppOrderCustomized,
   loadLocalMainAppOrder,
   mergeMainAppOrderFromPull,
+  isLocalMainOrderAheadOfServer,
   mergeRecentAppIdsFromPull,
   saveLocalMainAppOrder,
   clearLocalMainAppOrder,
   type MainAppOrderSnapshot,
 } from '../shell/moaShellAppOrder';
 import { queueSaveMoabomSystemSettings, isRecentlySavedSettings } from './moabomSettingsSaveQueue';
-import { isRecentlySavedShellOrder, queueSaveShellHomeSettings } from './moabomShellOrderSaveQueue';
+import { isShellHomeDirty, queueSaveShellHomeSettings } from './moabomShellOrderSaveQueue';
 import { isRecentlySavedRecentAppIds, queueSaveRecentAppIds } from './moabomShellRecentAppsSaveQueue';
 import {
   extractServerMainUnpinnedGeneratedIds,
@@ -116,7 +117,9 @@ export async function pullMoabomServerState(input: {
   const localMainAppOrderCustomized = hasLocalMainAppOrderCustomized();
   const serverMainAppOrder = extractServerMainAppOrder(payload.settings);
   const serverMainAppOrderCustomized = extractServerMainAppOrderCustomized(payload.settings);
-  const trustLocalShellOrder = isRecentlySavedSettings() || isRecentlySavedShellOrder() || isRecentlySavedRecentAppIds();
+  const trustLocalShellOrder = isRecentlySavedSettings()
+    || isShellHomeDirty()
+    || isRecentlySavedRecentAppIds();
   const mergedMainAppOrder = mergeMainAppOrderFromPull({
     isLoggedIn: input.isLoggedIn,
     trustLocalDuringCooldown: trustLocalShellOrder,
@@ -152,6 +155,10 @@ export async function pullMoabomServerState(input: {
     }
   }
 
+  const localAheadOfServer = localMainAppOrderCustomized
+    && serverMainAppOrder !== null
+    && isLocalMainOrderAheadOfServer(localMainAppOrder, serverMainAppOrder);
+
   if (
     input.isLoggedIn
     && !trustLocalShellOrder
@@ -162,6 +169,7 @@ export async function pullMoabomServerState(input: {
         && localMainAppOrderCustomized
       )
       || (serverUnpinned === null && mergedUnpinned.length > 0)
+      || localAheadOfServer
     )
   ) {
     void queueSaveShellHomeSettings({

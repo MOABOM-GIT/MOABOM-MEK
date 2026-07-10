@@ -147,4 +147,14 @@ describe('moaShellAppLists', () => {
     }]);
     expect(items[0]?.appId).toBe('create-app');
   });
+
+  it('normalizeTaskbarItems keeps items with only id and appId', () => {
+    const items = normalizeTaskbarItems([{
+      id: 'win-2',
+      appId: 'generated-app-9',
+    }]);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.appId).toBe('generated-app-9');
+    expect(items[0]?.icon).toBe('cube');
+  });
 });

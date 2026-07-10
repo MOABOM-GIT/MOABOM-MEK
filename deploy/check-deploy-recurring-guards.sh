@@ -76,8 +76,9 @@ ok "RF-14d: run-layout-sync-job module declarations SSOT (moabom-apps 포함)"
 
 [[ -x "${ROOT}/deploy/run-template-cache-clear-job.sh" ]] \
   || fail "RF-23: run-template-cache-clear-job.sh 없음 또는 실행 불가"
-grep -q 'run-template-cache-clear-job.sh' "${BUILD_DEPLOY}" \
-  || fail "RF-23: build-and-deploy.sh — layout skip 시 cache-clear Job 없음"
+LAYOUT_PIPELINE="${ROOT}/deploy/run-post-deploy-layout-pipeline.sh"
+grep -q 'run-template-cache-clear-job.sh' "${LAYOUT_PIPELINE}" \
+  || fail "RF-23: layout pipeline — layout skip 시 cache-clear Job 없음"
 grep -q 'run-template-cache-clear-job.sh' "${ROOT}/deploy/run-layout-sync-job.sh" \
   || fail "RF-23: run-layout-sync-job.sh — cache-clear Job SSOT 미사용"
 
@@ -202,16 +203,21 @@ grep -q '_SKIP_INNER_CHECK' "${ROOT}/deploy/cloudbuild-v3.yaml" \
   || fail "RF-23: cloudbuild-v3.yaml 에 _SKIP_INNER_CHECK substitution 없음"
 grep -q '_SKIP_INNER_CHECK=true' "${BUILD_DEPLOY}" \
   || fail "RF-23: build-and-deploy.sh 가 Cloud Build inner check skip 미전달"
-grep -q 'moabom_layout_sync_needed' "${BUILD_DEPLOY}" \
-  || fail "RF-23: build-and-deploy.sh 가 layout sync 해시 게이트 없음"
-grep -q 'run-platform-module-layout-reconcile-job.sh' "${BUILD_DEPLOY}" \
-  || fail "RF-13b: build-and-deploy.sh 가 platform module layout reconcile Job 없음"
+LAYOUT_PIPELINE="${ROOT}/deploy/run-post-deploy-layout-pipeline.sh"
+[[ -x "${LAYOUT_PIPELINE}" ]] \
+  || fail "RF-24: run-post-deploy-layout-pipeline.sh 없음 또는 실행 불가"
+grep -q 'moabom_layout_sync_needed' "${LAYOUT_PIPELINE}" \
+  || fail "RF-23: layout pipeline 이 layout sync 해시 게이트 없음"
+grep -q 'run-platform-module-layout-reconcile-job.sh' "${LAYOUT_PIPELINE}" \
+  || fail "RF-13b: layout pipeline 이 platform module layout reconcile Job 없음"
 [[ -x "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh" ]] \
   || fail "RF-13b: run-platform-module-layout-reconcile-job.sh 없음 또는 실행 불가"
 grep -q 'reconcile-platform-module-layouts' "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh" \
   || fail "RF-13b: reconcile Job 이 moabom:saas:reconcile-platform-module-layouts 호출 안 함"
-grep -q 'run-serving-cache-bust.sh' "${BUILD_DEPLOY}" \
-  || fail "RF-13b: build-and-deploy.sh 가 매 배포 serving cache bust 없음"
+grep -q 'run-serving-cache-bust.sh' "${LAYOUT_PIPELINE}" \
+  || fail "RF-13b: layout pipeline 이 매 배포 serving cache bust 없음"
+grep -q 'run-post-deploy-layout-pipeline.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-24: build-and-deploy.sh 가 layout pipeline 미호출"
 [[ -f "${ROOT}/deploy/ssot/platform-db-layout-versions.env" ]] \
   || fail "RF-23: platform-db-layout-versions.env SSOT 없음"
 grep -q 'MOABOM_CRJ_BOOT_SLEEP:-10' "${ROOT}/deploy/lib/cloud-run-artisan-job.sh" \
@@ -223,6 +229,19 @@ grep -q 'MOABOM_SMOKE_PROFILE' "${ROOT}/deploy/smoke-after-deploy.sh" \
 [[ -f "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" ]] \
   || fail "RF-23: deploy/lib/post-deploy-migration-hash.sh 없음"
 ok "RF-23: 배포 속도 최적화 SSOT (조건부 Job·inner check skip·light smoke)"
+
+# RF-24: layout 정합과 이미지 배포 분리 + SoftDeletes 계약
+[[ -x "${ROOT}/deploy/run-post-deploy-layout-pipeline.sh" ]] \
+  || fail "RF-24: run-post-deploy-layout-pipeline.sh 없음 또는 실행 불가"
+grep -q 'run-post-deploy-layout-pipeline.sh' "${BUILD_DEPLOY}" \
+  || fail "RF-24: build-and-deploy.sh 가 layout-only pipeline 미호출"
+grep -q 'moabom_cloud_run_job_spec_matches\|skip jobs update' "${ROOT}/deploy/lib/cloud-run-artisan-job.sh" \
+  || fail "RF-24: cloud-run-artisan-job.sh 불필요 jobs update 스킵 없음"
+grep -q '_IMAGE_TAG 를 올리지 말' "${BUILD_DEPLOY}" \
+  || fail "RF-24: layout 실패 시 D1(태그 증가 금지) 안내 없음"
+[[ -x "${ROOT}/scripts/check-module-layout-softdeletes-contract.sh" ]] \
+  || fail "RF-24: check-module-layout-softdeletes-contract.sh 없음"
+ok "RF-24: layout-only pipeline + SoftDeletes contract + Job update skip"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

@@ -67,3 +67,91 @@
     backdrop-filter: none;
   }
 }
+
+/**
+ * `.moa-pointer-draggable` — 경계 내 포인터 드래그 옵트인
+ * (`useMoaBoundedPointerDrag`). liquid-glass 표면과 함께 쓰되,
+ * 메뉴·스크롤 본문에는 붙이지 않고 핸들(칩·타이틀·토글)에만 적용.
+ */
+.moa-pointer-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.moa-pointer-draggable.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/**
+ * `.moa-liquid-glass-chip` — iframe 위 pill 칩/토글 공통
+ * (오너 버튼·요소 선택·이후 동일 스타일 버튼).
+ * 반드시 `.liquid-glass` + `.liquid-glass--on-*` 와 함께 쓴다.
+ */
+.moa-liquid-glass-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 9999px;
+  color: var(--moa-liquid-readable-color);
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 0.2rem 0.3rem #0f172a2e;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+/* 톤 미감지·중간 명암에서도 글자가 읽히도록 방향성 헤일로 */
+.moa-liquid-glass-chip.liquid-glass--on-dark {
+  text-shadow: 0 1px 3px rgb(2 6 23 / 55%);
+}
+
+.moa-liquid-glass-chip.liquid-glass--on-light {
+  text-shadow: 0 1px 2px rgb(255 255 255 / 60%);
+}
+
+.moa-liquid-glass-chip:disabled,
+.moa-liquid-glass-chip.is-disabled,
+.moa-liquid-glass-chip[aria-disabled='true'] {
+  opacity: 0.55;
+}
+
+.moa-liquid-glass-chip:disabled {
+  cursor: not-allowed;
+}
+
+.moa-liquid-glass-chip.is-disabled.moa-pointer-draggable,
+.moa-liquid-glass-chip[aria-disabled='true'].moa-pointer-draggable {
+  cursor: grab;
+}
+
+.moa-liquid-glass-chip.is-active {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--moa-liquid-readable-color) 35%, transparent),
+    0 0.2rem 0.3rem #0f172a2e;
+}
+
+.moa-liquid-glass-chip--secondary {
+  opacity: 0.92;
+}
+
+/**
+ * `.moa-liquid-glass-surface` — 패널/바디 표면 가독 색·헤일로
+ * (버전 기록·데이터 콘솔·인스펙터 바디).
+ */
+.moa-liquid-glass-surface {
+  color: var(--moa-liquid-readable-color);
+}
+
+.moa-liquid-glass-surface.liquid-glass--on-dark {
+  text-shadow: 0 1px 3px rgb(2 6 23 / 45%);
+}
+
+.moa-liquid-glass-surface.liquid-glass--on-light {
+  text-shadow: 0 1px 2px rgb(255 255 255 / 50%);
+}

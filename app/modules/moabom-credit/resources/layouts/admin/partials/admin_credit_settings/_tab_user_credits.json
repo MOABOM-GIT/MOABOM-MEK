@@ -180,6 +180,21 @@
             ]
           },
           {
+            "field": "level",
+            "header": "$t:moabom-credit.admin.user_credits.columns.level",
+            "sortable": false,
+            "cellChildren": [
+              {
+                "type": "basic",
+                "name": "Span",
+                "props": {
+                  "className": "font-mono text-sm font-semibold text-gray-900 dark:text-white"
+                },
+                "text": "{{row.level ? ('Lv.' + row.level) : 'Lv.1'}}"
+              }
+            ]
+          },
+          {
             "field": "actions",
             "header": "$t:moabom-credit.admin.user_credits.columns.actions",
             "sortable": false,

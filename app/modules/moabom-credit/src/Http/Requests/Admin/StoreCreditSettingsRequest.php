@@ -46,7 +46,42 @@ class StoreCreditSettingsRequest extends FormRequest
             'ads.attendance_requires_ad' => 'boolean',
             'ads.attendance_ad_provider' => 'nullable|string|in:google,none',
             'ads.attendance_ad_reward_multiplier' => 'numeric|min:1|max:10',
+            'levels' => 'required|array',
+            'levels.thresholds' => 'required|array|size:10',
+            'levels.thresholds.*' => 'integer|min:0|max:100000000',
         ];
+    }
+
+    /**
+     * @return void
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $thresholds = $this->input('levels.thresholds');
+            if (! is_array($thresholds) || count($thresholds) !== 10) {
+                return;
+            }
+
+            $prev = null;
+            foreach (array_values($thresholds) as $index => $value) {
+                if (! is_numeric($value)) {
+                    continue;
+                }
+                $current = (int) $value;
+                if ($index === 0 && $current !== 0) {
+                    $validator->errors()->add('levels.thresholds.0', 'Lv.1 threshold must be 0.');
+                }
+                if ($prev !== null && $current < $prev) {
+                    $validator->errors()->add(
+                        'levels.thresholds.'.$index,
+                        'Level thresholds must be non-decreasing.',
+                    );
+                    break;
+                }
+                $prev = $current;
+            }
+        });
     }
 
     /**

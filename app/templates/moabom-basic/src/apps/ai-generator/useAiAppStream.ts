@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { setAiGenerationBusy } from 'moabom-ai-generation-activity';
+import {
+  claimAiGenerationBusy,
+  releaseAiGenerationBusy,
+} from 'moabom-ai-generation-activity';
 import {
   cancelAiGenerationSession,
   cancelAiGenerationQueue,
@@ -42,6 +45,7 @@ export function useAiAppStream({
   const queueTicketRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<number | null>(null);
+  const busyOwnerRef = useRef(Symbol('ai-generation-busy'));
   const preStreamRawRef = useRef('');
   const onDraftFinalizeRef = useRef(onDraftFinalize);
   onDraftFinalizeRef.current = onDraftFinalize;
@@ -51,11 +55,18 @@ export function useAiAppStream({
   }, [sessionId]);
 
   useEffect(() => {
-    setAiGenerationBusy(isStreaming || queueState !== null);
+    if (isStreaming || queueState !== null) {
+      claimAiGenerationBusy(busyOwnerRef.current);
+      return;
+    }
+    releaseAiGenerationBusy(busyOwnerRef.current);
   }, [isStreaming, queueState]);
 
   useEffect(() => () => {
-    setAiGenerationBusy(false);
+    // 강제 언마운트 시에만 중단·해제. 백그라운드 최소화는 마운트 유지로 cleanup이 돌지 않는다.
+    abortRef.current?.abort();
+    abortRef.current = null;
+    releaseAiGenerationBusy(busyOwnerRef.current);
   }, []);
 
   useEffect(() => {

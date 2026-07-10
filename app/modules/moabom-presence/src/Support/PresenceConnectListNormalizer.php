@@ -29,21 +29,33 @@ final class PresenceConnectListNormalizer
             ->unique()
             ->values();
 
+        $authenticatedSessionKeys = $authenticated
+            ->pluck('session_key')
+            ->map(fn ($sessionKey) => is_string($sessionKey) ? trim($sessionKey) : '')
+            ->filter(fn (string $sessionKey): bool => $sessionKey !== '')
+            ->unique()
+            ->values();
+
         $guests = $sessions
             ->filter(fn (TenantPresenceSession $session): bool => $session->user_id === null)
-            ->filter(function (TenantPresenceSession $session) use ($authenticatedVisitorIds): bool {
+            ->filter(function (TenantPresenceSession $session) use ($authenticatedSessionKeys, $authenticatedVisitorIds): bool {
                 $visitorId = is_string($session->visitor_id) ? trim($session->visitor_id) : '';
-                if ($visitorId === '') {
-                    return true;
+                if ($visitorId !== '' && $authenticatedVisitorIds->contains($visitorId)) {
+                    return false;
                 }
 
-                return ! $authenticatedVisitorIds->contains($visitorId);
+                $sessionKey = is_string($session->session_key) ? trim($session->session_key) : '';
+                if ($sessionKey !== '' && $authenticatedSessionKeys->contains($sessionKey)) {
+                    return false;
+                }
+
+                return true;
             })
             ->sortByDesc(fn (TenantPresenceSession $session) => $session->last_seen_at)
             ->unique(fn (TenantPresenceSession $session): string => self::guestIdentityKey($session));
 
-        return $guests
-            ->concat($authenticated)
+        return $authenticated
+            ->concat($guests)
             ->sortByDesc(fn (TenantPresenceSession $session) => $session->last_seen_at)
             ->take($limit)
             ->values();

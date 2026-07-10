@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.30] - 2026-07-10
+
+### Changed
+
+- 접속자 guest 표시명을 heartbeat DB에 고정하지 않고, 목록 직렬화·UI 로케일(`presence_guest_fallback`)에서 해석하도록 분리했습니다. (Accept-Language 로 Guest가 고착되던 문제)
+- 로그인 승격은 `visitor_id` 단일 행 heartbeat(`touch=login`) 후 접속자 목록 재조회를 SSOT로 유지합니다.
+
 ## [0.1.29] - 2026-07-03
 
 ### Added

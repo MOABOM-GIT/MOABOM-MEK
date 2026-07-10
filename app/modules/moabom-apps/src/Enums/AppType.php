@@ -12,6 +12,9 @@ enum AppType: string
     /** 일반 웹앱 */
     case General = 'general';
 
+    /** 사용자가 HTML 소스를 직접 붙여넣음 (AI 생성 없음) */
+    case HtmlPaste = 'html_paste';
+
     /** Three.js 3D 캔버스 */
     case ThreeD = '3d';
 
@@ -32,5 +35,21 @@ enum AppType: string
     public static function values(): array
     {
         return array_map(static fn (self $case): string => $case->value, self::cases());
+    }
+
+    /**
+     * AI 스트림/생성 API에 허용되는 유형 (직접 입력·웹사이트 연결 제외).
+     *
+     * @return list<string>
+     */
+    public static function aiGeneratableValues(): array
+    {
+        return array_values(array_filter(
+            self::values(),
+            static fn (string $value): bool => ! in_array($value, [
+                self::HtmlPaste->value,
+                self::WebsiteLink->value,
+            ], true)
+        ));
     }
 }

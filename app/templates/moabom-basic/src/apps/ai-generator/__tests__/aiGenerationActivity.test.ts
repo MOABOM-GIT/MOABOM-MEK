@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  claimAiGenerationBusy,
   isAiGenerationBusy,
+  releaseAiGenerationBusy,
   setAiGenerationBusy,
   subscribeAiGenerationBusy,
 } from 'moabom-ai-generation-activity';
@@ -24,5 +26,20 @@ describe('aiGenerationActivity', () => {
     expect(listener).toHaveBeenCalledTimes(2);
 
     unsubscribe();
+  });
+
+  it('다른 owner의 release는 busy를 해제하지 않는다', () => {
+    setAiGenerationBusy(false);
+    const ownerA = Symbol('a');
+    const ownerB = Symbol('b');
+
+    claimAiGenerationBusy(ownerA);
+    expect(isAiGenerationBusy()).toBe(true);
+
+    releaseAiGenerationBusy(ownerB);
+    expect(isAiGenerationBusy()).toBe(true);
+
+    releaseAiGenerationBusy(ownerA);
+    expect(isAiGenerationBusy()).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import type {
   ShellAppRankingsPayload,
   ShellUserRankingsPayload,
 } from '../shell/moaShellRankingTypes';
+import { getShellAccessToken } from './moabomShellAccess';
 
 const SHELL_RANKINGS_BASE = '/api/modules/moabom-system/public/shell/rankings';
 
@@ -57,10 +58,18 @@ export function shellRankingAvatarGradient(seed: string): string {
   return USER_AVATAR_GRADIENTS[hash] ?? USER_AVATAR_GRADIENTS[0];
 }
 
-async function fetchRankings<T>(url: string): Promise<T> {
+async function fetchRankings<T>(url: string, withAuth = false): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (withAuth) {
+    const token = getShellAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetch(url, {
     credentials: 'same-origin',
-    headers: { Accept: 'application/json' },
+    headers,
   });
 
   if (!response.ok) {
@@ -120,6 +129,7 @@ export async function fetchShellUserRankings(limit = 30): Promise<ShellUserRanki
   userRankingsPromise = (async () => {
     const data = await fetchRankings<ShellUserRankingsPayload>(
       `${SHELL_RANKINGS_BASE}/users?limit=${encodeURIComponent(String(limit))}`,
+      true,
     );
     userRankingsCache = {
       value: data,

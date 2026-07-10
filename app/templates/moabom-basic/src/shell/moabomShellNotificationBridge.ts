@@ -9,9 +9,10 @@ import {
 import { notifyMoabomPresenceFriendsChanged } from './moabomPresenceFriendsSync';
 import { moabomT } from '../i18n/moabomT';
 import { navigateMoabomNotificationUrl } from '../utils/moabomNotificationNavigateUrl';
-import { extractChatSenderUuidFromUrl } from '../utils/moabomChatNotificationNavigate';
+import { extractChatConversationUuidFromUrl, extractChatSenderUuidFromUrl } from '../utils/moabomChatNotificationNavigate';
 import { isMoabomShellActiveChatWithUser } from '../runtime/moabomShellActiveChat';
 import { registerShellNotificationHandler } from './ShellRealtimeStore';
+import { isShellChatConversationMuted } from './moabomShellChatInboxCache';
 
 type NotificationCacheListener = (items: ShellNotificationItem[]) => void;
 
@@ -50,6 +51,23 @@ function prependCachedItem(item: ShellNotificationItem): void {
   notifyCacheListeners();
 }
 
+function shouldSuppressChatNotificationToast(payload: ShellNotificationReceivedPayload): boolean {
+  if (payload.type?.trim() !== 'chat_message') {
+    return false;
+  }
+
+  const data = payload.data;
+  const conversationUuid = (
+    typeof data?.conversation_uuid === 'string' ? data.conversation_uuid.trim() : ''
+  ) || extractChatConversationUuidFromUrl(payload.url) || '';
+
+  if (!conversationUuid) {
+    return false;
+  }
+
+  return isShellChatConversationMuted(conversationUuid);
+}
+
 function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): void {
   const incoming = payloadToItem(payload);
   if (incoming) {
@@ -57,6 +75,10 @@ function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): 
   }
 
   const notificationType = payload.type?.trim() ?? '';
+  if (shouldSuppressChatNotificationToast(payload)) {
+    return;
+  }
+
   const senderUuid = extractChatSenderUuidFromUrl(payload.url);
   if (notificationType === 'chat_message' && senderUuid && isMoabomShellActiveChatWithUser(senderUuid)) {
     return;

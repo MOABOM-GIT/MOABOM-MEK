@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 use Modules\Moabom\Apps\Enums\AppTier;
+use Modules\Moabom\Apps\Enums\AppType;
 use Modules\Moabom\Apps\Enums\GeneratedAppVisibility;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Support\GeneratedAppOwnerResolver;
@@ -24,6 +25,7 @@ class AiAppService
         private readonly GeneratedAppOwnerResolver $ownerResolver,
         private readonly GeneratedAppPurgeService $purgeService,
         private readonly WebsiteLinkIconStorageService $websiteLinkIconStorage,
+        private readonly GeneratedAppVersionService $versionService,
     ) {
     }
 
@@ -322,12 +324,16 @@ PROMPT;
     public function store(int $userId, array $data): GeneratedApp
     {
         $parentAppId = $this->visibleParentAppId($userId, $data['parent_app_id'] ?? null);
-        $tier = AppTier::tryFrom((string) ($data['tier'] ?? AppTier::Standard->value)) ?? AppTier::Standard;
+        $appType = (string) $data['app_type'];
+        // html_paste / website_link 는 v1에서 hosted 미지원 — standard 고정
+        $tier = in_array($appType, [AppType::HtmlPaste->value, AppType::WebsiteLink->value], true)
+            ? AppTier::Standard
+            : (AppTier::tryFrom((string) ($data['tier'] ?? AppTier::Standard->value)) ?? AppTier::Standard);
 
         $app = $this->appRepository->create([
             'user_id' => $userId,
             'title' => $data['title'],
-            'app_type' => $data['app_type'],
+            'app_type' => $appType,
             'tier' => $tier->value,
             'model_id' => $data['model_id'] ?? null,
             'prompt' => $data['prompt'] ?? null,
@@ -342,7 +348,10 @@ PROMPT;
             $app = $this->hostingService->provisionHosted($app);
         }
 
-        return $this->syncWebsiteLinkIcon($app, is_array($data['metadata'] ?? null) ? $data['metadata'] : []);
+        $app = $this->syncWebsiteLinkIcon($app, is_array($data['metadata'] ?? null) ? $data['metadata'] : []);
+        $this->versionService->snapshot($app, GeneratedAppVersionService::SOURCE_SAVE, $userId);
+
+        return $app;
     }
 
     private function visibleParentAppId(int $userId, mixed $parentAppId): ?int
@@ -392,7 +401,7 @@ PROMPT;
      *
      * @return array<int, array<string, mixed>>
      */
-    public function listForUser(int $userId, int $limit = 20): array
+    public function listForUser(int $userId, int $limit = 100): array
     {
         return $this->appRepository->getForUser($userId, $limit)
             ->map(fn (GeneratedApp $app): array => $this->serializeForLibraryList($app, $userId))
@@ -446,13 +455,26 @@ PROMPT;
     /**
      * 홈 셸 라이브러리 1회 조회용 — owned·published 목록을 함께 반환합니다.
      *
-     * @return array{owned: array<int, array<string, mixed>>, shared: array<int, array<string, mixed>>}
+     * @return array{
+     *   owned: array<int, array<string, mixed>>,
+     *   shared: array<int, array<string, mixed>>,
+     *   owned_total: int,
+     *   owned_truncated: bool,
+     *   has_more_owned: bool
+     * }
      */
-    public function libraryForUser(int $userId, int $ownedLimit = 20, int $sharedLimit = 50): array
+    public function libraryForUser(int $userId, int $ownedLimit = 100, int $sharedLimit = 50): array
     {
+        $owned = $this->listForUser($userId, $ownedLimit);
+        $ownedTotal = $this->appRepository->countForUser($userId);
+        $truncated = $ownedTotal > count($owned);
+
         return [
-            'owned' => $this->listForUser($userId, $ownedLimit),
+            'owned' => $owned,
             'shared' => $this->listPublished($sharedLimit, $userId),
+            'owned_total' => $ownedTotal,
+            'owned_truncated' => $truncated,
+            'has_more_owned' => $truncated,
         ];
     }
 
@@ -495,12 +517,17 @@ PROMPT;
             ? $this->visibleParentAppId($userId, $data['parent_app_id'])
             : $app->parent_app_id;
 
+        $nextAppType = (string) ($data['app_type'] ?? $app->app_type);
+        $nextTier = in_array($nextAppType, [AppType::HtmlPaste->value, AppType::WebsiteLink->value], true)
+            ? AppTier::Standard->value
+            : (array_key_exists('tier', $data)
+                ? (AppTier::tryFrom((string) $data['tier']) ?? AppTier::Standard)->value
+                : $app->tier);
+
         $updated = $this->appRepository->update($app, [
             'title' => $data['title'],
-            'app_type' => $data['app_type'],
-            'tier' => array_key_exists('tier', $data)
-                ? (AppTier::tryFrom((string) $data['tier']) ?? AppTier::Standard)->value
-                : $app->tier,
+            'app_type' => $nextAppType,
+            'tier' => $nextTier,
             'model_id' => $data['model_id'] ?? null,
             'prompt' => $data['prompt'] ?? null,
             'html' => $this->htmlService->harden((string) $data['html']),
@@ -521,10 +548,16 @@ PROMPT;
             $updated = $this->hostingService->provisionHosted($updated);
         }
 
-        return $this->syncWebsiteLinkIcon(
+        $updated = $this->syncWebsiteLinkIcon(
             $updated,
             array_key_exists('metadata', $data) && is_array($data['metadata']) ? $data['metadata'] : null,
         );
+
+        if (array_key_exists('html', $data)) {
+            $this->versionService->snapshot($updated, GeneratedAppVersionService::SOURCE_SAVE, $userId);
+        }
+
+        return $updated;
     }
 
     public function setVisibilityForUser(int $userId, int $id, GeneratedAppVisibility $visibility): ?GeneratedApp

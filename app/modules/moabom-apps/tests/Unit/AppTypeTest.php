@@ -7,11 +7,19 @@ use Modules\Moabom\Apps\Tests\ModuleTestCase;
 
 class AppTypeTest extends ModuleTestCase
 {
-    /**
-     * 허용 값 목록이 기존 검증 규칙과 정확히 동일해야 한다(동작 보존).
-     */
-    public function test_values_match_existing_allowed_set(): void
+    public function test_values_include_html_paste_and_website_link(): void
     {
-        $this->assertSame(['general', '3d', 'game', 'dataviz'], AppType::values());
+        $this->assertSame(
+            ['general', 'html_paste', '3d', 'game', 'dataviz', 'website_link'],
+            AppType::values()
+        );
+    }
+
+    public function test_ai_generatable_values_exclude_paste_and_website_link(): void
+    {
+        $this->assertSame(
+            ['general', '3d', 'game', 'dataviz'],
+            AppType::aiGeneratableValues()
+        );
     }
 }

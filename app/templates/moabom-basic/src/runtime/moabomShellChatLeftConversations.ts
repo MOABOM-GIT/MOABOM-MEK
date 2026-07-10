@@ -1,4 +1,4 @@
-/** 내가 나간(목록 삭제) 메시지방 — WS 이벤트로 목록이 복원되지 않도록 SSOT */
+/** 세션 내 WS·REST 레이스 동안 나간 방 재유입 방지. 목록 SSOT는 서버 멤버십 soft-delete. */
 const leftConversationUuids = new Set<string>();
 
 export function markConversationLeft(conversationUuid: string): void {

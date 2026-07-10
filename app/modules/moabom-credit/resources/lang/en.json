@@ -11,7 +11,7 @@
     "settings": {
       "title": "Credit Management",
       "description": "Manage credit reward policies and user balances.",
-      "page_intro": "Reward events, daily limits, and ad settings apply to My Page credits and attendance checks.",
+      "page_intro": "Reward events, daily limits, activity level thresholds, and ad settings apply to My Page credits, attendance, and shell rankings. Review each section before saving.",
       "read_only_message": "You do not have permission to update credit settings. This page is read-only.",
       "save_error": "An error occurred while saving credit settings.",
       "validation_error": "Please check the entered values.",
@@ -21,7 +21,9 @@
         "limits": "Daily Limits",
         "limits_description": "Daily limits to prevent excessive credit farming.",
         "ads": "Ad Integration Preparation",
-        "ads_description": "Settings for switching attendance rewards to Google ad-based rewards later."
+        "ads_description": "Settings for switching attendance rewards to Google ad-based rewards later.",
+        "levels": "Activity Level Thresholds",
+        "levels_description": "Start points for 10 levels based on cumulative ranking_points. Tier names come from UI i18n."
       },
       "fields": {
         "enabled": "Enabled",
@@ -39,11 +41,22 @@
         "app_review_write_amount": "App review write reward",
         "attendance_requires_ad": "Require ad before attendance reward",
         "attendance_ad_provider": "Ad provider",
-        "attendance_ad_reward_multiplier": "Ad reward multiplier"
+        "attendance_ad_reward_multiplier": "Ad reward multiplier",
+        "level_threshold_iron": "Lv.1 Iron start",
+        "level_threshold_bronze": "Lv.2 Bronze start",
+        "level_threshold_silver": "Lv.3 Silver start",
+        "level_threshold_gold": "Lv.4 Gold start",
+        "level_threshold_platinum": "Lv.5 Platinum start",
+        "level_threshold_emerald": "Lv.6 Emerald start",
+        "level_threshold_diamond": "Lv.7 Diamond start",
+        "level_threshold_master": "Lv.8 Master start",
+        "level_threshold_grandmaster": "Lv.9 Grandmaster start",
+        "level_threshold_challenger": "Lv.10 Challenger start"
       },
       "hints": {
         "daily_earn_limit": "Use 0 if you want to treat the limit as unlimited.",
-        "ads": "The My Page button rewards immediately for now. Enable this later when the ad viewing flow is connected."
+        "ads": "The My Page button rewards immediately for now. Enable this later when the ad viewing flow is connected.",
+        "levels": "Lv.1 is fixed at 0. Remaining values must be non-decreasing integers shared by rankings, EXP bar, and badges."
       }
     },
     "user_credits": {
@@ -57,7 +70,8 @@
         "email": "Email",
         "balance": "Balance",
         "ranking_points": "Ranking points",
-        "actions": "Actions"
+        "actions": "Actions",
+        "level": "Level"
       },
       "adjust": "Adjust credits",
       "delete": "Delete data",

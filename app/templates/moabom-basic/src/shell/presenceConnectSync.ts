@@ -31,10 +31,43 @@ export function shouldRefreshConnectListAfterHeartbeat(result: {
   return result.accepted !== false && !!result.session_key;
 }
 
+export function resolvePresenceConnectRowKey(user: PresenceOnlineUser): string {
+  const userUuid = user.user_uuid?.trim() ?? '';
+  if (userUuid) {
+    return `user:${userUuid}`;
+  }
+  const visitorId = user.visitor_id?.trim() ?? '';
+  if (visitorId) {
+    return `visitor:${visitorId}`;
+  }
+  return `session:${user.session_key}`;
+}
+
 /**
  * 접속자 API·revision 이벤트 후 최종 방어 — guest는 visitor_id(없으면 session_key), 회원은 user_uuid 기준 1행.
  */
-export function normalizePresenceConnectList(users: PresenceOnlineUser[]): PresenceOnlineUser[] {
+function promoteViewerToConnectListTop(
+  users: PresenceOnlineUser[],
+  viewerUuid?: string | null,
+): PresenceOnlineUser[] {
+  const trimmed = viewerUuid?.trim() ?? '';
+  if (trimmed === '') {
+    return users;
+  }
+
+  const index = users.findIndex(user => user.user_uuid === trimmed);
+  if (index <= 0) {
+    return users;
+  }
+
+  const self = users[index];
+  return [self, ...users.slice(0, index), ...users.slice(index + 1)];
+}
+
+export function normalizePresenceConnectList(
+  users: PresenceOnlineUser[],
+  viewerUuid?: string | null,
+): PresenceOnlineUser[] {
   const guests = new Map<string, PresenceOnlineUser>();
   const authenticated = new Map<string, PresenceOnlineUser>();
 
@@ -52,6 +85,11 @@ export function normalizePresenceConnectList(users: PresenceOnlineUser[]): Prese
       .map(user => user.visitor_id?.trim() ?? '')
       .filter(visitorId => visitorId !== ''),
   );
+  const authenticatedSessionKeys = new Set(
+    [...authenticated.values()]
+      .map(user => user.session_key?.trim() ?? '')
+      .filter(sessionKey => sessionKey !== ''),
+  );
 
   for (const user of users) {
     if (user.user_uuid) {
@@ -63,6 +101,11 @@ export function normalizePresenceConnectList(users: PresenceOnlineUser[]): Prese
       continue;
     }
 
+    const guestSessionKey = user.session_key?.trim() ?? '';
+    if (guestSessionKey !== '' && authenticatedSessionKeys.has(guestSessionKey)) {
+      continue;
+    }
+
     const guestKey = guestVisitorId || user.session_key;
     const existing = guests.get(guestKey);
     if (!existing || comparePresenceRecency(user, existing) > 0) {
@@ -70,8 +113,10 @@ export function normalizePresenceConnectList(users: PresenceOnlineUser[]): Prese
     }
   }
 
-  return [...guests.values(), ...authenticated.values()]
+  const sorted = [...authenticated.values(), ...guests.values()]
     .sort((a, b) => comparePresenceRecency(b, a));
+
+  return promoteViewerToConnectListTop(sorted, viewerUuid);
 }
 
 /**
@@ -98,7 +143,7 @@ export function optimisticPromoteSelfInConnectList(
     return true;
   });
 
-  return normalizePresenceConnectList([selfRow, ...withoutShadows]);
+  return normalizePresenceConnectList([selfRow, ...withoutShadows], selfUuid);
 }
 
 /**

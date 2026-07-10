@@ -6,7 +6,6 @@ namespace Modules\Moabom\Apps\Services;
 
 use App\Contracts\Extension\StorageInterface;
 use Illuminate\Support\Facades\Log;
-use Modules\Moabom\Apps\Enums\AppTier;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -109,10 +108,7 @@ class WebsiteLinkIconStorageService
             return;
         }
 
-        if (AppTier::tryFrom((string) ($app->tier ?? AppTier::Standard->value)) === AppTier::Hosted) {
-            return;
-        }
-
+        // website_link 는 standard 고정 — 레거시 hosted 조합도 아이콘 정리
         $this->deleteStoredIcon((int) $app->id);
     }
 

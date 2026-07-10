@@ -1,9 +1,29 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AiGenerationCodePanel } from '../AiGenerationCodePanel';
 
 const t = (key: string) => key;
+
+vi.mock('../AiHtmlCodeMirrorEditor', () => ({
+  AiHtmlCodeMirrorEditor: ({
+    value,
+    onChange,
+    onBlurCommit,
+    ariaLabel,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+    onBlurCommit?: () => void;
+    ariaLabel: string;
+  }) => (
+    <textarea
+      aria-label={ariaLabel}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={() => onBlurCommit?.()}
+    />
+  ),
+}));
 
 describe('AiGenerationCodePanel', () => {
   it('스트리밍 중에는 읽기 전용 미리보기를 표시한다', () => {
@@ -24,8 +44,7 @@ describe('AiGenerationCodePanel', () => {
     expect(screen.getByText('<div>live</div>')).toBeInTheDocument();
   });
 
-  it('생성 완료 후에는 textarea로 코드를 편집할 수 있다', async () => {
-    const user = userEvent.setup();
+  it('생성 완료 후에는 에디터로 코드를 편집할 수 있다', async () => {
     const onCodeChange = vi.fn();
 
     render(
@@ -40,17 +59,32 @@ describe('AiGenerationCodePanel', () => {
       />,
     );
 
-    const textarea = screen.getByLabelText('moa_apps_ai.stream_title_editable');
-    expect(textarea).toBeInTheDocument();
-    await user.clear(textarea);
-    await user.type(textarea, 'x');
-
-    expect(onCodeChange).toHaveBeenCalled();
-    expect(onCodeChange.mock.calls.at(-1)?.[0]).toContain('x');
+    const editor = screen.getByLabelText('moa_apps_ai.stream_title_editable');
+    expect(editor).toBeInTheDocument();
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    (editor as HTMLTextAreaElement).value = 'x';
+    editor.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
-  it('blur 시 onCodeCommit을 호출한다', async () => {
-    const user = userEvent.setup();
+  it('pasteMode에서는 빈 코드도 에디터를 표시한다', () => {
+    render(
+      <AiGenerationCodePanel
+        isStreaming={false}
+        codePreview=""
+        editableCode=""
+        completeness="empty"
+        onCodeChange={vi.fn()}
+        codePanelRef={{ current: null }}
+        t={t}
+        pasteMode
+      />,
+    );
+
+    expect(screen.getByText('moa_apps_ai.stream_title_paste')).toBeInTheDocument();
+    expect(screen.getByLabelText('moa_apps_ai.stream_title_paste')).toBeInTheDocument();
+  });
+
+  it('blur 시 onCodeCommit을 호출한다', () => {
     const onCodeCommit = vi.fn();
 
     render(
@@ -66,10 +100,30 @@ describe('AiGenerationCodePanel', () => {
       />,
     );
 
-    const textarea = screen.getByLabelText('moa_apps_ai.stream_title_editable');
-    await user.click(textarea);
-    await user.tab();
+    const editor = screen.getByLabelText('moa_apps_ai.stream_title_editable');
+    editor.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    expect(onCodeCommit).toHaveBeenCalled();
+  });
 
+  it('휴지통 클릭 시 코드를 비운다', () => {
+    const onCodeChange = vi.fn();
+    const onCodeCommit = vi.fn();
+
+    render(
+      <AiGenerationCodePanel
+        isStreaming={false}
+        codePreview="<html>ok</html>"
+        editableCode="<html>ok</html>"
+        completeness="complete"
+        onCodeChange={onCodeChange}
+        onCodeCommit={onCodeCommit}
+        codePanelRef={{ current: null }}
+        t={t}
+      />,
+    );
+
+    screen.getByRole('button', { name: 'moa_apps_ai.clear_code' }).click();
+    expect(onCodeChange).toHaveBeenCalledWith('');
     expect(onCodeCommit).toHaveBeenCalled();
   });
 });

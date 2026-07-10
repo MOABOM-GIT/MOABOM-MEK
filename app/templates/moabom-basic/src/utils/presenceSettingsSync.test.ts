@@ -3,6 +3,7 @@ import type { OwnPresenceState } from '../api/moabomPresenceApi';
 import {
   buildOwnPresenceFromSettings,
   patchOnlineUsersSelfPresence,
+  resolvePresenceConnectDisplayName,
   resolvePresenceListStatusLine,
   resolvePresenceListUserStatus,
   resolvePresenceSubtitleForMode,
@@ -125,5 +126,23 @@ describe('presenceSettingsSync', () => {
       'me',
       true,
     )).toBe('낙관적 부제');
+  });
+
+  it('resolvePresenceConnectDisplayName 는 guest 를 UI 로케일 fallback 으로 표시한다', () => {
+    const t = ((key: string) => (
+      key === 'moa_shell.right.presence_guest_fallback' ? '방문자' : key
+    )) as MoabomTranslateFn;
+
+    expect(resolvePresenceConnectDisplayName({
+      user_uuid: null,
+      display_name: 'Guest',
+      is_authenticated: false,
+    }, t)).toBe('방문자');
+
+    expect(resolvePresenceConnectDisplayName({
+      user_uuid: 'u1',
+      display_name: '나',
+      is_authenticated: true,
+    }, t)).toBe('나');
   });
 });

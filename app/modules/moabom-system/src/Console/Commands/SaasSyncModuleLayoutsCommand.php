@@ -142,8 +142,14 @@ final class SaasSyncModuleLayoutsCommand extends Command
             ));
 
             if ($label === 'platform') {
-                $platformLayoutReconciler->repairModuleLayoutsFromFilesystem($moduleId);
-                if (! $this->assertPlatformModuleLayoutsSynced($moduleId, $label, $platformLayoutReconciler)) {
+                try {
+                    $platformLayoutReconciler->repairModuleLayoutsFromFilesystem($moduleId);
+                    if (! $this->assertPlatformModuleLayoutsSynced($moduleId, $label, $platformLayoutReconciler)) {
+                        return false;
+                    }
+                } catch (\Throwable $e) {
+                    $this->error("  [{$label}] reconcile 예외: ".$e->getMessage());
+
                     return false;
                 }
             }

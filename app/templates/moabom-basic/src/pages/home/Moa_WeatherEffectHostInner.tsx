@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 
 import { Canvas } from '../../components/basic/Canvas';
 import type { MoabomSystemDefaults } from '../../types/moabomSystem';
@@ -14,6 +14,7 @@ export interface Moa_WeatherEffectHostInnerProps {
  * 날씨 Canvas + `useWeatherEffectRuntime` — dynamic import 대상(무거운 청크).
  *
  * 호스트(`Moa_WeatherEffectHost`)가 effective.weather·animation 이 모두 true 일 때만 마운트된다.
+ * canvas 버퍼·DPR transform 동기화는 런타임 훅(`syncSurface`)이 담당한다.
  */
 export const Moa_WeatherEffectHostInner: React.FC<Moa_WeatherEffectHostInnerProps> = ({
   effective,
@@ -26,19 +27,6 @@ export const Moa_WeatherEffectHostInner: React.FC<Moa_WeatherEffectHostInnerProp
     effective,
     systemDefaults,
   });
-
-  useEffect(() => {
-    const resizeWeatherCanvas = (): void => {
-      const canvas = weatherCanvasRef.current;
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    resizeWeatherCanvas();
-    window.addEventListener('resize', resizeWeatherCanvas);
-    return () => window.removeEventListener('resize', resizeWeatherCanvas);
-  }, []);
 
   return (
     <Canvas

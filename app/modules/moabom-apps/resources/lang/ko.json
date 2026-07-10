@@ -34,6 +34,7 @@
       "tier_standard": "일반",
       "tier_hosted": "고급",
       "app_type_general": "일반앱",
+      "app_type_html_paste": "직접 입력",
       "app_type_3d": "3D",
       "app_type_game": "인터렉션",
       "app_type_dataviz": "차트",

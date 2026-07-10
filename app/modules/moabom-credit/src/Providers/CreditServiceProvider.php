@@ -6,6 +6,7 @@ use App\Extension\BaseModuleServiceProvider;
 use Modules\Moabom\Credit\Contracts\CreditRepositoryInterface;
 use Modules\Moabom\Credit\Contracts\CreditSettingsServiceInterface;
 use Modules\Moabom\Credit\Repositories\CreditRepository;
+use Modules\Moabom\Credit\Services\CreditLevelService;
 use Modules\Moabom\Credit\Services\CreditSettingsService;
 
 class CreditServiceProvider extends BaseModuleServiceProvider
@@ -29,5 +30,6 @@ class CreditServiceProvider extends BaseModuleServiceProvider
         parent::register();
 
         $this->app->bind(CreditSettingsServiceInterface::class, CreditSettingsService::class);
+        $this->app->singleton(CreditLevelService::class);
     }
 }

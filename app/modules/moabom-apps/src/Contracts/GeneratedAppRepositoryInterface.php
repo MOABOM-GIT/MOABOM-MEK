@@ -20,7 +20,12 @@ interface GeneratedAppRepositoryInterface
      *
      * @return Collection<int, GeneratedApp>
      */
-    public function getForUser(int $userId, int $limit = 20): Collection;
+    public function getForUser(int $userId, int $limit = 100): Collection;
+
+    /**
+     * 사용자 소유 생성 앱 총 개수.
+     */
+    public function countForUser(int $userId): int;
 
     /**
      * 등록·공개된 생성 앱 목록을 조회합니다.

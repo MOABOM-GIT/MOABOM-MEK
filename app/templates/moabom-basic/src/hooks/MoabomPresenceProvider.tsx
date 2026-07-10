@@ -306,7 +306,7 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       );
       noteShellPresenceRevision(payload.revision);
       setOnlineUsers(applyPendingSelfPresenceToOnlineUsers(
-        normalizePresenceConnectList(payload.users),
+        normalizePresenceConnectList(payload.users, getShellAuthUserUuid()),
         getShellAuthUserUuid(),
         ownPresenceRef.current,
         localPendingSettingsRef.current,
@@ -500,17 +500,18 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
 
     if (isLoggedIn) {
       selfUserUuidRef.current = getShellAuthUserUuid();
+      // 즉시 UI: AuthManager uuid 가 있으면 guest→회원 1행으로 교체(서버 확정 전 낙관적).
       setOnlineUsers(prev => applyOptimisticLoginToOnlineUsers(prev, ownPresenceRef.current));
       deferShellSecondaryWork(() => {
         void (async () => {
+          // SSOT: visitor_id 행을 회원으로 upsert 한 뒤, 같은 경로에서 목록을 다시 읽는다.
           await runHeartbeat({
             touch: 'login',
             skipSummaryRefresh: true,
-            refreshConnectList: false,
+            refreshConnectList: true,
           });
           await Promise.all([
             refreshSummary(),
-            refreshOnline(),
             refreshFriends(),
             hydrateOwnSettings(),
           ]);

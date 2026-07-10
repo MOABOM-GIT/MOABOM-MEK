@@ -1,5 +1,11 @@
 import { buildWebsiteLinkGradientFromPointColor } from '../generated/generatedAppIconFromTitle';
 
+/** 웹사이트 연결 앱 실행 방식 — 셸 윈도우 iframe / 브라우저 새창 */
+export type WebsiteLinkLaunchMode = 'window' | 'new_window';
+
+export const WEBSITE_LINK_LAUNCH_MODE_WINDOW: WebsiteLinkLaunchMode = 'window';
+export const WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW: WebsiteLinkLaunchMode = 'new_window';
+
 export function normalizeWebsiteUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   if (!trimmed) {
@@ -46,6 +52,10 @@ export function isWebsiteLinkAppType(appType: string | undefined | null): boolea
   return appType === 'website_link';
 }
 
+export function isHtmlPasteAppType(appType: string | undefined | null): boolean {
+  return appType === 'html_paste';
+}
+
 export const WEBSITE_LINK_APP_GRADIENT = 'linear-gradient(135deg,#f8fafc,#e2e8f0)';
 
 export function readWebsiteUrlFromMetadata(metadata: Record<string, unknown> | undefined | null): string {
@@ -55,6 +65,28 @@ export function readWebsiteUrlFromMetadata(metadata: Record<string, unknown> | u
 
   const websiteUrl = metadata.website_url;
   return typeof websiteUrl === 'string' ? websiteUrl.trim() : '';
+}
+
+export function normalizeWebsiteLinkLaunchMode(value: unknown): WebsiteLinkLaunchMode {
+  return value === WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW
+    ? WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW
+    : WEBSITE_LINK_LAUNCH_MODE_WINDOW;
+}
+
+export function readWebsiteLinkLaunchModeFromMetadata(
+  metadata: Record<string, unknown> | undefined | null,
+): WebsiteLinkLaunchMode {
+  if (!metadata) {
+    return WEBSITE_LINK_LAUNCH_MODE_WINDOW;
+  }
+
+  return normalizeWebsiteLinkLaunchMode(metadata.launch_mode);
+}
+
+export function isWebsiteLinkNewWindowLaunch(
+  metadata: Record<string, unknown> | undefined | null,
+): boolean {
+  return readWebsiteLinkLaunchModeFromMetadata(metadata) === WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW;
 }
 
 export function readWebsiteIconFromMetadata(metadata: Record<string, unknown> | undefined | null): string {
@@ -113,11 +145,13 @@ export function buildWebsiteLinkSaveMetadata(input: {
   resolvedIconUrl: string;
   themeColor: string;
   iconFromTitle: boolean;
+  launchMode?: WebsiteLinkLaunchMode;
   appId?: number | null;
 }): Record<string, unknown> {
   const metadata: Record<string, unknown> = {
     website_url: input.websiteUrl,
     icon_from_title: input.iconFromTitle,
+    launch_mode: normalizeWebsiteLinkLaunchMode(input.launchMode),
   };
 
   const themeColor = input.themeColor.trim();
@@ -184,14 +218,15 @@ export function isWebsiteTitleIconFromMetadata(metadata: Record<string, unknown>
   return metadata.icon_from_title === true;
 }
 
+/**
+ * 웹사이트 연결 타일·타이틀바 그라데이션 SSOT.
+ * 파비콘 로드 성공/실패와 무관 — metadata 의도(`icon_from_title`)만 본다.
+ * @param _hasIconImage 레거시 호출 호환(무시). 이미지 유무로 톤을 바꾸지 않는다.
+ */
 export function resolveWebsiteLinkAppGradient(
   metadata: Record<string, unknown> | undefined | null,
-  hasIconImage: boolean,
+  _hasIconImage = false,
 ): string {
-  if (hasIconImage) {
-    return WEBSITE_LINK_APP_GRADIENT;
-  }
-
   if (isWebsiteTitleIconFromMetadata(metadata)) {
     return buildWebsiteLinkGradientFromPointColor(readWebsitePointColorFromMetadata(metadata));
   }

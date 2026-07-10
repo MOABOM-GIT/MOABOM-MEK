@@ -77,6 +77,19 @@ class PresenceConnectListNormalizerTest extends TestCase
         $this->assertSame(10, $result->first()?->user_id);
     }
 
+    public function test_hides_guest_when_authenticated_session_key_exists(): void
+    {
+        $sessions = new Collection([
+            $this->makeSession('shared-key', null, now(), 'visitor-1'),
+            $this->makeSession('shared-key', 10, now()->subSeconds(5)),
+        ]);
+
+        $result = PresenceConnectListNormalizer::dedupe($sessions, 10);
+
+        $this->assertCount(1, $result);
+        $this->assertSame(10, $result->first()?->user_id);
+    }
+
     private function makeSession(
         string $sessionKey,
         ?int $userId,

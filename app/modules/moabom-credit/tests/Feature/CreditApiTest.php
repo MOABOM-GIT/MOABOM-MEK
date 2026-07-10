@@ -63,6 +63,23 @@ class CreditApiTest extends ModuleTestCase
             ->assertJsonPath('data.transactions.0.description', '테스트 사용');
     }
 
+    public function test_credits_api_limit_zero_skips_ledger_and_returns_level(): void
+    {
+        $user = User::factory()->create();
+        $creditService = app(CreditService::class);
+        $creditService->recordTransaction($user, CreditTransactionType::Earn, 120, '셸 레벨용 적립');
+
+        $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/modules/moabom-credit/user/credits?limit=0')
+            ->assertStatus(200)
+            ->assertJsonPath('data.balance', 120)
+            ->assertJsonPath('data.ranking_points', 120)
+            ->assertJsonPath('data.level.points', 120)
+            ->assertJsonPath('data.transactions', [])
+            ->assertJsonPath('data.summary.transaction_count', 0)
+            ->assertJsonPath('data.pagination.limit', 0);
+    }
+
     public function test_attendance_api_rewards_credit_once_per_day(): void
     {
         $user = User::factory()->create();

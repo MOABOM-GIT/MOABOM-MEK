@@ -3,6 +3,7 @@ import {
   type GenerationCompleteness,
   stripMarkdownHtmlFence,
 } from './aiGenerationDraft';
+import { stripPreviewInspectorBridge } from './inspector/previewInspectorBridge';
 
 export interface PreparedGeneratedAppHtml {
   completeness: GenerationCompleteness;
@@ -24,11 +25,12 @@ export function normalizeEditorHtmlInput(input: string): string {
   const withoutBom = input.replace(/^\uFEFF/, '');
   const normalizedLines = withoutBom.replace(/\r\n?/g, '\n').replace(/\0/g, '');
 
-  return stripMarkdownHtmlFence(normalizedLines).trim();
+  return stripPreviewInspectorBridge(stripMarkdownHtmlFence(normalizedLines).trim());
 }
 
 /**
  * 미리보기 iframe · DB 저장 · 편집기 커밋이 공유하는 단일 준비 파이프라인.
+ * Inspector 브릿지는 미리보기 전용 — 여기서는 항상 제거한다.
  */
 export function prepareGeneratedAppHtmlForPersist(input: string): PreparedGeneratedAppHtml {
   const normalized = normalizeEditorHtmlInput(input);
@@ -36,7 +38,7 @@ export function prepareGeneratedAppHtmlForPersist(input: string): PreparedGenera
 
   return {
     completeness: view.completeness,
-    html: view.saveHtml,
+    html: stripPreviewInspectorBridge(view.saveHtml),
     canSave: view.canSave,
     canContinue: view.canContinue,
   };

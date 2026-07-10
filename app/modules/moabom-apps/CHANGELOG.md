@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.5.13] - 2026-07-09
+
+### Changed
+
+- Hosted 소유자 데이터 콘솔 `table_key` 입력을 허용 문자로 검증합니다.
+
+## [0.5.12] - 2026-07-09
+
+### Added
+
+- 생성앱 HTML 리비전(타임머신): `moabom_generated_app_revisions`, `GeneratedAppVersionService`, owner API.
+- Hosted 소유자 데이터 콘솔 API (`data-tables` / `data/{table}` / export) — preview_token 경로와 분리.
+- 서빙 HTML에 셸 네이티브 브릿지 allowlist 주입 (`shell-toast`, `shell-open-app`).
+- 프리미엄 패키지 경계 SSOT: `docs/GENERATED-APP-PREMIUM-ARCHITECTURE.md`.
+
+### Changed
+
+- `AiAppService` store/update 시 HTML 스냅샷 자동 기록.
+- 앱 purge 시 리비전 행도 삭제.
+
+## [0.5.11] - 2026-07-09
+
+### Changed
+
+- 홈 셸 생성앱 라이브러리 owned 기본 한도를 100으로 올리고, `owned_total`·`has_more_owned` 메타를 함께 반환합니다.
+- 웹사이트 연결 앱 아이콘 purge는 `app_type=website_link`만 기준으로 수행합니다(레거시 hosted 조합 잔존 아이콘 정리).
+- 공개 프로필 자주 쓰는 앱 목록에 생성앱 `app_type`·`metadata`·`icon_url`을 반영합니다.
+
+## [0.5.10] - 2026-07-09
+
+### Added
+
+- AI 앱 유형 `html_paste`(직접 입력 HTML) — AI 스트림 없이 HTML을 붙여 저장할 수 있습니다. v1에서는 데이터 저장(hosted)을 standard로 고정합니다.
+
+### Changed
+
+- AI 생성/스트림 요청은 `html_paste`·`website_link`를 허용하지 않습니다.
+
 ## [0.5.9] - 2026-07-03
 
 ### Fixed

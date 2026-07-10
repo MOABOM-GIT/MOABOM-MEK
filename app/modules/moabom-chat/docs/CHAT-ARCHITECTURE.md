@@ -22,7 +22,7 @@
 | R10 | 차단·eligibility | 0 | ✅ |
 | R11 | 타이핑 인디케이터 | 3 | ✅ `conversation.typing` |
 | R12 | 메시지 삭제 | 3 | ✅ soft delete + `message.deleted` |
-| R13 | 대화 mute | 3 | ✅ `muted_until` API |
+| R13 | 대화 mute | 3 | ✅ `muted_until` (미지정 시 10년·사실상 무기한) |
 | R14 | 탭 백그라운드 OS 알림 | 4 | ✅ Web Notification API |
 | R15 | 앱 종료 FCM | 4+ | ⏳ 향후 |
 | R16 | Reverb 멀티 인스턴스 | 2 | ✅ VM `realtime.mek360.com` + Redis scaling |
@@ -76,7 +76,17 @@ Backend (moabom-chat)
 | Method | Path | 용도 |
 |--------|------|------|
 | GET | `conversations` | 목록 |
-| DELETE | `conversations/{uuid}` | 목록에서 삭제 (본인 멤버십 해제) |
+| DELETE | `conversations/{uuid}` | 목록에서 삭제 (본인 멤버십 soft-delete) |
+| POST | `conversations` | 대화 시작·재개 (direct 존재 시 trashed 멤버 복구) |
+
+### 대화 나가기·재개 (DM SSOT)
+
+| 동작 | 서버 | 클라이언트 |
+|------|------|-----------|
+| 목록 삭제 | `conversation_members` soft-delete — 목록 API 제외 | `markConversationLeft` 는 동일 세션 WS 레이스 필터만 |
+| 프로필·메시지 탭 재연결 | `POST conversations` 가 direct 매칭 후 본인 멤버 복구 | `startWithUsers` + `clearConversationLeft` |
+| 상대에게 | `member.left` 인박스 이벤트·`has_left` 표시 | 삭제 후 auto-start 차단 없음 (명시적 재개 허용) |
+
 | POST | `conversations/{uuid}/read` | 읽음 |
 | POST | `conversations/{uuid}/typing` | 타이핑 |
 | POST/DELETE | `conversations/{uuid}/mute` | 알림 mute |

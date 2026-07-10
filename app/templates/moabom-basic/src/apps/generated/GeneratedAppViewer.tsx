@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type StoredGeneratedApp } from '../../api/moabomAppsApi';
-import { loadVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
+import { loadVisibleGeneratedAppSession, invalidateVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
 import { pickGeneratedAppDisplayTitle } from './resolveGeneratedAppDisplayTitle';
 import { useMoabomShellT } from 'moabom-shell-i18n';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
@@ -8,17 +8,23 @@ import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
-import {
-  type LiquidGlassBackdropTone,
-  liquidGlassBackdropClassName,
-  resolveLiquidGlassBackdropToneFromHtml,
-} from '../../components/composite/liquidGlassBackdropTone';
+import { liquidGlassOverlayClass, MOA_LIQUID_GLASS_CHIP_CLASS } from './liquidGlassOverlay';
+import { useIframeBackdropTone } from './useIframeBackdropTone';
 import { isShellAuthMember, useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { APP_SHELL_BODY_CLASS, APP_SHELL_DESC_CLASS, APP_SHELL_PANEL_BODY_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 import { resolveGeneratedAppFrameUrl, generatedAppFrameSandbox } from './generatedAppPreviewUrl';
-import { handleMoabomAppFileDownloadMessage } from './generatedAppIframeBridge';
-import { isWebsiteLinkAppType } from '../ai-generator/websiteLinkApp';
+import {
+  handleMoabomAppFileDownloadMessage,
+  handleMoabomAppShellBridgeMessage,
+} from './generatedAppIframeBridge';
+import {
+  isWebsiteLinkAppType,
+  isWebsiteLinkNewWindowLaunch,
+} from '../ai-generator/websiteLinkApp';
 import { useGeneratedAppToolbarDrag } from './useGeneratedAppToolbarDrag';
+import { GeneratedAppVersionHistoryPanel } from './versionHistory/GeneratedAppVersionHistoryPanel';
+import { GeneratedAppHostedDataConsole } from './hostedDataConsole/GeneratedAppHostedDataConsole';
+import { pushInfoToast, pushWarningToast, showAppEditToast } from '../../runtime/moaShellToasts';
 
 // 멈춤 감지 워치독 — 앱 메인 스레드가 막히면 회신(pong)이 끊긴다.
 // Origin-Agent-Cluster 로 iframe 이 독립 이벤트 루프를 가지므로, 부모 타이머는
@@ -61,18 +67,22 @@ export function GeneratedAppViewer({
   const [isLoading, setIsLoading] = useState(true);
   const [isFrameReady, setIsFrameReady] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [probedTone, setProbedTone] = useState<LiquidGlassBackdropTone | null>(null);
   const [frozen, setFrozen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [externalWindowBlocked, setExternalWindowBlocked] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [dataConsoleOpen, setDataConsoleOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastPongRef = useRef(0);
   const autoReloadCountRef = useRef(0);
   const frameReadyFallbackRef = useRef<number | null>(null);
+  const externalWindowRef = useRef<Window | null>(null);
   const {
     toolbarStyle,
     isDragging,
+    handleClassName: ownerDragHandleClass,
     resetPosition,
     ownerPointerHandlers,
     shouldSuppressOwnerClick,
@@ -95,16 +105,39 @@ export function GeneratedAppViewer({
     });
   }, [clearFrameReadyFallback]);
 
+  const getOwnerProbeAnchor = useCallback(
+    () => toolbarRef.current?.querySelector<HTMLElement>('.generated-app-owner-button') ?? null,
+    [],
+  );
+
+  const handleProbedTone = useCallback(() => {
+    markFrameReady();
+  }, [markFrameReady]);
+
+  const { tone: liquidGlassTone, requestBackdropProbe } = useIframeBackdropTone({
+    iframeRef,
+    enabled: Boolean(frameUrl),
+    staticHtml: app?.html ?? null,
+    isDragging,
+    contentKey: frameUrl,
+    getAnchorElement: getOwnerProbeAnchor,
+    fallbackCorner: 'bottom-left',
+    onProbedTone: handleProbedTone,
+  });
+
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setIsFrameReady(false);
     setError('');
     setIsMenuOpen(false);
-    setProbedTone(null);
     setFrozen(false);
     setReloadToken(0);
+    setExternalWindowBlocked(false);
+    setHistoryOpen(false);
+    setDataConsoleOpen(false);
     autoReloadCountRef.current = 0;
+    externalWindowRef.current = null;
     resetPosition();
     setApp(null);
     setFrameUrl(null);
@@ -124,6 +157,13 @@ export function GeneratedAppViewer({
         setTitle(resolvedTitle);
         onResolvedTitle?.(resolvedTitle);
         setFrameUrl(resolveGeneratedAppFrameUrl(loaded));
+        if (
+          isWebsiteLinkAppType(loaded.app_type)
+          && isWebsiteLinkNewWindowLaunch(loaded.metadata as Record<string, unknown> | undefined)
+        ) {
+          // 아이콘 클릭 시 openApp 이 이미 새창을 연다. 뷰어는 플레이스홀더만 표시.
+          setIsFrameReady(true);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t('moa_apps_ai.viewer_error'));
@@ -150,7 +190,7 @@ export function GeneratedAppViewer({
     }
   }, [isDragging]);
 
-  // iframe 내부 프로브가 회신한 배경 톤 수신 (cross-origin 안전: 톤 문자열만 신뢰).
+  // iframe 브릿지 메시지: heartbeat-pong, file-download, shell bridge.
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       // 자기 iframe 이 보낸 톤만 수용 — 여러 앱 창이 열려도 창별로 독립 동작한다.
@@ -174,57 +214,65 @@ export function GeneratedAppViewer({
         }
         return;
       }
-      if (data.type !== 'backdrop-tone') {
+      if (handleMoabomAppShellBridgeMessage(data, {
+        onToast: (message, severity) => {
+          if (severity === 'success') {
+            showAppEditToast('success', message);
+          } else if (severity === 'warning' || severity === 'error') {
+            pushWarningToast(message);
+          } else {
+            pushInfoToast(message);
+          }
+        },
+        onOpenApp: (appId) => {
+          window.dispatchEvent(new CustomEvent('moabom-shell-open-app', { detail: { appId } }));
+        },
+      })) {
         return;
-      }
-      markFrameReady();
-      if (data.tone === 'light' || data.tone === 'dark') {
-        setProbedTone(data.tone);
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [t, markFrameReady]);
 
-  // 오너 버튼의 현재 화면 위치를 iframe 좌표로 변환해 프로브에 측정 지점을 요청한다.
-  const requestBackdropProbe = useCallback(() => {
-    const frame = iframeRef.current;
-    if (!frame?.contentWindow) {
-      return;
-    }
-    const frameRect = frame.getBoundingClientRect();
-    const button = toolbarRef.current?.querySelector<HTMLElement>('.generated-app-owner-button');
-    const points: Array<{ x: number; y: number }> = [];
-    if (button) {
-      const rect = button.getBoundingClientRect();
-      const cy = rect.top - frameRect.top + rect.height / 2;
-      points.push(
-        { x: rect.left - frameRect.left + rect.width / 2, y: cy },
-        { x: rect.left - frameRect.left + 6, y: cy },
-        { x: rect.right - frameRect.left - 6, y: cy },
-      );
-    } else {
-      points.push({ x: 28, y: frameRect.height - 28 });
-    }
-    frame.contentWindow.postMessage(
-      { source: 'moabom-shell', type: 'backdrop-probe', id: Date.now(), points },
-      '*',
-    );
-  }, []);
-
-  // 최초/드래그 종료 후 재측정 (드래그 중에는 생략).
-  useEffect(() => {
-    if (isDragging || !frameUrl) {
-      return;
-    }
-    const timer = window.setTimeout(requestBackdropProbe, 140);
-    return () => window.clearTimeout(timer);
-  }, [isDragging, frameUrl, requestBackdropProbe]);
-
-  // 외부 웹사이트 연결은 우리 주입 스크립트(pong)가 없으므로 워치독 대상에서 제외한다.
-  const isAiPreviewApp = Boolean(frameUrl) && !isWebsiteLinkAppType(app?.app_type);
   const isWebsiteLinkApp = isWebsiteLinkAppType(app?.app_type);
-  const showFrameLoadingOverlay = Boolean(frameUrl) && !isFrameReady;
+  const isNewWindowLaunch = Boolean(
+    isWebsiteLinkApp
+    && app?.metadata
+    && isWebsiteLinkNewWindowLaunch(app.metadata as Record<string, unknown>),
+  );
+  // 외부 웹사이트 연결은 우리 주입 스크립트(pong)가 없으므로 워치독 대상에서 제외한다.
+  // 새창 실행은 셸 iframe 을 쓰지 않으므로 워치독·로딩 오버레이 대상에서 제외한다.
+  const isAiPreviewApp = Boolean(frameUrl) && !isWebsiteLinkAppType(app?.app_type);
+  const showFrameLoadingOverlay = Boolean(frameUrl) && !isNewWindowLaunch && !isFrameReady;
+
+  const openExternalWebsite = useCallback((url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      return false;
+    }
+
+    try {
+      const existing = externalWindowRef.current;
+      if (existing && !existing.closed) {
+        existing.focus();
+        setExternalWindowBlocked(false);
+        return true;
+      }
+    } catch {
+      // cross-origin closed 검사 실패 시 새 창으로 재시도
+    }
+
+    const opened = window.open(trimmed, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      setExternalWindowBlocked(true);
+      return false;
+    }
+
+    externalWindowRef.current = opened;
+    setExternalWindowBlocked(false);
+    return true;
+  }, []);
 
   const postHeartbeatPing = useCallback(() => {
     iframeRef.current?.contentWindow?.postMessage(
@@ -363,13 +411,11 @@ export function GeneratedAppViewer({
   const canDelete = Boolean(isMember && permissions?.can_delete && onDeleteGeneratedApp);
   const canCommunityRead = Boolean(permissions?.can_community_read !== false && onOpenAppCommunity);
   const canCommunityWrite = Boolean(isMember && permissions?.can_community_write);
-  const hasActions = canEdit || canShare || canDelete || canCommunityRead;
-  const staticTone = useMemo(
-    () => resolveLiquidGlassBackdropToneFromHtml(app?.html),
-    [app?.html],
+  const canVersions = Boolean(isMember && permissions?.can_edit);
+  const canDataConsole = Boolean(
+    isMember && permissions?.can_edit && app?.tier === 'hosted',
   );
-  // 런타임 프로브(실측) 우선, 미수신 시 HTML 정적 추정으로 폴백.
-  const liquidGlassBackdropClass = liquidGlassBackdropClassName(probedTone ?? staticTone);
+  const hasActions = canEdit || canShare || canDelete || canCommunityRead || canVersions || canDataConsole;
   const viewerShellClass = `${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS} relative h-full min-h-0 flex-1 overflow-hidden`;
   const showLoadingOverlay = isLoading || showFrameLoadingOverlay;
 
@@ -416,11 +462,20 @@ export function GeneratedAppViewer({
               if (shouldSuppressOwnerClick()) {
                 return;
               }
+              // 스크롤 옵저버 없이, 클릭 순간에만 버튼 위치 배경을 재측정한다.
+              requestBackdropProbe();
               if (hasActions) {
                 setIsMenuOpen(open => !open);
               }
             }}
-            className={`liquid-glass ${liquidGlassBackdropClass} generated-app-owner-button ${hasActions ? 'is-actionable' : 'is-draggable'} ${hasActions && isMenuOpen ? 'is-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
+            className={liquidGlassOverlayClass(
+              liquidGlassTone,
+              MOA_LIQUID_GLASS_CHIP_CLASS,
+              'generated-app-owner-button',
+              ownerDragHandleClass,
+              hasActions ? 'is-actionable' : '',
+              hasActions && isMenuOpen ? 'is-open' : '',
+            )}
           >
             {hasActions ? (
               <Icon
@@ -436,7 +491,11 @@ export function GeneratedAppViewer({
           </Button>
           {hasActions ? (
             <Div
-              className={`generated-app-action-menu liquid-glass ${liquidGlassBackdropClass} ${isMenuOpen ? 'is-open' : 'is-closed'}`}
+              className={liquidGlassOverlayClass(
+                liquidGlassTone,
+                'generated-app-action-menu',
+                isMenuOpen ? 'is-open' : 'is-closed',
+              )}
             >
               {canEdit ? (
                 <Button
@@ -448,6 +507,38 @@ export function GeneratedAppViewer({
                 >
                   <Icon name="edit" />
                   <Span>{t('moa_mypage.library.edit_app')}</Span>
+                </Button>
+              ) : null}
+              {canVersions ? (
+                <Button
+                  type="button"
+                  aria-label={t('moa_apps_ai.versions.open')}
+                  title={t('moa_apps_ai.versions.open')}
+                  onClick={() => {
+                    setDataConsoleOpen(false);
+                    setHistoryOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="generated-app-action-button is-versions"
+                >
+                  <Icon name="history" />
+                  <Span>{t('moa_apps_ai.versions.open')}</Span>
+                </Button>
+              ) : null}
+              {canDataConsole ? (
+                <Button
+                  type="button"
+                  aria-label={t('moa_apps_ai.data_console.open')}
+                  title={t('moa_apps_ai.data_console.open')}
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    setDataConsoleOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="generated-app-action-button is-data"
+                >
+                  <Icon name="database" />
+                  <Span>{t('moa_apps_ai.data_console.open')}</Span>
                 </Button>
               ) : null}
               {canShare ? (
@@ -496,7 +587,7 @@ export function GeneratedAppViewer({
           ) : null}
         </Div>
       ) : null}
-      {frameUrl ? (
+      {frameUrl && !isNewWindowLaunch ? (
         <iframe
           ref={iframeRef}
           title={title || t('moa_apps_ai.preview_title')}
@@ -505,6 +596,31 @@ export function GeneratedAppViewer({
           sandbox={generatedAppFrameSandbox(frameUrl, app?.app_type)}
           onLoad={handleFrameLoad}
         />
+      ) : null}
+      {isNewWindowLaunch && frameUrl && !isLoading ? (
+        <Div className="generated-app-external-launch">
+          <Div className="generated-app-external-launch-card glass-sm">
+            <Icon name="external-link" className="generated-app-external-launch-icon" aria-hidden />
+            <Div className={APP_SHELL_BODY_CLASS}>
+              {t('moa_apps_ai.external_launch_title', { title: title || t('moa_apps_ai.untitled_app') })}
+            </Div>
+            <Div className={`generated-app-external-launch-desc ${APP_SHELL_DESC_CLASS}`}>
+              {externalWindowBlocked
+                ? t('moa_apps_ai.external_launch_blocked')
+                : t('moa_apps_ai.external_launch_description')}
+            </Div>
+            <Button
+              type="button"
+              variant="primary"
+              size="medium"
+              onClick={() => openExternalWebsite(frameUrl)}
+              className="generated-app-external-launch-reopen"
+            >
+              <Icon name="external-link" />
+              <Span>{t('moa_apps_ai.external_launch_reopen')}</Span>
+            </Button>
+          </Div>
+        </Div>
       ) : null}
       {showLoadingOverlay ? (
         <Div className="generated-app-frame-loading-overlay" aria-busy="true" aria-live="polite">
@@ -532,6 +648,29 @@ export function GeneratedAppViewer({
           </Div>
         </Div>
       ) : null}
+      <GeneratedAppVersionHistoryPanel
+        serverId={serverId}
+        open={historyOpen}
+        backdropTone={liquidGlassTone}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={(restored) => {
+          invalidateVisibleGeneratedAppSession(serverId);
+          setApp(restored);
+          setFrameUrl(resolveGeneratedAppFrameUrl(restored));
+          setIsFrameReady(false);
+          setReloadToken((token) => token + 1);
+          setHistoryOpen(false);
+          showAppEditToast('success', t('moa_apps_ai.versions.restore_success'));
+        }}
+        t={t}
+      />
+      <GeneratedAppHostedDataConsole
+        serverId={serverId}
+        open={dataConsoleOpen}
+        backdropTone={liquidGlassTone}
+        onClose={() => setDataConsoleOpen(false)}
+        t={t}
+      />
     </Div>
   );
 }

@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.1",
   "layout_name": "admin_credit_settings",
   "permissions": [
     "moabom-credit.settings.read"
@@ -15,7 +15,9 @@
     "isSettingsTab": "{{(query.tab || 'settings') === 'settings'}}"
   },
   "transition_overlay": {
-    "wait_for": ["settings"]
+    "wait_for": [
+      "settings"
+    ]
   },
   "initLocal": {
     "isSaving": false,
@@ -117,7 +119,7 @@
                           "target": "/api/modules/moabom-credit/admin/settings",
                           "params": {
                             "method": "PUT",
-                            "body": "{{(() => ({ rewards: _local.form?.rewards ?? {}, limits: _local.form?.limits ?? {}, ads: _local.form?.ads ?? {} }))()}}"
+                            "body": "{{(() => ({ rewards: _local.form?.rewards ?? {}, limits: _local.form?.limits ?? {}, ads: _local.form?.ads ?? {}, levels: _local.form?.levels ?? {} }))()}}"
                           },
                           "onSuccess": [
                             {
@@ -674,6 +676,239 @@
                         "name": "Input",
                         "props": {
                           "name": "limits.max_app_review_write_rewards_per_day",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "levels_card",
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                  "className": "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 xl:col-span-3"
+                },
+                "children": [
+                  {
+                    "type": "basic",
+                    "name": "H3",
+                    "props": {
+                      "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.levels"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "mt-1 mb-5 text-sm text-gray-500 dark:text-gray-400"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.sections.levels_description"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": {
+                      "className": "mb-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300"
+                    },
+                    "text": "$t:moabom-credit.admin.settings.hints.levels"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": {
+                      "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+                    },
+                    "children": [
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_iron"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.0",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "true",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_bronze"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.1",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_silver"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.2",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_gold"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.3",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_platinum"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.4",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_emerald"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.5",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_diamond"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.6",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_master"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.7",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_grandmaster"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.8",
+                          "type": "number",
+                          "min": 0,
+                          "disabled": "{{_computed.isReadOnly}}",
+                          "className": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        },
+                        "text": "$t:moabom-credit.admin.settings.fields.level_threshold_challenger"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "Input",
+                        "props": {
+                          "name": "levels.thresholds.9",
                           "type": "number",
                           "min": 0,
                           "disabled": "{{_computed.isReadOnly}}",

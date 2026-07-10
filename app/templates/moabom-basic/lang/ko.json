@@ -76,7 +76,7 @@
     "menu_copy": "메시지 복사",
     "delete_conversation": "목록에서 삭제",
     "toast_conversation_removed": "목록에서 삭제했습니다.",
-    "peer_left": "{{name}}님이 나갔습니다.",
+    "peer_left": "{name}님이 나갔습니다.",
     "peer_left_send_blocked": "상대방이 나갔습니다. 메시지를 보낼 수 없습니다."
   },
   "moa_profile_actions": {
@@ -430,8 +430,10 @@
       "rankings_apps_empty": "아직 집계된 앱 순위가 없습니다",
       "rankings_users_empty": "아직 집계된 유저 순위가 없습니다",
       "rankings_load_failed": "순위를 불러오지 못했습니다",
-      "rankings_activity_score": "{score} point",
-      "creator_badge": "Lv.{level} Creator"
+      "rankings_activity_score": "{score} P",
+      "creator_badge": "Lv.{level} {name}",
+      "rankings_my_rank": "내 순위 {rank}위",
+      "rankings_outside_top_hint": "상위 30위 밖입니다. 아래 내 순위를 확인하세요."
     },
     "right": {
       "close_panel": "우측 패널 닫기",
@@ -575,6 +577,23 @@
         "cta": "다시 불러오기",
         "loading": "다시 불러오는 중…"
       }
+    },
+    "rank": {
+      "levels": {
+        "iron": "아이언",
+        "bronze": "브론즈",
+        "silver": "실버",
+        "gold": "골드",
+        "platinum": "플래티넘",
+        "emerald": "에메랄드",
+        "diamond": "다이아몬드",
+        "master": "마스터",
+        "grandmaster": "그랜드마스터",
+        "challenger": "챌린저"
+      },
+      "badge_label": "Lv.{level} {name}",
+      "points_unit": "{points} P",
+      "my_rank_summary": "내 순위 {rank}위"
     }
   },
   "moa_apps": {
@@ -654,14 +673,26 @@
     "field_tier": "데이터 저장",
     "field_model": "AI 모델",
     "field_prompt": "프롬프트",
+    "field_app_description": "앱 설명",
     "field_site_description": "사이트 설명",
     "field_url": "웹사이트 주소",
     "field_url_placeholder": "예: https://www.naver.com",
+    "field_launch_mode": "앱 실행 창",
+    "launch_modes": {
+      "window": "윈도우창 내 실행",
+      "new_window": "새창 실행"
+    },
+    "external_launch_title": "{title} 앱이 실행중입니다",
+    "external_launch_description": "새창에서 실행중입니다. 닫혔다면 아래 버튼으로 다시 열 수 있습니다.",
+    "external_launch_blocked": "팝업이 차단되어 새창을 열지 못했습니다. 아래 버튼으로 다시 실행해 주세요.",
+    "external_launch_reopen": "웹사이트 다시 실행",
     "field_site_description_placeholder": "예: 포털 사이트",
+    "field_app_description_placeholder": "이 앱이 무엇을 하는지 짧게 적어주세요.",
     "field_prompt_placeholder": "만들고 싶은 앱의 화면, 기능, 색감, 동작을 구체적으로 적어주세요.",
     "field_modify_placeholder": "현재 미리보기에서 바꾸고 싶은 부분을 적어주세요.",
     "types": {
       "general": "일반 웹앱 (html)",
+      "html_paste": "직접 입력 (html)",
       "3d": "3D 캔버스 (three.js)",
       "game": "인터렉션 (phaser.js)",
       "dataviz": "차트 생성 (chart.js)",
@@ -686,7 +717,8 @@
     "generate": "생성",
     "modify": "수정내용 재생성",
     "generating": "생성 중…",
-    "toast_generation_in_progress_edit_blocked": "AI 앱을 생성하는 중입니다. 생성이 완료된 후 편집할 수 있습니다.",
+    "toast_generation_in_progress_edit_blocked": "앱 생성 중에는 해당 기능을 이용할 수 없습니다.",
+    "toast_generation_in_progress_blocked": "앱 생성 중에는 해당 기능을 이용할 수 없습니다.",
     "toast_generation_background": "AI 생성이 백그라운드에서 실행됩니다.",
     "stop_generate": "생성 중지",
     "save": "저장",
@@ -707,7 +739,9 @@
     "download_failed": "파일을 내려받지 못했습니다.",
     "preview_empty_title": "아직 생성된 앱이 없습니다",
     "preview_empty_description": "프롬프트를 입력하고 생성 버튼을 눌러 미리보기를 확인하세요.",
+    "preview_empty_description_paste": "오른쪽 에디터에 HTML을 붙여넣으면 미리보기가 표시됩니다.",
     "preview_empty_description_website": "웹사이트 주소와 사이트 설명을 입력하고 생성 버튼을 눌러 미리보기를 확인하세요.",
+    "stream_title_paste": "HTML 소스 (직접 입력)",
     "website_resolving": "사이트 확인 중…",
     "error_website_resolve": "웹사이트 주소를 확인하지 못했습니다.",
     "notice_fallback": "AI provider 설정 전까지 기본 미리보기가 표시됩니다.",
@@ -721,6 +755,7 @@
     "split_nudge_down": "미리보기 영역 확대",
     "copy_code": "복사",
     "copy_code_done": "복사됨",
+    "clear_code": "비우기",
     "continue_generate": "이어서 완성",
     "resume_banner": "이전에 진행 중이던 생성 세션이 있습니다.",
     "resume_load": "이어서 불러오기",
@@ -792,6 +827,45 @@
       "creator_original": "원제작",
       "creator_remix": "리믹스",
       "creator_unknown": "알 수 없는 제작자"
+    },
+    "versions": {
+      "open": "버전 기록",
+      "title": "앱 버전 기록",
+      "close": "닫기",
+      "current": "현재 버전 v{version}",
+      "loading": "버전 목록을 불러오는 중…",
+      "empty": "저장된 버전이 없습니다.",
+      "restore": "복원",
+      "restoring": "복원 중…",
+      "restore_success": "선택한 버전으로 복원했습니다.",
+      "load_error": "버전 목록을 불러오지 못했습니다.",
+      "restore_error": "버전 복원에 실패했습니다.",
+      "source_save": "저장",
+      "source_restore": "복원",
+      "source_patch": "패치",
+      "source_import": "가져오기"
+    },
+    "data_console": {
+      "open": "데이터 콘솔",
+      "title": "Hosted 데이터 콘솔",
+      "close": "닫기",
+      "loading": "데이터를 불러오는 중…",
+      "empty": "저장된 데이터가 없습니다.",
+      "export": "JSON 내보내기",
+      "exporting": "내보내는 중…",
+      "delete_row": "삭제",
+      "deleting": "삭제 중…",
+      "empty_rows": "이 테이블에 행이 없습니다.",
+      "load_error": "데이터를 불러오지 못했습니다.",
+      "delete_error": "행 삭제에 실패했습니다.",
+      "export_error": "내보내기에 실패했습니다."
+    },
+    "inspector": {
+      "enable": "요소 선택",
+      "active": "선택 중…",
+      "hint": "미리보기에서 수정할 요소를 클릭하세요.",
+      "request_placeholder": "이 요소를 어떻게 바꿀까요?",
+      "apply_patch": "선택 요소 패치"
     }
   },
   "moa_apps_cpap": {

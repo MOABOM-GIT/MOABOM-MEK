@@ -9,34 +9,10 @@
   font-size: 0.75rem;
 }
 
+/* pill·헤일로·readable color 는 `.moa-liquid-glass-chip` (27-liquid-glass.css) */
 .generated-app-owner-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
   max-width: min(9.375rem, 100%);
-  height: 2rem;
-  padding: 0 0.75rem;
-  border: 0;
-  border-radius: 9999px;
-  color: var(--moa-liquid-readable-color);
-  font-size: 0.75rem;
-  font-weight: 700;
   pointer-events: auto;
-  box-shadow: 0 .2rem .3rem #0f172a2e;
-  transition:
-    color 0.16s ease,
-    opacity 0.16s ease,
-    transform 0.16s ease;
-}
-
-/* 톤 미감지·외부 사이트·중간 명암 배경에서도 글자가 읽히도록 방향성 헤일로 보강.
-   on-dark(흰 글자)=어두운 헤일로, on-light(짙은 글자)=밝은 헤일로. */
-.generated-app-owner-button.liquid-glass--on-dark {
-  text-shadow: 0 1px 3px rgb(2 6 23 / 55%);
-}
-
-.generated-app-owner-button.liquid-glass--on-light {
-  text-shadow: 0 1px 2px rgb(255 255 255 / 60%);
 }
 
 .generated-app-owner-caret {
@@ -56,12 +32,14 @@
 }
 
 .generated-app-owner-button.is-actionable,
+.generated-app-owner-button.moa-pointer-draggable,
 .generated-app-owner-button.is-draggable {
   cursor: grab;
   touch-action: none;
 }
 
-.generated-app-owner-button.is-dragging {
+.generated-app-owner-button.is-dragging,
+.moa-pointer-draggable.is-dragging {
   cursor: grabbing;
   user-select: none;
 }
@@ -171,6 +149,14 @@
   --generated-app-action-accent: var(--moa-point-color);
 }
 
+.generated-app-action-button.is-versions {
+  --generated-app-action-accent: #8b5cf6;
+}
+
+.generated-app-action-button.is-data {
+  --generated-app-action-accent: #0ea5e9;
+}
+
 /* Button 프리미티브의 justify-center 유틸을 메뉴 안에서 무력화 (아이콘+라벨 좌측 정렬) */
 .generated-app-action-menu .generated-app-action-button {
   justify-content: flex-start;
@@ -264,6 +250,51 @@
   border-radius: 0;
 }
 
+/* 웹사이트 연결 — 새창 실행 시 셸 윈도우 플레이스홀더 */
+.generated-app-external-launch {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: rgb(var(--moa-surface-rgb, 248 250 252) / 88%);
+}
+
+.generated-app-external-launch-card {
+  width: min(100%, 20rem);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--moa-app-panel-radius, 1rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+}
+
+.generated-app-external-launch-icon {
+  margin-bottom: 0.35rem;
+  font-size: 1.75rem;
+  color: #64748b;
+}
+
+.generated-app-external-launch-desc {
+  margin-bottom: 0.65rem;
+  max-width: 16rem;
+  line-height: 1.45;
+}
+
+.generated-app-external-launch-reopen {
+  width: 100%;
+  max-width: 14rem;
+}
+
+.moa-window-frame--maximized .generated-app-external-launch {
+  border-radius: 0;
+}
+
 @media (width <= 480px) {
   .generated-app-toolbar {
     max-width: min(13.5rem, calc(100% - 1rem));
@@ -284,4 +315,262 @@
     min-height: 1.55rem;
     padding-inline: 0.55rem;
   }
+}
+
+/* readable color·헤일로는 `.moa-liquid-glass-surface` (27-liquid-glass.css) */
+.generated-app-side-panel {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: min(24rem, calc(100% - 1.5rem));
+  max-height: min(72%, calc(100% - 1.5rem));
+  padding: 0.85rem 0.9rem;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  box-shadow: 0 0.45rem 1.25rem rgb(15 23 42 / 18%);
+}
+
+.generated-app-side-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.generated-app-side-panel__title {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: inherit;
+}
+
+.generated-app-side-panel__title.moa-pointer-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.generated-app-side-panel.is-dragging {
+  transition: none;
+}
+
+.generated-app-side-panel__icon-btn {
+  flex-shrink: 0;
+}
+
+.generated-app-side-panel__meta {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.78;
+  color: inherit;
+}
+
+.generated-app-side-panel__error {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #fecaca;
+  background: color-mix(in srgb, #7f1d1d 55%, transparent);
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.generated-app-side-panel.liquid-glass--on-light .generated-app-side-panel__error {
+  color: #991b1b;
+  background: color-mix(in srgb, #fecaca 70%, transparent);
+}
+
+.generated-app-side-panel__actions,
+.generated-app-side-panel__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.generated-app-side-panel__tab-count {
+  margin-left: 0.3rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.generated-app-side-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.generated-app-side-panel__empty {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0.78;
+  color: inherit;
+}
+
+.generated-app-side-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+}
+
+.generated-app-side-panel__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.generated-app-side-panel__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.generated-app-side-panel__row-title {
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.generated-app-side-panel__row-sep {
+  margin-inline: 0.3rem;
+  opacity: 0.55;
+}
+
+.generated-app-side-panel__row-sub {
+  font-size: 0.7rem;
+  line-height: 1.3;
+  opacity: 0.72;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.generated-app-side-panel__row-action {
+  flex-shrink: 0;
+}
+
+.generated-app-side-panel__payload {
+  min-width: 0;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* liquid-glass 톤에 맞춰 라이브러리 버튼 대비 유지 */
+.generated-app-side-panel .moa-btn-neutral,
+.generated-app-side-panel .moa-btn-dark-outline {
+  --moa-btn-color: var(--moa-liquid-readable-color);
+  --moa-btn-bg: color-mix(in srgb, var(--moa-liquid-readable-color) 10%, transparent);
+  --moa-btn-border: var(--moa-liquid-readable-border);
+  --moa-btn-shadow: none;
+  --moa-btn-hover-color: var(--moa-liquid-readable-color);
+  --moa-btn-hover-bg: color-mix(in srgb, var(--moa-liquid-readable-color) 18%, transparent);
+  --moa-btn-hover-border: var(--moa-liquid-readable-border);
+  --moa-btn-hover-shadow: none;
+}
+
+.generated-app-side-panel .moa-btn-danger-outline {
+  --moa-btn-color: #fda4af;
+  --moa-btn-bg: color-mix(in srgb, #f43f5e 16%, transparent);
+  --moa-btn-border: color-mix(in srgb, #f43f5e 55%, transparent);
+  --moa-btn-hover-color: #fff1f2;
+  --moa-btn-hover-bg: color-mix(in srgb, #f43f5e 28%, transparent);
+  --moa-btn-hover-border: #fb7185;
+}
+
+.generated-app-side-panel.liquid-glass--on-light .moa-btn-danger-outline {
+  --moa-btn-color: #be123c;
+  --moa-btn-bg: color-mix(in srgb, #f43f5e 10%, transparent);
+  --moa-btn-border: color-mix(in srgb, #e11d48 45%, transparent);
+  --moa-btn-hover-color: #9f1239;
+  --moa-btn-hover-bg: color-mix(in srgb, #f43f5e 18%, transparent);
+  --moa-btn-hover-border: #e11d48;
+}
+
+.moa-ai-inspector-panel {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: min(20rem, calc(100% - 1rem));
+  pointer-events: none;
+}
+
+.moa-ai-inspector-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: auto;
+}
+
+/* pill·헤일로·disabled/active 는 `.moa-liquid-glass-chip` (27-liquid-glass.css) */
+.moa-ai-inspector-panel.is-dragging {
+  transition: none;
+}
+
+.moa-ai-inspector-toggle__icon,
+.moa-ai-inspector-toggle__label {
+  color: inherit;
+}
+
+.moa-ai-inspector-toggle__icon {
+  font-size: 0.7rem;
+}
+
+/* readable color·헤일로는 `.moa-liquid-glass-surface` */
+.moa-ai-inspector-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.85rem;
+  pointer-events: auto;
+  box-shadow: 0 0.2rem 0.35rem #0f172a24;
+}
+
+.moa-ai-inspector-panel__hint {
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.moa-ai-inspector-panel__path {
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: inherit;
+  opacity: 0.9;
 }

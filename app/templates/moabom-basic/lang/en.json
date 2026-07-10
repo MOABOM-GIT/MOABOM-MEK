@@ -76,7 +76,7 @@
     "menu_copy": "Copy message",
     "delete_conversation": "Remove from list",
     "toast_conversation_removed": "Removed from your list.",
-    "peer_left": "{{name}} left.",
+    "peer_left": "{name} left.",
     "peer_left_send_blocked": "The other person left. You cannot send messages."
   },
   "moa_profile_actions": {
@@ -425,8 +425,10 @@
       "rankings_apps_empty": "No app rankings yet",
       "rankings_users_empty": "No user rankings yet",
       "rankings_load_failed": "Could not load rankings",
-      "rankings_activity_score": "{score} point",
-      "creator_badge": "Lv.{level} Creator"
+      "rankings_activity_score": "{score} P",
+      "creator_badge": "Lv.{level} {name}",
+      "rankings_my_rank": "My rank #{rank}",
+      "rankings_outside_top_hint": "Outside the top 30. See your rank below."
     },
     "right": {
       "close_panel": "Close right panel",
@@ -570,6 +572,23 @@
         "cta": "Reload",
         "loading": "Reloading…"
       }
+    },
+    "rank": {
+      "levels": {
+        "iron": "Iron",
+        "bronze": "Bronze",
+        "silver": "Silver",
+        "gold": "Gold",
+        "platinum": "Platinum",
+        "emerald": "Emerald",
+        "diamond": "Diamond",
+        "master": "Master",
+        "grandmaster": "Grandmaster",
+        "challenger": "Challenger"
+      },
+      "badge_label": "Lv.{level} {name}",
+      "points_unit": "{points} P",
+      "my_rank_summary": "My rank #{rank}"
     }
   },
   "moa_apps": {
@@ -653,14 +672,26 @@
     "field_tier": "Data storage",
     "field_model": "AI model",
     "field_prompt": "Prompt",
+    "field_app_description": "App description",
     "field_site_description": "Site description",
     "field_url": "Website URL",
     "field_url_placeholder": "Example: https://www.example.com",
+    "field_launch_mode": "App launch window",
+    "launch_modes": {
+      "window": "Run inside window",
+      "new_window": "Open in new window"
+    },
+    "external_launch_title": "{title} is running",
+    "external_launch_description": "Running in a new window. Use the button below to reopen if it was closed.",
+    "external_launch_blocked": "The popup was blocked. Use the button below to open the website again.",
+    "external_launch_reopen": "Reopen website",
     "field_site_description_placeholder": "Example: Company portal",
+    "field_app_description_placeholder": "Briefly describe what this app does.",
     "field_prompt_placeholder": "Describe the screen, features, colors, and interactions you want.",
     "field_modify_placeholder": "Describe what you want to change in the current preview.",
     "types": {
       "general": "General web app (html)",
+      "html_paste": "Paste HTML",
       "3d": "3D canvas (three.js)",
       "game": "Interaction (phaser.js)",
       "dataviz": "Chart builder (chart.js)",
@@ -685,7 +716,8 @@
     "generate": "Generate",
     "modify": "Regenerate changes",
     "generating": "Generating...",
-    "toast_generation_in_progress_edit_blocked": "An AI app is being generated. You can edit after generation completes.",
+    "toast_generation_in_progress_edit_blocked": "This feature is unavailable while an AI app is being generated.",
+    "toast_generation_in_progress_blocked": "This feature is unavailable while an AI app is being generated.",
     "toast_generation_background": "AI generation continues in the background.",
     "stop_generate": "Stop generation",
     "save": "Save",
@@ -706,6 +738,7 @@
     "download_failed": "Could not download the file.",
     "preview_empty_title": "No app generated yet",
     "preview_empty_description": "Enter a prompt and generate a preview.",
+    "preview_empty_description_paste": "Paste HTML into the editor on the right to see a preview.",
     "preview_empty_description_website": "Enter a website URL and site description, then generate a preview.",
     "website_resolving": "Checking site…",
     "error_website_resolve": "Could not resolve the website URL.",
@@ -713,6 +746,7 @@
     "notice_truncated": "Generation stopped due to token limits. Use Continue to finish the app.",
     "stream_title": "Generated code",
     "stream_title_editable": "Generated code (editable)",
+    "stream_title_paste": "HTML source (paste)",
     "stream_title_loading": "AI is writing code…",
     "stream_title_partial": "Incomplete draft code",
     "split_resize": "Resize code and preview panels",
@@ -720,6 +754,7 @@
     "split_nudge_down": "Expand preview panel",
     "copy_code": "Copy",
     "copy_code_done": "Copied",
+    "clear_code": "Clear",
     "continue_generate": "Continue",
     "resume_banner": "A previous generation session can be resumed.",
     "resume_load": "Resume",
@@ -791,6 +826,45 @@
       "creator_original": "Original",
       "creator_remix": "Remix",
       "creator_unknown": "Unknown creator"
+    },
+    "versions": {
+      "open": "Version history",
+      "title": "App version history",
+      "close": "Close",
+      "current": "Current version v{version}",
+      "loading": "Loading versions…",
+      "empty": "No saved versions yet.",
+      "restore": "Restore",
+      "restoring": "Restoring…",
+      "restore_success": "Restored the selected version.",
+      "load_error": "Could not load version history.",
+      "restore_error": "Could not restore the version.",
+      "source_save": "Save",
+      "source_restore": "Restore",
+      "source_patch": "Patch",
+      "source_import": "Import"
+    },
+    "data_console": {
+      "open": "Data console",
+      "title": "Hosted data console",
+      "close": "Close",
+      "loading": "Loading data…",
+      "empty": "No stored data yet.",
+      "export": "Export JSON",
+      "exporting": "Exporting…",
+      "delete_row": "Delete",
+      "deleting": "Deleting…",
+      "empty_rows": "No rows in this table.",
+      "load_error": "Could not load data.",
+      "delete_error": "Could not delete the row.",
+      "export_error": "Could not export data."
+    },
+    "inspector": {
+      "enable": "Pick element",
+      "active": "Picking…",
+      "hint": "Click an element in the preview to edit it.",
+      "request_placeholder": "How should this element change?",
+      "apply_patch": "Patch selection"
     }
   },
   "moa_apps_cpap": {

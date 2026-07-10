@@ -33,6 +33,7 @@ class GeneratedAppHtmlService
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-download-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-data-api-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-hosted-storage["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
+        $html = (string) preg_replace('/<script\b[^>]*\bid=["\']moabom-app-shell-native-bridge["\'][^>]*>[\s\S]*?<\/script>/i', '', $html);
         $html = (string) preg_replace('/<base\b[^>]*>/i', '', $html);
         $html = (string) preg_replace('/<link\b[^>]*\brel=["\']manifest["\'][^>]*>/i', '', $html);
 
@@ -49,6 +50,7 @@ class GeneratedAppHtmlService
         // sandbox iframe 은 allow-downloads 없이 내부 다운로드를 차단한다.
         // blob/data URL + download 앵커를 가로채 부모(셸)에 postMessage 로 위임한다.
         $cspAndRuntime .= $this->downloadBridgeScript();
+        $cspAndRuntime .= $this->shellNativeBridgeScript();
         if ($injectHostedDataApiBridge) {
             $cspAndRuntime .= $this->dataApiBridgeScript();
             $cspAndRuntime .= $this->hostedStorageBridgeScript();
@@ -214,6 +216,26 @@ JS;
         }
 
         return '<script id="moabom-app-hosted-storage">'.$js.'</script>';
+    }
+
+    /**
+     * iframe → 셸 allowlist API (toast / openApp).
+     *
+     * @see resources/js/generated-app-shell-native-bridge.js
+     */
+    private function shellNativeBridgeScript(): string
+    {
+        $path = dirname(__DIR__, 2).'/resources/js/generated-app-shell-native-bridge.js';
+        if (! is_readable($path)) {
+            return '';
+        }
+
+        $js = (string) file_get_contents($path);
+        if ($js === '') {
+            return '';
+        }
+
+        return '<script id="moabom-app-shell-native-bridge">'.$js.'</script>';
     }
 
     private function injectAfterHeadOpen(string $html, string $injection): string

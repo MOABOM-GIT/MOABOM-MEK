@@ -17,7 +17,8 @@ class CreditService
 {
     public function __construct(
         private CreditRepositoryInterface $creditRepository,
-        private CreditSettingsService $settingsService
+        private CreditSettingsService $settingsService,
+        private CreditLevelService $levelService,
     ) {}
 
     /**
@@ -28,10 +29,34 @@ class CreditService
     public function getUserCreditOverview(User $user, int $limit = 8, int $offset = 0): array
     {
         $balance = $this->creditRepository->getOrCreateBalance($user);
+        $rankingPoints = (int) ($balance->ranking_points ?? 0);
+        $level = $this->levelService->resolve($rankingPoints);
+
+        // limit=0: 셸 프로필·레벨 전용 — 원장 SUM/COUNT/목록을 건너뛰어 upstream timeout 완화.
+        $safeLimit = max(0, min(50, $limit));
+        $safeOffset = max(0, $offset);
+        if ($safeLimit === 0) {
+            return HookManager::applyFilters('moabom-credit.filter_overview', [
+                'balance' => $balance->balance,
+                'ranking_points' => $rankingPoints,
+                'level' => $level,
+                'summary' => [
+                    'total_earned' => 0,
+                    'total_used' => 0,
+                    'transaction_count' => 0,
+                ],
+                'transactions' => [],
+                'pagination' => [
+                    'limit' => 0,
+                    'offset' => 0,
+                    'total' => 0,
+                    'has_more' => false,
+                ],
+            ], $user);
+        }
+
         $summary = $this->creditRepository->getSummary($user);
         $transactionTotal = $this->creditRepository->getTransactionCount($user);
-        $safeLimit = max(1, min(50, $limit));
-        $safeOffset = max(0, $offset);
         $transactions = $this->creditRepository->getRecentTransactions($user, $safeLimit, $safeOffset)
             ->map(fn (CreditTransaction $transaction) => $this->formatTransaction($transaction))
             ->values()
@@ -39,6 +64,8 @@ class CreditService
 
         return HookManager::applyFilters('moabom-credit.filter_overview', [
             'balance' => $balance->balance,
+            'ranking_points' => $rankingPoints,
+            'level' => $level,
             'summary' => [
                 ...$summary,
                 'transaction_count' => $transactionTotal,

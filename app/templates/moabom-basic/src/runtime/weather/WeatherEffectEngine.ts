@@ -43,7 +43,9 @@ export interface WeatherEffectEngineOptions {
  * - `stop()` 시 `clearRect` 1회 + 파티클 배열·오버레이 상태 해제(Req 1.2 · 1.3).
  * - `setEffectSet(next)` 전이 시 이펙트 생성/제거 — 제거된 이펙트의 파티클은 공용 풀에서 즉시 지운다(Req 4a.4 · 4b.3 등).
  * - 프레임 시간이 `>8ms` 로 연속 초과되면 파티클 예산을 절반으로 감소시켜 60fps 을 유지하려 시도한다(Req 5.6).
- * - DPR 상한 1.5 로 `canvas.width/height` 를 설정하고 `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` 로 논리 좌표를 보존(Req 5.4).
+ * - DPR 상한 1.5 — 버퍼는 `CSS px × dpr`, `ctx.setTransform(dpr)` 로 논리(CSS) 좌표 보존(Req 5.4).
+ *   버퍼를 CSS 만으로 두면 논리 뷰포트가 `CSS/dpr` 로 줄어 비가 굵고 빽빽해 보인다.
+ * - `canvas.width/height` 변경은 context 를 리셋하므로 `syncSurface`·매 프레임에서 transform 을 재적용한다.
  * - `canvas.getContext('2d') === null` 인 환경에서 `start()` 는 no-op 로 전이한다.
  */
 export class WeatherEffectEngine {
@@ -80,12 +82,40 @@ export class WeatherEffectEngine {
       options.dprCap ?? WEATHER_DPR_CAP,
     );
     this.particleBudget = options.initialBudget ?? WEATHER_DEFAULT_PARTICLE_BUDGET;
+    this.applyDprTransform();
+  }
 
-    if (this.ctx) {
-      // DPR 적용: canvas 픽셀 크기는 엔진이 설정하지 않는다(HomePage resize 로직 존중 — Req 8.2).
-      // 대신 현재 크기에 dpr 을 반영한 transform 만 설정해 논리 좌표로 드로잉 가능하게 한다.
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  /**
+   * CSS 표시 크기에 맞춰 버퍼(`CSS × dpr`)를 맞추고 DPR transform 을 복구한다.
+   * `canvas.width/height` 할당은 2D context 를 리셋하므로 반드시 transform 을 다시 건다.
+   */
+  syncSurface(cssWidth?: number, cssHeight?: number): void {
+    const fallbackW = typeof window !== 'undefined' ? window.innerWidth : this.getLogicalWidth();
+    const fallbackH = typeof window !== 'undefined' ? window.innerHeight : this.getLogicalHeight();
+    const cssW = Math.max(
+      1,
+      Math.floor(cssWidth ?? (this.canvas.clientWidth || fallbackW)),
+    );
+    const cssH = Math.max(
+      1,
+      Math.floor(cssHeight ?? (this.canvas.clientHeight || fallbackH)),
+    );
+    const bufferW = Math.max(1, Math.floor(cssW * this.dpr));
+    const bufferH = Math.max(1, Math.floor(cssH * this.dpr));
+
+    // 동일 값 재할당도 일부 엔진에서 context 를 리셋하므로, 변경 시에만 쓴다.
+    if (this.canvas.width !== bufferW) {
+      this.canvas.width = bufferW;
     }
+    if (this.canvas.height !== bufferH) {
+      this.canvas.height = bufferH;
+    }
+    this.applyDprTransform();
+  }
+
+  /** 테스트·디버그용 DPR(클램프 후). */
+  getDprForTesting(): number {
+    return this.dpr;
   }
 
   /** RAF 루프를 시작한다. 이미 실행 중이거나 ctx 미가용이면 no-op(설계 §1.1 안전망). */
@@ -180,6 +210,9 @@ export class WeatherEffectEngine {
   private readonly tick = (): void => {
     if (!this.running || !this.ctx) return;
 
+    // resize·외부 버퍼 변경으로 transform 이 날아간 경우에도 매 프레임 복구.
+    this.applyDprTransform();
+
     const frameStart = this.now();
     const delta = this.lastFrameAt === null ? 0 : frameStart - this.lastFrameAt;
     this.lastFrameAt = frameStart;
@@ -232,6 +265,11 @@ export class WeatherEffectEngine {
     if (!this.ctx) return;
     // setTransform 이 적용된 상태에서 logical 좌표로 clearRect.
     this.ctx.clearRect(0, 0, this.getLogicalWidth(), this.getLogicalHeight());
+  }
+
+  private applyDprTransform(): void {
+    if (!this.ctx) return;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
   private getLogicalWidth(): number {

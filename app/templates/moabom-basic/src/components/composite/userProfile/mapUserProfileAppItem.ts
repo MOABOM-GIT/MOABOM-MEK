@@ -24,18 +24,27 @@ function mapFrequentGeneratedItem(item: UserProfileAppItem, shellId: string): Ap
 
   const title = String(item.title ?? shellId).trim() || shellId;
   const appType = typeof item.app_type === 'string' ? item.app_type : 'general';
+  const metadata = item.metadata && typeof item.metadata === 'object'
+    ? (item.metadata as Record<string, unknown>)
+    : {};
+  const iconUrl = typeof item.icon_url === 'string' && item.icon_url.trim()
+    ? item.icon_url.trim()
+    : (typeof metadata.icon_url === 'string' ? metadata.icon_url.trim() : '');
 
   return {
     id: shellId,
     name: title,
     description: '',
     icon: resolveGeneratedAppIconFromTitle(title, undefined, appType),
-    gradient: resolveGeneratedAppTitleBarGradient(serverId, appType),
+    iconImageUrl: iconUrl || undefined,
+    gradient: resolveGeneratedAppTitleBarGradient(serverId, appType, metadata),
     category: 'user',
     source: 'user-created',
     metadata: {
       generatedServerId: serverId,
       appType,
+      ...(iconUrl ? { iconImageUrl: iconUrl } : {}),
+      ...metadata,
     },
   };
 }

@@ -52,6 +52,33 @@ describe('normalizePresenceConnectList', () => {
     expect(normalized[0]?.user_uuid).toBe('user-uuid-1');
   });
 
+  it('viewer 본인 행은 항상 맨 위에 둔다', () => {
+    const users: PresenceOnlineUser[] = [
+      {
+        session_key: 'other-key',
+        user_uuid: 'user-other',
+        display_name: '다른사람',
+        is_authenticated: true,
+        is_online: true,
+        friendship: 'none',
+        last_seen_at: '2026-06-24T12:00:00Z',
+      },
+      {
+        session_key: 'self-key',
+        user_uuid: 'user-self',
+        display_name: '나',
+        is_authenticated: true,
+        is_online: true,
+        friendship: 'none',
+        last_seen_at: '2026-06-24T10:00:00Z',
+      },
+    ];
+
+    const normalized = normalizePresenceConnectList(users, 'user-self');
+
+    expect(normalized[0]?.user_uuid).toBe('user-self');
+  });
+
   it('optimisticPromoteSelfInConnectList 는 내 guest 행을 member 1행으로 바꾼다', () => {
     const users: PresenceOnlineUser[] = [
       guest('legacy-key', 'visitor-me'),

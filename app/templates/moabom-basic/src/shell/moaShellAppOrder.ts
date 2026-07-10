@@ -189,8 +189,9 @@ export function mergeRecentAppIdsFromPull(input: {
 /**
  * 로그인 pull 시 메인 order 병합.
  * - 게스트: 로컬만
- * - 저장 쿨다운: 로컬 우선 (테마 저장과 동일)
- * - 서버에 customized order: 서버 우선 (계정 SSOT)
+ * - dirty/미ACK: 로컬 우선 (공개앱 pin 등이 서버 구 order 로 롤백되지 않음)
+ * - 로컬 customized 이고 서버 order 가 로컬의 진부분집합(누락)이면 로컬 유지 + 재동기화 유도
+ * - 서버에 customized order 이고 로컬이 미커스텀/동일 계열: 서버 우선 (계정 SSOT)
  * - 어느 쪽도 미커스텀: 기본 그리드
  */
 export function mergeMainAppOrderFromPull(input: {
@@ -212,15 +213,33 @@ export function mergeMainAppOrderFromPull(input: {
   const serverHasCustomLayout = input.serverCustomized === true
     || (input.serverCustomized === null && input.serverOrder !== null);
 
+  if (input.localCustomized) {
+    const serverOrder = input.serverOrder ?? [];
+    if (!serverHasCustomLayout) {
+      return { order: input.localOrder, customized: true };
+    }
+    // 서버가 로컬 pin 일부를 아직 모르는 구버전이면 로컬 유지 (pull 롤백 방지)
+    if (isLocalMainOrderAheadOfServer(input.localOrder, serverOrder)) {
+      return { order: input.localOrder, customized: true };
+    }
+    return { order: serverOrder, customized: true };
+  }
+
   if (serverHasCustomLayout) {
     return { order: input.serverOrder ?? [], customized: true };
   }
 
-  if (input.localCustomized) {
-    return { order: input.localOrder, customized: true };
-  }
-
   return { order: [], customized: false };
+}
+
+/** 서버 order 가 로컬의 진부분집합이면 로컬이 pin 추가한 최신본으로 본다 */
+export function isLocalMainOrderAheadOfServer(localOrder: string[], serverOrder: string[]): boolean {
+  if (localOrder.length === 0 || serverOrder.length >= localOrder.length) {
+    return false;
+  }
+  const localSet = new Set(localOrder);
+  const serverSet = new Set(serverOrder);
+  return serverOrder.every(id => localSet.has(id)) && localOrder.some(id => !serverSet.has(id));
 }
 
 export function loadInitialMainOrderSnapshot(): MainAppOrderSnapshot {

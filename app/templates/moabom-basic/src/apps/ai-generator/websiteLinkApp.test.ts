@@ -3,12 +3,16 @@ import {
   buildWebsiteLinkSaveMetadata,
   buildWebsiteLinkStoredHtml,
   isInternalWebsiteIconUrl,
+  isWebsiteLinkNewWindowLaunch,
   isWebsiteTitleIconFromMetadata,
   normalizeWebsiteUrl,
+  readWebsiteLinkLaunchModeFromMetadata,
   readWebsiteUrlFromStoredHtml,
   resolveWebsiteLinkAppGradient,
   stripWebsiteLinkIconServingMetadata,
   readWebsiteLinkPreviewFromMetadata,
+  WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW,
+  WEBSITE_LINK_LAUNCH_MODE_WINDOW,
 } from './websiteLinkApp';
 
 describe('websiteLinkApp', () => {
@@ -32,11 +36,14 @@ describe('websiteLinkApp', () => {
     expect(readWebsiteUrlFromStoredHtml(legacy)).toBe('https://www.naver.com');
   });
 
-  it('uses point-color gradient for title-icon website links', () => {
+  it('uses point-color gradient for title-icon website links regardless of favicon presence', () => {
     expect(isWebsiteTitleIconFromMetadata({ icon_from_title: true })).toBe(true);
     expect(resolveWebsiteLinkAppGradient({ icon_from_title: true, theme_color: '#005eb8' }, false))
       .toMatch(/^linear-gradient\(135deg,#005eb8,/);
-    expect(resolveWebsiteLinkAppGradient({ icon_from_title: true }, true)).toContain('#f8fafc');
+    expect(resolveWebsiteLinkAppGradient({ icon_from_title: true, theme_color: '#005eb8' }, true))
+      .toMatch(/^linear-gradient\(135deg,#005eb8,/);
+    expect(resolveWebsiteLinkAppGradient({ icon_from_title: false }, true)).toContain('#f8fafc');
+    expect(resolveWebsiteLinkAppGradient({}, false)).toContain('#f8fafc');
   });
 
   it('buildWebsiteLinkSaveMetadata sends external icon source only', () => {
@@ -48,8 +55,27 @@ describe('websiteLinkApp', () => {
     })).toEqual({
       website_url: 'https://example.com',
       icon_from_title: false,
+      launch_mode: WEBSITE_LINK_LAUNCH_MODE_WINDOW,
       theme_color: '#005eb8',
       icon_source_url: 'https://example.com/favicon.ico',
+    });
+  });
+
+  it('persists and reads website launch_mode', () => {
+    expect(readWebsiteLinkLaunchModeFromMetadata(undefined)).toBe(WEBSITE_LINK_LAUNCH_MODE_WINDOW);
+    expect(readWebsiteLinkLaunchModeFromMetadata({ launch_mode: 'new_window' }))
+      .toBe(WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW);
+    expect(isWebsiteLinkNewWindowLaunch({ launch_mode: 'new_window' })).toBe(true);
+    expect(buildWebsiteLinkSaveMetadata({
+      websiteUrl: 'https://example.com',
+      resolvedIconUrl: '',
+      themeColor: '',
+      iconFromTitle: true,
+      launchMode: WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW,
+    })).toMatchObject({
+      website_url: 'https://example.com',
+      launch_mode: WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW,
+      icon_from_title: true,
     });
   });
 

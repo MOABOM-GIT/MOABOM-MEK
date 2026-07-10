@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.8",
   "layout_name": "admin_realtime_vm",
   "permissions": ["moabom-system.realtime.read"],
   "extends": "_admin_base",
@@ -16,11 +16,13 @@
     "overallOk": "{{!!realtimeStatus?.data?.overall_ok}}",
     "checkedAt": "{{realtimeStatus?.data?.checked_at || ''}}",
     "wsHttpStatus": "{{realtimeStatus?.data?.websocket_probe?.http_status ?? '—'}}",
-    "wsLatency": "{{typeof realtimeStatus?.data?.websocket_probe?.latency_ms === 'number' ? realtimeStatus.data.websocket_probe.latency_ms + ' ms' : '—'}}",
-    "wsPusher": "{{realtimeStatus?.data?.websocket_probe?.pusher_established ? 'OK' : '—'}}",
+    "wsUpgradeOk": "{{!!(realtimeStatus?.data?.websocket_probe?.upgrade_ok ?? (realtimeStatus?.data?.websocket_probe?.http_status === 101))}}",
+    "wsConnectMs": "{{typeof realtimeStatus?.data?.websocket_probe?.connect_ms === 'number' ? realtimeStatus.data.websocket_probe.connect_ms + ' ms' : (typeof realtimeStatus?.data?.websocket_probe?.latency_ms === 'number' ? realtimeStatus.data.websocket_probe.latency_ms + ' ms' : '—')}}",
+    "wsProbeNote": "{{realtimeStatus?.data?.websocket_probe?.note === 'server_upgrade_ok_browser_wss_ssot' ? '$t:moabom-system.admin.realtime_vm.probe_note_upgrade_ok' : ''}}",
     "wsHost": "{{realtimeStatus?.data?.websocket_probe?.host || '—'}}",
     "wsError": "{{realtimeStatus?.data?.websocket_probe?.error || ''}}",
     "clientEndpoint": "{{(realtimeStatus?.data?.config?.client_scheme || 'https') + '://' + (realtimeStatus?.data?.config?.client_host || '—') + ':' + (realtimeStatus?.data?.config?.client_port || '')}}",
+    "serverPublishUrl": "{{realtimeStatus?.data?.config?.server_publish_url || '—'}}",
     "broadcastConnection": "{{realtimeStatus?.data?.config?.broadcast_connection || '—'}}",
     "broadcastImmediate": "{{realtimeStatus?.data?.config?.broadcast_immediate ? 'ShouldBroadcastNow' : '—'}}",
     "archVm": "{{realtimeStatus?.data?.architecture?.vm_name || '—'}}",
@@ -40,8 +42,15 @@
     "procNginx": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.processes?.nginx : realtimeStatus?.data?.vm_metrics?.data?.processes?.nginx) ? 'OK' : 'DOWN'}}",
     "procReverb": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.processes?.reverb : realtimeStatus?.data?.vm_metrics?.data?.processes?.reverb) ? 'OK' : 'DOWN'}}",
     "procRedis": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.processes?.redis : realtimeStatus?.data?.vm_metrics?.data?.processes?.redis) ? 'OK' : 'DOWN'}}",
-    "containerReverbText": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.running) ? ('CPU ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.cpu : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.cpu) || '—') + ' · Mem ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.memory : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.memory) || '—')) : 'DOWN'}}",
-    "containerRedisText": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.running) ? ('CPU ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.cpu : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.cpu) || '—') + ' · Mem ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.memory : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.memory) || '—')) : 'DOWN'}}",
+    "svcReverbMode": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.services?.reverb?.mode : realtimeStatus?.data?.vm_metrics?.data?.services?.reverb?.mode) || '—'}}",
+    "svcRedisMode": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.services?.redis?.mode : realtimeStatus?.data?.vm_metrics?.data?.services?.redis?.mode) || '—'}}",
+    "svcReverbName": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.services?.reverb?.name : realtimeStatus?.data?.vm_metrics?.data?.services?.reverb?.name) || ''}}",
+    "svcRedisName": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.services?.redis?.name : realtimeStatus?.data?.vm_metrics?.data?.services?.redis?.name) || ''}}",
+    "svcReverbText": "{{_computed.procReverb + ' · ' + (_computed.svcReverbMode === 'docker' ? '$t:moabom-system.admin.realtime_vm.service_mode_docker' : (_computed.svcReverbMode === 'native' ? '$t:moabom-system.admin.realtime_vm.service_mode_native' : _computed.svcReverbMode)) + (_computed.svcReverbName ? ' · ' + _computed.svcReverbName : '')}}",
+    "svcRedisText": "{{_computed.procRedis + ' · ' + (_computed.svcRedisMode === 'docker' ? '$t:moabom-system.admin.realtime_vm.service_mode_docker' : (_computed.svcRedisMode === 'native' ? '$t:moabom-system.admin.realtime_vm.service_mode_native' : _computed.svcRedisMode)) + (_computed.svcRedisName ? ' · ' + _computed.svcRedisName : '')}}",
+    "showDockerStats": "{{_computed.vmMetricsAvailable && ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.running) || (vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.running))}}",
+    "containerReverbText": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.running) ? ('CPU ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.cpu : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.cpu) || '—') + ' · Mem ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.reverb?.memory : realtimeStatus?.data?.vm_metrics?.data?.containers?.reverb?.memory) || '—')) : '—'}}",
+    "containerRedisText": "{{(vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.running : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.running) ? ('CPU ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.cpu : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.cpu) || '—') + ' · Mem ' + ((vmMetricsLive?.data?.available !== undefined ? vmMetricsLive.data?.data?.containers?.redis?.memory : realtimeStatus?.data?.vm_metrics?.data?.containers?.redis?.memory) || '—')) : '—'}}",
     "hasError": "{{!!_dataSourceErrors?.realtimeStatus}}"
   },
   "data_sources": [
@@ -117,8 +126,11 @@
                   {
                     "type": "click",
                     "handler": "apiCall",
+                    "auth_required": true,
                     "target": "/api/modules/moabom-system/platform/realtime-vm/refresh",
-                    "method": "POST",
+                    "params": {
+                      "method": "POST"
+                    },
                     "onSuccess": [
                       {
                         "handler": "parallel",
@@ -216,13 +228,20 @@
                         "type": "basic",
                         "name": "P",
                         "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
-                        "text": "{{'$t:moabom-system.admin.realtime_vm.latency' + ' · ' + _computed.wsLatency}}"
+                        "text": "{{'$t:moabom-system.admin.realtime_vm.probe_upgrade' + ' · ' + (_computed.wsUpgradeOk ? 'OK (101)' : 'FAIL')}}"
                       },
                       {
                         "type": "basic",
                         "name": "P",
                         "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
-                        "text": "{{'Pusher · ' + _computed.wsPusher}}"
+                        "text": "{{'$t:moabom-system.admin.realtime_vm.probe_connect' + ' · ' + _computed.wsConnectMs}}"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "if": "{{!!_computed.wsProbeNote}}",
+                        "props": { "className": "text-xs text-gray-500 dark:text-gray-400 leading-relaxed" },
+                        "text": "{{_computed.wsProbeNote}}"
                       },
                       {
                         "type": "basic",
@@ -264,6 +283,12 @@
                         "name": "P",
                         "props": { "className": "text-xs font-mono text-gray-900 dark:text-gray-100 break-all" },
                         "text": "{{'$t:moabom-system.admin.realtime_vm.client_endpoint' + ' · ' + _computed.clientEndpoint}}"
+                      },
+                      {
+                        "type": "basic",
+                        "name": "P",
+                        "props": { "className": "text-xs font-mono text-gray-900 dark:text-gray-100 break-all" },
+                        "text": "{{'$t:moabom-system.admin.realtime_vm.server_publish' + ' · ' + _computed.serverPublishUrl}}"
                       },
                       {
                         "type": "basic",
@@ -453,98 +478,73 @@
             "type": "basic",
             "name": "Div",
             "props": {
-              "className": "mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4"
+              "className": "mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
             },
             "children": [
               {
                 "type": "basic",
+                "name": "H3",
+                "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
+                "text": "$t:moabom-system.admin.realtime_vm.card_services"
+              },
+              {
+                "type": "basic",
                 "name": "Div",
-                "props": {
-                  "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
-                },
+                "if": "{{_computed.vmMetricsAvailable}}",
+                "props": { "className": "space-y-2 text-sm" },
                 "children": [
                   {
                     "type": "basic",
-                    "name": "H3",
-                    "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
-                    "text": "$t:moabom-system.admin.realtime_vm.card_processes"
-                  },
-                  {
-                    "type": "basic",
-                    "name": "Div",
-                    "if": "{{_computed.vmMetricsAvailable}}",
-                    "props": { "className": "space-y-2 text-sm" },
-                    "children": [
-                      {
-                        "type": "basic",
-                        "name": "P",
-                        "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
-                        "text": "{{'nginx · ' + _computed.procNginx}}"
-                      },
-                      {
-                        "type": "basic",
-                        "name": "P",
-                        "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
-                        "text": "{{'reverb · ' + _computed.procReverb}}"
-                      },
-                      {
-                        "type": "basic",
-                        "name": "P",
-                        "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
-                        "text": "{{'redis · ' + _computed.procRedis}}"
-                      }
-                    ]
+                    "name": "P",
+                    "props": { "className": "flex justify-between gap-4 text-gray-900 dark:text-gray-100" },
+                    "text": "{{'nginx · ' + _computed.procNginx}}"
                   },
                   {
                     "type": "basic",
                     "name": "P",
-                    "if": "{{!_computed.vmMetricsAvailable}}",
-                    "props": { "className": "text-sm text-gray-500 dark:text-gray-400" },
-                    "text": "—"
+                    "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
+                    "text": "{{'reverb · ' + _computed.svcReverbText}}"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
+                    "text": "{{'redis · ' + _computed.svcRedisText}}"
                   }
                 ]
               },
               {
                 "type": "basic",
                 "name": "Div",
-                "props": {
-                  "className": "rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm"
-                },
+                "if": "{{_computed.showDockerStats}}",
+                "props": { "className": "mt-3 space-y-2 text-sm" },
                 "children": [
                   {
                     "type": "basic",
-                    "name": "H3",
-                    "props": { "className": "text-sm font-semibold text-gray-900 dark:text-white mb-3" },
-                    "text": "$t:moabom-system.admin.realtime_vm.card_containers"
-                  },
-                  {
-                    "type": "basic",
-                    "name": "Div",
-                    "if": "{{_computed.vmMetricsAvailable}}",
-                    "props": { "className": "space-y-3 text-sm" },
-                    "children": [
-                      {
-                        "type": "basic",
-                        "name": "P",
-                        "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
-                        "text": "{{'reverb · ' + _computed.containerReverbText}}"
-                      },
-                      {
-                        "type": "basic",
-                        "name": "P",
-                        "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
-                        "text": "{{'redis · ' + _computed.containerRedisText}}"
-                      }
-                    ]
+                    "name": "P",
+                    "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400" },
+                    "text": "$t:moabom-system.admin.realtime_vm.docker_stats"
                   },
                   {
                     "type": "basic",
                     "name": "P",
-                    "if": "{{!_computed.vmMetricsAvailable}}",
-                    "props": { "className": "text-sm text-gray-500 dark:text-gray-400" },
-                    "text": "—"
+                    "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
+                    "text": "{{'reverb · ' + _computed.containerReverbText}}"
+                  },
+                  {
+                    "type": "basic",
+                    "name": "P",
+                    "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100" },
+                    "text": "{{'redis · ' + _computed.containerRedisText}}"
                   }
                 ]
+              },
+              {
+                "type": "basic",
+                "name": "P",
+                "if": "{{!_computed.vmMetricsAvailable}}",
+                "props": { "className": "text-sm text-gray-500 dark:text-gray-400" },
+                "text": "—"
               }
             ]
           },

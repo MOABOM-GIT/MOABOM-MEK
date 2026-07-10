@@ -1,8 +1,8 @@
 /**
  * AI 앱 만들기 — 좌·우 패널 레이아웃 + 코드/미리보기 세로 분할.
- * - 1열(`sm` 미만, 640px): 미리보기 패널이 창 높이(70cqh)를 채우고 본문은 viewport 스크롤
- *   (그리드를 강제 풀하이트로 고정하지 않아 좌·우 패널 콘텐츠 겹침 방지).
- * - 2열(`sm` 이상): 마이페이지·앱 공통 티어 — 단일 행 stretch, 좌·우 패널 풀하이트 + 내부 스크롤.
+ * - 1열(`sm` 미만, 640px): 패딩 p-3, 패널 높이 고정 해제 → viewport 세로 스크롤.
+ *   코드는 조절 바로 높이 조절, 프리뷰는 min-height 로 요소선택 작업 영역 확보.
+ * - 2열(`sm` 이상): 패딩 p-5, 단일 행 stretch, 좌·우 패널 풀하이트 + 내부 스크롤.
  */
 
 .moa-ai-generator-layout {
@@ -11,6 +11,12 @@
   gap: var(--moa-app-stack-gap);
   /* 1열: 콘텐츠 높이 유지(shrink 금지) → 넘치면 viewport 스크롤, 행 겹침 방지 */
   flex: 0 0 auto;
+}
+
+.moa-ai-form-panel,
+.moa-ai-preview-panel {
+  /* 1열 작업 영역 — p-3 (2열은 아래 @container 에서 p-5) */
+  padding: 0.75rem;
 }
 
 .moa-ai-form-panel {
@@ -22,11 +28,12 @@
   flex-direction: column;
   position: relative;
   min-height: 0;
-  height: 70cqh;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 .moa-ai-preview-stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -40,6 +47,18 @@
   border-radius: 1rem;
   border: 1px solid rgb(255 255 255 / 60%);
   background: #fff;
+}
+
+/* 1열: 프리뷰 iframe 작업 높이 — 요소선택·터치 가능 영역 */
+.moa-ai-preview-panel .moa-ai-split-pane__preview,
+.moa-ai-preview-panel .moa-ai-preview-stage:not(.moa-ai-split-pane__preview) {
+  flex: 0 0 auto;
+  min-height: min(70cqh, 36rem);
+}
+
+.moa-ai-preview-panel .moa-ai-preview-frame {
+  min-height: min(70cqh, 36rem);
+  height: min(70cqh, 36rem);
 }
 
 .moa-ai-preview-empty {
@@ -62,9 +81,29 @@
   }
 
   .moa-ai-form-panel,
+  .moa-ai-preview-panel {
+    padding: 1.25rem; /* p-5 */
+  }
+
+  .moa-ai-form-panel,
   .moa-ai-preview-panel,
   .moa-ai-preview-stage {
     height: 100%;
+  }
+
+  .moa-ai-preview-panel {
+    overflow: hidden;
+  }
+
+  .moa-ai-preview-panel .moa-ai-split-pane__preview,
+  .moa-ai-preview-panel .moa-ai-preview-stage:not(.moa-ai-split-pane__preview) {
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .moa-ai-preview-panel .moa-ai-preview-frame {
+    min-height: 0;
+    height: auto;
   }
 }
 
@@ -78,6 +117,18 @@
 .moa-ai-split-pane__code {
   flex-shrink: 0;
   overflow: hidden;
+}
+
+/* 1열 기본 코드 높이 — 좁은 창에서 인라인(조절 바)이 있으면 덮어씀 */
+.moa-ai-preview-panel .moa-ai-split-pane__code {
+  flex: 0 0 auto;
+  height: clamp(10rem, 28cqh, 18rem);
+}
+
+@container moa-app-window (width >= 640px) {
+  .moa-ai-preview-panel .moa-ai-split-pane__code {
+    height: auto;
+  }
 }
 
 .moa-ai-split-pane__preview {

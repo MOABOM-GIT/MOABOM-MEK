@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { WEBSITE_LINK_APP_GRADIENT } from './ai-generator/websiteLinkApp';
 import {
   buildSyntheticGeneratedLibraryApp,
   generatedAppLibraryId,
   mapStoredGeneratedAppToLibraryApp,
   parseGeneratedLibraryServerId,
+  tryOpenWebsiteLinkExternalWindow,
 } from './generatedAppLibrary';
 
 describe('generatedAppLibrary', () => {
@@ -102,8 +103,26 @@ describe('generatedAppLibrary', () => {
     expect(app.iconImageUrl).toContain('favicons');
     expect(app.metadata).toMatchObject({
       websiteUrl: 'https://www.naver.com',
+      launchMode: 'window',
     });
     expect(app.gradient).toBe(WEBSITE_LINK_APP_GRADIENT);
+  });
+
+  it('keeps title-icon theme gradient even when a stale icon_url is present', () => {
+    const app = mapStoredGeneratedAppToLibraryApp({
+      id: 11,
+      title: '국민건강보험',
+      app_type: 'website_link',
+      metadata: {
+        website_url: 'https://www.nhis.or.kr/',
+        icon_from_title: true,
+        theme_color: '#005eb8',
+        icon_url: 'https://example.com/stale.ico',
+      },
+    });
+
+    expect(app.gradient).toMatch(/^linear-gradient\(135deg,#005eb8,/);
+    expect(app.iconImageUrl).toBeUndefined();
   });
 
   it('maps website link title-icon fallback with point color gradient', () => {
@@ -116,13 +135,42 @@ describe('generatedAppLibrary', () => {
         website_url: 'https://www.nhis.or.kr/',
         icon_from_title: true,
         theme_color: '#005eb8',
+        launch_mode: 'new_window',
       },
     });
 
     expect(app.icon).toBe('notes-medical');
     expect(app.iconImageUrl).toBeUndefined();
     expect(app.gradient).toMatch(/^linear-gradient\(135deg,#005eb8,/);
-    expect(app.metadata).toMatchObject({ iconFromTitle: true });
+    expect(app.metadata).toMatchObject({ iconFromTitle: true, launchMode: 'new_window' });
+  });
+
+  it('tryOpenWebsiteLinkExternalWindow opens only new_window website links', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    const newWindowApp = mapStoredGeneratedAppToLibraryApp({
+      id: 9,
+      title: '네이버',
+      app_type: 'website_link',
+      metadata: {
+        website_url: 'https://www.naver.com',
+        launch_mode: 'new_window',
+      },
+    });
+    const windowApp = mapStoredGeneratedAppToLibraryApp({
+      id: 10,
+      title: '네이버',
+      app_type: 'website_link',
+      metadata: {
+        website_url: 'https://www.naver.com',
+        launch_mode: 'window',
+      },
+    });
+
+    expect(tryOpenWebsiteLinkExternalWindow(newWindowApp)).toBe(true);
+    expect(openSpy).toHaveBeenCalledWith('https://www.naver.com', '_blank', 'noopener,noreferrer');
+    expect(tryOpenWebsiteLinkExternalWindow(windowApp)).toBe(false);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    openSpy.mockRestore();
   });
 
   it('keeps owner and permission metadata for generated app windows', () => {

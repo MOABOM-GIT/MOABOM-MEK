@@ -362,8 +362,10 @@
       "rankings_apps_empty": "暂无应用排行数据",
       "rankings_users_empty": "暂无用户排行数据",
       "rankings_load_failed": "无法加载排行",
-      "rankings_activity_score": "{score} point",
-      "creator_badge": "Lv.{level} Creator"
+      "rankings_activity_score": "{score} P",
+      "creator_badge": "Lv.{level} {name}",
+      "rankings_my_rank": "我的排名第{rank}位",
+      "rankings_outside_top_hint": "不在前30名。请查看下方自己的排名。"
     },
     "right": {
       "close_panel": "关闭右侧面板",
@@ -491,6 +493,23 @@
         "cta": "重新载入",
         "loading": "正在重新载入…"
       }
+    },
+    "rank": {
+      "levels": {
+        "iron": "黑铁",
+        "bronze": "青铜",
+        "silver": "白银",
+        "gold": "黄金",
+        "platinum": "铂金",
+        "emerald": "翡翠",
+        "diamond": "钻石",
+        "master": "大师",
+        "grandmaster": "宗师",
+        "challenger": "挑战者"
+      },
+      "badge_label": "Lv.{level} {name}",
+      "points_unit": "{points} P",
+      "my_rank_summary": "我的排名第{rank}位"
     }
   },
   "moa_apps": {

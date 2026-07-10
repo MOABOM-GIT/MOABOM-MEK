@@ -28,7 +28,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
     /**
      * @return Collection<int, GeneratedApp>
      */
-    public function getForUser(int $userId, int $limit = 20): Collection
+    public function getForUser(int $userId, int $limit = 100): Collection
     {
         $query = GeneratedAppsConnection::apps()
             ->where('user_id', $userId)
@@ -39,6 +39,14 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
         $this->eagerUser($query);
 
         return $query->get();
+    }
+
+    public function countForUser(int $userId): int
+    {
+        $query = GeneratedAppsConnection::apps()->where('user_id', $userId);
+        $this->scopeTenant($query);
+
+        return (int) $query->count();
     }
 
     /**

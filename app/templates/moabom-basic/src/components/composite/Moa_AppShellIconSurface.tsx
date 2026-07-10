@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { App } from '../../data/Moa_apps';
 import { Div } from '../basic/Div';
 import { Icon } from '../basic/Icon';
 import { readWebsiteIconFromMetadata } from '../../apps/ai-generator/websiteLinkApp';
+import { isLightShellGradient, shellChromeToneClasses } from '../../utils/shellGradientContrast';
 
 export interface Moa_AppShellIconSurfaceProps {
   app: App;
@@ -23,6 +24,10 @@ function resolveIconImageUrl(app: App): string | null {
   return fromMetadata || null;
 }
 
+/**
+ * 그리드·좌측 패널 앱 아이콘 표면.
+ * 파비콘 실패 상태는 URL 키에 귀속되며, FA 폴백 색은 타일 gradient 대비로 결정한다.
+ */
 export function Moa_AppShellIconSurface({
   app,
   className = '',
@@ -31,8 +36,20 @@ export function Moa_AppShellIconSurface({
   isCreateApp = false,
 }: Moa_AppShellIconSurfaceProps) {
   const iconImageUrl = resolveIconImageUrl(app);
-  const [iconImageFailed, setIconImageFailed] = useState(false);
-  const showIconImage = Boolean(iconImageUrl) && !iconImageFailed;
+  const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
+  const showIconImage = Boolean(iconImageUrl) && failedIconUrl !== iconImageUrl;
+  const lightTile = !isCreateApp && isLightShellGradient(app.gradient);
+  const contrastIconClass = shellChromeToneClasses(lightTile).icon;
+  const resolvedSymbolClassName = [
+    symbolClassName.replace(/\btext-white\b/g, '').trim(),
+    contrastIconClass,
+  ].filter(Boolean).join(' ');
+
+  useEffect(() => {
+    if (!iconImageUrl) {
+      setFailedIconUrl(null);
+    }
+  }, [iconImageUrl]);
 
   return (
     <Div
@@ -45,10 +62,14 @@ export function Moa_AppShellIconSurface({
           alt=""
           className="moa-app-shell-icon-image"
           draggable={false}
-          onError={() => setIconImageFailed(true)}
+          onError={() => {
+            if (iconImageUrl) {
+              setFailedIconUrl(iconImageUrl);
+            }
+          }}
         />
       ) : (
-        <Icon name={app.icon} className={symbolClassName} />
+        <Icon name={app.icon} className={resolvedSymbolClassName} />
       )}
     </Div>
   );

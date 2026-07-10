@@ -30,11 +30,21 @@ import { isShellNotificationUnread } from '../../utils/moabomShellNotificationUt
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import type { ClientFormFactor } from '../../api/moabomPresenceApi';
 import { presenceAvatarGrayscaleClass, presenceStatusDotClass } from '../../utils/presenceAvailability';
-import { getShellAuthUserUuid, resolvePresenceListStatusLine, resolvePresenceListUserStatus } from '../../utils/presenceSettingsSync';
+import {
+  getShellAuthUserUuid,
+  resolvePresenceConnectDisplayName,
+  resolvePresenceListStatusLine,
+  resolvePresenceListUserStatus,
+} from '../../utils/presenceSettingsSync';
+import { isAiGenerationBusy } from 'moabom-ai-generation-activity';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 import type { ShellSurfaceOpenAction, ShellUrlSyncOptions } from '../../shell/shellSurfaceTypes';
 import { prefetchUserProfileWindowLayouts } from '../../shell/userProfileWindowPrefetch';
 import { navigateMoabomChatConversation } from '../../utils/moabomChatNotificationNavigate';
+import { resolvePresenceConnectRowKey } from '../../shell/presenceConnectSync';
+import { Moa_ActivityRankBadge, Moa_ActivityExpBar } from './Moa_ActivityRankBadge';
+import { useMoabomActivityLevel } from '../../hooks/useMoabomActivityLevel';
+import { resolveActivityLevelProgress } from '../../shell/moaActivityLevel';
 import { Moa_RightPanelAdSlot } from './Moa_RightPanelAdSlot';
 
 export interface RightPanelProps {
@@ -366,6 +376,20 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     ownPresence?.is_reachable ?? isLoggedIn,
   );
   const viewerUuid = isLoggedIn ? getShellAuthUserUuid() : null;
+  const { level: activityLevel } = useMoabomActivityLevel(isLoggedIn);
+  const profileLevel = activityLevel
+    ?? resolveActivityLevelProgress(currentUser?.point ?? 0);
+  const [expHighlight, setExpHighlight] = useState(false);
+  const prevLevelRef = useRef(profileLevel.level);
+
+  useEffect(() => {
+    if (prevLevelRef.current !== profileLevel.level) {
+      prevLevelRef.current = profileLevel.level;
+      setExpHighlight(true);
+      const timer = window.setTimeout(() => setExpHighlight(false), 900);
+      return () => window.clearTimeout(timer);
+    }
+  }, [profileLevel.level]);
 
   const rightTabsWithBadges = useMemo(
     () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
@@ -393,6 +417,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   /** 로그아웃 처리 */
   const handleLogout = () => {
+    if (isAiGenerationBusy()) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+      return;
+    }
+
     try {
       // 로그아웃 이후에도 사용자가 마지막으로 선택한 UI 언어를 유지한다.
       const preservedLocale = loadMoabomSystemState().preferences.language;
@@ -419,6 +448,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   /** 관리자 화면으로 이동합니다. */
   const handleOpenAdmin = () => {
+    if (isAiGenerationBusy()) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+      return;
+    }
+
     const G7Core = (window as any).G7Core;
     if (G7Core?.dispatch) {
       G7Core.dispatch({ handler: 'navigate', params: { path: '/admin' } });
@@ -467,19 +501,35 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 )}
                 <Div className={`moa-profile-status ${ownStatusDotClass}`} />
               </Div>
-              <Div className="flex-1 min-w-0">
-                <Div className="flex items-center gap-1.5">
-                  <Span className="font-bold text-primary text-sm">{currentUser?.name || t('moa_shell.common.user_fallback')}</Span>
-                  <Icon name="check-circle" className="text-xs" style={{ color: 'var(--moa-point-color)' }} />
+              <Div className={`flex-1 min-w-0 moa-activity-rank-lv-${profileLevel.level}`}>
+                {/* 목업 유지: 닉네임+등급아이콘 / 게이지 / Lv·포인트 */}
+                <Div className="flex items-center gap-1.5 min-w-0">
+                  <Span className="font-bold text-primary text-sm truncate">{currentUser?.name || t('moa_shell.common.user_fallback')}</Span>
+                  <Moa_ActivityRankBadge
+                    level={profileLevel.level}
+                    slug={profileLevel.slug}
+                    showLabel={false}
+                    className="moa-activity-rank-badge--icon-only"
+                  />
                 </Div>
-                {/* 경험치 바 */}
-                <Div className="w-full h-1.5 rounded-full mt-1.5 mb-1" style={{ background: 'color-mix(in srgb, var(--moa-point-color) 12%, transparent)' }}>
-                  <Div className="h-full rounded-full" style={{ width: '74%', background: 'var(--moa-point-color)' }} />
-                </Div>
-                <Div className="flex items-center gap-1">
-                  <Span className="text-xs font-bold" style={{ color: 'var(--moa-point-color)' }}>{t('moa_shell.left.creator_badge', { level: currentUser?.level || 1 })}</Span>
-                  <Span className="text-xs text-muted">|</Span>
-                  <Span className="text-xs text-muted">{(currentUser?.point || 0).toLocaleString()} P</Span>
+                <Moa_ActivityExpBar
+                  progressRatio={profileLevel.progress_ratio}
+                  highlight={expHighlight}
+                />
+                <Div className="flex items-center gap-1 min-w-0">
+                  <Span
+                    className="text-xs font-bold truncate"
+                    style={{ color: 'var(--moa-activity-rank-color, var(--moa-point-color))' }}
+                  >
+                    {t('moa_shell.rank.badge_label', {
+                      level: profileLevel.level,
+                      name: t(`moa_shell.rank.levels.${profileLevel.slug}`),
+                    })}
+                  </Span>
+                  <Span className="text-xs text-muted shrink-0" aria-hidden>|</Span>
+                  <Span className="text-xs text-muted truncate">
+                    {t('moa_shell.rank.points_unit', { points: profileLevel.points.toLocaleString() })}
+                  </Span>
                 </Div>
               </Div>
             </Div>
@@ -535,39 +585,43 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     )}
                     <Div className="mt-2 flex flex-col gap-1">
                       {onlineUsers.map(u => {
+                        const rowKey = resolvePresenceConnectRowKey(u);
+                        const displayName = resolvePresenceConnectDisplayName(u, t);
                         const deviceIcon = presenceClientFormFactorIcon(u.client_form_factor);
                         const listStatus = resolvePresenceListUserStatus(u, ownPresence, viewerUuid);
                         const avatarGrayscaleClass = presenceAvatarGrayscaleClass(listStatus.availability, listStatus.isReachable);
                         const statusDotClass = presenceStatusDotClass(listStatus.availability, listStatus.isReachable);
                         return (
                         <Div
-                          key={u.visitor_id ?? u.session_key}
+                          key={rowKey}
                           className="group flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
                           onClick={() => {
                             if (u.user_uuid) {
-                              openProfileSurface(u.user_uuid, u.display_name);
+                              openProfileSurface(u.user_uuid, displayName);
                             }
                           }}
                         >
                           <Div className="relative shrink-0">
                             {u.avatar ? (
                               <Img
+                                key={`${rowKey}:avatar`}
                                 src={u.avatar}
-                                alt={u.display_name}
+                                alt={displayName}
                                 className={`w-10 h-10 rounded-full object-cover${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                               />
                             ) : (
                               <Div
+                                key={`${rowKey}:avatar-fallback`}
                                 className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold${avatarGrayscaleClass ? ` ${avatarGrayscaleClass}` : ''}`}
                                 style={{ background: 'var(--moa-point-color)' }}
                               >
-                                {(u.display_name || '?').charAt(0).toUpperCase()}
+                                {(displayName || '?').charAt(0).toUpperCase()}
                               </Div>
                             )}
                             <Div className={`moa-status-dot ${statusDotClass}`} />
                           </Div>
                           <Div className="flex-1 min-w-0">
-                            <Moa_OverflowMarqueeText text={u.display_name} className="text-sm font-bold text-primary" />
+                            <Moa_OverflowMarqueeText text={displayName} className="text-sm font-bold text-primary" />
                             <Moa_OverflowMarqueeText
                               text={resolvePresenceListStatusLine(t, u, ownPresence, viewerUuid, listStatus.isReachable)}
                               className="text-xs text-muted mt-0.5"
@@ -585,7 +639,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                           {u.user_uuid && (
                             <PresenceUserActionsMenu
                               userUuid={u.user_uuid}
-                              displayName={u.display_name}
+                              displayName={displayName}
                               friendship={u.friendship}
                               isLoggedIn={isLoggedIn}
                               onOpenShellSurface={onOpenShellSurface}

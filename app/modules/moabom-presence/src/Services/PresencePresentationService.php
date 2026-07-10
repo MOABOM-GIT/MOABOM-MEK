@@ -6,6 +6,7 @@ use App\Models\User;
 use Modules\Moabom\Presence\Enums\PresenceAvailability;
 use Modules\Moabom\Presence\Enums\PresenceSubtitleMode;
 use Modules\Moabom\Presence\Models\PresenceUserPreference;
+use Modules\Moabom\Presence\Models\TenantPresenceSession;
 
 /**
  * 접속 상태·부가 문구·목록 노출 규칙 SSOT.
@@ -76,6 +77,29 @@ final class PresencePresentationService
         }
 
         return $this->trimOrNull($user->getAvatarUrl());
+    }
+
+    /**
+     * 접속자 목록 표시명 SSOT.
+     * - 회원: User 닉네임(실시간) 우선, 없으면 세션 스냅샷
+     * - guest: 빈 문자열 — UI 로케일(`presence_guest_fallback`)이 표시. DB/Accept-Language에 Guest·방문자를 고정하지 않음.
+     */
+    public function resolveConnectListDisplayName(
+        TenantPresenceSession $session,
+        ?User $user,
+    ): string {
+        if (! $session->user_id) {
+            return '';
+        }
+
+        if ($user) {
+            $live = $this->trimOrNull((string) ($user->nickname ?: $user->name));
+            if ($live !== null) {
+                return $live;
+            }
+        }
+
+        return $this->trimOrNull((string) $session->display_name) ?? '';
     }
 
     /**

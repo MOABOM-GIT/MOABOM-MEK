@@ -3,6 +3,7 @@ import {
   extractServerMainAppOrder,
   extractServerMainAppOrderCustomized,
   mergeMainAppOrderFromPull,
+  isLocalMainOrderAheadOfServer,
   materializeOrderForMutation,
   pruneStaleGeneratedAppOrderIds,
   resolveMainAppsFromOrder,
@@ -58,6 +59,28 @@ describe('moaShellAppOrder', () => {
       serverOrder: ['mypage'],
       serverCustomized: true,
     })).toEqual({ order: ['cpap-mask', 'generated-app-1'], customized: true });
+  });
+
+  it('mergeMainAppOrderFromPull keeps local when server is a proper subset (missing pins)', () => {
+    expect(mergeMainAppOrderFromPull({
+      isLoggedIn: true,
+      trustLocalDuringCooldown: false,
+      localOrder: ['cpap-mask', 'generated-app-9'],
+      localCustomized: true,
+      serverOrder: ['cpap-mask'],
+      serverCustomized: true,
+    })).toEqual({ order: ['cpap-mask', 'generated-app-9'], customized: true });
+  });
+
+  it('isLocalMainOrderAheadOfServer is true only for proper subset lag', () => {
+    expect(isLocalMainOrderAheadOfServer(
+      ['cpap-mask', 'generated-app-9'],
+      ['cpap-mask'],
+    )).toBe(true);
+    expect(isLocalMainOrderAheadOfServer(
+      ['cpap-mask'],
+      ['generated-app-42', 'mypage'],
+    )).toBe(false);
   });
 
   it('mergeMainAppOrderFromPull returns default layout when neither side is customized', () => {

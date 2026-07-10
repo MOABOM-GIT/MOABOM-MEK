@@ -133,7 +133,7 @@ export function buildRecentApps(recentIds: string[], extraApps: App[] = []): App
 
 export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowState[] {
   return items
-    .filter(item => item.id && item.appId && item.title && item.icon && item.gradient)
+    .filter(item => item.id && item.appId)
     .slice(0, MAX_TASKBAR_ITEMS)
     .map((item) => {
       let appId = String(item.appId);
@@ -142,16 +142,25 @@ export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowStat
       }
       const useCreateMeta = appId === createAppShellMetadata.id;
       const usePointTitleGradient = appId === 'mypage';
+      const title = typeof item.title === 'string' && item.title.trim()
+        ? item.title
+        : (useCreateMeta ? createAppShellMetadata.name : appId);
+      const icon = useCreateMeta
+        ? createAppShellMetadata.icon
+        : (typeof item.icon === 'string' && item.icon ? item.icon : 'cube');
+      const gradient = useCreateMeta
+        ? createAppShellMetadata.gradient
+        : usePointTitleGradient
+          ? MOA_SHELL_POINT_TITLE_GRADIENT
+          : (typeof item.gradient === 'string' && item.gradient
+            ? item.gradient
+            : MOA_SHELL_POINT_TITLE_GRADIENT);
       return {
         id: String(item.id),
         appId,
-        title: String(item.title),
-        icon: useCreateMeta ? createAppShellMetadata.icon : String(item.icon),
-        gradient: useCreateMeta
-          ? createAppShellMetadata.gradient
-          : usePointTitleGradient
-            ? MOA_SHELL_POINT_TITLE_GRADIENT
-            : String(item.gradient),
+        title,
+        icon,
+        gradient,
         zIndex: 0,
         initialX: item.initialX,
         initialY: item.initialY,

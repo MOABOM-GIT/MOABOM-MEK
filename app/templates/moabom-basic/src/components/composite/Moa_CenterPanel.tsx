@@ -11,6 +11,7 @@ import { ModeSelector } from './Moa_ModeSelector';
 import { SortableAppGrid } from './Moa_SortableAppGrid';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { resolveWindowTitle } from '../../i18n/resolveAppStrings';
+import { resolveShellWindowChrome } from '../../shell/resolveShellWindowChrome';
 import { isLightShellGradient } from '../../utils/shellGradientContrast';
 import type { App } from '../../data/Moa_apps';
 import type { BoardShellMode, ShellErrorCode } from '../../utils/moabomShellRoutes';
@@ -27,6 +28,55 @@ const FOOTER_LAYOUT_GUARD_MS = 320;
 /** 접힌 뒤에도 남아 있어야 하는 최소 스크롤 여유(px) */
 const FOOTER_MIN_REMAINING_SCROLL_PX = 24;
 const MOBILE_FOOTER_SCROLL_MQ = '(width <= 768px)';
+
+function TaskbarWindowButton({
+  windowId,
+  chrome,
+  label,
+  compactControls,
+}: {
+  windowId: string;
+  chrome: ReturnType<typeof resolveShellWindowChrome>;
+  label: string;
+  compactControls?: boolean;
+}) {
+  const [iconImageFailed, setIconImageFailed] = useState(false);
+  const iconImageUrl = chrome.iconImageUrl?.trim() || '';
+  const showIconImage = Boolean(iconImageUrl) && !iconImageFailed;
+
+  useEffect(() => {
+    setIconImageFailed(false);
+  }, [iconImageUrl]);
+
+  return (
+    <Button
+      data-taskbar-window-id={windowId}
+      variant="taskbar"
+      size={compactControls ? 'xs' : 'sm'}
+      className={`shrink-0 whitespace-nowrap${
+        isLightShellGradient(chrome.gradient) ? ' moa-btn-taskbar--light' : ''
+      }`}
+      style={{ background: chrome.gradient }}
+    >
+      <Div className="moa-taskbar-btn">
+        <Div className="moa-taskbar-btn__icon" aria-hidden>
+          {showIconImage ? (
+            <img
+              src={iconImageUrl}
+              alt=""
+              className="moa-taskbar-btn__icon-image"
+              draggable={false}
+              onError={() => setIconImageFailed(true)}
+            />
+          ) : (
+            <Icon name={chrome.icon} />
+          )}
+        </Div>
+        <Span className="moa-taskbar-btn__label">{label}</Span>
+      </Div>
+    </Button>
+  );
+}
 
 export interface WindowState {
   id: string;
@@ -301,25 +351,25 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
           itemDataAttribute={MOA_TASKBAR_WINDOW_ID_ATTR}
           onItemActivate={onFocusWindow}
         >
-          {minimizedWindows.map(w => (
-            <Button
-              key={w.id}
-              data-taskbar-window-id={w.id}
-              variant="taskbar"
-              size={compactControls ? 'xs' : 'sm'}
-              className={`shrink-0 whitespace-nowrap${
-                isLightShellGradient(w.gradient) ? ' moa-btn-taskbar--light' : ''
-              }`}
-              style={{ background: w.gradient }}
-            >
-              <Div className="moa-taskbar-btn">
-                <Div className="moa-taskbar-btn__icon" aria-hidden>
-                  <Icon name={w.icon} />
-                </Div>
-                <Span className="moa-taskbar-btn__label">{resolveWindowTitle(w, appsById, language, t, authWindowAppIds)}</Span>
-              </Div>
-            </Button>
-          ))}
+          {minimizedWindows.map(w => {
+            const chrome = resolveShellWindowChrome(w, appsById, language);
+            const label = resolveWindowTitle(
+              { ...w, title: chrome.title },
+              appsById,
+              language,
+              t,
+              authWindowAppIds,
+            );
+            return (
+              <TaskbarWindowButton
+                key={w.id}
+                windowId={w.id}
+                chrome={chrome}
+                label={label}
+                compactControls={compactControls}
+              />
+            );
+          })}
         </Moa_HorizontalPointerStrip>
       )}
 

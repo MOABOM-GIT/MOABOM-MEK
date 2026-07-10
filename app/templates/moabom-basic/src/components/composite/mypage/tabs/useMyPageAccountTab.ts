@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { isAiGenerationBusy } from 'moabom-ai-generation-activity';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
+import { pushInfoToast } from '../../../../runtime/moaShellToasts';
 import {
   changePasswordApi,
   verifyPasswordApi,
@@ -90,6 +92,11 @@ export function useMyPageAccountTab({
   };
 
   const handleWithdraw = async () => {
+    if (isAiGenerationBusy()) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+      return;
+    }
+
     setSecuritySubmitting(true);
     setSecurityMessage(null);
 

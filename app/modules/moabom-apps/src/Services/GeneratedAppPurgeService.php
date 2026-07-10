@@ -10,6 +10,7 @@ use Modules\Moabom\Apps\Contracts\AppCommunityPostRepositoryInterface;
 use Modules\Moabom\Apps\Models\GeneratedApp;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Support\GeneratedAppAdminScope;
+use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\System\Saas\SaasMysqlPdoFactory;
 use Modules\Moabom\System\Saas\TenantDatabaseConfigurator;
 use Modules\Moabom\System\Saas\TenantRegistry;
@@ -44,9 +45,21 @@ class GeneratedAppPurgeService
         $this->websiteLinkIconStorage->purgeForApp($app);
         $this->hostingService->teardownHosted($app);
         $this->communityPostRepository->hardDeleteByAppId((int) $app->id);
+        $this->purgeRevisions((int) $app->id);
         $this->purgeTenantSessions($app);
         $this->purgeTenantLegacyStore($app);
         $this->appRepository->delete($app);
+    }
+
+    private function purgeRevisions(int $appId): void
+    {
+        if ($appId <= 0) {
+            return;
+        }
+
+        GeneratedAppsConnection::revisions()
+            ->where('generated_app_id', $appId)
+            ->delete();
     }
 
     private function purgeTenantLegacyStore(GeneratedApp $app): void

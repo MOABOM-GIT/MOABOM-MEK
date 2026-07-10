@@ -124,3 +124,91 @@ export function handleMoabomAppFileDownloadMessage(data: unknown): boolean {
   }
   return triggerGeneratedAppDownload(bytes, message.filename, message.mimeType);
 }
+
+export type MoabomAppShellToastSeverity = 'info' | 'success' | 'warning' | 'error';
+
+export interface MoabomAppShellToastMessage {
+  source: 'moabom-app';
+  type: 'shell-toast';
+  message: string;
+  severity: MoabomAppShellToastSeverity;
+}
+
+export interface MoabomAppShellOpenAppMessage {
+  source: 'moabom-app';
+  type: 'shell-open-app';
+  appId: string;
+}
+
+const ALLOWED_TOAST_SEVERITIES = new Set<MoabomAppShellToastSeverity>([
+  'info',
+  'success',
+  'warning',
+  'error',
+]);
+
+export function parseMoabomAppShellToastMessage(data: unknown): MoabomAppShellToastMessage | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  const message = data as Partial<MoabomAppShellToastMessage>;
+  if (message.source !== 'moabom-app' || message.type !== 'shell-toast') {
+    return null;
+  }
+  const text = String(message.message ?? '').trim().slice(0, 240);
+  if (!text) {
+    return null;
+  }
+  const severity = ALLOWED_TOAST_SEVERITIES.has(message.severity as MoabomAppShellToastSeverity)
+    ? (message.severity as MoabomAppShellToastSeverity)
+    : 'info';
+  return {
+    source: 'moabom-app',
+    type: 'shell-toast',
+    message: text,
+    severity,
+  };
+}
+
+export function parseMoabomAppShellOpenAppMessage(data: unknown): MoabomAppShellOpenAppMessage | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  const message = data as Partial<MoabomAppShellOpenAppMessage>;
+  if (message.source !== 'moabom-app' || message.type !== 'shell-open-app') {
+    return null;
+  }
+  const appId = String(message.appId ?? '').trim().slice(0, 120);
+  if (!appId || !/^[a-z0-9][a-z0-9._-]*$/i.test(appId)) {
+    return null;
+  }
+  return {
+    source: 'moabom-app',
+    type: 'shell-open-app',
+    appId,
+  };
+}
+
+/**
+ * allowlist 셸 메시지 처리. 처리했으면 true.
+ * openApp 은 콜백으로 위임 (셸 창 오케스트레이터).
+ */
+export function handleMoabomAppShellBridgeMessage(
+  data: unknown,
+  handlers: {
+    onToast: (message: string, severity: MoabomAppShellToastSeverity) => void;
+    onOpenApp?: (appId: string) => void;
+  },
+): boolean {
+  const toast = parseMoabomAppShellToastMessage(data);
+  if (toast) {
+    handlers.onToast(toast.message, toast.severity);
+    return true;
+  }
+  const openApp = parseMoabomAppShellOpenAppMessage(data);
+  if (openApp) {
+    handlers.onOpenApp?.(openApp.appId);
+    return true;
+  }
+  return false;
+}

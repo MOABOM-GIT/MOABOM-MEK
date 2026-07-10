@@ -1,18 +1,17 @@
 import type { AppTier } from '../../api/moabomAppsApi';
 
 /**
- * Hosted 티어 생성 시 사용자 프롬프트에 덧붙이는 UX·저장 가이드.
+ * Hosted(앱 서버 저장) 티어면 UX·온·오프라인 저장 가이드를 프롬프트에 항상 덧붙인다.
  * i18n 키 `moa_apps_ai.hosted_modern_storage_prompt_addon` 과 동일 문구를 유지한다.
  */
 export function appendHostedModernStoragePrompt(
   basePrompt: string,
   tier: AppTier,
-  enabled: boolean,
   addon: string,
 ): string {
   const trimmed = basePrompt.trim();
   const extra = addon.trim();
-  if (tier !== 'hosted' || !enabled || !extra) {
+  if (tier !== 'hosted' || !extra) {
     return trimmed;
   }
   if (trimmed.includes(extra)) {

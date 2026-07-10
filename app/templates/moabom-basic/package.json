@@ -1,6 +1,6 @@
 {
   "name": "moabom-basic",
-  "version": "0.6.79",
+  "version": "0.6.80",
   "description": "Moabom Custom User Template Components",
   "type": "module",
   "main": "dist/components.js",
@@ -42,6 +42,10 @@
     "workbox-strategies": "^7.1.0"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

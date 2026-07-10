@@ -36,6 +36,7 @@ import {
   isMoaShellErrorAppId,
 } from '../../shell/moaShellErrorIds';
 import { isMoaShellAppCommunityAppId } from '../../shell/moaShellAppCommunityIds';
+import { resolveShellWindowChrome } from '../../shell/resolveShellWindowChrome';
 import { Moa_ShellWindowRenderer } from './Moa_ShellWindowRenderer';
 import {
   AUTH_WINDOW_APP_IDS,
@@ -150,6 +151,9 @@ type RenderWindowContent = (win: WindowState) => React.ReactNode;
 interface ShellWindowFrameProps {
   win: WindowState;
   title: string;
+  icon: string;
+  gradient: string;
+  iconImageUrl?: string;
   isFavorite: boolean;
   isForeground: boolean;
   compactWindow: boolean;
@@ -164,6 +168,9 @@ interface ShellWindowFrameProps {
 const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
   win,
   title,
+  icon,
+  gradient,
+  iconImageUrl,
   isFavorite,
   isForeground,
   compactWindow,
@@ -207,8 +214,9 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
     <Window
       id={win.id}
       title={title}
-      icon={win.icon}
-      gradient={win.gradient}
+      icon={icon}
+      iconImageUrl={iconImageUrl}
+      gradient={gradient}
       zIndex={win.zIndex}
       isFavorite={isFavorite}
       initialX={isAuthWin ? undefined : win.initialX}
@@ -286,6 +294,9 @@ function areShellWindowFramePropsEqual(
 ): boolean {
   return prev.win === next.win
     && prev.title === next.title
+    && prev.icon === next.icon
+    && prev.gradient === next.gradient
+    && prev.iconImageUrl === next.iconImageUrl
     && prev.isFavorite === next.isFavorite
     && prev.isForeground === next.isForeground
     && prev.compactWindow === next.compactWindow
@@ -614,22 +625,28 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
             updateSystemState({ layout: { rightPanelOpen: false } });
           }} />
 
-        {windows.map(win => (
-          <ShellWindowFrame
-            key={win.id}
-            win={win}
-            title={resolveWinTitle(win)}
-            isFavorite={favoriteIdsRef.current.includes(win.appId)}
-            isForeground={foregroundWindowId == null || win.id === foregroundWindowId}
-            compactWindow={compactWindow}
-            renderWindowContent={renderWindowContent}
-            onCloseWindow={closeWindow}
-            onMinimizeWindow={minimizeWindow}
-            onToggleMaximize={toggleMaximize}
-            onFocusWindow={focusWindow}
-            onToggleFavoriteApp={toggleFavoriteApp}
-          />
-        ))}
+        {windows.map(win => {
+          const chrome = resolveShellWindowChrome(win, appsById, language);
+          return (
+            <ShellWindowFrame
+              key={win.id}
+              win={win}
+              title={chrome.title || resolveWinTitle(win)}
+              icon={chrome.icon}
+              gradient={chrome.gradient}
+              iconImageUrl={chrome.iconImageUrl}
+              isFavorite={favoriteIdsRef.current.includes(win.appId)}
+              isForeground={foregroundWindowId == null || win.id === foregroundWindowId}
+              compactWindow={compactWindow}
+              renderWindowContent={renderWindowContent}
+              onCloseWindow={closeWindow}
+              onMinimizeWindow={minimizeWindow}
+              onToggleMaximize={toggleMaximize}
+              onFocusWindow={focusWindow}
+              onToggleFavoriteApp={toggleFavoriteApp}
+            />
+          );
+        })}
       </MoabomPresenceProvider>
 
       <Toast toasts={toasts} position="bottom-center" duration={4000} />

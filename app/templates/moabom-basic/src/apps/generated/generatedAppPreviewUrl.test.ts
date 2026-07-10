@@ -38,7 +38,7 @@ describe('generatedAppPreviewUrl', () => {
 
   it('generatedAppFrameSandbox uses external-site policy for website_link', () => {
     expect(generatedAppFrameSandbox('https://www.naver.com', 'website_link')).toBe(
-      'allow-scripts allow-forms allow-popups allow-same-origin',
+      'allow-scripts allow-forms allow-modals allow-popups allow-same-origin',
     );
     expect(generatedAppFrameSandbox('https://apps.mek360.com/g/1', 'general')).toBe(
       'allow-scripts allow-same-origin',

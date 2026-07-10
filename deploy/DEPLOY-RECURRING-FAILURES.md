@@ -62,7 +62,7 @@ Tenant appearance DoD-5·split-brain, moabom-system decomposition 등은 별도 
 
 | # | 금지 | 대신 |
 |---|------|------|
-| D1 | 원인 모를 때 `_IMAGE_TAG`만 연속 증가 | 로그·게이트 통과 후 **태그 1회** |
+| D1 | 원인 모를 때 `_IMAGE_TAG`만 연속 증가 · **layout Job 실패만으로 재빌드** | 로그·게이트 통과 후 **태그 1회** · layout 만이면 [RF-24](#rf-24-layout-job-실패--전체-재배포-루프-구조) |
 | D2 | `DEPLOY_SKIP_CHECK=1` + `--skip-check` 습관화 | `check-before-cloud-build.sh` 실패 원인 수정 |
 | D3 | JSON/레이아웃만 고치고 DB sync 생략 | [RF-01](#rf-01-admin-정보-탭-memory_usage--react-31) |
 | D4 | Cloud Run Job에 `php artisan … '*'` 전달 | slug **생략** 또는 `freshent` 등 구체 slug [RF-12](#rf-12-cloud-run-job-인자에--전달) |
@@ -226,6 +226,27 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 > **SaaS module layouts:** `admin_saas_*`·`admin_mypage_settings` 는 **`moabom:saas:sync-module-layouts`** (platform + tenants). `module:refresh-layout` 단독은 RF-14b 원인 → [RF-14](#rf-14-saas-hospitals--모듈-레이아웃-db-미동기화) · [RF-14b](#rf-14b-테넌트-db에-구-tenant-settings-endpoint-잔류).
 
+### RF-24: layout Job 실패 → 전체 재배포 루프 (구조)
+
+| | |
+|---|---|
+| **증상** | reconcile/sync Job 실패 후 `_IMAGE_TAG` 올려 Cloud Build 재실행 (수 시간·태그 낭비) |
+| **원인** | SoftDeletes `refresh()`/`delete` 가 Job exit 를 깨뜨림 + 이미지 배포와 layout 정합이 한 exit 에 묶여 “배포 실패 = 재빌드”로 착각 |
+| **착각** | “layout 버그니까 이미지 다시 올려야 한다” — 서비스 이미지는 이미 서빙 중일 수 있음 |
+| **조치** | ① reconciler SoftDeletes 계약(DB::table overwrite, 삭제 금지) ② **재빌드 없이** `IMAGE_TAG=<현재> bash deploy/run-post-deploy-layout-pipeline.sh` ③ 코드 수정이 이미지에 없으면 그때만 태그 1회 |
+| **예방** | `check-module-layout-softdeletes-contract.sh` · `build-and-deploy` layout 실패 시 D1 안내 · Job image/cmd 동일 시 `jobs update` 스킵 |
+| **금지** | layout Job 실패만으로 `_IMAGE_TAG` 연속 증가 (D1) |
+
+### RF-25: nginx `upstream timed out` (셸 부트·크레딧)
+
+| | |
+|---|---|
+| **증상** | 브라우저/로그에 `upstream timed out` / 504 — 셸 로드·우측 프로필 직후 자주 |
+| **원인** | (1) `nginx-cloudrun.conf` PHP location 에 `fastcgi_read_timeout` 미설정 → 기본 **60s** (2) 셸이 `GET user/credits` 로 원장 SUM/COUNT/목록까지 매번 조회 |
+| **착각** | “Cloud Run timeout(3600s)이 짧다” — 실제 병목은 nginx→php-fpm 기본 60s + 무거운 credits overview |
+| **조치** | `fastcgi_read_timeout 120s` · 셸은 `?limit=0` 경량 경로(잔액·level만) · 마이페이지는 기존 limit≥1 |
+| **예방** | `check-before-cloud-build.sh` `fastcgi_read_timeout 120s` 가드 · `CreditService::getUserCreditOverview` limit=0 분기 |
+
 ### RF-14: SaaS hospitals — 모듈 레이아웃 DB 미동기화
 
 | | |
@@ -354,6 +375,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | 배포 전 검증 | `./deploy/check-before-cloud-build.sh` |
 | 빌드+배포+smoke | `./deploy/build-and-deploy.sh` |
 | 레이아웃 DB sync (수동·async 후) | `IMAGE_TAG=vN bash deploy/run-layout-sync-job.sh` |
+| **layout Job 실패 후 재실행 (재빌드 금지)** | `IMAGE_TAG=vN bash deploy/run-post-deploy-layout-pipeline.sh` |
 | **테넌트 수렴+검증 (단일 SSOT)** | `php artisan moabom:saas:tenant-reconcile` (생략=platform+active tenants) |
 | 특정 테넌트만 수렴+검증 | `php artisan moabom:saas:tenant-reconcile freshent` |
 | 검증만 (동기화 생략) | `php artisan moabom:saas:tenant-reconcile --skip-template-layouts --skip-module-layouts --skip-menus --skip-language-packs` |
@@ -367,6 +389,8 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | 날짜 | 태그/이슈 | 교훈 |
 |------|-----------|------|
+| 2026-07-10 | **RF-25** / v460 | upstream timed out = nginx 60s + 무거운 credits. `fastcgi_read_timeout 120s` + `limit=0` |
+| 2026-07-10 | **RF-24** | layout Job 실패 ≠ 재빌드. SoftDeletes 계약 + `run-post-deploy-layout-pipeline.sh` + Job update skip |
 | 2026-06-02 | v159~v160 | module i18n `$t:moabom-system.*` · module layout sync · `forEach`→`iteration` (RF-14~16) |
 | 2026-06-02 | **A·B 완료** | `DEPLOY-RECURRING-FAILURES` · 가드 · build-and-deploy 자동 layout sync · entrypoint 재시도; **C 범위 외** |
 | 2026-06-02 | v154~v155 | layout JSON ≠ DB; sync Job slug `*` 금지; TemplateManager 직접 refresh; 운영 Job 1회 성공 |

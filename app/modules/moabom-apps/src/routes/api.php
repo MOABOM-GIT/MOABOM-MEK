@@ -8,6 +8,8 @@ use Modules\Moabom\Apps\Http\Controllers\AiGenerationSessionController;
 use Modules\Moabom\Apps\Http\Controllers\AiStreamQueueController;
 use Modules\Moabom\Apps\Http\Controllers\AppCommunityController;
 use Modules\Moabom\Apps\Http\Controllers\AppSeoController;
+use Modules\Moabom\Apps\Http\Controllers\GeneratedAppOwnerDataController;
+use Modules\Moabom\Apps\Http\Controllers\GeneratedAppVersionController;
 use Modules\Moabom\Apps\Http\Controllers\GeneratedAppWebsiteIconController;
 use Modules\Moabom\Apps\Http\Controllers\PublicGeneratedAppController;
 use Modules\Moabom\Apps\Http\Controllers\PublicUserGeneratedAppController;
@@ -104,12 +106,46 @@ Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
     Route::put('generated/{id}', [AiAppController::class, 'update'])
         ->whereNumber('id')
         ->name('apps.generated.update');
+    Route::get('generated/{id}/revisions', [GeneratedAppVersionController::class, 'index'])
+        ->whereNumber('id')
+        ->middleware('throttle:60,1')
+        ->name('apps.generated.revisions.index');
+    Route::get('generated/{id}/revisions/{revisionId}', [GeneratedAppVersionController::class, 'show'])
+        ->whereNumber('id')
+        ->whereNumber('revisionId')
+        ->middleware('throttle:60,1')
+        ->name('apps.generated.revisions.show');
+    Route::post('generated/{id}/revisions/{revisionId}/restore', [GeneratedAppVersionController::class, 'restore'])
+        ->whereNumber('id')
+        ->whereNumber('revisionId')
+        ->middleware('throttle:20,1')
+        ->name('apps.generated.revisions.restore');
     Route::patch('generated/{id}/share', [AiAppController::class, 'share'])
         ->whereNumber('id')
         ->name('apps.generated.share');
     Route::delete('generated/{id}', [AiAppController::class, 'destroy'])
         ->whereNumber('id')
         ->name('apps.generated.destroy');
+
+    Route::get('generated/{id}/data-tables', [GeneratedAppOwnerDataController::class, 'tables'])
+        ->whereNumber('id')
+        ->middleware('throttle:60,1')
+        ->name('apps.generated.data.tables');
+    Route::get('generated/{id}/data/{tableKey}', [GeneratedAppOwnerDataController::class, 'index'])
+        ->whereNumber('id')
+        ->where('tableKey', '[A-Za-z0-9_-]+')
+        ->middleware('throttle:60,1')
+        ->name('apps.generated.data.index');
+    Route::delete('generated/{id}/data/{tableKey}/{rowId}', [GeneratedAppOwnerDataController::class, 'destroy'])
+        ->whereNumber('id')
+        ->where('tableKey', '[A-Za-z0-9_-]+')
+        ->whereNumber('rowId')
+        ->middleware('throttle:30,1')
+        ->name('apps.generated.data.destroy');
+    Route::get('generated/{id}/data-export', [GeneratedAppOwnerDataController::class, 'export'])
+        ->whereNumber('id')
+        ->middleware('throttle:20,1')
+        ->name('apps.generated.data.export');
 
     Route::prefix('generated/{id}/community')->whereNumber('id')->group(function (): void {
         Route::post('posts', [AppCommunityController::class, 'store'])

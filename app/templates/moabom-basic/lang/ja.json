@@ -362,8 +362,10 @@
       "rankings_apps_empty": "集計されたアプリ順位はまだありません",
       "rankings_users_empty": "集計されたユーザーランキングはまだありません",
       "rankings_load_failed": "ランキングを読み込めませんでした",
-      "rankings_activity_score": "{score} point",
-      "creator_badge": "Lv.{level} Creator"
+      "rankings_activity_score": "{score} P",
+      "creator_badge": "Lv.{level} {name}",
+      "rankings_my_rank": "自分の順位 {rank}位",
+      "rankings_outside_top_hint": "上位30位外です。下の自分の順位を確認してください。"
     },
     "right": {
       "close_panel": "右パネルを閉じる",
@@ -491,6 +493,23 @@
         "cta": "再読み込み",
         "loading": "再読み込み中…"
       }
+    },
+    "rank": {
+      "levels": {
+        "iron": "アイアン",
+        "bronze": "ブロンズ",
+        "silver": "シルバー",
+        "gold": "ゴールド",
+        "platinum": "プラチナ",
+        "emerald": "エメラルド",
+        "diamond": "ダイヤモンド",
+        "master": "マスター",
+        "grandmaster": "グランドマスター",
+        "challenger": "チャレンジャー"
+      },
+      "badge_label": "Lv.{level} {name}",
+      "points_unit": "{points} P",
+      "my_rank_summary": "自分の順位 {rank}位"
     }
   },
   "moa_apps": {

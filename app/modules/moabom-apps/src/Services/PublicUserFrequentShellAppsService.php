@@ -145,14 +145,22 @@ final class PublicUserFrequentShellAppsService
         }
 
         $payload = $this->aiAppService->serializeForLibraryList($app, $viewerUserId);
+        $metadata = is_array($payload['metadata'] ?? null) ? $payload['metadata'] : [];
+        $iconUrl = isset($metadata['icon_url']) && is_string($metadata['icon_url'])
+            ? trim($metadata['icon_url'])
+            : '';
+        $appType = (string) ($payload['app_type'] ?? 'general');
 
         return [
             'id' => $shellId,
             'generated_app_id' => (int) $app->id,
             'title' => (string) ($payload['title'] ?? $this->humanizeShellAppId($shellId)),
-            'icon' => 'cube',
+            'icon' => $iconUrl !== '' ? 'link' : 'cube',
             'kind' => 'generated',
+            'app_type' => $appType,
             'visibility' => $payload['visibility'] ?? null,
+            'metadata' => $metadata,
+            'icon_url' => $iconUrl !== '' ? $iconUrl : null,
         ];
     }
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.2] - 2026-07-10
+
+### Changed
+
+- `GET user/credits?limit=0` — 잔액·`ranking_points`·`level`만 반환하고 원장 SUM/COUNT/목록을 생략합니다(셸 프로필 upstream timeout 완화).
+
+## [0.2.1] - 2026-07-10
+
+### Added
+
+- `levels.thresholds` 설정(10단계) + `CreditLevelService` — `ranking_points` → 레벨·EXP 진행도 SSOT.
+- 사용자 `GET user/credits` 응답에 `ranking_points`·`level` DTO 추가.
+- 관리자 크레딧 설정에 레벨 구간 편집, 유저 크레딧 목록에 레벨 컬럼.
+
+### Changed
+
+- 관리자 크레딧 설정 저장 시 `levels` 카테고리 필수 검증(길이 10·비감소·Lv.1=0).
+
 ## [0.2.0] - 2026-06-29
 
 ### Added

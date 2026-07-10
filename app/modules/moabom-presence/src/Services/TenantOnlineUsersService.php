@@ -42,14 +42,26 @@ final class TenantOnlineUsersService
             ? $this->friendships->mapRelationStatusForViewer($viewer->id, $userIds)
             : [];
 
-        return $sessions
+        $rows = $sessions
+            ->filter(fn (TenantPresenceSession $session) => $session->user_id === null || $session->user?->uuid)
             ->map(fn (TenantPresenceSession $session) => $this->serializeSession(
                 $session,
                 $relationMap,
                 $session->user_id ? $preferenceMap->get((int) $session->user_id) : null,
             ))
-            ->values()
-            ->all();
+            ->values();
+
+        if ($viewer?->uuid) {
+            $viewerUuid = $viewer->uuid;
+            $selfIndex = $rows->search(fn (array $row): bool => ($row['user_uuid'] ?? '') === $viewerUuid);
+            if (is_int($selfIndex) && $selfIndex > 0) {
+                $self = $rows->get($selfIndex);
+                $rows->forget($selfIndex);
+                $rows->prepend($self);
+            }
+        }
+
+        return $rows->values()->all();
     }
 
     /**
@@ -112,7 +124,7 @@ final class TenantOnlineUsersService
             'visitor_id' => $session->visitor_id,
             'client_ip_masked' => $session->client_ip_masked,
             'user_uuid' => $user?->uuid,
-            'display_name' => $session->display_name,
+            'display_name' => $this->presentation->resolveConnectListDisplayName($session, $user),
             'status_text' => $subtitle,
             'presence_subtitle' => $subtitle,
             'avatar' => $this->presentation->resolveConnectListAvatar($user, $preferences),

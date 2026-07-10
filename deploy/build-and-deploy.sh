@@ -230,10 +230,7 @@ if [[ "${ASYNC}" -eq 1 ]]; then
   echo "    smoke: MOABOM_STRICT_SMOKE=${STRICT_SMOKE} bash deploy/smoke-after-deploy.sh https://mek360.com"
   if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
     && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
-    echo "    platform module layout reconcile (every deploy): IMAGE_TAG=${TAG} bash deploy/run-platform-module-layout-reconcile-job.sh"
-    echo "    layout DB sync (manifest 변경 시): IMAGE_TAG=${TAG} bash deploy/run-layout-sync-job.sh"
-    echo "    cache-clear (layout sync skipped 시): IMAGE_TAG=${TAG} bash deploy/run-template-cache-clear-job.sh"
-    echo "    serving cache bust (every deploy): bash deploy/run-serving-cache-bust.sh"
+    echo "    layout pipeline (RF-24, no rebuild): IMAGE_TAG=${TAG} bash deploy/run-post-deploy-layout-pipeline.sh"
   fi
   exit 0
 fi
@@ -306,29 +303,20 @@ else
   run_smoke "${URL}"
 fi
 
-# SaaS: platform module layout reconcile(매 배포) + layout·module JSON hash 게이트(RF-13)
+# SaaS: layout 정합은 이미지 배포와 분리된 파이프라인(RF-13 / RF-24)
+# 실패해도 이미지는 이미 서빙 중 — _IMAGE_TAG 올리지 말고 layout-only 재실행.
 if [[ "${SKIP_LAYOUT_SYNC}" -eq 0 ]] \
   && grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
   && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
-  # shellcheck source=lib/layout-sync-hash.sh
-  source "${ROOT}/deploy/lib/layout-sync-hash.sh"
-
-  echo "==> Post-deploy platform module layout reconcile (platform DB — every deploy)"
-  IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-platform-module-layout-reconcile-job.sh"
-  moabom_layout_sync_record_platform_layout_versions
-
-  if moabom_layout_sync_needed; then
-    echo "==> Post-deploy layout DB sync (moabom-admin_basic → platform + tenants)"
-    IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-layout-sync-job.sh"
-    moabom_layout_sync_record_success
-  else
-    echo "==> Post-deploy layout DB sync skipped (manifest unchanged)"
-    echo "==> Post-deploy template:cache-clear (ext.cache_version bump)"
-    IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
+  echo "==> Post-deploy layout pipeline (RF-24 — reconcile + conditional sync + cache bust)"
+  if ! IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-post-deploy-layout-pipeline.sh"; then
+    echo "" >&2
+    echo "ERROR: Cloud Run 이미지 ${IMAGE} 는 배포·스모크까지 완료됐으나 layout 정합 Job 실패." >&2
+    echo "       D1 위반: _IMAGE_TAG 를 올리지 말 것. SoftDeletes/reconcile 수정 후 layout-only 재실행:" >&2
+    echo "         IMAGE_TAG=${TAG} bash deploy/run-post-deploy-layout-pipeline.sh" >&2
+    echo "       See deploy/DEPLOY-RECURRING-FAILURES.md RF-24" >&2
+    exit 1
   fi
-
-  echo "==> Post-deploy serving cache bust (Cloud Run revision recycle — every deploy)"
-  bash "${ROOT}/deploy/run-serving-cache-bust.sh"
   # shellcheck source=lib/post-deploy-migration-hash.sh
   source "${ROOT}/deploy/lib/post-deploy-migration-hash.sh"
   if moabom_post_deploy_phase_e_changed; then

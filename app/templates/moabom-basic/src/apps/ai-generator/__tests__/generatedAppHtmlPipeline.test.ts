@@ -52,4 +52,12 @@ describe('generatedAppHtmlPipeline', () => {
     expect(prepared.html).toContain('</html>');
     expect(prepared.html).toContain('moabom-ai-preview-safety');
   });
+
+  it('미리보기 Inspector 브릿지는 저장 HTML에서 제거한다', () => {
+    const withBridge = `${COMPLETE_BODY}<script id="moabom-preview-inspector-bridge">window.__x=1</script>`;
+    const prepared = prepareGeneratedAppHtmlForPersist(withBridge);
+
+    expect(prepared.html).not.toContain('moabom-preview-inspector-bridge');
+    expect(prepared.html).toContain('<p>ok</p>');
+  });
 });

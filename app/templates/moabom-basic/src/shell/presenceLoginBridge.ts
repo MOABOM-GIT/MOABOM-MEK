@@ -1,3 +1,10 @@
+/**
+ * 로그인/로그아웃 직후 접속자 목록의 즉시 반영.
+ *
+ * 서버 SSOT는 `touch=login|logout` heartbeat → `refreshConnectList` 재조회.
+ * 이 모듈은 AuthManager 스냅샷이 준비된 경우에만 guest↔회원 1행을 미리 맞춘다.
+ * (uuid 없으면 no-op — 서버 재조회가 최종 상태를 채운다.)
+ */
 import type { OwnPresenceState, PresenceOnlineUser } from '../api/moabomPresenceApi';
 import { getOrCreateShellVisitorId } from './ShellContextBridge';
 import {

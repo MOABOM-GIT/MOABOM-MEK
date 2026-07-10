@@ -1,20 +1,36 @@
 export type GeneratedAppIconRule = { icon: string; keywords: string[] };
 
 export const GENERATED_APP_ICON_RULES: GeneratedAppIconRule[] = [
-  { icon: 'calculator', keywords: ['계산', '계산기', '정산', 'calculator', 'calc'] },
-  { icon: 'chart-line', keywords: ['차트', '그래프', '통계', '분석', '리포트', 'dashboard', 'chart', 'graph', 'report', 'analytics'] },
-  { icon: 'calendar-alt', keywords: ['일정', '달력', '예약', 'calendar', 'schedule', 'booking'] },
-  { icon: 'tasks', keywords: ['할일', '체크', '작업', 'todo', 'task', 'checklist'] },
-  { icon: 'notes-medical', keywords: ['건강', '수면', '의료', '업체', '보험', '공단', 'health', 'sleep', 'medical', 'company', 'insurance', 'nhis'] },
-  { icon: 'dumbbell', keywords: ['운동', '피트니스', 'fitness', 'workout', 'exercise'] },
-  { icon: 'utensils', keywords: ['식단', '음식', '레시피', 'food', 'meal', 'recipe'] },
-  { icon: 'wallet', keywords: ['가계부', '예산', '비용', 'budget', 'money', 'expense', 'finance'] },
-  { icon: 'map-marker-alt', keywords: ['지도', '위치', '여행', 'map', 'location', 'travel'] },
-  { icon: 'cube', keywords: ['3d', 'three', 'canvas', '공간', '입체'] },
-  { icon: 'gamepad', keywords: ['phaser', '인터랙션', '시뮬레이션', 'quiz', 'game', 'simulation'] },
-  { icon: 'paint-brush', keywords: ['색상', '디자인', '그림', 'color', 'design', 'draw', 'paint'] },
-  { icon: 'building', keywords: ['회사', '기업', '법인', 'company', 'corp', 'enterprise', 'office'] },
-  { icon: 'globe', keywords: ['포털', 'portal', 'website', 'web', '홈페이지', '사이트'] },
+  { icon: 'calculator', keywords: ['계산', '계산기', '정산', '합계', '세금', '더하기', 'calculator', 'calc', 'tax'] },
+  { icon: 'chart-line', keywords: ['차트', '그래프', '통계', '분석', '리포트', '대시보드', '시각화', 'dashboard', 'chart', 'graph', 'report', 'analytics', 'kpi'] },
+  { icon: 'calendar-alt', keywords: ['일정', '달력', '예약', '스케줄', '약속', '미팅', 'calendar', 'schedule', 'booking', 'meeting', 'event'] },
+  { icon: 'tasks', keywords: ['할일', '체크리스트', '체크', '작업', '메모', 'todo', 'task', 'checklist', 'memo'] },
+  { icon: 'notes-medical', keywords: ['건강', '수면', '의료', '병원', '약', '보험', '공단', '양압', 'cpap', 'health', 'sleep', 'medical', 'hospital', 'pharmacy', 'insurance', 'nhis'] },
+  { icon: 'dumbbell', keywords: ['운동', '피트니스', '헬스', '요가', 'fitness', 'workout', 'exercise', 'gym', 'yoga'] },
+  { icon: 'utensils', keywords: ['식단', '음식', '레시피', '요리', '식당', 'food', 'meal', 'recipe', 'cook', 'restaurant'] },
+  { icon: 'wallet', keywords: ['가계부', '예산', '비용', '지출', '수입', '급여', 'budget', 'money', 'expense', 'finance', 'salary'] },
+  { icon: 'map-marker-alt', keywords: ['지도', '위치', '여행', '내비', '길찾기', 'map', 'location', 'travel', 'navigation'] },
+  { icon: 'cube', keywords: ['3d', 'three', 'canvas', '공간', '입체', '모델', 'model'] },
+  { icon: 'gamepad', keywords: ['게임', '퀴즈', '플레이', 'phaser', '인터랙션', '시뮬레이션', 'quiz', 'game', 'play', 'simulation'] },
+  { icon: 'paint-brush', keywords: ['색상', '디자인', '그림', '스케치', '아트', 'color', 'design', 'draw', 'paint', 'sketch'] },
+  { icon: 'building', keywords: ['회사', '기업', '법인', '오피스', '조직', 'company', 'corp', 'enterprise', 'office'] },
+  { icon: 'globe', keywords: ['포털', '홈페이지', '사이트', '인터넷', 'portal', 'website', 'internet'] },
+  { icon: 'comments', keywords: ['채팅', '대화', '메시지', '상담', 'chat', 'message', 'messenger', 'talk'] },
+  { icon: 'music', keywords: ['음악', '노래', '오디오', '플레이리스트', 'music', 'song', 'audio', 'playlist'] },
+  { icon: 'camera', keywords: ['사진', '카메라', '앨범', '갤러리', 'photo', 'camera', 'album', 'gallery', 'image'] },
+  { icon: 'cloud-sun', keywords: ['날씨', '기온', '예보', 'weather', 'forecast', 'temperature'] },
+  { icon: 'shopping-cart', keywords: ['쇼핑', '장바구니', '구매', '상점', 'shop', 'shopping', 'cart', 'store'] },
+  { icon: 'book', keywords: ['책', '공부', '학습', '독서', '노트', 'book', 'study', 'learn', 'reading', 'note'] },
+  { icon: 'code', keywords: ['코드', '개발', '프로그래밍', 'html', 'css', 'javascript', 'code', 'programming'] },
+  { icon: 'clock', keywords: ['타이머', '알람', '시계', '시간', 'timer', 'alarm', 'clock', 'stopwatch'] },
+  { icon: 'envelope', keywords: ['메일', '이메일', '편지', 'mail', 'email', 'inbox'] },
+  { icon: 'users', keywords: ['팀', '회원', '커뮤니티', '그룹', 'team', 'member', 'community', 'group', 'users'] },
+  { icon: 'home', keywords: ['홈', '집', '주거', 'home', 'house'] },
+  { icon: 'lock', keywords: ['비밀번호', '보안', '잠금', '인증', 'password', 'security', 'lock', 'auth'] },
+  { icon: 'video', keywords: ['영상', '비디오', '유튜브', '스트리밍', 'video', 'youtube', 'stream'] },
+  { icon: 'car', keywords: ['자동차', '운전', '차량', '렌트', 'car', 'drive', 'vehicle', 'rental'] },
+  { icon: 'bell', keywords: ['알림', '공지', '벨', 'notification', 'bell', 'alert', 'notice'] },
+  { icon: 'robot', keywords: ['로봇', '인공지능', '챗봇', 'robot', 'chatbot', 'gpt', 'openai'] },
 ];
 
 const APP_TYPE_ICON_FALLBACK: Record<string, string> = {
@@ -30,7 +46,8 @@ export function resolveGeneratedAppIconFromTitle(
   prompt?: string | null,
   appType = 'general',
 ): string {
-  const haystack = `${title} ${prompt ?? ''} ${appType}`.toLowerCase();
+  // appType 은 키워드 매칭에 넣지 않음 — website_link/html_paste 등이 web·html 에 오매칭됨
+  const haystack = `${title} ${prompt ?? ''}`.toLowerCase();
   const match = GENERATED_APP_ICON_RULES.find(rule =>
     rule.keywords.some(keyword => haystack.includes(keyword.toLowerCase())),
   );

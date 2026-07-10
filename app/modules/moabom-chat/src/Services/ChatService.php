@@ -20,6 +20,9 @@ final class ChatService
 {
     private const FOCUS_CACHE_TTL_SECONDS = 1800;
 
+    /** hours 미지정 mute 시 muted_until SSOT (사실상 무기한) */
+    private const INDEFINITE_MUTE_YEARS = 10;
+
     private ?string $pendingNotificationConversationUuid = null;
 
     public function __construct(
@@ -131,9 +134,7 @@ final class ChatService
                 }
             }
         } else {
-            foreach ($memberIds as $memberId) {
-                $this->chat->restoreMemberIfTrashed($conversation->id, (int) $memberId);
-            }
+            $this->chat->restoreMemberIfTrashed($conversation->id, (int) $creator->id);
             $conversation = $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']);
         }
 
@@ -164,7 +165,7 @@ final class ChatService
     public function sendMessage(User $sender, string $conversationUuid, string $body, ?string $clientMessageId = null): array
     {
         $conversation = $this->requireConversationForMember($sender, $conversationUuid);
-        $this->assertConversationWritable($sender, $conversation);
+        $this->assertSenderCanSend($sender, $conversation);
 
         if ($clientMessageId) {
             $existing = $this->chat->findMessageByClientId($conversation->id, $sender->id, $clientMessageId);
@@ -181,6 +182,7 @@ final class ChatService
         }
 
         $message = $this->chat->createMessage($conversation->id, $sender->id, $this->normalizeBody($body), $clientMessageId);
+        $this->restoreTrashedDirectPeerMembers($conversation, $sender);
         $conversation = $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']);
         $responsePayload = [
             'message' => $this->serializeMessage($message),
@@ -210,8 +212,8 @@ final class ChatService
         $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
         $conversation->loadMissing(['membersIncludingTrashed.user']);
 
-        if (! $this->resolveConversationWritable($conversation, $viewer, $conversation->membersIncludingTrashed)) {
-            throw new \InvalidArgumentException('conversation_peer_left');
+        if (! $this->senderIsActiveMember($conversation, $viewer)) {
+            throw new \InvalidArgumentException('conversation_not_found');
         }
 
         $payload = [
@@ -257,6 +259,7 @@ final class ChatService
             ],
         );
         $this->broadcastInboxStateToActiveMembers($conversation, 'member.left');
+        $this->broadcastConversationMemberLeft($conversation, $viewer);
 
         return [
             'conversation_uuid' => $conversation->uuid,
@@ -270,11 +273,17 @@ final class ChatService
     public function muteConversation(User $viewer, string $conversationUuid, ?int $hours = null): array
     {
         $conversation = $this->requireConversationForMember($viewer, $conversationUuid);
-        $mutedUntil = $hours === null || $hours <= 0
-            ? null
-            : now()->addHours(min($hours, 24 * 365));
+        $mutedUntil = match (true) {
+            $hours !== null && $hours <= 0 => null,
+            $hours === null => now()->addYears(self::INDEFINITE_MUTE_YEARS),
+            default => now()->addHours(min($hours, 24 * 365)),
+        };
 
         $member = $this->chat->setMemberMutedUntil($conversation->id, $viewer->id, $mutedUntil);
+
+        if ($hours !== null && $hours <= 0) {
+            $this->clearConversationFocus($viewer, $conversation->uuid);
+        }
 
         return [
             'conversation_uuid' => $conversation->uuid,
@@ -465,6 +474,22 @@ final class ChatService
         }
     }
 
+    private function restoreTrashedDirectPeerMembers(ChatConversation $conversation, User $actor): void
+    {
+        if ($conversation->type !== ChatConversationType::Direct) {
+            return;
+        }
+
+        $conversation->loadMissing('membersIncludingTrashed');
+        foreach ($conversation->membersIncludingTrashed as $member) {
+            if ((int) $member->user_id === (int) $actor->id || ! $member->trashed()) {
+                continue;
+            }
+
+            $this->chat->restoreMemberIfTrashed($conversation->id, (int) $member->user_id);
+        }
+    }
+
     private function requireConversationForMember(User $viewer, string $conversationUuid): ChatConversation
     {
         $conversation = $this->chat->findConversationByUuid($conversationUuid);
@@ -475,16 +500,16 @@ final class ChatService
         return $conversation;
     }
 
-    private function assertConversationWritable(User $sender, ChatConversation $conversation): void
+    private function assertSenderCanSend(User $sender, ChatConversation $conversation): void
     {
         $conversation->loadMissing(['membersIncludingTrashed.user', 'members.user']);
 
-        if (! $this->resolveConversationWritable($conversation, $sender, $conversation->membersIncludingTrashed)) {
-            throw new \InvalidArgumentException('conversation_peer_left');
+        if (! $this->senderIsActiveMember($conversation, $sender)) {
+            throw new \InvalidArgumentException('conversation_not_found');
         }
 
-        foreach ($conversation->members as $member) {
-            if ((int) $member->user_id === (int) $sender->id || ! $member->user) {
+        foreach ($conversation->membersIncludingTrashed as $member) {
+            if ((int) $member->user_id === (int) $sender->id || ! $member->user || $member->trashed()) {
                 continue;
             }
 
@@ -493,6 +518,14 @@ final class ChatService
                 throw new \InvalidArgumentException((string) $eligibility['reason']);
             }
         }
+    }
+
+    private function senderIsActiveMember(ChatConversation $conversation, User $sender): bool
+    {
+        $conversation->loadMissing('membersIncludingTrashed');
+
+        return $conversation->membersIncludingTrashed
+            ->contains(fn (ChatConversationMember $row) => (int) $row->user_id === (int) $sender->id && ! $row->trashed());
     }
 
     /**
@@ -606,13 +639,19 @@ final class ChatService
             return false;
         }
 
-        if ($conversation->type === ChatConversationType::Direct) {
-            return $memberRows
-                ->filter(fn (ChatConversationMember $row) => (int) $row->user_id !== (int) $viewer->id && ! $row->trashed())
-                ->isNotEmpty();
-        }
-
         return true;
+    }
+
+    private function broadcastConversationMemberLeft(ChatConversation $conversation, User $whoLeft): void
+    {
+        HookManager::broadcast(
+            $this->conversationChannelName($conversation),
+            'conversation.member_left',
+            [
+                'conversation_uuid' => $conversation->uuid,
+                'user_uuid' => $whoLeft->uuid,
+            ],
+        );
     }
 
     /**

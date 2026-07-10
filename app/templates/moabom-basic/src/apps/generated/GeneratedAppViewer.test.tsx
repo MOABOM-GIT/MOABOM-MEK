@@ -41,8 +41,47 @@ describe('GeneratedAppViewer', () => {
     await waitFor(() => {
       const frame = screen.getByTitle('Naver') as HTMLIFrameElement;
       expect(frame.src).toContain('https://www.naver.com');
-      expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-forms allow-popups allow-same-origin');
+      expect(frame.getAttribute('sandbox')).toBe(
+        'allow-scripts allow-forms allow-modals allow-popups allow-same-origin',
+      );
     });
+  });
+
+  it('shows new_window placeholder without shell iframe and reopens on button click', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+      closed: false,
+      focus: vi.fn(),
+    } as unknown as Window);
+
+    vi.mocked(fetchVisibleGeneratedApp).mockResolvedValue({
+      id: 11,
+      title: 'Naver',
+      app_type: 'website_link',
+      html: '<!DOCTYPE html><html><body data-moabom-website-link="1"></body></html>',
+      preview_url: 'https://apps.mek360.com/g/11',
+      metadata: {
+        website_url: 'https://www.naver.com',
+        launch_mode: 'new_window',
+      },
+    });
+
+    renderViewer(11);
+
+    await waitFor(() => {
+      expect(screen.getByText('moa_apps_ai.external_launch_title')).toBeInTheDocument();
+      expect(screen.queryByTitle('Naver')).not.toBeInTheDocument();
+    });
+    // 최초 open 은 아이콘 클릭(openApp) 제스처에서 수행 — 뷰어 마운트만으로는 열지 않음
+    expect(openSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /moa_apps_ai.external_launch_reopen/i }));
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://www.naver.com',
+      '_blank',
+      'noopener,noreferrer',
+    );
+
+    openSpy.mockRestore();
   });
 
   it('loads saved app into iframe preview via preview_url', async () => {
@@ -132,7 +171,7 @@ describe('GeneratedAppViewer', () => {
     renderViewer(7);
 
     const creatorButton = await screen.findByRole('button', { name: 'A' });
-    expect(creatorButton.className).toContain('is-draggable');
+    expect(creatorButton.className).toContain('moa-pointer-draggable');
     expect(creatorButton.className).not.toContain('is-actionable');
     fireEvent.click(creatorButton);
 

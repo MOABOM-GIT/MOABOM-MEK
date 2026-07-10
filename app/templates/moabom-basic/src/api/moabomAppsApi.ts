@@ -11,7 +11,7 @@ export type { AppTier };
 
 export type GeneratedAppVisibility = 'private' | 'tenant' | 'global';
 
-export type AiAppType = 'general' | '3d' | 'game' | 'dataviz' | 'website_link';
+export type AiAppType = 'general' | 'html_paste' | '3d' | 'game' | 'dataviz' | 'website_link';
 
 export interface GenerateAiAppPayload {
   prompt: string;
@@ -257,15 +257,26 @@ export async function fetchSharedGeneratedApps(): Promise<StoredGeneratedAppSumm
 export async function fetchGeneratedAppLibrary(): Promise<{
   owned: StoredGeneratedAppSummary[];
   shared: StoredGeneratedAppSummary[];
+  ownedTotal: number;
+  hasMoreOwned: boolean;
 }> {
   const data = await requestMoabomAppsApi<{
     owned?: StoredGeneratedAppSummary[];
     shared?: StoredGeneratedAppSummary[];
+    owned_total?: number;
+    owned_truncated?: boolean;
+    has_more_owned?: boolean;
   }>('apps/generated/library');
 
+  const owned = Array.isArray(data.owned) ? data.owned : [];
+  const ownedTotal = typeof data.owned_total === 'number' ? data.owned_total : owned.length;
+  const hasMoreOwned = Boolean(data.has_more_owned ?? data.owned_truncated ?? ownedTotal > owned.length);
+
   return {
-    owned: Array.isArray(data.owned) ? data.owned : [],
+    owned,
     shared: Array.isArray(data.shared) ? data.shared : [],
+    ownedTotal,
+    hasMoreOwned,
   };
 }
 
@@ -291,6 +302,101 @@ export async function updateGeneratedApp(id: number, payload: StoreGeneratedAppP
     method: 'PUT',
     body: payload,
   });
+}
+
+export interface GeneratedAppRevisionSummary {
+  id: number;
+  generated_app_id: number;
+  revision_number: number;
+  source: string;
+  html_hash: string;
+  title: string;
+  created_by?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface GeneratedAppRevisionDetail extends GeneratedAppRevisionSummary {
+  html: string;
+}
+
+export async function fetchGeneratedAppRevisions(
+  id: number,
+  limit = 30,
+): Promise<{ revisions: GeneratedAppRevisionSummary[]; current_version: number }> {
+  return requestMoabomAppsApi<{ revisions: GeneratedAppRevisionSummary[]; current_version: number }>(
+    `apps/generated/${id}/revisions?limit=${Math.max(1, Math.min(100, limit))}`,
+  );
+}
+
+export async function fetchGeneratedAppRevision(
+  id: number,
+  revisionId: number,
+): Promise<GeneratedAppRevisionDetail> {
+  return requestMoabomAppsApi<GeneratedAppRevisionDetail>(`apps/generated/${id}/revisions/${revisionId}`);
+}
+
+export async function restoreGeneratedAppRevision(
+  id: number,
+  revisionId: number,
+): Promise<StoredGeneratedApp> {
+  return requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}/revisions/${revisionId}/restore`, {
+    method: 'POST',
+  });
+}
+
+export interface GeneratedAppDataTableSummary {
+  table_key: string;
+  row_count: number;
+}
+
+export interface GeneratedAppDataRow {
+  id: number;
+  table_key: string;
+  payload: Record<string, unknown>;
+  user_id?: number | null;
+  tenant_slug?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export async function fetchGeneratedAppDataTables(id: number): Promise<GeneratedAppDataTableSummary[]> {
+  const data = await requestMoabomAppsApi<{ tables: GeneratedAppDataTableSummary[] }>(
+    `apps/generated/${id}/data-tables`,
+  );
+  return Array.isArray(data.tables) ? data.tables : [];
+}
+
+export async function fetchGeneratedAppDataRows(
+  id: number,
+  tableKey: string,
+  limit = 200,
+): Promise<GeneratedAppDataRow[]> {
+  const data = await requestMoabomAppsApi<{ table_key: string; rows: GeneratedAppDataRow[] }>(
+    `apps/generated/${id}/data/${encodeURIComponent(tableKey)}?limit=${Math.max(1, Math.min(500, limit))}`,
+  );
+  return Array.isArray(data.rows) ? data.rows : [];
+}
+
+export async function deleteGeneratedAppDataRow(
+  id: number,
+  tableKey: string,
+  rowId: number,
+): Promise<void> {
+  await requestMoabomAppsApi<{ id: number; table_key: string }>(
+    `apps/generated/${id}/data/${encodeURIComponent(tableKey)}/${rowId}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function exportGeneratedAppData(id: number): Promise<{
+  tables: GeneratedAppDataTableSummary[];
+  rows: Record<string, GeneratedAppDataRow[]>;
+}> {
+  return requestMoabomAppsApi<{
+    tables: GeneratedAppDataTableSummary[];
+    rows: Record<string, GeneratedAppDataRow[]>;
+  }>(`apps/generated/${id}/data-export`);
 }
 
 export async function deleteGeneratedApp(id: number): Promise<void> {

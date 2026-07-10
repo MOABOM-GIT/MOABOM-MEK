@@ -15,15 +15,62 @@ import {
 } from './moabomShellNotificationSocket';
 
 const RESYNC_DEBOUNCE_MS = 400;
+const SUBSCRIPTION_RETRY_BASE_MS = 250;
+const SUBSCRIPTION_RETRY_MAX_MS = 5_000;
+const SUBSCRIPTION_RETRY_MAX_ATTEMPTS = 24;
 
 let activeUserUuid: string | null = null;
 let notificationSubscriptionKey: string | null = null;
 let chatInboxSubscription: { unsubscribe: () => void } | null = null;
 let coordinatorInstalled = false;
 let resyncTimer: ReturnType<typeof setTimeout> | null = null;
+let subscriptionRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let subscriptionRetryAttempt = 0;
 let lastConnectionState: string | null = null;
 
+function clearSubscriptionRetryTimer(): void {
+  if (subscriptionRetryTimer !== null) {
+    clearTimeout(subscriptionRetryTimer);
+    subscriptionRetryTimer = null;
+  }
+}
+
+function subscriptionsReady(): boolean {
+  return Boolean(notificationSubscriptionKey && chatInboxSubscription);
+}
+
+function scheduleSubscriptionRetry(): void {
+  if (!activeUserUuid || subscriptionsReady()) {
+    clearSubscriptionRetryTimer();
+    subscriptionRetryAttempt = 0;
+    return;
+  }
+  if (subscriptionRetryTimer !== null || subscriptionRetryAttempt >= SUBSCRIPTION_RETRY_MAX_ATTEMPTS) {
+    return;
+  }
+
+  const delayMs = Math.min(
+    SUBSCRIPTION_RETRY_MAX_MS,
+    SUBSCRIPTION_RETRY_BASE_MS * 2 ** Math.min(subscriptionRetryAttempt, 5),
+  );
+  subscriptionRetryAttempt += 1;
+  subscriptionRetryTimer = setTimeout(() => {
+    subscriptionRetryTimer = null;
+    if (!activeUserUuid) {
+      return;
+    }
+    ensureUserChannelSubscriptions(activeUserUuid);
+    if (!subscriptionsReady()) {
+      scheduleSubscriptionRetry();
+    } else {
+      subscriptionRetryAttempt = 0;
+    }
+  }, delayMs);
+}
+
 function teardownUserChannelSubscriptions(): void {
+  clearSubscriptionRetryTimer();
+  subscriptionRetryAttempt = 0;
   if (notificationSubscriptionKey) {
     unsubscribeShellNotificationChannel(notificationSubscriptionKey);
     notificationSubscriptionKey = null;
@@ -58,6 +105,12 @@ function ensureUserChannelSubscriptions(userUuid: string): void {
       chatInboxSubscription = subscription;
     }
   }
+
+  if (!subscriptionsReady()) {
+    scheduleSubscriptionRetry();
+  } else {
+    subscriptionRetryAttempt = 0;
+  }
 }
 
 function scheduleResyncMoabomShellRealtimeSubscriptions(): void {
@@ -87,7 +140,7 @@ export function startMoabomShellRealtimeCoordinator(userUuid: string | null): vo
   const uuidChanged = activeUserUuid !== userUuid;
   activeUserUuid = userUuid;
 
-  if (uuidChanged || !notificationSubscriptionKey || !chatInboxSubscription) {
+  if (uuidChanged || !subscriptionsReady()) {
     teardownUserChannelSubscriptions();
     ensureUserChannelSubscriptions(userUuid);
   }
@@ -121,6 +174,9 @@ export function installMoabomShellRealtimeCoordinator(): void {
     lastConnectionState = state;
     if (becameConnected) {
       scheduleResyncMoabomShellRealtimeSubscriptions();
+    }
+    if (activeUserUuid && !subscriptionsReady()) {
+      scheduleSubscriptionRetry();
     }
   });
 }

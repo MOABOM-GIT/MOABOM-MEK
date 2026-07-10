@@ -156,12 +156,33 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
         }),
       });
     engineRef.current = engine;
+    // 마운트 직후·레이아웃 반영 후 버퍼/DPR transform 동기화 (HostInner 단독 resize 제거).
+    engine.syncSurface();
 
     return () => {
       engine.stop();
       engineRef.current = null;
     };
   }, [canvasRef, injected?.createEngine]);
+
+  // canvas 버퍼 크기 + DPR transform — width/height 변경 시 context 리셋 복구
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return () => {};
+
+    const sync = (): void => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width > 0 ? rect.width : window.innerWidth;
+      const height = rect.height > 0 ? rect.height : window.innerHeight;
+      engine.syncSurface(width, height);
+    };
+
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, [canvasRef]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // visibilitychange · IntersectionObserver 구독

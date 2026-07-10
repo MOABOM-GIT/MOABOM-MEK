@@ -35,6 +35,13 @@ export type ChatMessageDeletedPayload = {
   conversation_uuid?: string;
 };
 
+export type ChatMemberLeftPayload = {
+  conversation_uuid?: string;
+  user_uuid?: string;
+  conversation?: ChatConversation;
+  reason?: string;
+};
+
 export type ChatSocketSubscription = {
   unsubscribe: () => void;
 };
@@ -50,6 +57,7 @@ export function subscribeChatConversation(
     onRead?: (payload: ChatReadPayload) => void;
     onTyping?: (payload: ChatTypingPayload) => void;
     onMessageDeleted?: (payload: ChatMessageDeletedPayload) => void;
+    onMemberLeft?: (payload: ChatMemberLeftPayload) => void;
   },
 ): ChatSocketSubscription | null {
   const ws = getWebSocketApi();
@@ -90,6 +98,15 @@ export function subscribeChatConversation(
       channel,
       'message.deleted',
       raw => handlers.onMessageDeleted?.((raw && typeof raw === 'object' ? raw : {}) as ChatMessageDeletedPayload),
+      { channelType: 'private' },
+    );
+    if (key) keys.push(key);
+  }
+  if (handlers.onMemberLeft) {
+    const key = ws.subscribe(
+      channel,
+      'conversation.member_left',
+      raw => handlers.onMemberLeft?.((raw && typeof raw === 'object' ? raw : {}) as ChatMemberLeftPayload),
       { channelType: 'private' },
     );
     if (key) keys.push(key);
@@ -142,6 +159,7 @@ export function subscribeChatConversations(
     onRead?: (payload: ChatReadPayload) => void;
     onTyping?: (payload: ChatTypingPayload) => void;
     onMessageDeleted?: (payload: ChatMessageDeletedPayload) => void;
+    onMemberLeft?: (payload: ChatMemberLeftPayload) => void;
   },
 ): ChatSocketSubscription | null {
   const subscriptions = channels

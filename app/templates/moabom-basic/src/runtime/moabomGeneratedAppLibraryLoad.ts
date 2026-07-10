@@ -15,6 +15,8 @@ import { hasShellAccessToken } from '../api/moabomShellAccess';
 export interface MoabomGeneratedAppLibraryPayload {
   owned: StoredGeneratedAppSummary[];
   shared: StoredGeneratedAppSummary[];
+  ownedTotal?: number;
+  hasMoreOwned?: boolean;
 }
 
 let libraryCache: MoabomGeneratedAppLibraryPayload | null = null;
@@ -36,9 +38,18 @@ export function normalizeMoabomGeneratedAppLibraryPayload(
     return null;
   }
 
+  const ownedTotal = typeof record.owned_total === 'number' ? record.owned_total : undefined;
+  const hasMoreOwned = Boolean(
+    record.has_more_owned
+    ?? record.owned_truncated
+    ?? (ownedTotal != null && ownedTotal > record.owned.length),
+  );
+
   return {
     owned: record.owned,
     shared: record.shared,
+    ...(ownedTotal != null ? { ownedTotal } : {}),
+    hasMoreOwned,
   };
 }
 
@@ -106,7 +117,7 @@ export async function loadMoabomGeneratedAppLibrary(
 ): Promise<MoabomGeneratedAppLibraryPayload> {
   if (!isLoggedIn) {
     const shared = await fetchSharedGeneratedApps();
-    return { owned: [], shared };
+    return { owned: [], shared, hasMoreOwned: false };
   }
 
   return ensureLoggedInLibraryLoadStarted();

@@ -153,6 +153,8 @@ grep -q 'reverb:start' "${ROOT}/deploy/supervisord.conf" \
   && fail "Cloud Run supervisord 에 reverb:start sidecar 잔존 — Realtime VM SSOT"
 grep -q 'proxy_pass http://127\.0\.0\.1:6001' "${ROOT}/deploy/nginx-cloudrun.conf" \
   && fail "Cloud Run nginx 가 로컬 Reverb(127.0.0.1:6001)에 의존"
+grep -q 'fastcgi_read_timeout 120s' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf fastcgi_read_timeout 120s 누락 (upstream timed out 완화)"
 grep -q -- '--timeout=60' "${ROOT}/deploy/supervisord.conf" \
   || fail "queue-worker timeout 가드 누락"
 grep -q -- '--max-jobs=500' "${ROOT}/deploy/supervisord.conf" \
@@ -284,6 +286,12 @@ fi
 echo "==> [v8b2] module layout sync SSOT (admin 404 방지)"
 chmod +x "${ROOT}/scripts/check-module-layout-sync-ssot.sh" 2>/dev/null || true
 if ! "${ROOT}/scripts/check-module-layout-sync-ssot.sh"; then
+  FAIL=1
+fi
+
+echo "==> [v8b3] module layout SoftDeletes contract (RF-24)"
+chmod +x "${ROOT}/scripts/check-module-layout-softdeletes-contract.sh" 2>/dev/null || true
+if ! "${ROOT}/scripts/check-module-layout-softdeletes-contract.sh"; then
   FAIL=1
 fi
 

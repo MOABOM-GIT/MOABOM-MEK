@@ -505,11 +505,12 @@
                             "props": { "className": "px-4 py-3 hidden md:table-cell text-xs text-gray-600 dark:text-gray-300" },
                             "children": [
                               { "type": "basic", "name": "Span", "if": "{{item.app_type === 'general'}}", "text": "$t:moabom-apps.admin.generated.app_type_general" },
+                              { "type": "basic", "name": "Span", "if": "{{item.app_type === 'html_paste'}}", "text": "$t:moabom-apps.admin.generated.app_type_html_paste" },
                               { "type": "basic", "name": "Span", "if": "{{item.app_type === '3d'}}", "text": "$t:moabom-apps.admin.generated.app_type_3d" },
                               { "type": "basic", "name": "Span", "if": "{{item.app_type === 'game'}}", "text": "$t:moabom-apps.admin.generated.app_type_game" },
                               { "type": "basic", "name": "Span", "if": "{{item.app_type === 'dataviz'}}", "text": "$t:moabom-apps.admin.generated.app_type_dataviz" },
                               { "type": "basic", "name": "Span", "if": "{{item.app_type === 'website_link'}}", "text": "$t:moabom-apps.admin.generated.app_type_website_link" },
-                              { "type": "basic", "name": "Span", "if": "{{item.app_type && !['general','3d','game','dataviz','website_link'].includes(item.app_type)}}", "text": "{{item.app_type}}" },
+                              { "type": "basic", "name": "Span", "if": "{{item.app_type && !['general','html_paste','3d','game','dataviz','website_link'].includes(item.app_type)}}", "text": "{{item.app_type}}" },
                               { "type": "basic", "name": "Span", "if": "{{!item.app_type}}", "text": "-" }
                             ]
                           },

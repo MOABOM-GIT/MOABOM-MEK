@@ -82,6 +82,7 @@ final class ChatNotificationDataListener implements HookListenerInterface
             ->map(fn ($member) => $member->user)
             ->filter()
             ->filter(fn (User $user) => ! $this->chat->isFocusedOnConversation($user, $conversation->uuid))
+            ->filter(fn (User $user) => ! $this->chat->isConversationMutedForUser($user, $conversation->uuid))
             ->values();
 
         return [

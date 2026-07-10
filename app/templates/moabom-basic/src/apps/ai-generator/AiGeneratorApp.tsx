@@ -30,19 +30,18 @@ import { Input } from '../../components/basic/Input';
 import { Label } from '../../components/basic/Label';
 import { Select } from '../../components/basic/Select';
 import { Textarea } from '../../components/basic/Textarea';
-import { Checkbox } from '../../components/basic/Checkbox';
-import { Span } from '../../components/basic/Span';
 import { appendHostedModernStoragePrompt } from './aiGeneratorPrompt';
 import {
   APP_SHELL_BODY_CLASS,
   APP_SHELL_DESC_CLASS,
   APP_SHELL_INPUT_CLASS,
-  APP_SHELL_PANEL_BODY_CLASS,
-  APP_SHELL_PANEL_STACK_CLASS,
+  APP_SHELL_PANEL_CLASS,
   APP_SHELL_SELECT_TRIGGER_CLASS,
   APP_SHELL_TEXTAREA_CLASS,
+  APP_STACK_CLASS,
   APP_WINDOW_BODY_CLASS,
 } from '../appShellTypography';
+import { useMoaAppWindowNarrow } from '../../hooks/useMoaAppWindowNarrow';
 import { buildGenerationDraftView, resolveGenerationSource } from './aiGenerationDraft';
 import {
   prepareGeneratedAppHtmlForPersist,
@@ -51,6 +50,8 @@ import {
 import { AiGenerationQueuePanel } from './AiGenerationQueuePanel';
 import { AiGenerationRecoveryBanner } from './AiGenerationRecoveryBanner';
 import { AiGenerationCodePanel } from './AiGenerationCodePanel';
+import { AiAppInspectorPanel } from './inspector/AiAppInspectorPanel';
+import { injectPreviewInspectorBridge } from './inspector/previewInspectorBridge';
 import { AiGenerationSplitHandle } from './AiGenerationSplitHandle';
 import { useVerticalSplitPane } from '../../hooks/useVerticalSplitPane';
 import { handleMoabomAppFileDownloadMessage } from '../generated/generatedAppIframeBridge';
@@ -60,15 +61,25 @@ import type { AiGenerationSession } from '../../api/moabomAppsApi';
 import {
   buildWebsiteLinkSaveMetadata,
   buildWebsiteLinkStoredHtml,
+  isHtmlPasteAppType,
   isWebsiteLinkAppType,
   normalizeWebsiteUrl,
   readWebsiteIconFromMetadata,
+  readWebsiteLinkLaunchModeFromMetadata,
   readWebsiteLinkPreviewFromMetadata,
   readWebsitePointColorFromMetadata,
   isWebsiteTitleIconFromMetadata,
   readWebsiteUrlFromMetadata,
   stripWebsiteLinkIconServingMetadata,
+  WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW,
+  WEBSITE_LINK_LAUNCH_MODE_WINDOW,
+  type WebsiteLinkLaunchMode,
 } from './websiteLinkApp';
+
+const websiteLaunchModeOptions: Array<{ value: WebsiteLinkLaunchMode; labelKey: string }> = [
+  { value: WEBSITE_LINK_LAUNCH_MODE_WINDOW, labelKey: 'moa_apps_ai.launch_modes.window' },
+  { value: WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW, labelKey: 'moa_apps_ai.launch_modes.new_window' },
+];
 
 const appTierOptions: Array<{ value: AppTier; labelKey: string }> = [
   { value: 'standard', labelKey: 'moa_apps_ai.tiers.standard' },
@@ -77,10 +88,11 @@ const appTierOptions: Array<{ value: AppTier; labelKey: string }> = [
 
 const appTypeOptions: Array<{ value: AiAppType; labelKey: string }> = [
   { value: 'general', labelKey: 'moa_apps_ai.types.general' },
+  { value: 'html_paste', labelKey: 'moa_apps_ai.types.html_paste' },
+  { value: 'website_link', labelKey: 'moa_apps_ai.types.website_link' },
   { value: '3d', labelKey: 'moa_apps_ai.types.3d' },
   { value: 'game', labelKey: 'moa_apps_ai.types.game' },
   { value: 'dataviz', labelKey: 'moa_apps_ai.types.dataviz' },
-  { value: 'website_link', labelKey: 'moa_apps_ai.types.website_link' },
 ];
 
 const modelOptions = [
@@ -114,7 +126,6 @@ export function AiGeneratorApp() {
   const [prompt, setPrompt] = useState('');
   const [appType, setAppType] = useState<AiAppType>('general');
   const [appTier, setAppTier] = useState<AppTier>('standard');
-  const [hostedModernStoragePrompt, setHostedModernStoragePrompt] = useState(true);
   const [modelId, setModelId] = useState('claude-sonnet');
   const [draftHtml, setDraftHtml] = useState('');
   const [notice, setNotice] = useState('');
@@ -126,6 +137,9 @@ export function AiGeneratorApp() {
   const [loadedSourceApp, setLoadedSourceApp] = useState<StoredGeneratedApp | null>(null);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteLaunchMode, setWebsiteLaunchMode] = useState<WebsiteLinkLaunchMode>(
+    WEBSITE_LINK_LAUNCH_MODE_WINDOW,
+  );
   const [resolvedIconUrl, setResolvedIconUrl] = useState('');
   const [resolvedThemeColor, setResolvedThemeColor] = useState('');
   const [resolvedIconFromTitle, setResolvedIconFromTitle] = useState(false);
@@ -134,6 +148,8 @@ export function AiGeneratorApp() {
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
   const prevEditServerIdRef = useRef<number | null>(null);
   const isWebsiteLink = isWebsiteLinkAppType(appType);
+  const isHtmlPaste = isHtmlPasteAppType(appType);
+  const hidesAiControls = isWebsiteLink || isHtmlPaste;
 
   const {
     streamedRaw,
@@ -190,6 +206,8 @@ export function AiGeneratorApp() {
     },
   });
 
+  const isGenerationLocked = isStreaming || isQueued;
+
   const resetCreateForm = useCallback(() => {
     setTitle('');
     setPrompt('');
@@ -201,6 +219,7 @@ export function AiGeneratorApp() {
     setError('');
     setSavedMessage('');
     setWebsiteUrl('');
+    setWebsiteLaunchMode(WEBSITE_LINK_LAUNCH_MODE_WINDOW);
     setResolvedIconUrl('');
     setResolvedThemeColor('');
     setResolvedIconFromTitle(false);
@@ -247,9 +266,14 @@ export function AiGeneratorApp() {
         setTitle(app.title?.trim() || '');
         setPrompt(app.prompt?.trim() || '');
         setAppType(app.app_type ?? 'general');
-        setAppTier(app.tier ?? 'standard');
+        setAppTier(
+          isWebsiteLinkAppType(app.app_type) || isHtmlPasteAppType(app.app_type)
+            ? 'standard'
+            : (app.tier ?? 'standard'),
+        );
         setModelId(app.model_id ?? 'claude-sonnet');
         setWebsiteUrl(readWebsiteUrlFromMetadata(app.metadata));
+        setWebsiteLaunchMode(readWebsiteLinkLaunchModeFromMetadata(app.metadata));
         setResolvedIconUrl(readWebsiteIconFromMetadata(app.metadata));
         setResolvedThemeColor(readWebsitePointColorFromMetadata(app.metadata));
         setResolvedIconFromTitle(isWebsiteTitleIconFromMetadata(app.metadata));
@@ -335,17 +359,56 @@ export function AiGeneratorApp() {
       };
 
   const previewHtml = draftView.previewHtml;
+  /** opaque-origin sandbox 용 Inspector 브릿지 — srcDoc 전용, 저장 HTML 에는 넣지 않음 */
+  const iframePreviewHtml = useMemo(
+    () => (previewHtml ? injectPreviewInspectorBridge(previewHtml) : ''),
+    [previewHtml],
+  );
   const codePreview = isStreaming ? draftSource : (draftHtml || debouncedPrepared.html);
-  const showCodePreviewPanel = !isWebsiteLink && (isStreaming || Boolean(codePreview));
+  const showCodePreviewPanel = isHtmlPaste || (!isWebsiteLink && (isStreaming || Boolean(codePreview)));
   const hasPreviewContent = Boolean(previewHtml);
+  const { narrow: isOneColumn, containerRef: oneColumnRef } = useMoaAppWindowNarrow();
   const splitPane = useVerticalSplitPane({
     enabled: showCodePreviewPanel && hasPreviewContent && !isStreaming,
   });
+  const codePaneStyle = (() => {
+    if (isStreaming) {
+      return { flex: '1 1 0%', minHeight: 0, height: 'auto' as const };
+    }
+    if (isHtmlPaste) {
+      return hasPreviewContent
+        ? undefined
+        : { flex: '1 1 0%', minHeight: 0, height: 'auto' as const };
+    }
+    if (!(splitPane.enabled && hasPreviewContent)) {
+      return undefined;
+    }
+    // 1열: flex % 대신 높이(cqh) — 패널이 콘텐츠 높이로 늘어나도 코드/프리뷰가 잠기지 않음
+    if (isOneColumn) {
+      const codeCqh = 12 + splitPane.ratio * 36;
+      return {
+        flex: '0 0 auto',
+        height: `clamp(10rem, ${codeCqh.toFixed(1)}cqh, 40cqh)`,
+      };
+    }
+    return { flex: `0 0 ${splitPane.codeFlex}` };
+  })();
+  const previewPaneStyle = (() => {
+    if (isStreaming && !hasPreviewContent) {
+      return { flex: '0 0 auto' };
+    }
+    // 1열은 CSS min-height 로 프리뷰 작업 영역 확보 (비율 flex 미사용)
+    if (isOneColumn || !(splitPane.enabled && splitPane.previewFlex)) {
+      return undefined;
+    }
+    return { flex: `1 1 ${splitPane.previewFlex}` };
+  })();
   const isEditingExisting = loadedEditId != null;
   const isRemixingExisting = remixSourceId != null;
-  const needsRecovery = !isWebsiteLink && !isStreaming && persistPrepared.canContinue;
+  const needsRecovery = !hidesAiControls && !isStreaming && persistPrepared.canContinue;
   const websitePreviewUrl = isWebsiteLink ? normalizeWebsiteUrl(websiteUrl) : '';
   const canSaveWebsiteLink = Boolean(title.trim() && websiteUrl.trim() && prompt.trim());
+  const canSaveHtmlPaste = Boolean(title.trim() && persistPrepared.canSave);
 
   const handleCodeChange = useCallback((nextCode: string) => {
     clearStreamedBuffer();
@@ -391,6 +454,9 @@ export function AiGeneratorApp() {
   };
 
   const handleGenerate = async (continueGeneration = false) => {
+    if (isHtmlPaste) {
+      return;
+    }
     if (isWebsiteLink) {
       await handleWebsiteLinkGenerate();
       return;
@@ -416,7 +482,6 @@ export function AiGeneratorApp() {
         prompt: appendHostedModernStoragePrompt(
           prompt.trim(),
           appTier,
-          hostedModernStoragePrompt,
           t('moa_apps_ai.hosted_modern_storage_prompt_addon'),
         ),
         title: title.trim(),
@@ -431,6 +496,42 @@ export function AiGeneratorApp() {
       }
       setError(err instanceof Error ? err.message : t('moa_apps_ai.error_generate'));
     }
+  };
+
+  const handleInspectorPatch = (patchPrompt: string) => {
+    setPrompt(patchPrompt);
+    void (async () => {
+      if (isHtmlPaste || isWebsiteLink) {
+        return;
+      }
+      setError('');
+      setSavedMessage('');
+      setNotice('');
+      try {
+        const currentHtml = persistPrepared.html || draftSource || '';
+        if (!currentHtml.trim()) {
+          setError(t('moa_apps_ai.validation.html_required'));
+          return;
+        }
+        await runStream({
+          prompt: appendHostedModernStoragePrompt(
+            patchPrompt.trim(),
+            appTier,
+            t('moa_apps_ai.hosted_modern_storage_prompt_addon'),
+          ),
+          title: title.trim(),
+          currentHtml,
+          continueGeneration: false,
+          generationMode: 'patch',
+          existingSessionId: sessionId,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        setError(err instanceof Error ? err.message : t('moa_apps_ai.error_generate'));
+      }
+    })();
   };
 
   const handleSave = async () => {
@@ -500,7 +601,7 @@ export function AiGeneratorApp() {
       }
     }
 
-    const isDraftSave = !isWebsiteLink && saveCompleteness === 'partial';
+    const isDraftSave = !hidesAiControls && saveCompleteness === 'partial';
     const metadataBase = isEditingExisting && loadedSourceApp?.metadata && typeof loadedSourceApp.metadata === 'object'
       ? (isWebsiteLink
         ? stripWebsiteLinkIconServingMetadata(loadedSourceApp.metadata as Record<string, unknown>)
@@ -510,19 +611,20 @@ export function AiGeneratorApp() {
     const payload = {
       title: title.trim(),
       app_type: appType,
-      tier: isWebsiteLink ? 'standard' : appTier,
-      model_id: isWebsiteLink ? null : modelId,
+      tier: hidesAiControls ? 'standard' as const : appTier,
+      model_id: hidesAiControls ? null : modelId,
       prompt: prompt.trim(),
       html: resolvedSaveHtml,
       metadata: mergeGeneratedAppMetadata(metadataBase, {
-        source: 'moabom-shell',
-        generation_status: isWebsiteLink ? 'complete' : saveCompleteness,
-        generation_complete: isWebsiteLink ? true : saveCompleteness === 'complete',
+        source: isHtmlPaste ? 'moabom-shell-html-paste' : 'moabom-shell',
+        generation_status: hidesAiControls ? 'complete' : saveCompleteness,
+        generation_complete: hidesAiControls ? true : saveCompleteness === 'complete',
         ...(isWebsiteLink ? buildWebsiteLinkSaveMetadata({
           websiteUrl: nextWebsiteUrl,
           resolvedIconUrl: nextIconUrl,
           themeColor: nextThemeColor,
           iconFromTitle: nextIconFromTitle,
+          launchMode: websiteLaunchMode,
           appId: loadedEditId,
         }) : {}),
         ...(sessionId ? { ai_generation_session_id: sessionId } : {}),
@@ -573,7 +675,7 @@ export function AiGeneratorApp() {
   }
 
   return (
-    <Div className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS}`}>
+    <Div ref={oneColumnRef} className={`${APP_WINDOW_BODY_CLASS} ${APP_SHELL_BODY_CLASS}`}>
       {isEditingExisting || isRemixingExisting ? (
         <Div className="rounded-2xl bg-violet-500/10 px-3 py-2 text-sm font-bold text-violet-700 dark:text-violet-300">
           {isEditingExisting
@@ -582,13 +684,7 @@ export function AiGeneratorApp() {
         </Div>
       ) : null}
 
-      {appTier === 'hosted' && !isEditingExisting && !isWebsiteLink ? (
-        <Div className={`rounded-2xl bg-indigo-500/10 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200 ${APP_SHELL_DESC_CLASS}`}>
-          {t('moa_apps_ai.tier_hosted_provision_hint')}
-        </Div>
-      ) : null}
-
-      {resumeChecked && resumeSession?.partial_raw ? (
+      {resumeChecked && resumeSession?.partial_raw && !hidesAiControls ? (
         <Div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           <Div>{t('moa_apps_ai.resume_banner')}</Div>
           <Div className="flex flex-wrap gap-2">
@@ -612,7 +708,7 @@ export function AiGeneratorApp() {
         </Div>
       ) : null}
 
-      {!isWebsiteLink ? (
+      {!hidesAiControls ? (
         <AiGenerationRecoveryBanner
           phase={generationPhase}
           completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
@@ -626,7 +722,7 @@ export function AiGeneratorApp() {
       ) : null}
 
       <Div className="moa-ai-generator-layout">
-        <Div className={`${APP_SHELL_PANEL_STACK_CLASS} moa-ai-form-panel`}>
+        <Div className={`${APP_SHELL_PANEL_CLASS} ${APP_STACK_CLASS} moa-ai-form-panel`}>
           <Label className="block">
             <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_title')}</Div>
             <Input
@@ -647,24 +743,47 @@ export function AiGeneratorApp() {
                 onChange={(event) => {
                   const nextType = event.target.value as AiAppType;
                   setAppType(nextType);
-                  if (isWebsiteLinkAppType(nextType)) {
+                  if (isWebsiteLinkAppType(nextType) || isHtmlPasteAppType(nextType)) {
                     setAppTier('standard');
                   }
                 }}
+                disabled={isGenerationLocked}
               />
             </Label>
             {isWebsiteLink ? (
-              <Label className="block">
-                <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_url')}</Div>
-                <Input
-                  className={inputClassName}
-                  value={websiteUrl}
-                  onChange={(event) => setWebsiteUrl(event.target.value)}
-                  placeholder={t('moa_apps_ai.field_url_placeholder')}
-                  inputMode="url"
-                />
-              </Label>
-            ) : (
+              <>
+                <Label className="block">
+                  <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_url')}</Div>
+                  <Input
+                    className={inputClassName}
+                    value={websiteUrl}
+                    onChange={(event) => setWebsiteUrl(event.target.value)}
+                    placeholder={t('moa_apps_ai.field_url_placeholder')}
+                    inputMode="url"
+                    disabled={isGenerationLocked}
+                  />
+                </Label>
+                <Label className="block">
+                  <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_launch_mode')}</Div>
+                  <Select
+                    className={APP_SHELL_SELECT_TRIGGER_CLASS}
+                    value={websiteLaunchMode}
+                    options={websiteLaunchModeOptions.map(option => ({
+                      value: option.value,
+                      label: t(option.labelKey),
+                    }))}
+                    onChange={(event) => {
+                      setWebsiteLaunchMode(
+                        event.target.value === WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW
+                          ? WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW
+                          : WEBSITE_LINK_LAUNCH_MODE_WINDOW,
+                      );
+                    }}
+                    disabled={isGenerationLocked}
+                  />
+                </Label>
+              </>
+            ) : isHtmlPaste ? null : (
               <>
                 <Label className="block">
                   <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_tier')}</Div>
@@ -673,27 +792,11 @@ export function AiGeneratorApp() {
                     value={appTier}
                     options={appTierOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
                     onChange={(event) => {
-                      const nextTier = event.target.value as AppTier;
-                      setAppTier(nextTier);
-                      if (nextTier === 'hosted') {
-                        setHostedModernStoragePrompt(true);
-                      }
+                      setAppTier(event.target.value as AppTier);
                     }}
-                    disabled={isEditingExisting}
+                    disabled={isEditingExisting || isGenerationLocked}
                   />
                 </Label>
-                {appTier === 'hosted' ? (
-                  <Label className="flex items-start gap-2">
-                    <Checkbox
-                      className="mt-1"
-                      checked={hostedModernStoragePrompt}
-                      onChange={(event) => setHostedModernStoragePrompt(event.target.checked)}
-                    />
-                    <Span className={APP_SHELL_BODY_CLASS}>
-                      {t('moa_apps_ai.hosted_modern_storage_prompt_option')}
-                    </Span>
-                  </Label>
-                ) : null}
                 <Label className="block">
                   <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_model')}</Div>
                   <Select
@@ -701,6 +804,7 @@ export function AiGeneratorApp() {
                     value={modelId}
                     options={modelOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
                     onChange={(event) => setModelId(String(event.target.value))}
+                    disabled={isGenerationLocked}
                   />
                 </Label>
               </>
@@ -709,7 +813,11 @@ export function AiGeneratorApp() {
 
           <Label className="flex min-h-[180px] flex-1 flex-col">
             <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>
-              {isWebsiteLink ? t('moa_apps_ai.field_site_description') : t('moa_apps_ai.field_prompt')}
+              {isWebsiteLink
+                ? t('moa_apps_ai.field_site_description')
+                : isHtmlPaste
+                  ? t('moa_apps_ai.field_app_description')
+                  : t('moa_apps_ai.field_prompt')}
             </Div>
             <Textarea
               className={`${APP_SHELL_TEXTAREA_CLASS} min-h-[180px] flex-1`}
@@ -718,7 +826,9 @@ export function AiGeneratorApp() {
               placeholder={
                 isWebsiteLink
                   ? t('moa_apps_ai.field_site_description_placeholder')
-                  : (previewHtml ? t('moa_apps_ai.field_modify_placeholder') : t('moa_apps_ai.field_prompt_placeholder'))
+                  : isHtmlPaste
+                    ? t('moa_apps_ai.field_app_description_placeholder')
+                    : (previewHtml ? t('moa_apps_ai.field_modify_placeholder') : t('moa_apps_ai.field_prompt_placeholder'))
               }
             />
           </Label>
@@ -734,22 +844,24 @@ export function AiGeneratorApp() {
           ) : null}
 
           <Div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant={previewHtml || websitePreviewUrl ? 'secondary' : 'primary'}
-              onClick={() => void handleGenerate(false)}
-              disabled={isStreaming || isResolvingWebsite}
-            >
-              {isWebsiteLink
-                ? (isResolvingWebsite ? t('moa_apps_ai.website_resolving') : t('moa_apps_ai.generate'))
-                : (isQueued ? t('moa_apps_ai.queue.waiting_button') : isStreaming ? t('moa_apps_ai.generating') : previewHtml ? t('moa_apps_ai.modify') : t('moa_apps_ai.generate'))}
-            </Button>
-            {!isWebsiteLink && isStreaming ? (
+            {!isHtmlPaste ? (
+              <Button
+                type="button"
+                variant={previewHtml || websitePreviewUrl ? 'secondary' : 'primary'}
+                onClick={() => void handleGenerate(false)}
+                disabled={isStreaming || isResolvingWebsite}
+              >
+                {isWebsiteLink
+                  ? (isResolvingWebsite ? t('moa_apps_ai.website_resolving') : t('moa_apps_ai.generate'))
+                  : (isQueued ? t('moa_apps_ai.queue.waiting_button') : isStreaming ? t('moa_apps_ai.generating') : previewHtml ? t('moa_apps_ai.modify') : t('moa_apps_ai.generate'))}
+              </Button>
+            ) : null}
+            {!hidesAiControls && isStreaming ? (
               <Button type="button" variant="secondary" onClick={() => void stopGeneration()}>
                 {isQueued ? t('moa_apps_ai.queue.cancel') : t('moa_apps_ai.stop_generate')}
               </Button>
             ) : null}
-            {!isWebsiteLink && needsRecovery ? (
+            {!hidesAiControls && needsRecovery ? (
               <Button type="button" variant="secondary" onClick={() => void handleGenerate(true)} disabled={isStreaming}>
                 {t('moa_apps_ai.continue_generate')}
               </Button>
@@ -758,11 +870,20 @@ export function AiGeneratorApp() {
               type="button"
               variant="primary"
               onClick={() => void handleSave()}
-              disabled={isSaving || isResolvingWebsite || (isWebsiteLink ? !canSaveWebsiteLink : !persistPrepared.canSave) || isStreaming}
+              disabled={
+                isSaving
+                || isResolvingWebsite
+                || isStreaming
+                || (isWebsiteLink
+                  ? !canSaveWebsiteLink
+                  : isHtmlPaste
+                    ? !canSaveHtmlPaste
+                    : !persistPrepared.canSave)
+              }
             >
               {isSaving || isResolvingWebsite
                 ? t('moa_apps_ai.saving')
-                : persistPrepared.completeness === 'partial'
+                : !isHtmlPaste && persistPrepared.completeness === 'partial'
                   ? t('moa_apps_ai.recovery.save_draft')
                   : isEditingExisting
                     ? t('moa_apps_ai.update')
@@ -775,9 +896,9 @@ export function AiGeneratorApp() {
 
         <Div
           ref={splitPane.containerRef}
-          className={`${APP_SHELL_PANEL_BODY_CLASS} moa-ai-preview-panel`}
+          className={`${APP_SHELL_PANEL_CLASS} moa-ai-preview-panel`}
         >
-          {!isWebsiteLink && queueState ? (
+          {!hidesAiControls && queueState ? (
             <AiGenerationQueuePanel
               queue={queueState}
               t={t}
@@ -788,13 +909,7 @@ export function AiGeneratorApp() {
           {showCodePreviewPanel ? (
             <Div
               className="moa-ai-split-pane__code"
-              style={
-                splitPane.enabled && splitPane.codeFlex
-                  ? { flex: `0 0 ${splitPane.codeFlex}` }
-                  : isStreaming
-                    ? { flex: '1 1 0%', minHeight: 0 }
-                    : undefined
-              }
+              style={codePaneStyle}
             >
               <AiGenerationCodePanel
                 isStreaming={isStreaming}
@@ -803,8 +918,9 @@ export function AiGeneratorApp() {
                 completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
                 onCodeChange={handleCodeChange}
                 onCodeCommit={handleCodeCommit}
-                codePanelRef={codePanelRef}
+                codeScrollRef={codePanelRef}
                 t={t}
+                pasteMode={isHtmlPaste}
               />
             </Div>
           ) : null}
@@ -824,14 +940,18 @@ export function AiGeneratorApp() {
 
           <Div
             className={`moa-ai-preview-stage ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
-            style={
-              splitPane.enabled && splitPane.previewFlex
-                ? { flex: `1 1 ${splitPane.previewFlex}` }
-                : isStreaming && !hasPreviewContent
-                  ? { flex: '0 0 auto' }
-                  : undefined
-            }
+            style={previewPaneStyle}
           >
+            {!hidesAiControls && !isWebsiteLink && !isHtmlPaste && iframePreviewHtml ? (
+              <AiAppInspectorPanel
+                enabled
+                iframeRef={previewIframeRef}
+                previewHtml={iframePreviewHtml}
+                disabled={isStreaming || isGenerationLocked}
+                onRequestPatch={handleInspectorPatch}
+                t={t}
+              />
+            ) : null}
             {isWebsiteLink && websitePreviewUrl ? (
               <iframe
                 title={title.trim() || t('moa_apps_ai.preview_title')}
@@ -839,12 +959,12 @@ export function AiGeneratorApp() {
                 src={websitePreviewUrl}
                 sandbox={generatedAppFrameSandbox(websitePreviewUrl, 'website_link')}
               />
-            ) : previewHtml ? (
+            ) : iframePreviewHtml ? (
               <iframe
                 ref={previewIframeRef}
                 title={t('moa_apps_ai.preview_title')}
                 className="moa-ai-preview-frame"
-                srcDoc={previewHtml}
+                srcDoc={iframePreviewHtml}
                 sandbox="allow-scripts allow-downloads"
               />
             ) : (
@@ -854,7 +974,9 @@ export function AiGeneratorApp() {
                 <Div className={`max-w-md ${APP_SHELL_DESC_CLASS}`}>
                   {isWebsiteLink
                     ? t('moa_apps_ai.preview_empty_description_website')
-                    : t('moa_apps_ai.preview_empty_description')}
+                    : isHtmlPaste
+                      ? t('moa_apps_ai.preview_empty_description_paste')
+                      : t('moa_apps_ai.preview_empty_description')}
                 </Div>
               </Div>
             )}

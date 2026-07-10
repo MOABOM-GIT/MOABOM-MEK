@@ -6,9 +6,11 @@ namespace Modules\Moabom\System\Services\Shell;
 
 use App\Enums\UserStatus;
 use App\Extension\HookManager;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Modules\Moabom\Credit\Services\CreditLevelService;
 use Modules\Moabom\System\Contracts\ShellAppUsageRepositoryInterface;
 use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 
@@ -58,11 +60,13 @@ final class ShellRankingService
      *     name: string,
      *     score: int,
      *     rank: int,
-     *     change: 'up'|'down'|'same'
+     *     change: 'up'|'down'|'same',
+     *     level?: array<string, mixed>,
+     *     is_self?: bool
      *   }>
      * }
      */
-    public function userRankings(int $limit): array
+    public function userRankings(int $limit, ?User $viewer = null): array
     {
         $limit = min(30, max(1, $limit));
         $cacheTtl = max(0, (int) config('moabom-system.shell_rankings.cache_ttl', 300));
@@ -73,10 +77,12 @@ final class ShellRankingService
         };
 
         if ($cacheTtl <= 0) {
-            return $resolver();
+            $payload = $resolver();
+        } else {
+            $payload = Cache::remember($cacheKey, $cacheTtl, $resolver);
         }
 
-        return Cache::remember($cacheKey, $cacheTtl, $resolver);
+        return $this->appendViewerSelfRow($payload, $limit, $viewer);
     }
 
     /**
@@ -153,13 +159,16 @@ final class ShellRankingService
                 $displayName = 'User #'.$userId;
             }
 
+            $score = (int) $row->ranking_points;
             $items[] = [
                 'user_id' => $userId,
                 'user_uuid' => (string) $row->uuid,
                 'name' => $displayName,
-                'score' => (int) $row->ranking_points,
+                'score' => $score,
                 'rank' => $rank,
                 'change' => 'same',
+                'is_self' => false,
+                'level' => $this->resolveLevelSummary($score),
             ];
             $rank++;
         }
@@ -176,6 +185,135 @@ final class ShellRankingService
             'generated_at' => now()->toIso8601String(),
             'items' => $items,
         ];
+    }
+
+    /**
+     * 상위 N 밖인 로그인 시청자를 목록 끝에 고정해 “사라진 것처럼” 보이는 UX를 완화합니다.
+     *
+     * @param  array{items?: list<array<string, mixed>>}  $payload
+     * @return array{items: list<array<string, mixed>>}
+     */
+    private function appendViewerSelfRow(array $payload, int $limit, ?User $viewer): array
+    {
+        $items = array_values($payload['items'] ?? []);
+        if ($viewer === null || ! isset($viewer->id)) {
+            $payload['items'] = $items;
+
+            return $payload;
+        }
+
+        $viewerId = (int) $viewer->id;
+        foreach ($items as $index => $item) {
+            if ((int) ($item['user_id'] ?? 0) === $viewerId) {
+                $items[$index]['is_self'] = true;
+                $payload['items'] = $items;
+
+                return $payload;
+            }
+        }
+
+        $self = $this->loadViewerRankingRow($viewerId);
+        if ($self === null || (int) $self->ranking_points <= 0) {
+            $payload['items'] = $items;
+
+            return $payload;
+        }
+
+        $score = (int) $self->ranking_points;
+        $rank = $this->resolveViewerAbsoluteRank($viewerId, $score);
+        $displayName = trim((string) ($self->nickname ?: $self->name ?: ''));
+        if ($displayName === '') {
+            $displayName = 'User #'.$viewerId;
+        }
+
+        $recentMap = $this->buildUserCreditRankMapForPeriod($this->rankingChangePeriodHours(), $limit);
+        $items[] = [
+            'user_id' => $viewerId,
+            'user_uuid' => (string) $self->uuid,
+            'name' => $displayName,
+            'score' => $score,
+            'rank' => $rank,
+            'change' => $this->resolveChangeVsRecentPeriod($rank, $recentMap[(string) $viewerId] ?? null),
+            'is_self' => true,
+            'level' => $this->resolveLevelSummary($score),
+        ];
+
+        $payload['items'] = $items;
+        $payload['viewer_outside_top'] = true;
+
+        return $payload;
+    }
+
+    /**
+     * @return array{level: int, slug: string, progress_ratio: float}|null
+     */
+    private function resolveLevelSummary(int $rankingPoints): ?array
+    {
+        if (! class_exists(CreditLevelService::class)) {
+            return null;
+        }
+
+        try {
+            /** @var CreditLevelService $service */
+            $service = app(CreditLevelService::class);
+            $resolved = $service->resolve($rankingPoints);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return [
+            'level' => $resolved['level'],
+            'slug' => $resolved['slug'],
+            'progress_ratio' => $resolved['progress_ratio'],
+        ];
+    }
+
+    /**
+     * @return object{id: int, uuid: string, nickname: ?string, name: ?string, ranking_points: int}|null
+     */
+    private function loadViewerRankingRow(int $userId): ?object
+    {
+        if (! Schema::hasTable('moabom_credit_balances')
+            || ! Schema::hasColumn('moabom_credit_balances', 'ranking_points')) {
+            return null;
+        }
+
+        $row = DB::table('moabom_credit_balances as b')
+            ->join('users as u', 'u.id', '=', 'b.user_id')
+            ->where('u.id', $userId)
+            ->where('u.status', UserStatus::Active->value)
+            ->first([
+                'u.id',
+                'u.uuid',
+                'u.nickname',
+                'u.name',
+                'b.ranking_points',
+            ]);
+
+        return $row ?: null;
+    }
+
+    private function resolveViewerAbsoluteRank(int $userId, int $score): int
+    {
+        if (! Schema::hasTable('moabom_credit_balances')
+            || ! Schema::hasColumn('moabom_credit_balances', 'ranking_points')) {
+            return 1;
+        }
+
+        $ahead = (int) DB::table('moabom_credit_balances as b')
+            ->join('users as u', 'u.id', '=', 'b.user_id')
+            ->where('u.status', UserStatus::Active->value)
+            ->where('b.ranking_points', '>', 0)
+            ->where(function ($query) use ($score, $userId): void {
+                $query->where('b.ranking_points', '>', $score)
+                    ->orWhere(function ($tie) use ($score, $userId): void {
+                        $tie->where('b.ranking_points', '=', $score)
+                            ->where('u.id', '<', $userId);
+                    });
+            })
+            ->count();
+
+        return $ahead + 1;
     }
 
     /**

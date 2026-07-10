@@ -123,8 +123,19 @@ export interface CreditTransaction {
   created_at_human?: string | null;
 }
 
+export interface CreditLevelProgress {
+  level: number;
+  slug: string;
+  points: number;
+  current_threshold: number;
+  next_threshold: number | null;
+  progress_ratio: number;
+}
+
 export interface CreditOverview {
   balance: number;
+  ranking_points?: number;
+  level?: CreditLevelProgress;
   summary: {
     total_earned: number;
     total_used: number;

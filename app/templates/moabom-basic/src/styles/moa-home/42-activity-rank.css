@@ -1,0 +1,96 @@
+/* 활동 레벨 배지·EXP 바 — ranking_points SSOT */
+
+:root {
+  --moa-rank-lv-1: #6b7280;
+  --moa-rank-lv-2: #b45309;
+  --moa-rank-lv-3: #9ca3af;
+  --moa-rank-lv-4: #ca8a04;
+  --moa-rank-lv-5: #67e8f9;
+  --moa-rank-lv-6: #10b981;
+  --moa-rank-lv-7: #38bdf8;
+  --moa-rank-lv-8: #a855f7;
+  --moa-rank-lv-9: #f59e0b;
+  --moa-rank-lv-10: #ef4444;
+}
+
+.moa-activity-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  color: var(--moa-activity-rank-color, var(--moa-point-color));
+}
+
+.moa-activity-rank-badge__icon {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+
+.moa-activity-rank-badge__text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moa-activity-rank-badge--md .moa-activity-rank-badge__icon {
+  font-size: 0.8rem;
+}
+
+.moa-activity-rank-badge--md .moa-activity-rank-badge__text {
+  font-size: 0.8rem;
+}
+
+/* 우측 프로필 목업: 닉네임 옆 등급 아이콘만 */
+.moa-activity-rank-badge--icon-only .moa-activity-rank-badge__text {
+  display: none;
+}
+
+.moa-activity-rank-badge--icon-only .moa-activity-rank-badge__icon {
+  font-size: 0.75rem;
+}
+
+.moa-activity-rank-lv-1 { --moa-activity-rank-color: var(--moa-rank-lv-1); }
+.moa-activity-rank-lv-2 { --moa-activity-rank-color: var(--moa-rank-lv-2); }
+.moa-activity-rank-lv-3 { --moa-activity-rank-color: var(--moa-rank-lv-3); }
+.moa-activity-rank-lv-4 { --moa-activity-rank-color: var(--moa-rank-lv-4); }
+.moa-activity-rank-lv-5 { --moa-activity-rank-color: var(--moa-rank-lv-5); }
+.moa-activity-rank-lv-6 { --moa-activity-rank-color: var(--moa-rank-lv-6); }
+.moa-activity-rank-lv-7 { --moa-activity-rank-color: var(--moa-rank-lv-7); }
+.moa-activity-rank-lv-8 { --moa-activity-rank-color: var(--moa-rank-lv-8); }
+.moa-activity-rank-lv-9 { --moa-activity-rank-color: var(--moa-rank-lv-9); }
+.moa-activity-rank-lv-10 { --moa-activity-rank-color: var(--moa-rank-lv-10); }
+
+.moa-activity-exp-bar {
+  width: 100%;
+  height: 0.375rem;
+  margin-top: 0.375rem;
+  margin-bottom: 0.25rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--moa-activity-rank-color, var(--moa-point-color)) 14%, transparent);
+  overflow: hidden;
+}
+
+.moa-activity-exp-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--moa-activity-rank-color, var(--moa-point-color));
+  transition: width 0.45s ease;
+}
+
+.moa-activity-exp-bar--highlight .moa-activity-exp-bar__fill {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--moa-activity-rank-color, var(--moa-point-color)) 45%, transparent);
+  animation: moa-activity-exp-pulse 0.9s ease;
+}
+
+@keyframes moa-activity-exp-pulse {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+
+.moa-activity-rank-self-row {
+  background: color-mix(in srgb, var(--moa-activity-rank-color, var(--moa-point-color)) 10%, transparent);
+}

@@ -40,6 +40,9 @@ import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteLogoUrls } from '../.
 import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
 import { Moa_PanelEmptyState } from './Moa_PanelEmptyState';
 import { Moa_PanelLoadingState } from './Moa_PanelLoadingState';
+import { Moa_ActivityRankBadge } from './Moa_ActivityRankBadge';
+import { useMoabomActivityLevel } from '../../hooks/useMoabomActivityLevel';
+import { getShellAccessToken } from '../../api/moabomShellAccess';
 
 type LeftPanelNoticeItem = ShellNoticePreviewItem;
 
@@ -216,6 +219,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [rankingSubTab, setRankingSubTab] = useState<'apps' | 'users'>('apps');
   const [appRankings, setAppRankings] = useState<ShellAppRankingItem[]>([]);
   const [userRankings, setUserRankings] = useState<ShellUserRankingItem[]>([]);
+  const [viewerOutsideTop, setViewerOutsideTop] = useState(false);
   const [rankingLoading, setRankingLoading] = useState(false);
   const [rankingLoadFailed, setRankingLoadFailed] = useState(false);
   const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('myapps');
@@ -255,6 +259,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const noticeReloadRef = useRef<((_detail?: ShellNoticeBoardChangedDetail) => void) | null>(null);
   const activeNavRef = useRef(activeNav);
   const noticePreviewStaleRef = useRef(false);
+  const isShellAuthed = Boolean(getShellAccessToken());
+  const { level: ownActivityLevel } = useMoabomActivityLevel(isShellAuthed);
+  const selfRanking = useMemo(
+    () => userRankings.find((row) => row.is_self) ?? null,
+    [userRankings],
+  );
 
   activeNavRef.current = activeNav;
 
@@ -278,10 +288,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
         setAppRankings(appsPayload.items);
         setUserRankings(usersPayload.items);
+        setViewerOutsideTop(Boolean(usersPayload.viewer_outside_top));
       } catch {
         if (!controller.signal.aborted) {
           setAppRankings([]);
           setUserRankings([]);
+          setViewerOutsideTop(false);
           setRankingLoadFailed(true);
         }
       } finally {
@@ -464,8 +476,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           }}
         />
         <Div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'color-mix(in srgb, var(--moa-point-color) 8%, transparent)' }}>
-          <Icon name="bolt" className="text-xs" style={{ color: 'var(--moa-point-color)' }} />
-          <Span className="text-xs font-bold" style={{ color: 'var(--moa-point-color)' }}>{t('moa_shell.left.creator_badge', { level: 1 })}</Span>
+          <Moa_ActivityRankBadge
+            level={ownActivityLevel?.level ?? selfRanking?.level?.level ?? 1}
+            slug={ownActivityLevel?.slug ?? selfRanking?.level?.slug ?? 'iron'}
+          />
         </Div>
       </Div>
 
@@ -569,10 +583,21 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   />
                 ) : userRankings.length > 0 ? (
                   <Div className="flex flex-col gap-1">
-                    {userRankings.map(user => (
+                    {selfRanking && (
+                      <Span className="text-xs text-muted px-1 mb-1 block">
+                        {t('moa_shell.rank.my_rank_summary', { rank: selfRanking.rank })}
+                        {viewerOutsideTop
+                          ? ` · ${t('moa_shell.left.rankings_outside_top_hint')}`
+                          : ''}
+                      </Span>
+                    )}
+                    {userRankings.map(user => {
+                      const level = user.level?.level ?? 1;
+                      const slug = user.level?.slug ?? 'iron';
+                      return (
                       <Div
                         key={`rank-user-${user.user_id}`}
-                        className="flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer"
+                        className={`flex items-center gap-2 py-2 rounded-xl hover:opacity-90 transition-all cursor-pointer${user.is_self ? ` moa-activity-rank-self-row moa-activity-rank-lv-${level}` : ''}`}
                         onClick={() => {
                           if (user.user_uuid) {
                             onOpenUserProfile?.(user.user_uuid, user.name);
@@ -593,7 +618,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                           {shellRankingAvatarLabel(user.name)}
                         </Div>
                         <Div className="flex-1 min-w-0">
-                          <Span className="font-bold text-primary text-sm block truncate">{user.name}</Span>
+                          <Div className="flex items-center gap-1.5 min-w-0">
+                            <Span className="font-bold text-primary text-sm block truncate">{user.name}</Span>
+                            <Moa_ActivityRankBadge level={level} slug={slug} showLabel={false} />
+                          </Div>
                           <Span className="text-xs text-muted block">
                             {t('moa_shell.left.rankings_activity_score', { score: user.score.toLocaleString() })}
                           </Span>
@@ -604,7 +632,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                           {user.change === 'up' ? <Icon name="caret-up" /> : user.change === 'down' ? <Icon name="caret-down" /> : '-'}
                         </Span>
                       </Div>
-                    ))}
+                      );
+                    })}
                   </Div>
                 ) : (
                   <Moa_PanelEmptyState

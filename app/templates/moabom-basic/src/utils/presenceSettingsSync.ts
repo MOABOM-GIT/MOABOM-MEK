@@ -216,6 +216,22 @@ export function resolvePresenceListUserStatus(
   };
 }
 
+/**
+ * 접속자 목록 표시명 — guest 는 UI 로케일 fallback (서버는 빈 문자열).
+ * 레거시 DB에 Guest/방문자가 남아 있어도 동일 키로 덮어 표시한다.
+ */
+export function resolvePresenceConnectDisplayName(
+  user: Pick<PresenceOnlineUser, 'user_uuid' | 'display_name' | 'is_authenticated'>,
+  t: MoabomTranslateFn,
+): string {
+  const isGuest = !user.user_uuid || user.is_authenticated === false;
+  if (isGuest) {
+    return t('moa_shell.right.presence_guest_fallback');
+  }
+  const trimmed = user.display_name?.trim() ?? '';
+  return trimmed !== '' ? trimmed : t('moa_shell.right.presence_guest_fallback');
+}
+
 /** 본인 행 부제 — ownPresence SSOT, 그 외는 API 응답 */
 export function resolvePresenceListStatusLine(
   t: MoabomTranslateFn,

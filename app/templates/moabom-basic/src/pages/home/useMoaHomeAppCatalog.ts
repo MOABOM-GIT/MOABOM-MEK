@@ -14,11 +14,12 @@ import {
 } from '../../runtime/moabomGeneratedAppLibraryLoad';
 import { removeGeneratedAppFromLibraryCache } from '../../apps/generatedAppLibraryCache';
 import { subscribeGeneratedAppSaved } from '../../apps/generatedAppEvents';
-import { deleteGeneratedApp, updateGeneratedAppShare } from '../../api/moabomAppsApi';
+import { deleteGeneratedApp, fetchVisibleGeneratedApp, updateGeneratedAppShare } from '../../api/moabomAppsApi';
 import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import {
   generatedAppLibraryId,
   isGeneratedLibraryAppId,
+  parseGeneratedLibraryServerId,
 } from '../../apps/generatedAppLibrary';
 import { pullMoabomServerState } from '../../utils/moabomPullServerState';
 import { useMoabomServerPullTriggers } from '../../utils/useMoabomServerPullTriggers';
@@ -424,9 +425,59 @@ export function useMoaHomeAppCatalog({
       }
 
       try {
-        const { owned: ownedItems, shared: sharedItems } = await loadMoabomGeneratedAppLibrary(isLoggedIn);
+        const libraryPayload = await loadMoabomGeneratedAppLibrary(isLoggedIn);
         if (cancelled) {
           return;
+        }
+        let ownedItems = libraryPayload.owned;
+        const sharedItems = libraryPayload.shared;
+        const presentIds = new Set([
+          ...ownedItems.map(item => generatedAppLibraryId(item.id)),
+          ...sharedItems.map(item => generatedAppLibraryId(item.id)),
+        ]);
+        const missingOrderIds = orderRef.current.filter(
+          id => isGeneratedLibraryAppId(id) && !presentIds.has(id),
+        );
+        if (missingOrderIds.length > 0 && isLoggedIn) {
+          const ensured = await Promise.all(
+            missingOrderIds.map(async (appId) => {
+              const serverId = parseGeneratedLibraryServerId(appId);
+              if (serverId == null) {
+                return null;
+              }
+              try {
+                return await fetchVisibleGeneratedApp(serverId);
+              } catch {
+                return null;
+              }
+            }),
+          );
+          const extras = ensured
+            .filter((item): item is NonNullable<typeof item> => item != null)
+            .map(item => ({
+              id: item.id,
+              title: item.title,
+              app_type: item.app_type,
+              tier: item.tier,
+              preview_url: item.preview_url,
+              hosted_subdomain: item.hosted_subdomain,
+              model_id: item.model_id,
+              prompt: item.prompt,
+              visibility: item.visibility,
+              is_shared: item.is_shared,
+              metadata: item.metadata,
+              owner: item.owner,
+              permissions: item.permissions,
+              community: item.community,
+              created_at: item.created_at,
+            }));
+          if (extras.length > 0) {
+            const extraIds = new Set(extras.map(item => item.id));
+            ownedItems = [
+              ...extras,
+              ...ownedItems.filter(item => !extraIds.has(item.id)),
+            ];
+          }
         }
         const reconciled = reconcileGeneratedLibraryFromServer({
           ownedItems,

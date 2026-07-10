@@ -83,6 +83,11 @@ class CreditServiceTest extends ModuleTestCase
         $overview = $this->creditService->getUserCreditOverview($user);
 
         $this->assertSame(300, $overview['balance']);
+        $this->assertArrayHasKey('ranking_points', $overview);
+        $this->assertArrayHasKey('level', $overview);
+        $this->assertIsArray($overview['level']);
+        $this->assertSame((int) $overview['ranking_points'], (int) $overview['level']['points']);
+        $this->assertGreaterThanOrEqual(1, (int) $overview['level']['level']);
         $this->assertSame(500, $overview['summary']['total_earned']);
         $this->assertSame(200, $overview['summary']['total_used']);
         $this->assertCount(2, $overview['transactions']);

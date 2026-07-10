@@ -7,8 +7,10 @@ import {
   isWebsiteLinkAppType,
   isWebsiteTitleIconFromMetadata,
   readWebsiteIconFromMetadata,
+  readWebsiteLinkLaunchModeFromMetadata,
   readWebsiteUrlFromMetadata,
   resolveWebsiteLinkAppGradient,
+  WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW,
 } from './ai-generator/websiteLinkApp';
 
 const GENERATED_APP_GRADIENT_PALETTES = [
@@ -64,9 +66,7 @@ function generatedAppGradient(seed: string): string {
 /** 생성앱 타이틀바·아이콘 그라데이션 SSOT — serverId만으로 해시(새로고침·딥링크와 라이브러리 동일) */
 export function resolveGeneratedAppTitleBarGradient(serverId: number, appType = 'general', metadata?: Record<string, unknown>): string {
   if (isWebsiteLinkAppType(appType)) {
-    const iconImageUrl = readWebsiteIconFromMetadata(metadata ?? {});
-
-    return resolveWebsiteLinkAppGradient(metadata ?? {}, Boolean(iconImageUrl));
+    return resolveWebsiteLinkAppGradient(metadata ?? {});
   }
 
   return generatedAppGradient(String(serverId));
@@ -82,8 +82,8 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
   const promptHint = item.prompt?.trim();
   const metadata = item.metadata ?? {};
   const isWebsiteLink = isWebsiteLinkAppType(appType);
-  const iconImageUrl = readWebsiteIconFromMetadata(metadata);
   const iconFromTitle = isWebsiteLink && isWebsiteTitleIconFromMetadata(metadata);
+  const iconImageUrl = iconFromTitle ? '' : readWebsiteIconFromMetadata(metadata);
   const description = isWebsiteLink
     ? (promptHint ?? '')
     : (promptHint && promptHint.length > 0 ? promptHint.slice(0, 120) : appType);
@@ -95,7 +95,7 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
     icon: resolveGeneratedAppIconFromTitle(title, promptHint, appType),
     iconImageUrl: iconImageUrl || undefined,
     gradient: isWebsiteLink
-      ? resolveWebsiteLinkAppGradient(metadata, Boolean(iconImageUrl))
+      ? resolveWebsiteLinkAppGradient(metadata)
       : resolveGeneratedAppTitleBarGradient(item.id, appType, metadata),
     category: 'user',
     source: 'user-created',
@@ -110,15 +110,36 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
       community: item.community,
       appType,
       websiteUrl: readWebsiteUrlFromMetadata(metadata) || undefined,
+      launchMode: isWebsiteLink
+        ? readWebsiteLinkLaunchModeFromMetadata(metadata)
+        : undefined,
       iconImageUrl: iconImageUrl || undefined,
       ...(iconFromTitle ? { iconFromTitle: true } : {}),
     },
   };
 }
 
+/** 웹사이트 연결 앱이 새창 실행이면 URL을 즉시 연다(클릭 제스처 유지 → 팝업 차단 완화). */
+export function tryOpenWebsiteLinkExternalWindow(app: App): boolean {
+  const meta = app.metadata;
+  if (!meta || meta.appType !== 'website_link') {
+    return false;
+  }
+  if (meta.launchMode !== WEBSITE_LINK_LAUNCH_MODE_NEW_WINDOW) {
+    return false;
+  }
+  const websiteUrl = typeof meta.websiteUrl === 'string' ? meta.websiteUrl.trim() : '';
+  if (!websiteUrl) {
+    return false;
+  }
+  window.open(websiteUrl, '_blank', 'noopener,noreferrer');
+  return true;
+}
+
 /**
  * URL·딥링크 창 메타데이터용 최소 App.
  * 메인 그리드·라이브러리 표시에는 사용하지 않음 — 서버 검증 라이브러리만 표시 SSOT.
+ * app_type 을 추정하지 못하면 중립 chrome(빈 title·general)만 두고, 뷰어 로드 후 카탈로그가 교체한다.
  */
 export function buildSyntheticGeneratedLibraryApp(appId: string): App | null {
   const serverId = parseGeneratedLibraryServerId(appId);
