@@ -79,6 +79,9 @@ class AttachmentController extends PublicBaseController
      * 이미지 파일만 미리보기를 제공합니다.
      * 비회원도 이미지를 볼 수 있습니다.
      *
+     * Cloud Run(GCS) 에서는 로컬 path + fileResponse() 가 불가하므로
+     * AttachmentService::preview() 스트리밍을 사용한다.
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  string  $hash  첨부파일 해시 (12자)
      * @return StreamedResponse|JsonResponse 이미지 응답 또는 에러 응답
@@ -107,7 +110,13 @@ class AttachmentController extends PublicBaseController
                 return $this->notFound(__('sirsoft-board::messages.attachment.not_found'));
             }
 
+            $maxAge = (int) g7_core_settings('cache.layout_ttl', 86400);
+            $response->headers->set('Cache-Control', "public, max-age={$maxAge}");
+
             return $response;
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            // 삭제글 첨부 등 권한 차단은 403 으로 응답
+            return $this->error('auth.scope_denied', 403);
         } catch (BoardNotFoundException $e) {
             return $this->notFound(__('sirsoft-board::messages.boards.not_found'));
         } catch (\Exception $e) {
@@ -156,15 +165,7 @@ class AttachmentController extends PublicBaseController
                         'stored_filename' => $attachment->stored_filename,
                         'mime_type' => $attachment->mime_type,
                         'size' => $attachment->size,
-                        'size_formatted' => $attachment->size_formatted,
-                        'url' => $attachment->is_image
-                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
-                            : "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
-                        'download_url' => "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
-                        'preview_url' => $attachment->is_image
-                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
-                            : null,
-                        'is_image' => $attachment->is_image,
+                        'url' => $this->attachmentService->getUrl($slug, $attachment->id),
                         'order' => $attachment->order,
                         'created_at' => $attachment->created_at,
                     ],

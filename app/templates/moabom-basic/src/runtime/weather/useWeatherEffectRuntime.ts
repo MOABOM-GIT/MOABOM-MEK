@@ -448,10 +448,10 @@ export function useWeatherEffectRuntime(options: UseWeatherEffectRuntimeOptions)
     runOnceRef.current = runOnce;
   }, [runOnce]);
 
-  // 효과·가시성·위치 변경 시 시퀀스 재실행 — tertiary-idle 이후(부트 카탈로그·2차 API 이후).
+  // 효과·가시성·위치 변경 시 시퀀스 재실행 — pwa-idle 이후(부트 PHP 큐 양보).
   useEffect(() => {
     let cancelled = false;
-    const cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+    const cancelBoot = whenMoabomBootPhaseAtLeast('pwa-idle', () => {
       if (!cancelled) {
         void runOnce();
       }

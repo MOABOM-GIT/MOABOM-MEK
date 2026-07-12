@@ -24,10 +24,15 @@ import { DataSourceManager } from './template-engine/DataSourceManager';
 import { ModalDataSourceWrapper } from './template-engine/ModalDataSourceWrapper';
 import { ParentContextProvider } from './template-engine/ParentContextProvider';
 import { TemplateNotFoundError } from './template-engine/TemplateEngineError';
+import { ErrorDisplay } from './template-engine/ErrorDisplay';
 import { TemplateApp, initTemplateApp } from './TemplateApp';
 import { createLogger } from './utils/Logger';
 import { webSocketManager } from './websocket/WebSocketManager';
 import { initializeG7CoreGlobals, initDevToolsAPI } from './template-engine/G7CoreGlobals';
+import { checkLayoutEditorMode } from './template-engine/layout-editor/hooks/useEditorMode';
+// LayoutEditorChrome 은 정적 import 하지 않는다 — 편집기는 별도 lazy 번들
+// (layout-editor.min.js)로 분리되어 `/admin/layout-editor/*` 진입 시에만 로드된다.
+// @since engine-v1.51.0
 
 const logger = createLogger('TemplateEngine');
 
@@ -367,10 +372,88 @@ async function initTemplateEngine(options: InitOptions): Promise<void> {
 }
 
 /**
+ * 편집기 lazy 번들(layout-editor.min.js) 로드 후 LayoutEditorChrome 컴포넌트 반환.
+ *
+ * @since engine-v1.51.0
+ *
+ * 편집기는 메인 코어 번들에서 분리되어 `/admin/layout-editor/*` 진입 시에만 로드된다.
+ * 이미 로드돼 있으면 즉시 반환(멱등), 아니면 `<script>` 를 1회 주입하고 로드 완료를 대기한다.
+ * 동시 다중 호출은 in-flight promise 로 병합해 중복 주입을 막는다.
+ *
+ * @returns LayoutEditorChrome React 컴포넌트
+ * @throws {Error} 스크립트 로드 실패 또는 컴포넌트 미노출 시
+ */
+let layoutEditorLoadPromise: Promise<any> | null = null;
+
+function loadLayoutEditorBundle(): Promise<any> {
+  const g7 = (window as any).G7Core;
+
+  // 이미 로드됨 — 즉시 반환 (멱등)
+  if (g7?.__LayoutEditorChrome) {
+    return Promise.resolve(g7.__LayoutEditorChrome);
+  }
+
+  // 진행 중인 로드가 있으면 재사용 (중복 주입 방지)
+  if (layoutEditorLoadPromise) {
+    return layoutEditorLoadPromise;
+  }
+
+  layoutEditorLoadPromise = new Promise((resolve, reject) => {
+    // 번들 URL — blade 가 주입한 버전 포함 URL 우선, 폴백은 표준 경로
+    const src =
+      (window as any).G7Config?.coreEditorAsset || '/build/core/layout-editor.min.js';
+    const scriptId = 'g7-layout-editor-bundle';
+
+    // 이미 주입된 <script> 재사용
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    const onReady = () => {
+      const chrome = (window as any).G7Core?.__LayoutEditorChrome;
+      if (chrome) {
+        resolve(chrome);
+      } else {
+        reject(new Error('편집기 번들 로드됨 — 그러나 __LayoutEditorChrome 미노출'));
+      }
+    };
+
+    // 편집기 엔트리가 컴포넌트 노출 직후 호출할 준비 완료 콜백 (onload fallback 병행)
+    (window as any).G7Core = (window as any).G7Core || {};
+    (window as any).G7Core.__onChromeReady = onReady;
+
+    if (existing) {
+      // 주입돼 있으나 아직 실행 전 — load 이벤트 대기
+      existing.addEventListener('load', onReady, { once: true });
+      existing.addEventListener(
+        'error',
+        () => reject(new Error(`편집기 번들 로드 실패: ${src}`)),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = src;
+    script.async = false; // 로드 순서 보존 (메인 번들 이후)
+    script.addEventListener('load', onReady, { once: true });
+    script.addEventListener(
+      'error',
+      () => {
+        layoutEditorLoadPromise = null; // 재시도 가능하도록 초기화
+        reject(new Error(`편집기 번들 로드 실패: ${src}`));
+      },
+      { once: true }
+    );
+    document.head.appendChild(script);
+  });
+
+  return layoutEditorLoadPromise;
+}
+
+/**
  * 템플릿 렌더링
  *
  * 레이아웃 JSON을 기반으로 React 컴포넌트를 렌더링합니다.
- * 편집 모드(URL에 mode=edit 파라미터 존재)인 경우 WysiwygEditor로 래핑하여 렌더링합니다.
  *
  * @param options - 렌더링 옵션
  * @throws {Error} 초기화되지 않은 경우 또는 렌더링 실패 시
@@ -420,14 +503,62 @@ async function renderTemplate(options: RenderOptions): Promise<void> {
       state.reactRoot = ReactDOM.createRoot(container);
     }
 
-    // 편집 모드 감지 (URL 쿼리 파라미터 확인)
-    const isEditMode = checkEditMode();
-    logger.log('편집 모드:', isEditMode);
+    // 레이아웃 편집기 모드 분기
+    // URL 이 `/admin/layout-editor/:identifier` 패턴이면 LayoutEditorChrome 을
+    // 같은 state.reactRoot + 같은 코어 컨텍스트 래퍼 안에서 렌더한다.
+    // 별도 createRoot / 별도 DOM 컨테이너 / 별도 컨텍스트 트리 일체 금지.
+    if (typeof window !== 'undefined') {
+      const editorMode = checkLayoutEditorMode(window.location.pathname);
+      if (editorMode) {
+        logger.log('레이아웃 편집기 모드 진입', editorMode);
 
-    // 편집 모드인 경우 WysiwygEditor로 렌더링
-    if (isEditMode) {
-      await renderWithWysiwygEditor(options);
-      return;
+        // 편집기 lazy 번들 로드 (layout-editor.min.js) — 진입 시에만 로드
+        let LayoutEditorChrome: any;
+        try {
+          LayoutEditorChrome = await loadLayoutEditorBundle();
+        } catch (loadError) {
+          logger.error('레이아웃 편집기 번들 로드 실패', loadError);
+          // 컨테이너에 직접 에러 화면 렌더 (CSS 의존성 없는 인라인 스타일)
+          ErrorDisplay.render(options.containerId, {
+            title: '레이아웃 편집기 로드 실패',
+            message:
+              loadError instanceof Error
+                ? loadError.message
+                : '편집기 번들을 불러오지 못했습니다.',
+            icon: 'fas fa-triangle-exclamation',
+            showStack: false,
+            showReloadButton: true,
+            debug: debugMode,
+          });
+          return;
+        }
+
+        const chrome = React.createElement(LayoutEditorChrome, {
+          templateIdentifier: editorMode.templateIdentifier,
+          initialLocale: state.locale,
+        });
+        state.reactRoot.render(
+          React.createElement(
+            TranslationProvider,
+            {
+              translationEngine: state.translationEngine!,
+              translationContext: state.translationContext,
+              children: React.createElement(
+                TransitionProvider,
+                {
+                  children: React.createElement(
+                    ResponsiveProvider,
+                    {
+                      children: React.createElement(SlotProvider, { children: chrome }),
+                    }
+                  ),
+                }
+              ),
+            } as any
+          )
+        );
+        return;
+      }
     }
 
     // 레이아웃 JSON의 components 배열 가져오기
@@ -595,13 +726,6 @@ async function renderTemplate(options: RenderOptions): Promise<void> {
 function updateTemplateData(data: Record<string, any>, options?: UpdateOptions): void {
   try {
     logger.log('템플릿 데이터 업데이트 시작', Object.keys(data));
-
-    // 편집 모드일 때는 일반 렌더링 업데이트 건너뛰기
-    // WysiwygEditor가 자체적으로 상태를 관리하므로 updateTemplateData가 간섭하면 안 됨
-    if (checkEditMode()) {
-      logger.log('편집 모드에서는 updateTemplateData를 건너뜁니다.');
-      return;
-    }
 
     // 초기화 확인
     if (!state.isInitialized) {
@@ -847,125 +971,6 @@ function getActionDispatcher(): ActionDispatcher | null {
   return state.actionDispatcher;
 }
 
-// ============================================================================
-// 위지윅 편집 모드 관련 함수
-// ============================================================================
-
-/**
- * URL 쿼리 파라미터에서 편집 모드 여부를 확인합니다.
- *
- * @returns boolean 편집 모드 여부
- */
-function checkEditMode(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const mode = params.get('mode');
-  const template = params.get('template');
-
-  // mode=edit 파라미터와 template 파라미터가 모두 있어야 편집 모드
-  return mode === 'edit' && !!template;
-}
-
-/**
- * URL 쿼리 파라미터에서 템플릿 ID를 가져옵니다.
- *
- * @returns string | null 템플릿 ID
- */
-function getTemplateIdFromUrl(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  return params.get('template');
-}
-
-/**
- * 위지윅 편집기로 렌더링합니다.
- * 편집 모드일 때 WysiwygEditor를 동적으로 import하여 렌더링합니다.
- *
- * @param options - 렌더링 옵션
- */
-async function renderWithWysiwygEditor(options: RenderOptions): Promise<void> {
-  logger.log('위지윅 편집기 렌더링 시작');
-
-  try {
-    // WysiwygEditor 동적 import
-    const { WysiwygEditor } = await import('./template-engine/wysiwyg');
-
-    // URL에서 템플릿 ID 추출
-    const templateId = getTemplateIdFromUrl() || state.templateId || 'unknown';
-
-    // 편집 모드 닫기 핸들러 (mode 파라미터 제거)
-    const handleClose = () => {
-      const params = new URLSearchParams(window.location.search);
-      params.delete('mode');
-      params.delete('template');
-
-      const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-      window.location.href = newUrl;
-    };
-
-    // 저장 완료 핸들러
-    const handleSaveComplete = (layoutData: any) => {
-      logger.log('레이아웃 저장 완료:', layoutData);
-      // TODO: API 호출로 레이아웃 저장
-    };
-
-    logger.log('WysiwygEditor 렌더링', { templateId, layoutName: options.layoutJson?.layout_name });
-
-    // WysiwygEditor 렌더링
-    state.reactRoot!.render(
-      React.createElement(
-        TranslationProvider,
-        {
-          translationEngine: state.translationEngine!,
-          translationContext: state.translationContext,
-        },
-        React.createElement(WysiwygEditor, {
-          layoutData: options.layoutJson,
-          templateId,
-          onClose: handleClose,
-          onSaveComplete: handleSaveComplete,
-          initialEditMode: 'visual',
-          readOnly: false,
-        })
-      )
-    );
-
-    logger.log('위지윅 편집기 렌더링 완료');
-  } catch (error) {
-    logger.error('위지윅 편집기 로드 실패:', error);
-
-    // 편집기 로드 실패 시 에러 메시지 표시
-    state.reactRoot!.render(
-      React.createElement('div', {
-        className: 'flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900',
-      },
-        React.createElement('div', {
-          className: 'text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg',
-        },
-          React.createElement('h1', {
-            className: 'text-xl font-bold text-red-600 dark:text-red-400 mb-4',
-          }, '위지윅 편집기 로드 실패'),
-          React.createElement('p', {
-            className: 'text-gray-600 dark:text-gray-400 mb-4',
-          }, '편집기를 불러오는 중 오류가 발생했습니다.'),
-          React.createElement('button', {
-            className: 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700',
-            onClick: () => window.location.reload(),
-          }, '새로고침')
-        )
-      )
-    );
-
-    throw error;
-  }
-}
-
 /**
  * 템플릿 엔진 공개 API
  */
@@ -1022,6 +1027,8 @@ export {
   getActionDispatcher,
   LayoutLoader,
   DataSourceManager,
+  // @since engine-v1.51.0 편집기 lazy 번들 로더 (테스트/진단용 노출)
+  loadLayoutEditorBundle,
 };
 
 export type {

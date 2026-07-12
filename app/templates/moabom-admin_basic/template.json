@@ -5,7 +5,7 @@
         "ko": "Moabom Admin Basic",
         "en": "Moabom Admin Basic"
     },
-    "version": "1.0.0-beta.17",
+    "version": "1.0.0-beta.19",
     "license": "MIT",
     "description": {
         "ko": "Moabom 커스텀 관리자 템플릿 (sirsoft-admin_basic 포크)",
@@ -69,5 +69,13 @@
         }
     },
     "github_url": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic",
-    "github_changelog_url": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic/blob/main/CHANGELOG.md"
+    "github_changelog_url": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic/blob/main/CHANGELOG.md",
+    "externals": [
+        {
+            "id": "fontawesome",
+            "type": "style",
+            "url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
+            "preconnect": "https://cdnjs.cloudflare.com"
+        }
+    ]
 }

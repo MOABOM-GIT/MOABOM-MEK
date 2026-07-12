@@ -237,6 +237,16 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **예방** | `check-module-layout-softdeletes-contract.sh` · `build-and-deploy` layout 실패 시 D1 안내 · Job image/cmd 동일 시 `jobs update` 스킵 |
 | **금지** | layout Job 실패만으로 `_IMAGE_TAG` 연속 증가 (D1) |
 
+### RF-29: 코어 `build:core` 폴백 → 구 template-engine 서빙 (관리자 영구 blur)
+
+| | |
+|---|---|
+| **증상** | 관리자 DataGrid에 `opacity-50 blur-sm …` 영구 적용. 소스에 DataGate(`auto_fetch:false` progressive 제외)가 있어도 운영 미반영 |
+| **원인** | (1) `Dockerfile` `npm run build:core … \|\| true` — closeBundle(`resources/js/core/lang` 부재)로 exit≠0 이어도 폴백으로 넘어가며, 산출 검증 없음 (2) admin 그리드 `blur_until_loaded: true`가 `_admin_base` deferred 키와 충돌 |
+| **착각** | “layout-sync unchanged skip 때문에 DB 구 layout” — DataGate는 엔진 번들 문제. skip 후에도 `template:cache-clear`+serving bust는 실행됨 |
+| **조치** | `build:core` hard-fail + 산출물에 `auto_fetch` 문자열 검증. admin 그리드는 `blur_until_loaded: { data_sources }` 스코프 |
+| **예방** | `check-before-cloud-build.sh` [v7-9b] · `RUNTIME-CONTRACTS.md` DataGate |
+
 ### RF-25: nginx `upstream timed out` (셸 부트·크레딧)
 
 | | |
@@ -246,6 +256,64 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **착각** | “Cloud Run timeout(3600s)이 짧다” — 실제 병목은 nginx→php-fpm 기본 60s + 무거운 credits overview |
 | **조치** | `fastcgi_read_timeout 120s` · 셸은 `?limit=0` 경량 경로(잔액·level만) · 마이페이지는 기존 limit≥1 |
 | **예방** | `check-before-cloud-build.sh` `fastcgi_read_timeout 120s` 가드 · `CreditService::getUserCreditOverview` limit=0 분기 |
+
+### RF-26: `*.run.app` + `X-Forwarded-Host` 테넌트 스푸핑
+
+| | |
+|---|---|
+| **증상** | Cloud Run URL 직접 호출 + `X-Forwarded-Host: victim.mek360.com` 으로 타 테넌트 설정/스토리지 plane 접근 가능 |
+| **원인** | `allUsers` invoker + ingress 전체 공개 + `TenantRequestHost` 가 forwarded 헤더를 무검증 우선 |
+| **조치** | (1) `TenantRequestHost` — SaaS allowlist + `*.run.app` 일 때만 forwarded 채택 (2) `--ingress=internal-and-cloud-load-balancing` (LB `moabom-lb-frontend` 단일 진입) |
+| **예방** | `check-moabom-refactor-invariants.sh` §9 · `check-cloud-run-billing-ssot.sh` ingress 가드 |
+
+### RF-27: Cloud Build `package:discover` — `Target class [cache]`
+
+| | |
+|---|---|
+| **증상** | Dockerfile vendor 스테이지 `php artisan package:discover` 실패 → Cloud Build FAILURE |
+| **원인** | Moabom overlay `JsonConfigRepository::getCategory` 가 `Cache::remember` 호출. SettingsServiceProvider 는 CacheServiceProvider 등록 전에 실행됨 |
+| **조치** | `app()->bound('cache')` 가드 · Dockerfile `G7_JSON_SETTINGS_CACHE_TTL=0` |
+| **예방** | `check-core-patches.sh` / refactor invariants 에 bound 가드 문자열 검사 |
+
+### RF-28: `Driver [gcs] is not supported` (SettingsServiceProvider register)
+
+| | |
+|---|---|
+| **증상** | 배포 직후 `/public/ready` 등 전 API 500 — `Driver [gcs] is not supported` |
+| **원인** | Spatie `GoogleCloudStorageServiceProvider` 는 `boot()` 에서만 `Storage::extend('gcs')`. `SettingsServiceProvider::register()` 가 그 전에 `settings` 디스크(gcs) 를 읽음 |
+| **조치** | `EarlyGoogleCloudStorageServiceProvider` — `register()` + `FilesystemManager` resolving 에서 extend, `bootstrap/providers.php` 에 Settings 앞 등록 |
+| **예방** | `check-core-patches.sh` Early* Provider 가드 |
+
+### RF-29: G7 7.0.2 이후 SPA HTML 전면 500 (View Composer 시그니처)
+
+| | |
+|---|---|
+| **증상** | `/` `/login` `/admin` `/boards` HTML 500 · API(`ready`, `/api/me`) 는 정상 |
+| **원인** | G7 7.0.2 `UserTemplateComposer`/`TemplateComposer` 에 `TemplateManager` 추가. Moabom 래퍼가 6인자 `parent::__construct` → `ArgumentCountError`. 추가로 slim compose 가 `bundleUrls`/`templateExternals`/`extensionCacheVersion` 누락 |
+| **착각** | GCS(RF-28)만 고치면 HTML도 살아남 · smoke ready 통과 = 사이트 OK |
+| **조치** | `MoabomUserTemplateComposer`/`MoabomTemplateComposer` 가 `TemplateManager` 전달 + G7 SPA compose 키 채움 |
+| **예방** | `check-moabom-refactor-invariants.sh` G7 SPA View Composer contract |
+
+### RF-30: 게시판 첨부 preview 500 (GCS / Cloud Run)
+
+| | |
+|---|---|
+| **증상** | 공지 등 게시글 이미지 `.../attachment/{hash}/preview` → 500 (`이미지 미리보기에 실패했습니다.`) · 목록/상세 API 는 200 |
+| **원인** | `User\AttachmentController::preview` 가 `getFileInfo()` 로컬 path + `fileResponse()` 사용 — GCS 디스크에 로컬 파일 없음 |
+| **착각** | G7 코어 upstream 이 목록 API 를 깨뜨림 · 셸 부트 2초 지연과 동일 원인 |
+| **조치** | `AttachmentService::preview()` 스트리밍 + Cache-Control (download 과 동일 경로) |
+| **예방** | Cloud Run 에서 board attachment preview curl 스모크 |
+
+### RF-31: 공지 상세 로그인 500 — sirsoft-board schema drift
+
+| | |
+|---|---|
+| **증상** | 로그인 후 공지 클릭 → axios `Request failed with status code 500` · `GET .../boards/notice/posts/{id}` 500. 비로그인·목록·navigation 은 200 |
+| **원인** | `PostRepository::findWithCounts` 가 관리 권한자에게 attachments 에 `trigger_type=cascade` 조건을 쓰는데, `board_attachments.trigger_type` 컬럼 미적용 (`2026_06_26_000002_...`) |
+| **재발 구조** | post-deploy migrate allowlist 가 `moabom-*` 만 → **sirsoft-board 마이그레이션이 이미지와 함께 안 돌아감**. 코드만 배포되면 관리자 상세만 500 |
+| **착각** | “배포가 RF-30 preview 수정을 되돌렸다” · G7 코어 upstream 회귀 |
+| **조치** | platform(+tenant) 에 sirsoft-board migrate · post-deploy extra allowlist 에 `sirsoft-board` (RF-21 확장) · `PostController::show` 예외 `Log::error` |
+| **예방** | `check-deploy-recurring-guards.sh` RF-31 · 배포 후 로그인 세션/토큰으로 posts/{id} 스모크 |
 
 ### RF-14: SaaS hospitals — 모듈 레이아웃 DB 미동기화
 
@@ -389,6 +457,13 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | 날짜 | 태그/이슈 | 교훈 |
 |------|-----------|------|
+| 2026-07-10 | **RF-29** | `build:core \|\| true` → 구 template-engine 서빙 → 관리자 blur 영구. layout-sync skip과 무관. hard-fail + DataGate 검증 |
+| 2026-07-10 | **RF-31** | 로그인 공지 상세 500 — `board_attachments.trigger_type` 미적용. post-deploy migrate 가 moabom-* 만 돌려 sirsoft-board schema drift. 배포≠코드 롤백 |
+| 2026-07-10 | **RF-30** | board attachment preview 가 로컬 `fileResponse` 의존 → GCS Cloud Run 500. 목록 API 200 과 별개. `AttachmentService::preview()` 스트리밍 |
+| 2026-07-10 | **RF-29** | G7 7.0.2 Composer `TemplateManager` 시그니처 — Moabom 래퍼 미전달 시 HTML 전면 500. ready smoke ≠ SPA OK |
+| 2026-07-10 | **RF-28** / v462 | `Driver [gcs] is not supported` — Spatie GCS 가 boot() 전용인데 SettingsServiceProvider::register() 가 settings(gcs) 디스크 선사용. `EarlyGoogleCloudStorageServiceProvider` 로 register 단계 등록 |
+| 2026-07-10 | **RF-27** / v461 | `package:discover` 시 SettingsServiceProvider → JsonConfigRepository `Cache::remember` 가 CacheServiceProvider 이전 호출 → `Target class [cache]`. `app()->bound('cache')` 가드 + Dockerfile `G7_JSON_SETTINGS_CACHE_TTL=0` |
+| 2026-07-10 | **RF-26** / v461 | `*.run.app` allUsers + 무검증 `X-Forwarded-Host` → 테넌트 스푸핑. `TenantRequestHost` allowlist + `--ingress=internal-and-cloud-load-balancing` |
 | 2026-07-10 | **RF-25** / v460 | upstream timed out = nginx 60s + 무거운 credits. `fastcgi_read_timeout 120s` + `limit=0` |
 | 2026-07-10 | **RF-24** | layout Job 실패 ≠ 재빌드. SoftDeletes 계약 + `run-post-deploy-layout-pipeline.sh` + Job update skip |
 | 2026-06-02 | v159~v160 | module i18n `$t:moabom-system.*` · module layout sync · `forEach`→`iteration` (RF-14~16) |

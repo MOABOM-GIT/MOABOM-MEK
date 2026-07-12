@@ -16,20 +16,29 @@ class FilePermissionHelper
      * - 신규 파일: 부모 디렉토리의 소유자/그룹 상속 (퍼미션은 PHP 기본 umask)
      * - removeOrphans=false: 소스에 없고 대상에만 있는 파일 유지 (사용자 추가 파일 보호)
      * - removeOrphans=true: 소스에 없고 대상에만 있는 파일/디렉토리 삭제 (excludes 제외)
+     * - preserveTopLevelOrphans=true: removeOrphans=true 라도 *최상위 한 레벨* 에서 소스에
+     *   없는 항목(디렉토리/파일)은 삭제하지 않는다. 소스에 존재하는 디렉토리 내부의
+     *   orphan 정리는 그대로 수행된다. 코어 업데이트가 `{domain}/_bundled` 를 sync 할 때
+     *   사용자가 `_bundled/` 바로 아래에 직접 만든 커스텀 확장 디렉토리를 보존하기 위함.
      *
      * 신규 항목의 소유권 상속은 sudo 로 실행된 업데이트 프로세스가 root 소유로 파일을
      * 생성하는 것을 방지한다. vendor/ 처럼 cleanDirectory 후 재생성되는 디렉토리 구조
      * 전체가 기존 부모(= vendor/) 의 소유권을 승계하도록 보장한다.
      *
-     * @param string $source 소스 디렉토리 경로
-     * @param string $destination 대상 디렉토리 경로
-     * @param \Closure|null $onProgress 진행 콜백
-     * @param array $excludes 제외할 이름 또는 경로 목록 (예: ['node_modules', '.git', 'node_modules/test_dir'])
-     * @param string $relativePath 현재 상대 경로 (내부 재귀용)
-     * @param bool $removeOrphans 소스에 없는 대상 파일/디렉토리 삭제 여부
-     * @return void
+     * @param  string  $source  소스 디렉토리 경로
+     * @param  string  $destination  대상 디렉토리 경로
+     * @param  \Closure|null  $onProgress  진행 콜백
+     * @param  array  $excludes  제외할 이름 또는 경로 목록 (예: ['node_modules', '.git', 'node_modules/test_dir'])
+     * @param  string  $relativePath  현재 상대 경로 (내부 재귀용)
+     * @param  bool  $removeOrphans  소스에 없는 대상 파일/디렉토리 삭제 여부
+     * @param  bool  $preserveTopLevelOrphans  최상위 한 레벨의 orphan 보존 여부
+     * @param  array<string, bool>|null  $applyList  적용 대상 파일 상대경로 화이트리스트
+     *   (이 디렉토리 루트 기준, `'sub/file.txt' => true` 형태의 lookup 맵). null 이면
+     *   전체 파일 복사(기존 동작). 지정 시 이 맵에 없는 파일은 복사를 스킵한다 — 코어
+     *   업데이트 증분 모드에서 "코어가 변경하지 않은 파일"을 건드리지 않기 위함. symlink
+     *   는 이 필터의 영향을 받지 않고 항상 재생성된다(링크는 목록 산출 대상이 아님).
      */
-    public static function copyDirectory(string $source, string $destination, ?\Closure $onProgress = null, array $excludes = [], string $relativePath = '', bool $removeOrphans = false): void
+    public static function copyDirectory(string $source, string $destination, ?\Closure $onProgress = null, array $excludes = [], string $relativePath = '', bool $removeOrphans = false, bool $preserveTopLevelOrphans = false, ?array $applyList = null): void
     {
         if (! File::isDirectory($destination)) {
             // 신규 디렉토리: 부모 디렉토리의 퍼미션/소유권 상속
@@ -49,50 +58,104 @@ class FilePermissionHelper
 
             $destPath = $destination.DIRECTORY_SEPARATOR.$itemName;
 
-            // symlink 자체 보존: target 추적 없이 동일 symlink 재생성.
+            // symlink / Windows junction 자체 보존: target 추적 없이 동일 링크 재생성.
             // SplFileInfo::isDir() 가 symlink 를 추적하므로 검사 순서가 isDir() 보다 먼저여야 한다.
-            // 미적용 시 `public/storage` 등 symlink 가 target 디렉토리 내용으로 복사되어 백업/복원 양쪽에서 손상.
-            if ($item->isLink()) {
-                if (static::copySymlink($item->getPathname(), $destPath)) {
+            // 미적용 시 `public/storage` 등 링크가 target 디렉토리 내용으로 복사되어 백업/복원 양쪽에서 손상.
+            //
+            // Windows JUNCTION(`mklink /J`)은 reparse point 지만 PHP `isLink()`/`isDir()` 이 모두
+            // false 를 반환한다(`storage:link` 가 Windows 에서 생성하는 형태). isLink() 만 검사하면
+            // junction 이 파일로 오판되어 copyFile → `copy(디렉토리)` 로 코어 업데이트가 실패한다.
+            // isReparsePoint() 로 junction 도 이 분기에 포함시킨다.
+            if ($item->isLink() || static::isReparsePoint($item->getPathname())) {
+                if (static::copyLink($item->getPathname(), $destPath)) {
                     continue;
                 }
                 // 복원 실패 (Windows SeCreateSymbolicLink 권한 부족 등) — 일반 복사로 fall-through.
+                // 단, junction 은 isDir() 이 false 라 아래 else 분기의 copyFile 로 새어 파일 복사가
+                // 다시 실패하므로, fall-through 대신 skip 하여 손상 없이 넘어간다.
                 // 운영자가 추후 `php artisan storage:link` 수동 실행으로 회복 가능.
+                if (! $item->isLink()) {
+                    continue;
+                }
             }
 
             if ($item->isDir()) {
-                static::copyDirectory($item->getPathname(), $destPath, $onProgress, $excludes, $itemRelativePath, $removeOrphans);
+                // preserveTopLevelOrphans 는 최상위 한 레벨 한정 — 자식 재귀에는 항상 false 전달.
+                static::copyDirectory($item->getPathname(), $destPath, $onProgress, $excludes, $itemRelativePath, $removeOrphans, preserveTopLevelOrphans: false, applyList: $applyList);
             } else {
+                // 증분 모드(applyList 지정): 화이트리스트에 없는 파일은 스킵 —
+                // 코어가 변경하지 않은 파일의 현재 디스크 상태(사용자 수정 포함)를 보존.
+                if ($applyList !== null && ! isset($applyList[$itemRelativePath])) {
+                    continue;
+                }
                 static::copyFile($item->getPathname(), $destPath);
             }
         }
 
         // 소스에 없는 대상 파일/디렉토리 삭제
         if ($removeOrphans && File::isDirectory($destination)) {
-            static::removeOrphanItems($source, $destination, $excludes, $relativePath);
+            static::removeOrphanItems($source, $destination, $excludes, $relativePath, $preserveTopLevelOrphans);
         }
     }
 
     /**
-     * symlink 자체를 보존 복사합니다 (target 미추적).
+     * 경로가 Windows JUNCTION 등 PHP `isLink()` 가 인식하지 못하는 reparse point 인지 판정합니다.
      *
-     * 기존 dest 가 symlink 또는 파일이면 unlink, 디렉토리면 deleteDirectory 후 symlink 재생성.
-     * readlink / symlink 실패 시 false 반환 — 호출자가 일반 복사로 fall-through.
+     * Windows JUNCTION(`mklink /J`)은 디렉토리 reparse point 로, `is_link()` / `is_file()` /
+     * `is_dir()` 이 **모두** false 를 반환한다(그러나 경로 항목으로는 존재하며 `readlink()` 로
+     * target 을 얻을 수 있다). `php artisan storage:link` 가 Windows 에서 생성하는
+     * `public/storage` 가 이 형태다.
      *
-     * Windows 환경에서 PHP `symlink()` 는 `SeCreateSymbolicLink` 권한이 필요하며 일반 사용자는
-     * 권한이 없을 가능성이 높다. 실패 시 warning 로그 후 false 반환하여 호출자가 일반 복사로
-     * fall-through 하도록 한다. 운영자는 업그레이드 후 `php artisan storage:link` 등 수동
-     * 명령으로 symlink 를 회복할 수 있다.
+     * 주의: Windows 의 `readlink()` 는 일반 파일/디렉토리에도 자기 경로를 반환하므로 junction
+     * 판별 기준이 될 수 없다. 따라서 "존재하는 경로인데 link/file/dir 어디에도 해당하지 않음"
+     * 을 판정 기준으로 삼는다. 여기에 추가로 `readlink()` 성공(!== false)을 요구해 존재하지
+     * 않는 경로를 배제한다.
      *
-     * @param  string  $source  소스 symlink 경로
-     * @param  string  $destination  대상 symlink 경로
-     * @return bool  symlink 복원 성공 여부 (false 면 호출자가 일반 복사로 폴백)
+     * 일반 symlink(`is_link()` true)는 호출부가 별도로 처리하므로 여기서는 false 를 반환한다.
+     * junction 은 Windows 전용이므로 비-Windows 에서는 항상 false.
+     *
+     * @param  string  $path  검사할 경로
+     * @return bool junction 등 isLink() 미인식 reparse point 여부
      */
-    protected static function copySymlink(string $source, string $destination): bool
+    protected static function isReparsePoint(string $path): bool
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return false;
+        }
+
+        // 일반 symlink / 파일 / 디렉토리는 각 검사가 true → junction 아님.
+        if (is_link($path) || is_file($path) || is_dir($path)) {
+            return false;
+        }
+
+        // 위 셋에 모두 해당하지 않으면서 readlink 가 target 을 반환하면 junction(reparse point).
+        return @readlink($path) !== false;
+    }
+
+    /**
+     * symlink 또는 Windows junction 자체를 보존 복사합니다 (target 미추적).
+     *
+     * 기존 dest 가 symlink 또는 파일이면 unlink, 디렉토리면 deleteDirectory 후 링크 재생성.
+     * readlink 실패 시 false 반환 — 호출자가 일반 복사로 fall-through.
+     *
+     * 재생성 전략:
+     * - 일반 symlink: `symlink()`
+     * - target 이 디렉토리인 경우(Windows junction 포함): `symlink()` 실패 시 `mklink /J` 로 폴백.
+     *   Windows 에서 PHP `symlink()` 는 `SeCreateSymbolicLink` 권한이 필요하지만 junction 은
+     *   권한 없이 생성 가능하므로, junction 복원의 실질 경로가 된다.
+     *
+     * 모든 재생성 시도 실패 시 warning 로그 후 false 반환. 운영자는 업그레이드 후
+     * `php artisan storage:link` 등 수동 명령으로 링크를 회복할 수 있다.
+     *
+     * @param  string  $source  소스 링크(symlink/junction) 경로
+     * @param  string  $destination  대상 링크 경로
+     * @return bool 링크 복원 성공 여부 (false 면 호출자가 일반 복사로 폴백)
+     */
+    protected static function copyLink(string $source, string $destination): bool
     {
         $target = @readlink($source);
         if ($target === false) {
-            Log::warning('copySymlink: readlink 실패 — 일반 복사로 폴백', ['source' => $source]);
+            Log::warning('copyLink: readlink 실패 — 일반 복사로 폴백', ['source' => $source]);
 
             return false;
         }
@@ -104,17 +167,29 @@ class FilePermissionHelper
             File::deleteDirectory($destination);
         }
 
-        if (! @symlink($target, $destination)) {
-            Log::warning('copySymlink: symlink 생성 실패 — 일반 복사로 폴백', [
-                'source' => $source,
-                'destination' => $destination,
-                'target' => $target,
-            ]);
-
-            return false;
+        if (@symlink($target, $destination)) {
+            return true;
         }
 
-        return true;
+        // symlink 실패 + target 이 디렉토리 → Windows junction 으로 폴백 재생성.
+        if (PHP_OS_FAMILY === 'Windows' && is_dir($target)) {
+            exec(
+                'cmd /c mklink /J '.escapeshellarg($destination).' '.escapeshellarg($target).' 2>&1',
+                $out,
+                $code
+            );
+            if ($code === 0 && is_dir($destination)) {
+                return true;
+            }
+        }
+
+        Log::warning('copyLink: 링크 생성 실패 — 일반 복사로 폴백', [
+            'source' => $source,
+            'destination' => $destination,
+            'target' => $target,
+        ]);
+
+        return false;
     }
 
     /**
@@ -122,14 +197,21 @@ class FilePermissionHelper
      *
      * excludes 목록에 해당하는 항목은 삭제하지 않습니다.
      *
-     * @param string $source 소스 디렉토리 경로
-     * @param string $destination 대상 디렉토리 경로
-     * @param array $excludes 제외할 이름 또는 경로 목록
-     * @param string $relativePath 현재 상대 경로
-     * @return void
+     * @param  string  $source  소스 디렉토리 경로
+     * @param  string  $destination  대상 디렉토리 경로
+     * @param  array  $excludes  제외할 이름 또는 경로 목록
+     * @param  string  $relativePath  현재 상대 경로
+     * @param  bool  $preserveTopLevelOrphans  최상위 한 레벨의 orphan 보존 여부
      */
-    protected static function removeOrphanItems(string $source, string $destination, array $excludes, string $relativePath): void
+    protected static function removeOrphanItems(string $source, string $destination, array $excludes, string $relativePath, bool $preserveTopLevelOrphans = false): void
     {
+        // 최상위 한 레벨에서 소스에 없는 항목(사용자 추가) 보존 — `_bundled/my-project` 등.
+        // 호출자(copyDirectory)는 최상위 진입 시에만 relativePath='' + 플래그 true 로 들어오며,
+        // 자식 재귀에는 항상 false 가 전달되므로 본 분기는 최상위에서만 활성화된다.
+        if ($preserveTopLevelOrphans && $relativePath === '') {
+            return;
+        }
+
         $destItems = new \FilesystemIterator($destination, \FilesystemIterator::SKIP_DOTS);
 
         foreach ($destItems as $destItem) {
@@ -145,11 +227,19 @@ class FilePermissionHelper
 
             // 소스에 존재하지 않는 항목만 삭제
             if (! File::exists($srcPath) && ! File::isDirectory($srcPath)) {
-                // symlink 는 항상 unlink — File::deleteDirectory 는 is_dir() 추적 검사 후
-                // 재귀 삭제하므로 symlink-to-dir 인 경우 target 의 모든 파일을 삭제하는 사고
-                // 발생 가능. is_link() 가 isDir() 보다 먼저 평가되어야 한다.
+                // symlink / Windows junction 은 링크 자체만 제거 — File::deleteDirectory 는 is_dir()
+                // 추적 검사 후 재귀 삭제하므로 link-to-dir 인 경우 target 의 모든 파일을 삭제하는
+                // 사고 발생 가능. 링크 검사가 isDir() 보다 먼저 평가되어야 한다.
+                //
+                // junction 은 is_link() 가 false 지만 isReparsePoint() 가 감지한다. junction 링크
+                // 제거는 파일 대상 unlink 가 아닌 rmdir() 로 수행해야 target 내용을 보존한다.
                 if (is_link($destItem->getPathname())) {
                     @unlink($destItem->getPathname());
+                } elseif (static::isReparsePoint($destItem->getPathname())) {
+                    // junction: rmdir 로 링크만 제거 (target 미추적). 폴백으로 unlink 시도.
+                    if (! @rmdir($destItem->getPathname())) {
+                        @unlink($destItem->getPathname());
+                    }
                 } elseif ($destItem->isDir()) {
                     File::deleteDirectory($destItem->getPathname());
                 } else {
@@ -165,9 +255,9 @@ class FilePermissionHelper
      * - 단순 이름 (슬래시 미포함): 모든 레벨에서 해당 이름과 매칭
      * - 경로 패턴 (슬래시 포함): 상대 경로와 정확히 매칭
      *
-     * @param string $itemName 현재 항목의 파일/디렉토리 이름
-     * @param string $itemRelativePath 루트로부터의 상대 경로
-     * @param array $excludes 제외 목록
+     * @param  string  $itemName  현재 항목의 파일/디렉토리 이름
+     * @param  string  $itemRelativePath  루트로부터의 상대 경로
+     * @param  array  $excludes  제외 목록
      * @return bool 제외 대상 여부
      */
     public static function isExcluded(string $itemName, string $itemRelativePath, array $excludes): bool
@@ -199,9 +289,8 @@ class FilePermissionHelper
      * 파일을 생성하는 문제를 방지하기 위함이다. vendor/ 내부처럼 cleanDirectory 후
      * 전량 재생성되는 경로에서 필요하다.
      *
-     * @param string $source 소스 파일
-     * @param string $destination 대상 파일
-     * @return void
+     * @param  string  $source  소스 파일
+     * @param  string  $destination  대상 파일
      */
     public static function copyFile(string $source, string $destination): void
     {
@@ -239,8 +328,7 @@ class FilePermissionHelper
     /**
      * 부모 디렉토리의 퍼미션·소유자·그룹을 상속하여 신규 디렉토리를 생성합니다.
      *
-     * @param string $path 생성할 디렉토리 경로
-     * @return void
+     * @param  string  $path  생성할 디렉토리 경로
      */
     protected static function createDirectoryInheritingParent(string $path): void
     {
@@ -262,7 +350,6 @@ class FilePermissionHelper
      * 외부 호출처(예: `SettingsMigrator::writeJsonFile`) 가 직접 호출 가능하도록 public.
      *
      * @param  string  $path  소유권을 상속받을 파일 또는 디렉토리
-     * @return void
      */
     public static function inheritOwnershipFromParent(string $path): void
     {
@@ -277,10 +364,9 @@ class FilePermissionHelper
     /**
      * 소유자·그룹을 적용합니다. sudo 없이 실행 시 silent fail 로 현행 동작 유지.
      *
-     * @param string $path 대상 경로
-     * @param int|false $owner fileowner() 반환값 (false 허용)
-     * @param int|false $group filegroup() 반환값 (false 허용)
-     * @return void
+     * @param  string  $path  대상 경로
+     * @param  int|false  $owner  fileowner() 반환값 (false 허용)
+     * @param  int|false  $group  filegroup() 반환값 (false 허용)
      */
     protected static function applyOwnership(string $path, int|false $owner, int|false $group): void
     {
@@ -303,7 +389,7 @@ class FilePermissionHelper
      * - sudo 실행된 업데이트가 원본 스냅샷을 수집하지 못한 경우의 fallback
      * - 외부 프로세스(composer 등) 가 root 로 오염시킨 경로의 원본 추정
      *
-     * @return array{0: int|false, 1: int|false, 2: string}  [owner, group, source]
+     * @return array{0: int|false, 1: int|false, 2: string} [owner, group, source]
      */
     public static function inferWebServerOwnership(): array
     {
@@ -345,9 +431,9 @@ class FilePermissionHelper
      * 처리하고 대상은 따라가지 않는다. @chown/@chgrp suppress 로 권한 부족 / chown 미지원
      * 환경에서도 silent fail.
      *
-     * @param string $path 대상 경로 (파일 또는 디렉토리)
-     * @param int $owner 기준 소유자 UID
-     * @param int|false $group 기준 그룹 GID (false = 그룹 유지)
+     * @param  string  $path  대상 경로 (파일 또는 디렉토리)
+     * @param  int  $owner  기준 소유자 UID
+     * @param  int|false  $group  기준 그룹 GID (false = 그룹 유지)
      * @return int 실제 소유권을 변경한 항목 수
      */
     public static function chownRecursive(string $path, int $owner, int|false $group): int
@@ -421,7 +507,7 @@ class FilePermissionHelper
      * - silent fail — 권한 부족·chmod 미지원 환경에서도 예외 미발생
      *
      * @param  string  $root  대상 루트 (재귀 순회)
-     * @return int  실제 chmod 한 항목 수
+     * @return int 실제 chmod 한 항목 수
      */
     public static function syncGroupWritability(string $root): int
     {

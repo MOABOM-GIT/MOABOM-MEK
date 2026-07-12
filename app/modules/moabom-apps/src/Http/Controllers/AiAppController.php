@@ -16,6 +16,7 @@ use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiAppStreamService;
 use Modules\Moabom\Apps\Services\AiGenerationSessionService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Services\MoabomShellHomeAppOrderPruner;
 use Modules\Moabom\Apps\Support\AiStreamGateResult;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -174,7 +175,15 @@ class AiAppController extends AuthBaseController
                 $emit('session', ['session_id' => $session->id]);
                 $streamService->stream($userId, $validated, $emit, $session);
             } catch (AiStreamCancelledException) {
-                $sessionService->cancelForUser($userId, $session->id);
+                // 클라이언트가 cancel API로 이미 지운 경우는 스킵.
+                // 네트워크 끊김 등 abort만 온 경우 partial을 pause 해 이어하기를 살린다.
+                if ($sessionService->findForUser($userId, $session->id) !== null) {
+                    if (trim($buffer) !== '') {
+                        $sessionService->pause($session, $buffer);
+                    } else {
+                        $sessionService->cancelForUser($userId, $session->id);
+                    }
+                }
             } catch (\Throwable $e) {
                 if ($sessionService->findForUser($userId, $session->id) !== null) {
                     $sessionService->pause($session, $buffer);
@@ -384,6 +393,12 @@ class AiAppController extends AuthBaseController
                 'messages.apps.generated.not_found',
                 404
             );
+        }
+
+        try {
+            app(MoabomShellHomeAppOrderPruner::class)->pruneForUser((int) $user->id, $id);
+        } catch (\Throwable) {
+            // settings prune 실패해도 앱 삭제는 성공 — 프론트 reconcile 이 후속 정리
         }
 
         return ResponseHelper::moduleSuccess(

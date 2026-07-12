@@ -10,26 +10,36 @@ type ActivityLevelCache = {
   fetchedAt: number;
 };
 
+/** 값 push 전용 — 리스너가 재fetch 하면 안 된다 (피드백 루프 금지). */
+type ActivityLevelListener = (progress: ActivityLevelProgress | null) => void;
+
 let cache: ActivityLevelCache | null = null;
 let inflight: Promise<ActivityLevelProgress | null> | null = null;
 
-const LISTENERS = new Set<() => void>();
+const LISTENERS = new Set<ActivityLevelListener>();
 const CACHE_TTL_MS = 60_000;
 
-function notifyListeners(): void {
-  LISTENERS.forEach((listener) => listener());
+function notifyListeners(progress: ActivityLevelProgress | null): void {
+  LISTENERS.forEach((listener) => listener(progress));
 }
 
+/**
+ * 캐시 무효 후 단일 coalesced reload → 구독자에게 값 push.
+ * 구독자는 setState만 하고 force refetch 하지 않는다.
+ */
 export function invalidateMoabomActivityLevelCache(): void {
   cache = null;
-  notifyListeners();
+  void loadActivityLevel(true).then((progress) => {
+    notifyListeners(progress);
+  });
 }
 
 async function loadActivityLevel(force = false): Promise<ActivityLevelProgress | null> {
   if (!force && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.progress;
   }
-  if (!force && inflight) {
+  // force여도 진행 중이면 합류 — 리스너 수만큼 병렬 fetch 금지
+  if (inflight) {
     return inflight;
   }
 
@@ -54,7 +64,6 @@ async function loadActivityLevel(force = false): Promise<ActivityLevelProgress |
       : resolveActivityLevelProgress(rankingPoints);
 
     cache = { progress, fetchedAt: Date.now() };
-    notifyListeners();
     return progress;
   })();
 
@@ -85,8 +94,9 @@ export function useMoabomActivityLevel(enabled: boolean): {
     }
     setLoading(true);
     try {
+      cache = null;
       const progress = await loadActivityLevel(true);
-      setLevel(progress);
+      notifyListeners(progress);
     } finally {
       setLoading(false);
     }
@@ -98,15 +108,13 @@ export function useMoabomActivityLevel(enabled: boolean): {
       return;
     }
 
-    const onInvalidate = () => {
-      void loadActivityLevel(true).then((progress) => {
-        if (enabledRef.current) {
-          setLevel(progress);
-        }
-      });
+    const onPush: ActivityLevelListener = (progress) => {
+      if (enabledRef.current) {
+        setLevel(progress);
+      }
     };
 
-    LISTENERS.add(onInvalidate);
+    LISTENERS.add(onPush);
 
     if (cache?.progress) {
       setLevel(cache.progress);
@@ -118,13 +126,14 @@ export function useMoabomActivityLevel(enabled: boolean): {
       }
     });
 
+    // 외부에서 credit-changed만 dispatch 하는 경로 호환 — invalidate 단일 진입
     const onCreditChanged = () => {
       invalidateMoabomActivityLevelCache();
     };
     window.addEventListener('moabom:credit-changed', onCreditChanged);
 
     return () => {
-      LISTENERS.delete(onInvalidate);
+      LISTENERS.delete(onPush);
       window.removeEventListener('moabom:credit-changed', onCreditChanged);
     };
   }, [enabled]);

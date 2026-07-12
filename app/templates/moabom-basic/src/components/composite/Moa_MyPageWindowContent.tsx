@@ -20,6 +20,7 @@ export type { AuthManagerUserSnapshot, MyPageTab, MyPageUser, MyPageWindowConten
 export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   initialTab = 'profile',
   currentUser,
+  isLoggedIn: isLoggedInProp,
   onOpenApp,
   createdApps,
   createdAppsLoading = false,
@@ -31,8 +32,9 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   shellSystem,
 }) => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const isGuest = !currentUser;
-  const isLoggedIn = Boolean(currentUser);
+  // Auth SSOT — isLoggedIn 우선. optimistic login 중 currentUser hydrate 전에도 게스트 UI로 떨어지지 않음.
+  const isLoggedIn = isLoggedInProp ?? Boolean(currentUser);
+  const isGuest = !isLoggedIn;
   const { t, language: shellLanguage } = useMoabomShellT();
 
   const { systemDefaults, systemState, handleSystemStateChange } = useMyPageShellState({

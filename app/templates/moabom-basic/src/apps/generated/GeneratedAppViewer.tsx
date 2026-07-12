@@ -31,11 +31,12 @@ import { pushInfoToast, pushWarningToast, showAppEditToast } from '../../runtime
 // 앱 JS가 멈춰도 pong 부재를 감지할 수 있다.
 // 단, 백그라운드 탭은 브라우저가 타이머·postMessage 를 스로틀하므로 visibility 기준으로 일시 정지한다.
 const HEARTBEAT_PING_INTERVAL_MS = 2000;
+const HEARTBEAT_WATCH_INTERVAL_MS = 2000;
 const HEARTBEAT_FROZEN_THRESHOLD_MS = 6000;
 // 첫 멈춤은 조용히 자동 재시작하고, 재시작 후에도 다시 멈추면 사용자에게 수동 재시작을 노출한다.
 const MAX_AUTO_RELOAD = 1;
 // iframe HTML·주입 스크립트·앱 JS 부트 대기 — 초과 시 빈 화면 고착 방지.
-const FRAME_READY_FALLBACK_MS = 12_000;
+const FRAME_READY_FALLBACK_MS = 8_000;
 
 export interface GeneratedAppViewerProps {
   serverId: number;
@@ -336,6 +337,7 @@ export function GeneratedAppViewer({
 
   // 멈춤 감지 워치독: 주기적 ping → pong 미수신이 임계치를 넘으면 자동 1회 재시작,
   // 그래도 멈추면 사용자에게 수동 재시작 오버레이를 노출한다.
+  // 문서·뷰어가 보이지 않으면 ping/watch 를 멈춘다 (전역 상주 CPU 방지).
   useEffect(() => {
     if (!isAiPreviewApp) {
       return;
@@ -343,33 +345,81 @@ export function GeneratedAppViewer({
     lastPongRef.current = Date.now();
     setFrozen(false);
 
-    const ping = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-      postHeartbeatPing();
-    }, HEARTBEAT_PING_INTERVAL_MS);
+    let ping: number | null = null;
+    let watch: number | null = null;
+    let io: IntersectionObserver | null = null;
+    let viewerVisible = true;
 
-    const watch = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') {
-        lastPongRef.current = Date.now();
+    const clearTimers = () => {
+      if (ping !== null) {
+        window.clearInterval(ping);
+        ping = null;
+      }
+      if (watch !== null) {
+        window.clearInterval(watch);
+        watch = null;
+      }
+    };
+
+    const startTimers = () => {
+      if (ping !== null) {
         return;
       }
-      if (Date.now() - lastPongRef.current <= HEARTBEAT_FROZEN_THRESHOLD_MS) {
-        return;
-      }
-      if (autoReloadCountRef.current < MAX_AUTO_RELOAD) {
-        autoReloadCountRef.current += 1;
-        lastPongRef.current = Date.now();
-        setReloadToken(token => token + 1);
+      lastPongRef.current = Date.now();
+      ping = window.setInterval(() => {
+        if (document.visibilityState !== 'visible' || !viewerVisible) {
+          return;
+        }
+        postHeartbeatPing();
+      }, HEARTBEAT_PING_INTERVAL_MS);
+
+      watch = window.setInterval(() => {
+        if (document.visibilityState !== 'visible' || !viewerVisible) {
+          lastPongRef.current = Date.now();
+          return;
+        }
+        if (Date.now() - lastPongRef.current <= HEARTBEAT_FROZEN_THRESHOLD_MS) {
+          return;
+        }
+        if (autoReloadCountRef.current < MAX_AUTO_RELOAD) {
+          autoReloadCountRef.current += 1;
+          lastPongRef.current = Date.now();
+          setReloadToken(token => token + 1);
+        } else {
+          setFrozen(true);
+        }
+      }, HEARTBEAT_WATCH_INTERVAL_MS);
+    };
+
+    const syncRunning = () => {
+      const pageVisible = document.visibilityState === 'visible';
+      if (pageVisible && viewerVisible) {
+        startTimers();
       } else {
-        setFrozen(true);
+        clearTimers();
+        lastPongRef.current = Date.now();
       }
-    }, 1000);
+    };
+
+    const root = containerRef.current;
+    if (root && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          viewerVisible = Boolean(entry?.isIntersecting);
+          syncRunning();
+        },
+        { threshold: 0.05 },
+      );
+      io.observe(root);
+    }
+
+    document.addEventListener('visibilitychange', syncRunning);
+    syncRunning();
 
     return () => {
-      window.clearInterval(ping);
-      window.clearInterval(watch);
+      document.removeEventListener('visibilitychange', syncRunning);
+      io?.disconnect();
+      clearTimers();
     };
   }, [isAiPreviewApp, reloadToken, postHeartbeatPing]);
 

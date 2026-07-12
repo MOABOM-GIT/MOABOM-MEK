@@ -163,12 +163,11 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $this->assertFalse($metadata['icon_from_title']);
     }
 
-    public function test_normalize_metadata_for_response_uses_internal_url_when_file_exists(): void
+    public function test_normalize_metadata_for_response_uses_internal_url_when_stored_path_present(): void
     {
         $storage = $this->createMock(StorageInterface::class);
-        $storage->method('exists')
-            ->with('generated-apps', '9/website-icon.png')
-            ->willReturn(true);
+        $storage->expects($this->never())->method('exists');
+        $storage->expects($this->never())->method('files');
 
         $service = $this->makeService($storage);
         $app = new GeneratedApp([
@@ -183,13 +182,14 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $metadata = $service->normalizeMetadataForResponse($app, $app->metadata ?? []);
 
         $this->assertStringContainsString('/apps/generated/9/website-icon', $metadata['icon_url']);
+        $this->assertStringContainsString('icon_token=', $metadata['icon_url']);
     }
 
-    public function test_normalize_metadata_applies_title_fallback_when_file_missing(): void
+    public function test_normalize_metadata_applies_title_fallback_when_stored_path_absent(): void
     {
         $storage = $this->createMock(StorageInterface::class);
-        $storage->method('exists')->willReturn(false);
-        $storage->method('files')->willReturn([]);
+        $storage->expects($this->never())->method('exists');
+        $storage->expects($this->never())->method('files');
 
         $service = $this->makeService($storage);
         $app = new GeneratedApp([
@@ -198,7 +198,6 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
             'metadata' => [
                 'website_url' => 'https://example.com',
                 'icon_url' => '/api/modules/moabom-apps/apps/generated/11/website-icon',
-                'stored_icon_path' => '11/website-icon.png',
             ],
         ]);
 
@@ -208,21 +207,15 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
         $this->assertArrayNotHasKey('icon_url', $metadata);
     }
 
-    public function test_response_uses_metadata_stored_path_with_disk_absolute_listing(): void
+    public function test_response_streams_via_get_without_prior_exists(): void
     {
         $storage = $this->createMock(StorageInterface::class);
-        $storage->method('exists')
-            ->with('generated-apps', '7/website-icon.png')
-            ->willReturn(true);
+        $storage->expects($this->never())->method('exists');
+        $storage->expects($this->never())->method('response');
         $storage->expects($this->once())
-            ->method('response')
-            ->with(
-                'generated-apps',
-                '7/website-icon.png',
-                'website-icon.png',
-                $this->anything(),
-            )
-            ->willReturn(new \Symfony\Component\HttpFoundation\StreamedResponse());
+            ->method('get')
+            ->with('generated-apps', '7/website-icon.png')
+            ->willReturn("\x89PNG\r\n\x1a\n");
 
         $service = $this->makeService($storage);
         $app = new GeneratedApp([
@@ -234,7 +227,10 @@ class WebsiteLinkIconStorageServiceTest extends ModuleTestCase
             ],
         ]);
 
-        $this->assertNotNull($service->response($app));
+        $response = $service->response($app);
+        $this->assertNotNull($response);
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('max-age=86400', (string) $response->headers->get('Cache-Control'));
     }
 
     public function test_purge_for_app_deletes_stored_icon_for_standard_tier(): void

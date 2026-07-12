@@ -117,8 +117,8 @@ export function useMyPageCreditTab({
 
       if (result.data?.overview) {
         setCreditOverview(result.data.overview);
+        // ActivityLevel SSOT — invalidate 단일 진입 (credit-changed 이중 트리거 금지)
         invalidateMoabomActivityLevelCache();
-        window.dispatchEvent(new CustomEvent('moabom:credit-changed'));
       }
 
       const message = result.message ?? t('moa_mypage.msg.attendance_success');

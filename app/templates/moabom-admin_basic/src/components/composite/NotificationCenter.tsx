@@ -5,7 +5,7 @@ import { Span } from '../basic/Span';
 import { Icon } from '../basic/Icon';
 import { IconName } from '../basic/IconTypes';
 import { Input } from '../basic/Input';
-import { navigateMoabomNotificationUrl } from '../../../../moabom-basic/src/utils/moabomNotificationNavigateUrl';
+import { navigateAdminNotificationUrl } from '../../utils/navigateAdminNotificationUrl';
 
 /**
  * 알림 아이템 인터페이스
@@ -51,6 +51,8 @@ export interface NotificationCenterProps {
   onNotificationClick?: (notification: NotificationItem) => void;
   /** 드롭다운 닫힐 때 (뷰포트에 들어온 미읽음 알림 ID 목록) */
   onClose?: (visibleUnreadIds: (string | number)[]) => void;
+  /** 드롭다운이 열릴 때 (목록 lazy fetch) */
+  onOpen?: () => void;
   /** 추가 로드 요청 */
   onLoadMore?: () => void;
   /** 모두 읽음 처리 요청 */
@@ -98,6 +100,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   unreadOnly = false,
   onNotificationClick,
   onClose,
+  onOpen,
   onLoadMore,
   onMarkAllRead,
   onDeleteAll,
@@ -244,8 +247,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       handleClose();
     } else {
       setShowNotifications(true);
+      onOpen?.();
     }
-  }, [showNotifications, handleClose]);
+  }, [showNotifications, handleClose, onOpen]);
 
   /**
    * 드롭다운 열릴 때 뷰포트 경계 검사 후 이탈량만큼 translateX 로 보정
@@ -361,11 +365,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       data-unread={isUnread ? 'true' : 'false'}
                       onClick={() => {
                         notification.onClick?.();
-                        const notificationType =
-                          typeof notification.data?.type === 'string' ? notification.data.type : undefined;
                         const targetUrl = notification.url?.trim();
                         if (targetUrl) {
-                          navigateMoabomNotificationUrl(targetUrl, notificationType);
+                          navigateAdminNotificationUrl(targetUrl);
                         } else {
                           const G7Core = (window as { G7Core?: { dispatch?: (action: unknown) => void } }).G7Core;
                           G7Core?.dispatch?.({

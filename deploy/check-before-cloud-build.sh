@@ -127,6 +127,32 @@ grep -q 'MOABOM_BUILD_ENV=cloudbuild npm run build' "${DOCKERFILE}" 2>/dev/null 
   || fail "deploy/Dockerfile asset build 가 MOABOM_BUILD_ENV=cloudbuild 로 npm build 를 실행하지 않음"
 ok "로컬 빌드 차단 가드 + cloudbuild build-arg"
 
+echo "==> [v7-9b] 코어 엔진 빌드 hard-fail + DataGate (RF-29)"
+# build:core || true 는 구 template-engine.min.js 를 이미지에 실어 관리자 blur 영구화
+if grep -E 'build:core.*\|\|.*true|build:core 2>/dev/null' "${DOCKERFILE}" >/dev/null 2>&1; then
+  fail "Dockerfile build:core 가 || true / 2>/dev/null 폴백 — RF-29 구 코어 번들 배포 위험"
+fi
+grep -q 'npm run build:core' "${DOCKERFILE}" \
+  || fail "Dockerfile 에 npm run build:core 없음"
+grep -q "grep -q 'auto_fetch'" "${DOCKERFILE}" \
+  || fail "Dockerfile build:core 후 DataGate(auto_fetch) 산출 검증 누락"
+grep -q 'auto_fetch !== false' "${ROOT}/app/resources/js/core/TemplateApp.ts" \
+  || fail "TemplateApp.ts DataGate (auto_fetch !== false progressive 제외) 누락"
+ok "코어 빌드 hard-fail + DataGate 소스/Dockerfile 게이트"
+
+echo "==> [v7-5a] PHP-FPM pool bake-in (RF-18 / auth burst)"
+FPM_CONF="${ROOT}/deploy/php-fpm/zz-moabom.conf"
+[[ -f "${FPM_CONF}" ]] || fail "deploy/php-fpm/zz-moabom.conf 없음"
+grep -qE '^pm\.max_children\s*=\s*8$' "${FPM_CONF}" \
+  || fail "zz-moabom.conf pm.max_children=8 필요"
+grep -qE '^pm\.max_requests\s*=\s*500$' "${FPM_CONF}" \
+  || fail "zz-moabom.conf pm.max_requests=500 필요"
+grep -qE '^request_terminate_timeout\s*=\s*120s$' "${FPM_CONF}" \
+  || fail "zz-moabom.conf request_terminate_timeout=120s 필요"
+grep -q 'COPY deploy/php-fpm/zz-moabom.conf' "${DOCKERFILE}" \
+  || fail "Dockerfile 에 zz-moabom.conf COPY 누락"
+ok "FPM pool zz-moabom.conf (max_children=8) + Dockerfile COPY"
+
 echo "==> [v7-5b] Cloud Run Billing SSOT (Request-based 고정)"
 chmod +x "${ROOT}/deploy/check-cloud-run-billing-ssot.sh" 2>/dev/null || true
 if ! "${ROOT}/deploy/check-cloud-run-billing-ssot.sh"; then
@@ -155,6 +181,26 @@ grep -q 'proxy_pass http://127\.0\.0\.1:6001' "${ROOT}/deploy/nginx-cloudrun.con
   && fail "Cloud Run nginx 가 로컬 Reverb(127.0.0.1:6001)에 의존"
 grep -q 'fastcgi_read_timeout 120s' "${ROOT}/deploy/nginx-cloudrun.conf" \
   || fail "nginx-cloudrun.conf fastcgi_read_timeout 120s 누락 (upstream timed out 완화)"
+grep -q 'location /api/ {' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf location /api/ (non-^~) 누락 — regex 정적 path 가 가로채기됨"
+grep -q 'location \^~ /api/' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  && fail "nginx-cloudrun.conf location ^~ /api/ 잔존 — templates assets 정적 서빙 차단"
+grep -q 'try_files /templates/\$ext_id/dist/\$asset_path @laravel_front_controller' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf templates assets 정적 fast-path 누락"
+grep -q 'try_files /templates/\$tpl_id/components.json @laravel_front_controller' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf components.json 정적 fast-path 누락"
+grep -q 'try_files /ext-static/lang/\$tpl_id/\$locale.json @laravel_front_controller' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf lang JSON 정적 fast-path 누락"
+grep -qE 'lang/\(\?<locale>\[a-z\]\[a-z\]\)' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx lang locale 캡처는 [a-z][a-z] (nginx {} 예약 — {2} 금지)"
+grep -qE 'lang/\(\?<locale>\[a-z\]\{2\}\)' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  && fail "nginx lang locale 에 {2} 잔존 — pcre emerg"
+grep -q 'moabom:warm-template-lang-static' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+  || fail "cloudrun-entrypoint.sh moabom:warm-template-lang-static 누락"
+grep -q 'ext-static/modules.bundle.js' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx-cloudrun.conf modules.bundle.js 정적 경로 누락"
+grep -q 'ext-bundles:warm-static' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+  || fail "cloudrun-entrypoint.sh ext-bundles:warm-static 누락"
 grep -q -- '--timeout=60' "${ROOT}/deploy/supervisord.conf" \
   || fail "queue-worker timeout 가드 누락"
 grep -q -- '--max-jobs=500' "${ROOT}/deploy/supervisord.conf" \
@@ -183,6 +229,12 @@ if [[ -f "${ROOT}/deploy/lib/gcp-env.sh" ]]; then
   done < <(moabom_gcp_secret_env_keys)
 fi
 ok "DB_SOCKET, SESSION cookie, settings TTL, queue/log, Reverb VM env/sidecar, Secret Manager 충돌 없음"
+
+grep -q 'avatarAttachment' "${ROOT}/app/app/Http/Controllers/Api/Auth/AuthController.php" \
+  || fail "AuthController auth/user avatarAttachment eager load 누락"
+grep -q 'includeResourceMeta' "${ROOT}/app/app/Http/Resources/UserResource.php" \
+  || fail "UserResource toAuthArray resourceMeta 생략 누락"
+ok "auth/user eager load + toAuthArray 경량화"
 
 echo "==> [v7-6] .gcloudignore (업로드 병목)"
 [[ -f "${GCLOUDIGNORE}" ]] || fail ".gcloudignore 없음"

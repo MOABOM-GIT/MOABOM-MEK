@@ -4,6 +4,18 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.0-beta.19] - 2026-07-10
+
+### Fixed
+
+- 사용자·메뉴·역할·모듈·플러그인 목록 DataGrid의 `blur_until_loaded`를 페이지 데이터소스 스코프로 제한 (RF-29 / DataGate).
+
+## [1.0.0-beta.18] - 2026-07-10
+
+### Fixed
+
+- G7 7.0.2 `template.json` `externals` 에 Font Awesome 미선언으로 관리자 Icon 이 표시되지 않던 문제 수정. flag-icons 는 `main.css` 번들 유지.
+
 ## [1.0.0-beta.17] - 2026-06-30
 
 ### Changed

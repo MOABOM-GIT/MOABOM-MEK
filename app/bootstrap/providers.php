@@ -2,8 +2,9 @@
 
 return [
     App\Providers\InstallerRuntimeServiceProvider::class,  // 설치 진행 중 runtime.php 로 동적 설정 주입 (.env 무수정)
-    // Cloud Run GCS: SettingsServiceProvider 가 Storage::disk() 호출 전에 드라이버 등록 필요
-    Spatie\GoogleCloudStorage\GoogleCloudStorageServiceProvider::class,
+    // Cloud Run GCS: SettingsServiceProvider::register() 가 settings 디스크를 읽기 전에
+    // gcs 드라이버가 있어야 함 (Spatie 기본은 boot() 전용 → RF-28 Early* 로 register 이전)
+    App\Providers\EarlyGoogleCloudStorageServiceProvider::class,
     App\Providers\SettingsServiceProvider::class,  // DB 연결 전 JSON 설정 로드
     App\Providers\AppServiceProvider::class,
     App\Providers\AuthServiceProvider::class,

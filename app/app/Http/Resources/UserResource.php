@@ -15,6 +15,12 @@ class UserResource extends BaseApiResource
     use HasCountryAttributes;
 
     /**
+     * toArray() 에서 abilities/is_owner resourceMeta 포함 여부.
+     * auth(/api/auth/user) 경로는 권한 맵 해석을 생략해 FPM 점유 시간을 줄인다.
+     */
+    protected bool $includeResourceMeta = true;
+
+    /**
      * 사용자 리소스를 배열로 변환합니다.
      *
      * @param  Request  $request  HTTP 요청 객체
@@ -22,7 +28,7 @@ class UserResource extends BaseApiResource
      */
     public function toArray(Request $request): array
     {
-        return [
+        $data = [
             'uuid' => $this->getValue('uuid'),
             'name' => $this->getValue('name'),
             'nickname' => $this->getValue('nickname'),
@@ -164,8 +170,35 @@ class UserResource extends BaseApiResource
             }),
 
             ...$this->formatTimestamps(),
-            ...$this->resourceMeta($request),
+            ...($this->includeResourceMeta ? $this->resourceMeta($request) : []),
         ];
+
+        return $data;
+    }
+
+    /**
+     * 인증 사용자(/api/auth/user, currentUser 출처) 응답용 배열을 반환합니다.
+     *
+     * 기본 toArray() 에 더해 core.user.filter_resource_data 필터를 적용해
+     * 모듈이 자신의 데이터(결제 통화 등)를 병합할 수 있게 한다. 프론트(_user_base.json)는
+     * 로그인 유저면 이 값으로 _global.preferredCurrency 를 초기화해
+     * "로그인 시 계정 통화로 덮어씀"(D-LOGIN-CUR)을 구조적으로 충족한다.
+     *
+     * 주의: 이 메서드는 toArray() 외부에서 수동 호출되므로 $this->when() 대신
+     * 삼항 연산자를 사용해야 한다. (toProfileArray/withAdminInfo 와 동일 규약)
+     *
+     * @param  Request|null  $request  HTTP 요청
+     * @return array<string, mixed> 모듈 필드가 병합된 인증 사용자 데이터
+     */
+    public function toAuthArray(?Request $request = null): array
+    {
+        // auth 응답에서 abilities/is_owner 해석을 생략 (PermissionHelper 스코프 평가 비용 절감)
+        $this->includeResourceMeta = false;
+        $data = $this->toArray($request ?? request());
+        $this->includeResourceMeta = true;
+
+        // Filter 훅: 모듈이 자신의 데이터를 응답에 병합 (toProfileArray 와 동일)
+        return HookManager::applyFilters('core.user.filter_resource_data', $data, $this->resource);
     }
 
     /**

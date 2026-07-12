@@ -6,3 +6,6 @@ export const MOABOM_SHELL_BOOT_LOADED_EVENT = 'moabom:shell-boot-loaded';
 
 /** 부트 파이프라인 단계 전환 — 메인 카탈로그·2차 API 순서 조율용 */
 export const MOABOM_BOOT_PHASE_CHANGED_EVENT = 'moabom:boot-phase-changed';
+
+/** 셸 HTTP 확정 401 — 토큰 클리어 후 React Auth SSOT(`applyAuthState`) 동기화 */
+export const MOABOM_SHELL_AUTH_EXPIRED_EVENT = 'moabom:shell-auth-expired';

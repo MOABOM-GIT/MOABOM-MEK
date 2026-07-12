@@ -16,7 +16,7 @@
 
 | | |
 |---|---|
-| `moabom-core.patch` | **32파일** |
+| `moabom-core.patch` | **38파일** |
 | 분류 manifest | `deploy/core-overlay/manifest.json` — `move` / `upstream-hook` / `overlay-required` |
 | 패치 밖 필수 | `composer.json` / `composer.lock` — `spatie/laravel-google-cloud-storage` |
 
@@ -31,7 +31,7 @@
 | `resources/js/core/template-engine/ActionDispatcher.ts` 커스텀 핸들러 | 제거 유지. deferred extension 로딩은 순정 `reloadModuleHandlers`/`reloadPluginHandlers` 사용 |
 | 코어 `tests/` 델타 | 패치에서 제거. Moabom 회귀는 `deploy/check-*.sh` 또는 `modules/moabom-system/tests` 로 이동 |
 
-## 32파일 분류
+## 38파일 분류
 
 ### ① 확장 주입 훅 (upstream PR 후보 — Moabom 하드코딩 없음)
 
@@ -73,7 +73,7 @@
 
 | 파일 | 역할 |
 |------|------|
-| `resources/js/core/TemplateApp.ts` | `mergeComputedRecalc()` — upstream-hook 후보 |
+| `resources/js/core/TemplateApp.ts` | `mergeComputedRecalc()` + DataGate(`auto_fetch:false` progressive 제외) — upstream-hook 후보 |
 | `resources/js/core/template-engine/ActionDispatcher.ts` | strict TS 타입 계약 보정 — upstream-hook 후보 |
 
 검증은 코어 `tests/`가 아니라 아래 게이트에서 담당한다.

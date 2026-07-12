@@ -120,13 +120,13 @@ HTML, 200),
             ->assertNotFound();
     }
 
-    public function test_library_response_omits_internal_icon_url_when_file_is_missing(): void
+    public function test_detail_response_keeps_icon_url_when_stored_path_present_without_gcs_probe(): void
     {
         $user = User::factory()->create();
         $app = GeneratedAppsConnection::apps()->create([
             'tenant_slug' => 'default',
             'user_id' => $user->id,
-            'title' => 'Broken icon',
+            'title' => 'Stored path present',
             'app_type' => 'website_link',
             'tier' => 'standard',
             'html' => '<!DOCTYPE html><html><body data-moabom-website-link="1"></body></html>',
@@ -137,10 +137,14 @@ HTML, 200),
             ],
         ]);
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->getJson('/api/modules/moabom-apps/apps/generated/'.$app->id)
             ->assertOk()
-            ->assertJsonPath('data.metadata.icon_from_title', true)
-            ->assertJsonMissingPath('data.metadata.icon_url');
+            ->assertJsonPath('data.metadata.icon_from_title', false)
+            ->assertJsonPath('data.metadata.stored_icon_path', '99/website-icon.png');
+
+        $iconUrl = (string) $response->json('data.metadata.icon_url');
+        $this->assertStringContainsString('/apps/generated/'.$app->id.'/website-icon', $iconUrl);
+        $this->assertStringContainsString('icon_token=', $iconUrl);
     }
 }

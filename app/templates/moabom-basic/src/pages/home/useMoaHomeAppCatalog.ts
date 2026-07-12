@@ -205,17 +205,32 @@ export function useMoaHomeAppCatalog({
     ownedApps: App[] = createdAppsRef.current,
     catalogApps: App[] = sharedGeneratedAppsRef.current,
   ) => {
-    orderRef.current = snapshot.order;
-    orderCustomizedRef.current = snapshot.customized;
+    const library = dedupeAppsById([...ownedApps, ...catalogApps, ...libraryGeneratedAppsRef.current]);
+    let nextOrder = snapshot.order;
+    let nextCustomized = snapshot.customized;
+    if (library.length > 0 || ownedApps.length > 0 || catalogApps.length > 0) {
+      const pruned = pruneStaleGeneratedAppOrderIds(snapshot.order, library);
+      if (pruned.length !== snapshot.order.length) {
+        nextOrder = pruned;
+        if (nextCustomized) {
+          persistMainAppOrder(pruned, {
+            isLoggedIn: isLoggedInRef.current,
+            customized: true,
+          });
+        }
+      }
+    }
+    orderRef.current = nextOrder;
+    orderCustomizedRef.current = nextCustomized;
     const next = resolveMainAppsFromOrder(
-      snapshot.order,
+      nextOrder,
       ownedApps,
       catalogApps,
-      snapshot.customized,
+      nextCustomized,
     );
     mainAppsRef.current = next;
     setMainApps(next);
-  }, []);
+  }, [isLoggedInRef]);
 
   const pullShellServerSnapshot = useCallback(async () => {
     const loggedIn = isLoggedInRef.current;
@@ -431,6 +446,7 @@ export function useMoaHomeAppCatalog({
         }
         let ownedItems = libraryPayload.owned;
         const sharedItems = libraryPayload.shared;
+        const hasMoreOwned = libraryPayload.hasMoreOwned === true;
         const presentIds = new Set([
           ...ownedItems.map(item => generatedAppLibraryId(item.id)),
           ...sharedItems.map(item => generatedAppLibraryId(item.id)),
@@ -438,7 +454,8 @@ export function useMoaHomeAppCatalog({
         const missingOrderIds = orderRef.current.filter(
           id => isGeneratedLibraryAppId(id) && !presentIds.has(id),
         );
-        if (missingOrderIds.length > 0 && isLoggedIn) {
+        // hasMoreOwned=false 이면 library 가 완전 — missing ID 는 삭제·권한상실 유령. 404 GET 생략.
+        if (missingOrderIds.length > 0 && isLoggedIn && hasMoreOwned) {
           const ensured = await Promise.all(
             missingOrderIds.map(async (appId) => {
               const serverId = parseGeneratedLibraryServerId(appId);

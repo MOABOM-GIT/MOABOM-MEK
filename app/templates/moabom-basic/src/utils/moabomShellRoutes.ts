@@ -30,7 +30,6 @@ import {
 import {
   formatAppCommunityShellPath,
   isAppCommunityShellWindow,
-  resolveAppCommunityParentAppId,
 } from '../shell/moaShellCommunityUrl';
 import type { UserProfileWindowView } from '../shell/userProfileWindowLayoutRuntime';
 import {

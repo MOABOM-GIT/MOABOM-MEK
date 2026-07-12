@@ -201,6 +201,11 @@
   color: rgb(255 255 255 / 70%);
 }
 
+/* 스텝 네비 패널 — 창 높이 축소 시 헤더/CTA와 같이 찌그러지지 않음 */
+.moa-cpap-fit-app > .moa-app-panel-sm {
+  flex-shrink: 0;
+}
+
 .moa-cpap-process-steps {
   display: flex;
   flex-wrap: wrap;

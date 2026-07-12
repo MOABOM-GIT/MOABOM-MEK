@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.31] - 2026-07-10
+
+### Fixed
+
+- `touch=login` heartbeat는 인증 사용자 필수 — 미인증 승격으로 guest 행만 남는 이중 집계를 차단했습니다.
+- 접속자 summary `tenant_active`가 목록과 동일 dedupe 규칙을 쓰도록 맞춰 guest+회원 이중 카운트를 제거했습니다.
+
+### Changed
+
+- 로그인·로그아웃 후 접속자 목록 재조회(`refreshConnectList`)를 SSOT로 강제합니다.
+
 ## [0.1.30] - 2026-07-10
 
 ### Changed

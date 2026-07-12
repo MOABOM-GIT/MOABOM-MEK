@@ -1,4 +1,5 @@
 import { resolveClientFormFactor } from '../utils/clientFormFactor';
+import { getShellAccessToken } from '../api/moabomShellAccess';
 
 export type ShellLayoutCurrentUser = {
   uuid: string;
@@ -31,6 +32,21 @@ function readAuthUserSnapshot(): AuthUserSnapshot | null {
   return (window as {
     G7Core?: { AuthManager?: { getInstance: () => { getUser: () => AuthUserSnapshot | null } } };
   }).G7Core?.AuthManager?.getInstance?.()?.getUser?.() ?? null;
+}
+
+function asLayoutCurrentUser(value: Record<string, unknown>): ShellLayoutCurrentUser | null {
+  const uuid = typeof value.uuid === 'string' ? value.uuid.trim() : '';
+  if (!uuid) {
+    return null;
+  }
+  return {
+    uuid,
+    name: String(value.name ?? '').trim() || uuid,
+    nickname: (value.nickname as string | null | undefined) ?? null,
+    avatar: (value.avatar as string | null | undefined) ?? null,
+    is_admin: value.is_admin as boolean | undefined,
+    is_super: value.is_super as boolean | undefined,
+  };
 }
 
 /** shell-boot·heartbeat SSOT — 구 `moabom_presence_client_key` 와 병행 호환 */
@@ -81,6 +97,9 @@ export function resolveShellLayoutContext(): ShellLayoutContext {
 /**
  * G7 layout `dataContext._global` 에 셸 인증·방문자 컨텍스트를 주입한다.
  * 게시판 비회원 폼(`!_global.currentUser?.uuid`) 등 G7 순정 분기 SSOT.
+ *
+ * AuthBoot: `/api/auth/user` 5xx 등으로 AuthManager 가 clear 되어도 토큰이 남아 있으면
+ * prior uuid 를 유지해 guest 폼으로 떨어지지 않게 한다 (확정 401 만 토큰·user 제거).
  */
 export function mergeShellContextIntoGlobalState(
   globalState: Record<string, unknown>,
@@ -89,15 +108,23 @@ export function mergeShellContextIntoGlobalState(
   const prior = (typeof globalState.currentUser === 'object' && globalState.currentUser != null)
     ? globalState.currentUser as Record<string, unknown>
     : {};
+  const priorUser = asLayoutCurrentUser(prior);
+
+  let currentUser: Record<string, unknown> | null = shell.currentUser
+    ? { ...prior, ...shell.currentUser }
+    : null;
+
+  // transient: AuthManager user 없음 + 토큰 유지 + prior uuid → 유지
+  if (!currentUser && priorUser && getShellAccessToken()) {
+    currentUser = { ...prior, ...priorUser };
+  }
 
   return {
     ...globalState,
-    currentUser: shell.currentUser
-      ? { ...prior, ...shell.currentUser }
-      : null,
+    currentUser,
     shell: {
       visitorId: shell.visitorId,
-      isAuthenticated: shell.isAuthenticated,
+      isAuthenticated: currentUser != null || Boolean(getShellAccessToken()),
       formFactor: shell.formFactor,
     },
   };

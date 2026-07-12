@@ -1,4 +1,8 @@
-import { moabomApiDelete, moabomApiGet, moabomApiPost } from './moabomAuthenticatedApi';
+import {
+  MoabomShellAuthExpiredError,
+  MoabomShellAuthRequiredError,
+  requestShellJson,
+} from './moabomShellHttp';
 
 export interface ShellNotificationItem {
   id: string;
@@ -30,19 +34,38 @@ type UnreadCountPayload = {
   unread_count?: number;
 };
 
+async function shellGet<T>(url: string): Promise<T | null> {
+  try {
+    return await requestShellJson<T>(url, 'required');
+  } catch (error) {
+    if (error instanceof MoabomShellAuthRequiredError || error instanceof MoabomShellAuthExpiredError) {
+      return null;
+    }
+    return null;
+  }
+}
+
+async function shellMutate(url: string, method: 'POST' | 'DELETE', body?: object): Promise<boolean> {
+  try {
+    await requestShellJson(url, 'required', { method, body: body ?? undefined });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchShellNotifications(
   page = 1,
   perPage = 20,
 ): Promise<{ ok: boolean; page: ShellNotificationsPage | null }> {
-  const result = await moabomApiGet<NotificationsListPayload>(
+  const payload = await shellGet<NotificationsListPayload>(
     `/api/user/notifications?page=${page}&per_page=${perPage}&read=all&sort_order=desc`,
   );
 
-  if (!result.ok || !result.data) {
+  if (!payload) {
     return { ok: false, page: null };
   }
 
-  const payload = result.data;
   return {
     ok: true,
     page: {
@@ -54,24 +77,18 @@ export async function fetchShellNotifications(
 }
 
 export async function fetchShellUnreadCount(): Promise<number> {
-  const result = await moabomApiGet<UnreadCountPayload>('/api/user/notifications/unread-count');
-  if (!result.ok) {
-    return 0;
-  }
-  return result.data?.unread_count ?? 0;
+  const payload = await shellGet<UnreadCountPayload>('/api/user/notifications/unread-count');
+  return payload?.unread_count ?? 0;
 }
 
 export async function markShellNotificationRead(id: string): Promise<boolean> {
-  const result = await moabomApiPost('/api/user/notifications/read-batch', { ids: [id] });
-  return result.ok;
+  return shellMutate('/api/user/notifications/read-batch', 'POST', { ids: [id] });
 }
 
 export async function markAllShellNotificationsRead(): Promise<boolean> {
-  const result = await moabomApiPost('/api/user/notifications/read-all');
-  return result.ok;
+  return shellMutate('/api/user/notifications/read-all', 'POST');
 }
 
 export async function deleteAllShellNotifications(): Promise<boolean> {
-  const result = await moabomApiDelete('/api/user/notifications/all');
-  return result.ok;
+  return shellMutate('/api/user/notifications/all', 'DELETE');
 }

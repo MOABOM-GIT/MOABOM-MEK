@@ -70,6 +70,26 @@ function flattenSequenceActions(action: ActionNode): ActionNode[] {
 }
 
 describe('관리자 알림 레이어 동기화 (gnuboard/g7#14)', () => {
+  describe('onOpen: 목록 + unread 동시 refetch (auto_fetch false 보완)', () => {
+    const openActions = collectActionsByEvent(adminBase, 'onOpen');
+
+    it('데스크톱/모바일 양쪽에 onOpen 핸들러가 존재해야 한다', () => {
+      expect(openActions.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it.each(openActions.map((a, i) => [i, a] as const))(
+      'onOpen[%i] 은 notifications 와 notification_unread_count 를 refetch 한다',
+      (_, open) => {
+        const steps = flattenSequenceActions(open);
+        const refetchIds = steps
+          .filter((s) => s.handler === 'refetchDataSource')
+          .map((s) => s.params?.dataSourceId);
+        expect(refetchIds).toContain('notifications');
+        expect(refetchIds).toContain('notification_unread_count');
+      },
+    );
+  });
+
   describe('Bug 1: onClose 후 notifications 데이터소스 refetch', () => {
     const closeActions = collectActionsByEvent(adminBase, 'onClose');
 

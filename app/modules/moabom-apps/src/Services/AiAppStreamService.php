@@ -411,6 +411,8 @@ class AiAppStreamService
     {
         return [
             'html' => (string) ($result['html'] ?? ''),
+            // truncated 시 html이 비어도 클라이언트가 접두+suffix 병합본을 유지하도록 raw 포함
+            'raw' => (string) ($result['raw'] ?? ''),
             'model_id' => (string) ($result['model_id'] ?? ''),
             'provider' => (string) ($result['provider'] ?? ''),
             'fallback' => (bool) ($result['fallback'] ?? false),
@@ -449,6 +451,14 @@ class AiAppStreamService
             if ($pos !== false) {
                 return substr($trimmed, $pos + strlen($needle));
             }
+
+            // AI가 append인데 전체 문서를 다시 낸 경우 — 이중 <html> 방지.
+            // body 이후만 이어붙이거나, 매칭 불가면 suffix를 버려 접두(partial_raw)를 보존한다.
+            if (preg_match('/<body\b[^>]*>(.*)$/is', $trimmed, $matches) === 1) {
+                return (string) $matches[1];
+            }
+
+            return '';
         }
 
         $max = min(strlen($base), strlen($suffix), 2000);

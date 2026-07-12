@@ -106,7 +106,6 @@
         {
             "type": "layout",
             "name": "Container",
-            "blur_until_loaded": true,
             "dataKey": "form",
             "trackChanges": true,
             "props": {

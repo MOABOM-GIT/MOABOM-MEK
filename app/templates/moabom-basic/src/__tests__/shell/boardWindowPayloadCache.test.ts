@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildBoardFetchToken,
   clearBoardPayloadCacheForTests,
   getBoardPayloadCacheEntry,
   invalidateBoardPayloadCacheForList,
   invalidateBoardPayloadCacheForPost,
+  runBoardPayloadInflight,
   setBoardPayloadCacheEntry,
 } from '../../shell/boardWindowPayloadCache';
 import type { BoardWindowRenderPayload } from '../../shell/boardWindowLayoutRuntime';
@@ -28,14 +29,14 @@ function makePayload(dataContext: Record<string, unknown> = {}): BoardWindowRend
 }
 
 describe('boardWindowPayloadCache', () => {
-  it('urlEpoch 가 바뀌면 동일 cacheKey 도 캐시를 쓰지 않는다', () => {
+  it('동일 cacheKey 는 urlEpoch 가 바뀌어도 캐시를 재사용한다', () => {
     clearBoardPayloadCacheForTests();
     const key = 'notice:42:::1:guest';
     const payload = makePayload({ post: { data: { reply_count: 0 } } });
     setBoardPayloadCacheEntry(key, buildBoardFetchToken(key, 0), payload);
 
     expect(getBoardPayloadCacheEntry(key, buildBoardFetchToken(key, 0))).toBe(payload);
-    expect(getBoardPayloadCacheEntry(key, buildBoardFetchToken(key, 1))).toBeUndefined();
+    expect(getBoardPayloadCacheEntry(key, buildBoardFetchToken(key, 1))).toBe(payload);
   });
 
   it('invalidateBoardPayloadCacheForPost 는 해당 글 캐시만 제거한다', () => {
@@ -68,5 +69,24 @@ describe('boardWindowPayloadCache', () => {
 
     expect(getBoardPayloadCacheEntry(listKey, token)).toBeUndefined();
     expect(getBoardPayloadCacheEntry(detailKey, token)).toBeDefined();
+  });
+
+  it('runBoardPayloadInflight 는 동일 cacheKey 로더를 한 번만 실행한다', async () => {
+    clearBoardPayloadCacheForTests();
+    const key = 'notice:7:::1:guest';
+    const payload = makePayload({ post: { data: { id: 7 } } });
+    const loader = vi.fn(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return payload;
+    });
+
+    const [a, b] = await Promise.all([
+      runBoardPayloadInflight(key, loader),
+      runBoardPayloadInflight(key, loader),
+    ]);
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(a).toBe(payload);
+    expect(b).toBe(payload);
   });
 });

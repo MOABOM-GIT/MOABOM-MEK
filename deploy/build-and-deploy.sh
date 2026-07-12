@@ -4,7 +4,7 @@
 #   --async        gcloud builds submit 비동기 (터미널 블로킹 최소)
 #   --skip-check   검증 생략 (비권장, DEPLOY_SKIP_CHECK=1 필요)
 #   --strict-smoke 선택 SaaS 스모크 파일 누락도 실패 처리
-#   --migrate-modules=auto|none|moabom-apps[,...] post-deploy migration (기본 auto=변경 모듈만)
+#   --migrate-modules=auto|none|moabom-apps[,sirsoft-board...] post-deploy migration (기본 auto=변경 모듈만)
 #
 # 인프라 식별자 SSOT: deploy/lib/gcp-env.sh (project / region / service / sql / repo)
 # 시크릿 SSOT: Secret Manager (deploy/secret-manager-bootstrap.sh 한 번 실행 필요)
@@ -137,12 +137,14 @@ post_deploy_migration_modules() {
     return 0
   fi
 
+  # shellcheck source=lib/post-deploy-migration-hash.sh
+  source "${ROOT}/deploy/lib/post-deploy-migration-hash.sh"
   local module_id
   IFS=',' read -ra modules <<< "${raw}"
   for module_id in "${modules[@]}"; do
     [[ -n "${module_id}" ]] || continue
-    if [[ "${module_id}" != moabom-* ]]; then
-      echo "ERROR: --migrate-modules 는 moabom-* 모듈만 허용: ${module_id}"
+    if ! moabom_post_deploy_migration_module_allowed "${module_id}"; then
+      echo "ERROR: --migrate-modules 허용 범위는 moabom-* 또는 RF-31 extra(${MOABOM_POST_DEPLOY_MIGRATION_EXTRA_MODULES}): ${module_id}"
       exit 1
     fi
     if [[ "${module_id}" == *"*"* || "${module_id}" == *"/"* || "${module_id}" == *".."* ]]; then

@@ -73,15 +73,7 @@ class AttachmentController extends AdminBaseController
                         'stored_filename' => $attachment->stored_filename,
                         'mime_type' => $attachment->mime_type,
                         'size' => $attachment->size,
-                        'size_formatted' => $attachment->size_formatted,
-                        'url' => $attachment->is_image
-                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
-                            : "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
-                        'download_url' => "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}",
-                        'preview_url' => $attachment->is_image
-                            ? "/api/modules/sirsoft-board/boards/{$slug}/attachment/{$attachment->hash}/preview"
-                            : null,
-                        'is_image' => $attachment->is_image,
+                        'url' => $this->attachmentService->getUrl($slug, $attachment->id),
                         'order' => $attachment->order,
                         'created_at' => $attachment->created_at,
                     ],

@@ -5,8 +5,15 @@ import {
   moabomApiPost,
   moabomApiPut,
   type MoabomApiResult,
+  type MoabomSessionErrorKind,
 } from '../../../api/moabomAuthenticatedApi';
 import { getShellAccessToken } from '../../../api/moabomShellAccess';
+import {
+  createShellModuleApi,
+  MoabomShellAuthExpiredError,
+  MoabomShellAuthRequiredError,
+  MoabomShellModuleApiError,
+} from '../../../api/moabomShellHttp';
 import { moabomT } from '../../../i18n/moabomT';
 import type {
   ActivityOverview,
@@ -16,12 +23,58 @@ import type {
   ProfileApiPayload,
 } from './myPageTypes';
 
-export async function fetchUserProfileApi(): Promise<ProfileApiPayload | null> {
-  const result = await moabomApiGet<ProfileApiPayload>('/api/me');
-  if (!result.ok || !result.data) {
-    return null;
+const creditApi = createShellModuleApi('moabom-credit');
+const personalizationApi = createShellModuleApi('moabom-personalization');
+
+function shellModuleFailure<T>(error: unknown): MoabomApiResult<T> {
+  if (error instanceof MoabomShellAuthRequiredError || error instanceof MoabomShellAuthExpiredError) {
+    return {
+      ok: false,
+      success: false,
+      message: error.message,
+      kind: 'unauthorized',
+    };
   }
-  return result.data;
+  if (error instanceof MoabomShellModuleApiError) {
+    return {
+      ok: false,
+      success: false,
+      message: error.message,
+      kind: error.status === 401 || error.status === 403 ? 'unauthorized' : 'transient',
+      errors: undefined,
+    };
+  }
+  return {
+    ok: false,
+    success: false,
+    message: error instanceof Error ? error.message : moabomT('moa_mypage.api.auth_required'),
+    kind: 'transient',
+  };
+}
+
+async function shellModuleResult<T>(invoke: () => Promise<T>): Promise<MoabomApiResult<T>> {
+  try {
+    const data = await invoke();
+    return { ok: true, success: true, data };
+  } catch (error) {
+    return shellModuleFailure<T>(error);
+  }
+}
+
+export type ProfileFetchResult =
+  | { ok: true; data: ProfileApiPayload }
+  | { ok: false; kind: MoabomSessionErrorKind; message?: string };
+
+export async function fetchUserProfileApi(): Promise<ProfileFetchResult> {
+  const result = await moabomApiGet<ProfileApiPayload>('/api/me');
+  if (result.ok && result.data) {
+    return { ok: true, data: result.data };
+  }
+  return {
+    ok: false,
+    kind: result.kind === 'unauthorized' ? 'unauthorized' : 'transient',
+    message: result.message,
+  };
 }
 
 export async function updateUserProfileApi(
@@ -40,15 +93,19 @@ export async function fetchUserCreditsApi(
   if (params.offset != null) {
     query.set('offset', String(params.offset));
   }
-
   const suffix = query.toString();
-  return moabomApiGet<CreditOverview>(
-    `/api/modules/moabom-credit/user/credits${suffix ? `?${suffix}` : ''}`,
+  return shellModuleResult(() =>
+    creditApi<CreditOverview>(`user/credits${suffix ? `?${suffix}` : ''}`),
   );
 }
 
 export async function checkAttendanceApi(): Promise<MoabomApiResult<ApiAttendanceResponse['data']>> {
-  return moabomApiPost<ApiAttendanceResponse['data']>('/api/modules/moabom-credit/user/attendance', {});
+  return shellModuleResult(() =>
+    creditApi<ApiAttendanceResponse['data']>('user/attendance', {
+      method: 'POST',
+      body: {},
+    }),
+  );
 }
 
 export async function fetchUserActivitiesApi(
@@ -62,8 +119,8 @@ export async function fetchUserActivitiesApi(
   if (params.offset != null) {
     query.set('offset', String(params.offset));
   }
-  return moabomApiGet<ActivityOverview>(
-    `/api/modules/moabom-personalization/user/activities?${query.toString()}`,
+  return shellModuleResult(() =>
+    personalizationApi<ActivityOverview>(`user/activities?${query.toString()}`),
   );
 }
 

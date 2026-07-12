@@ -77,6 +77,7 @@ export interface Moa_ShellWindowRendererProps {
   /** 로그인 memberKey — 권한 창 리렌더 최소화용 primitive */
   authStateKey: string;
   currentUser: MoaCurrentUser | null;
+  isLoggedIn: boolean;
   createdApps: App[];
   createdAppsLoading?: boolean;
   favoriteApps: App[];
@@ -112,6 +113,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
   compactWindow,
   authStateKey,
   currentUser,
+  isLoggedIn,
   createdApps,
   createdAppsLoading = false,
   favoriteApps,
@@ -162,6 +164,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
         <MyPageWindowContentLazy
           initialTab={win.myPageInitialTab}
           currentUser={currentUser}
+          isLoggedIn={isLoggedIn}
           onOpenApp={onOpenApp}
           onEditGeneratedApp={onEditGeneratedApp}
           onDeleteGeneratedApp={onDeleteGeneratedApp}

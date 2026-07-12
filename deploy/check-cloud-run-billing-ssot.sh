@@ -40,11 +40,44 @@ if [[ "${MOABOM_CLOUD_RUN_MAX_INSTANCES}" != "10" ]]; then
 else
   ok "max-instances SSOT = 10"
 fi
+if [[ "${MOABOM_CLOUD_RUN_INGRESS}" != "internal-and-cloud-load-balancing" ]]; then
+  fail "MOABOM_CLOUD_RUN_INGRESS=${MOABOM_CLOUD_RUN_INGRESS} — SSOT=internal-and-cloud-load-balancing"
+else
+  ok "ingress SSOT = internal-and-cloud-load-balancing (LB only)"
+fi
 if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--min-instances=0'; then
   fail "deploy args --min-instances=0 아님"
 fi
 if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--max-instances=10'; then
   fail "deploy args --max-instances=10 아님"
+fi
+if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--ingress=internal-and-cloud-load-balancing'; then
+  fail "deploy args --ingress=internal-and-cloud-load-balancing 아님"
+fi
+
+if [[ "${MOABOM_CLOUD_RUN_MEMORY}" != "2Gi" ]]; then
+  fail "MOABOM_CLOUD_RUN_MEMORY=${MOABOM_CLOUD_RUN_MEMORY} — SSOT=2Gi (FPM8)"
+else
+  ok "memory SSOT = 2Gi"
+fi
+if [[ "${MOABOM_CLOUD_RUN_CPU}" != "1" ]]; then
+  fail "MOABOM_CLOUD_RUN_CPU=${MOABOM_CLOUD_RUN_CPU} — SSOT=1"
+else
+  ok "cpu SSOT = 1"
+fi
+if [[ "${MOABOM_CLOUD_RUN_CONCURRENCY}" != "8" ]]; then
+  fail "MOABOM_CLOUD_RUN_CONCURRENCY=${MOABOM_CLOUD_RUN_CONCURRENCY} — SSOT=8 (FPM max_children)"
+else
+  ok "concurrency SSOT = 8"
+fi
+if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--memory=2Gi'; then
+  fail "deploy args --memory=2Gi 아님"
+fi
+if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--cpu=1'; then
+  fail "deploy args --cpu=1 아님"
+fi
+if ! moabom_cloud_run_service_deploy_args | grep -qx -- '--concurrency=8'; then
+  fail "deploy args --concurrency=8 아님"
 fi
 
 [[ -f "${BUILD_DEPLOY}" ]] || fail "build-and-deploy.sh 없음"

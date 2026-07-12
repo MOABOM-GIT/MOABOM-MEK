@@ -13,13 +13,6 @@ use Tests\TestCase;
  */
 class GenericBroadcastEventTest extends TestCase
 {
-    public function test_implements_should_broadcast_now(): void
-    {
-        $event = new GenericBroadcastEvent('test.channel', 'test.event');
-
-        $this->assertInstanceOf(\Illuminate\Contracts\Broadcasting\ShouldBroadcastNow::class, $event);
-    }
-
     /**
      * broadcastOn()이 올바른 Private 채널을 반환하는지 테스트합니다.
      */

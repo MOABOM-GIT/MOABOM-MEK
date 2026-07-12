@@ -1,5 +1,5 @@
 /**
- * C2 Ghost 라우트 — `routes.json` 첫 요청을 셸 스냅샷 API로 우회하고,
+ * C2 Ghost 라우트 — `routes.json` 첫 요청을 shell-boot / 셸 스냅샷으로 우회하고,
  * 이커머스 경로 SPA 이동 전에 전체 라우트를 병합한다.
  *
  * @see docs/moabom-routes-ghost-api.md
@@ -10,6 +10,7 @@ import {
     mergeEssentialRoutesInRoutesApiBody,
 } from '../shell/moaShellEssentialRoutes';
 import { pathNeedsLegacyG7RouterPath } from '../utils/moabomLegacyMypagePaths';
+import { ensureMoabomShellBootLoaded, getMoabomShellBootData } from './moabomShellBoot';
 
 const SHELL_ROUTES_API = '/api/modules/moabom-system/public/template-routes-shell';
 
@@ -164,32 +165,56 @@ export async function ensureMoabomFullTemplateRoutesMerged(): Promise<void> {
 }
 
 function patchRouterNavigateForGhostMerge(): void {
-    let attempts = 0;
-    const max = 120;
-    const id = window.setInterval(() => {
-        attempts++;
+    const tryPatch = (): boolean => {
         const router = window.__templateApp?.getRouter?.();
-        if (router && !router.__moabomNavigatePatched) {
-            router.__moabomNavigatePatched = true;
-            const origNavigate = router.navigate.bind(router);
-            router.navigate = (path: string) => {
-                if (isSirsoftEcommercePresentInG7Config() && pathNeedsEcommerceMergedRoutes(path)) {
-                    void ensureMoabomFullTemplateRoutesMerged().finally(() => {
-                        origNavigate(path);
-                    });
-
-                    return;
-                }
-                origNavigate(path);
-            };
-            if (isSirsoftEcommercePresentInG7Config() && window.__moabomShellRoutesFetchMeta?.usedGhost) {
-                void ensureMoabomFullTemplateRoutesMerged();
-            }
-            window.clearInterval(id);
-        } else if (attempts >= max) {
-            window.clearInterval(id);
+        if (!router || router.__moabomNavigatePatched) {
+            return !!router?.__moabomNavigatePatched;
         }
-    }, 50);
+        router.__moabomNavigatePatched = true;
+        const origNavigate = router.navigate.bind(router);
+        router.navigate = (path: string) => {
+            if (isSirsoftEcommercePresentInG7Config() && pathNeedsEcommerceMergedRoutes(path)) {
+                void ensureMoabomFullTemplateRoutesMerged().finally(() => {
+                    origNavigate(path);
+                });
+
+                return;
+            }
+            origNavigate(path);
+        };
+        if (isSirsoftEcommercePresentInG7Config() && window.__moabomShellRoutesFetchMeta?.usedGhost) {
+            void ensureMoabomFullTemplateRoutesMerged();
+        }
+        return true;
+    };
+
+    if (tryPatch()) {
+        return;
+    }
+
+    // 50ms 폴링 대신 boot phase / Mutation 대기 — document-ready 이후 재시도
+    import('./moabomShellBootPipeline').then(({ whenMoabomBootPhaseAtLeast }) => {
+        whenMoabomBootPhaseAtLeast('document-ready', () => {
+            if (tryPatch()) {
+                return;
+            }
+            let attempts = 0;
+            const id = window.setInterval(() => {
+                attempts += 1;
+                if (tryPatch() || attempts >= 40) {
+                    window.clearInterval(id);
+                }
+            }, 100);
+        });
+    }).catch(() => {
+        let attempts = 0;
+        const id = window.setInterval(() => {
+            attempts += 1;
+            if (tryPatch() || attempts >= 40) {
+                window.clearInterval(id);
+            }
+        }, 100);
+    });
 }
 
 export function installMoabomGhostRoutesFetch(): void {
@@ -212,16 +237,45 @@ export function installMoabomGhostRoutesFetch(): void {
                   : String(input);
 
         if (
-            isSirsoftEcommercePresentInG7Config() &&
             isMoabomBasicRoutesUrl(url) &&
             shouldUseShellRoutesSnapshotFetch() &&
             !window.__moabomRoutesFullMerged
         ) {
             const v = routesCacheVersionFromUrl(url);
+            window.__moabomShellRoutesFetchMeta = { usedGhost: true, cacheVersionQuery: v };
+
+            // shell-boot 에 이미 shell_routes 있으면 네트워크 생략
+            const bootRoutes = getMoabomShellBootData()?.shell_routes;
+            if (bootRoutes && Array.isArray(bootRoutes.routes)) {
+                return withEssentialShellRoutes(new Response(JSON.stringify({
+                    success: true,
+                    data: bootRoutes,
+                }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                }));
+            }
+
+            // boot 미완료면 짧은 await 후 재시도 — 실패 시 Ghost API
+            try {
+                const boot = await ensureMoabomShellBootLoaded(orig);
+                const routes = boot?.shell_routes;
+                if (routes && Array.isArray(routes.routes)) {
+                    return withEssentialShellRoutes(new Response(JSON.stringify({
+                        success: true,
+                        data: routes,
+                    }), {
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    }));
+                }
+            } catch {
+                /* fall through */
+            }
+
             const ghost = new URL(SHELL_ROUTES_API, window.location.origin);
             ghost.searchParams.set('template', 'moabom-basic');
             ghost.searchParams.set('scope', 'shell');
-            window.__moabomShellRoutesFetchMeta = { usedGhost: true, cacheVersionQuery: v };
 
             return withEssentialShellRoutes(await orig(ghost.toString(), {
                 ...init,

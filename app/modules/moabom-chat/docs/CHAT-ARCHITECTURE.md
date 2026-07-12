@@ -14,7 +14,7 @@
 | R2 | 낙관적 전송 + client_message_id 멱등 | 0 | ✅ |
 | R3 | 실시간 수신 (WS) | 1–2 | ✅ + 인프라 timeout/affinity |
 | R4 | 인박스 목록 실시간·정렬 | 1 | ✅ WS + `moabomShellChatSyncService` |
-| R5 | 앱 켜둔 상태 토스트 | 1 | ✅ WS + 알림 폴링 fallback |
+| R5 | 앱 켜둔 상태 토스트 | 1 | ✅ WS + 끊김/focus REST 폴백 (상시 unread 폴링 없음) |
 | R6 | WS 끊김 후 복구 | 1 | ✅ connection watch + catch-up |
 | R7 | 읽음 처리 (대화 커서) | 0 | ✅ |
 | R8 | 읽음 확인 UI | 2 | ✅ `peer_read` + `conversation.read` |
@@ -37,7 +37,7 @@
 Transport
   moabomWebSocketConnection      — deferred Pusher bind
   moabomShellRealtimeCoordinator — notification + inbox WS
-  moabomShellChatSyncService     — REST catch-up + WS-down poll
+  moabomShellChatSyncService     — REST catch-up (WS-down / focus / 패널 진입만)
   moabomShellChatBackgroundNotify — 탭 hidden 시 OS 알림
 
 Store
@@ -110,7 +110,7 @@ Backend (moabom-chat)
 | HTTP API·로그인 | 영향 없음 (요청 처리 중 CPU 할당) |
 | WS (브라우저) | VM Reverb 상시 구동 — Cloud Run CPU 스로틀과 무관 |
 | Laravel → Reverb publish | 요청 스레드에서 동기 HTTP (큐 지연 없음) |
-| 완화 | `moabomShellChatSyncService` REST 폴링 안전망 유지 |
+| 완화 | `moabomShellChatSyncService` — WS 끊김·focus·패널 진입 시 REST catch-up (연결 중 상시 폴링 없음) |
 
 Instance-based(`--no-cpu-throttling`) 는 정책상 Request-based 고정. WS는 VM이 담당.
 

@@ -27,6 +27,7 @@ const SHELL_REGISTERED_APP_IDS = [
   'cpap-rental',
   'cpap-return',
   'global-search',
+  'mysum-integration',
   'refurb-request',
   'rental-dashboard',
   'settlement',

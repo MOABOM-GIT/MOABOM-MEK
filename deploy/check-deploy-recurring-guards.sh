@@ -146,16 +146,16 @@ grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
       || fail "RF-21: build-and-deploy.sh 에 post-deploy migration 단계 없음"
     grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-auto}"' "${BUILD_DEPLOY}" \
       || fail "RF-21: post-deploy migration 기본값이 auto(변경 모듈만) 가 아님"
-    grep -q 'moabom_post_deploy_auto_migration_modules' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration auto 감지 없음"
-    grep -q 'post_deploy_migration_modules()' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration allowlist parser 없음"
+    grep -q 'moabom_post_deploy_migration_module_allowed\|moabom_post_deploy_auto_migration_modules' "${BUILD_DEPLOY}" \
+      || fail "RF-21: post-deploy migration allowlist/auto 감지 없음"
     grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \
       || fail "RF-21: build-and-deploy.sh 가 모듈별 migrate Job 을 실행하지 않음"
     grep -q 'moabom:saas:tenants:migrate' "${BUILD_DEPLOY}" \
       || fail "RF-21: build-and-deploy.sh 가 active tenant 모듈 마이그레이션을 실행하지 않음"
-    grep -q '\[\[ "${module_id}" != moabom-\* \]\]' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration 범위가 moabom-* 로 제한되지 않음"
+    grep -q 'moabom_post_deploy_migration_module_allowed' "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" \
+      || fail "RF-21/RF-31: post-deploy migration allow helper 없음"
+    grep -q 'sirsoft-board' "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" \
+      || fail "RF-31: post-deploy extra modules 에 sirsoft-board 없음"
     grep -q 'wildcard/path 금지' "${BUILD_DEPLOY}" \
       || fail "RF-21: post-deploy migration allowlist wildcard/path 금지 없음"
     python3 - "${BUILD_DEPLOY}" <<'PY' || fail "RF-21: module migrations 가 run_smoke 보다 뒤에 있음"
@@ -242,6 +242,16 @@ grep -q '_IMAGE_TAG 를 올리지 말' "${BUILD_DEPLOY}" \
 [[ -x "${ROOT}/scripts/check-module-layout-softdeletes-contract.sh" ]] \
   || fail "RF-24: check-module-layout-softdeletes-contract.sh 없음"
 ok "RF-24: layout-only pipeline + SoftDeletes contract + Job update skip"
+
+# RF-29: 코어 build:core 폴백 금지 (구 template-engine → 관리자 영구 blur)
+if grep -E 'build:core.*\|\|.*true|build:core 2>/dev/null' "${ROOT}/deploy/Dockerfile" >/dev/null 2>&1; then
+  fail "RF-29: Dockerfile build:core || true 폴백 — 구 코어 번들 배포 위험"
+fi
+grep -q "grep -q 'auto_fetch'" "${ROOT}/deploy/Dockerfile" \
+  || fail "RF-29: Dockerfile DataGate(auto_fetch) 산출 검증 누락"
+grep -q 'v7-9b' "${ROOT}/deploy/check-before-cloud-build.sh" \
+  || fail "RF-29: check-before-cloud-build.sh [v7-9b] 게이트 없음"
+ok "RF-29: 코어 build:core hard-fail + DataGate 게이트"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

@@ -49,13 +49,18 @@ export function useMyPageProfileTab({
     setProfileFieldErrors({});
 
     void (async () => {
-      const data = await fetchUserProfileApi();
+      const result = await fetchUserProfileApi();
       if (cancelled) return;
       setProfileLoading(false);
-      if (!data) {
-        setProfileBanner({ text: t('moa_mypage.msg.profile_load_failed') });
+      if (!result.ok) {
+        setProfileBanner({
+          text: result.kind === 'unauthorized'
+            ? t('moa_mypage.msg.profile_load_failed')
+            : t('moa_mypage.msg.profile_transient_error'),
+        });
         return;
       }
+      const data = result.data;
       setProfileName(String(data.name ?? ''));
       setNickname(String(data.nickname ?? data.name ?? currentUser.name ?? ''));
       setProfileEmail(String(data.email ?? ''));

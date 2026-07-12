@@ -66,7 +66,7 @@
       },
       {
         "path": "resources/js/core/TemplateApp.ts",
-        "reason": "Computed-state recalculation hook is a generic template-engine improvement, but remains overlay until upstream accepts it."
+        "reason": "Computed-state recalculation + DataGate (exclude auto_fetch:false from progressiveDataInit/blur gate); upstream-hook until accepted."
       },
       {
         "path": "resources/js/core/template-engine/ActionDispatcher.ts",
@@ -74,7 +74,7 @@
       },
       {
         "path": "resources/js/core/template-engine/CHANGELOG.md",
-        "reason": "Documents template-engine overlay deltas for upstream review."
+        "reason": "Engine Unreleased notes for Moabom DataGate overlay until upstream engine release absorbs them."
       },
       {
         "path": "resources/js/core/template-engine/DataSourceManager.ts",
@@ -99,8 +99,12 @@
     ],
     "overlay-required": [
       {
-        "path": "app/Console/Commands/Template/ClearTemplateCacheCommand.php",
-        "reason": "template:cache-clear must forget versioned lang/routes keys and bump ext.cache_version for SaaS lang refresh."
+        "path": "app/Console/Commands/CleanupExtensionBundlesCommand.php",
+        "reason": "ext-bundles:cleanup must republish public/ext-static after GC so nginx static bundle paths stay warm."
+      },
+      {
+        "path": "app/Console/Commands/WarmExtensionBundlesStaticCommand.php",
+        "reason": "Cloud Run entrypoint warms public/ext-static module/plugin bundles for nginx PHP-bypass serving."
       },
       {
         "path": "app/Events/GenericBroadcastEvent.php",
@@ -111,6 +115,10 @@
         "reason": "Admin active menu API must send no-store headers for shell navigation freshness."
       },
       {
+        "path": "app/Http/Controllers/Api/Auth/AuthController.php",
+        "reason": "Auth /api/auth/user eager-loads avatarAttachment and logs failures to stderr for FPM/SQLSTATE triage (RF-18)."
+      },
+      {
         "path": "app/Http/Controllers/Api/Public/PublicLayoutController.php",
         "reason": "Permissioned admin layouts must not use public HTTP cache; serving cache keys must invalidate without version suffix."
       },
@@ -119,12 +127,24 @@
         "reason": "Cloud Run public boot cache version fallback is needed before a cleaner upstream cache hook exists."
       },
       {
+        "path": "app/Http/Resources/UserResource.php",
+        "reason": "toAuthArray skips abilities/resourceMeta to shorten FPM occupancy on /api/auth/user."
+      },
+      {
+        "path": "app/Providers/EarlyGoogleCloudStorageServiceProvider.php",
+        "reason": "Spatie GCS extend must run in register() before SettingsServiceProvider reads settings disk (RF-28)."
+      },
+      {
         "path": "app/Providers/ModuleRouteServiceProvider.php",
         "reason": "Cloud Run boot without .env plus module route cache behavior is required during Laravel bootstrap."
       },
       {
         "path": "app/Providers/PluginRouteServiceProvider.php",
         "reason": "Cloud Run boot without .env guard is required during Laravel bootstrap."
+      },
+      {
+        "path": "app/Services/ExtensionBundleService.php",
+        "reason": "warmPublicStaticBundles publishes concat bundles under public/ext-static for nginx static serving."
       },
       {
         "path": "app/Services/LayoutService.php",
@@ -155,5 +175,9 @@
         "reason": "SaaS environment SSOT must be available under Laravel config cache."
       }
     ]
+  },
+  "notes": {
+    "upstream_base": "7.0.2",
+    "regenerated": "2026-07-11 network boot nginx static bundles overlay"
   }
 }

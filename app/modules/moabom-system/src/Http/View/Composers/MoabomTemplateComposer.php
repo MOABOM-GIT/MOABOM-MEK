@@ -6,6 +6,7 @@ namespace Modules\Moabom\System\Http\View\Composers;
 
 use App\Extension\ModuleManager;
 use App\Extension\PluginManager;
+use App\Extension\TemplateManager;
 use App\Http\View\Composers\TemplateComposer;
 use App\Services\ModuleSettingsService;
 use App\Services\PluginSettingsService;
@@ -16,7 +17,11 @@ use Modules\Moabom\System\Services\MoabomExtensionAssetGroupService;
 use Modules\Moabom\System\Support\MoabomExtensionDeferredRegistrySupport;
 
 /**
- * 코어 `TemplateComposer`(admin) 대체 바인딩 — 확장 에셋 맵만 DB 활성 기준으로 정제한다.
+ * 코어 `TemplateComposer`(admin) 대체 — G7 compose 계약 유지 + 에셋 맵 정제.
+ *
+ * G7 7.0.2+ `TemplateManager` 생성자 인자를 parent 에 그대로 전달한다.
+ * parent::compose() 가 bundleUrls·externals·active*Meta 를 채운 뒤
+ * immediate/deferred 에셋만 Moabom 기준으로 교체한다.
  */
 final class MoabomTemplateComposer extends TemplateComposer
 {
@@ -27,6 +32,7 @@ final class MoabomTemplateComposer extends TemplateComposer
         PluginSettingsService $pluginSettingsService,
         private ModuleManager $moabomModuleManager,
         private PluginManager $moabomPluginManager,
+        TemplateManager $templateManager,
         private MoabomExtensionAssetGroupService $extensionAssetGroupService,
     ) {
         parent::__construct(
@@ -35,7 +41,8 @@ final class MoabomTemplateComposer extends TemplateComposer
             $moduleSettingsService,
             $pluginSettingsService,
             $moabomModuleManager,
-            $moabomPluginManager
+            $moabomPluginManager,
+            $templateManager,
         );
     }
 

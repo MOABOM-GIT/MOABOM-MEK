@@ -272,6 +272,8 @@ G7 순정: `form_meta` API가 auth 사용자면 `author_name`/`password` 불필�
 | **P5** | 알림·대화·친구 surface를 Controller로 흡수 | basic + presence | URL·창·패널 삼위일체 |
 | **P6** | sessions 레거시 제거·platform/tenant migration 정리 | presence | 구 테이블 drop (tenant repair 후) |
 
+**HTTP/Auth/Resource Plane:** [`moabom-shell-resource-plane.md`](./moabom-shell-resource-plane.md)
+
 **배포:** PHP·스키마 변경 시 `_IMAGE_TAG` 증가 + Cloud Build. 프론트는 Dockerfile assets 스테이지.
 
 ---

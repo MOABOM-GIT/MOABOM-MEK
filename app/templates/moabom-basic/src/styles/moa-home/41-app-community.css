@@ -12,11 +12,13 @@
   padding: 0.6rem 0.85rem;
 }
 
+/* 창 높이 축소 시 flex 압축 + glass-panel overflow:hidden 로 타이틀/CTA 클리핑 방지 */
 .app-community-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  flex-shrink: 0;
   padding: 0.75rem 1rem;
   border-radius: var(--moa-radius-lg, 1rem);
 }
@@ -224,7 +226,8 @@
   color: #f59e0b;
 }
 
-@media (max-width: 480px) {
+/* 앱 창 폭 기준 — 브라우저 viewport 가 아닌 윈도우 컨테이너 */
+@container moa-app-window (width <= 480px) {
   .app-community-header {
     flex-direction: column;
     align-items: stretch;

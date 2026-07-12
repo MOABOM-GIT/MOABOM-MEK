@@ -10,40 +10,24 @@ import {
 } from '../shell/moabomShellNotificationBridge';
 import { setShellChatInboxCache } from '../shell/moabomShellChatInboxCache';
 import { dispatchShellNotificationReceived } from '../shell/ShellRealtimeStore';
+import { dispatchShellUnreadSynced } from '../shell/moabomShellUnreadBadge';
 import type { ShellNotificationReceivedPayload } from './moabomShellNotificationSocket';
 import { isMoabomWebSocketConnected, subscribeMoabomWebSocketConnectionChange } from './moabomWebSocketConnection';
 import { runMoabomShellRealtimeTask } from './moabomShellRealtimeRequestCoalescer';
 
 /** WS 끊김 시 인박스 REST 동기화 간격 */
 export const MOABOM_CHAT_INBOX_SYNC_FAST_MS = 8_000;
-/** WS 끊김 시 인박스 안전망 */
-export const MOABOM_CHAT_INBOX_SYNC_SAFETY_MS = 30_000;
-/** WS 연결 시 인박스 안전망 (이벤트 누락 대비, 간격 완화) */
-export const MOABOM_CHAT_INBOX_SYNC_SAFETY_CONNECTED_MS = 60_000;
-/** unread-count 경량 폴링 — WS push 누락·구독 지연 대비 */
-export const MOABOM_NOTIFICATION_UNREAD_POLL_MS = 3_000;
-/** WS 연결 시 알림 목록 안전망 (이벤트 누락 대비) */
-export const MOABOM_NOTIFICATION_LIST_SAFETY_CONNECTED_MS = 60_000;
-/** WS 끊김 시 알림 목록 안전망 */
+/** WS 끊김 시 알림 목록·unread 안전망 */
 export const MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS = 30_000;
 
-export const MOABOM_SHELL_UNREAD_SYNCED_EVENT = 'moabom-shell-unread-synced';
-
-/** @deprecated MOABOM_NOTIFICATION_UNREAD_POLL_MS 사용 */
-export const MOABOM_NOTIFICATION_SYNC_MS = MOABOM_NOTIFICATION_UNREAD_POLL_MS;
-/** @deprecated MOABOM_NOTIFICATION_LIST_SAFETY_CONNECTED_MS 사용 */
-export const MOABOM_NOTIFICATION_SYNC_SAFETY_CONNECTED_MS = MOABOM_NOTIFICATION_LIST_SAFETY_CONNECTED_MS;
-
-type UnreadSyncedDetail = { count: number };
+export { MOABOM_SHELL_UNREAD_SYNCED_EVENT } from '../shell/moabomShellUnreadBadge';
 
 let syncInstalled = false;
 let syncActive = false;
-let lastUnreadCount = 0;
+let focusCatchUpInstalled = false;
 let inboxSyncInFlight = false;
 let notificationSyncInFlight = false;
 let fastInboxTimer: ReturnType<typeof setInterval> | null = null;
-let safetyInboxTimer: ReturnType<typeof setInterval> | null = null;
-let unreadPollTimer: ReturnType<typeof setInterval> | null = null;
 let listSafetyTimer: ReturnType<typeof setInterval> | null = null;
 
 function notificationItemToPayload(item: ShellNotificationItem): ShellNotificationReceivedPayload {
@@ -58,10 +42,7 @@ function notificationItemToPayload(item: ShellNotificationItem): ShellNotificati
 }
 
 function dispatchUnreadSynced(count: number): void {
-  lastUnreadCount = count;
-  window.dispatchEvent(new CustomEvent<UnreadSyncedDetail>(MOABOM_SHELL_UNREAD_SYNCED_EVENT, {
-    detail: { count },
-  }));
+  dispatchShellUnreadSynced(count);
 }
 
 async function syncInboxFromRest(): Promise<void> {
@@ -105,30 +86,6 @@ async function syncNotificationListFromRest(forceDispatch = false): Promise<void
   });
 }
 
-async function pollUnreadCountAndMaybeSyncList(): Promise<void> {
-  if (notificationSyncInFlight) {
-    return;
-  }
-  notificationSyncInFlight = true;
-  try {
-    const count = await runMoabomShellRealtimeTask(
-      'notifications:unread-count',
-      () => fetchShellUnreadCount(),
-      { minIntervalMs: 500 },
-    );
-    const previousCount = lastUnreadCount;
-    dispatchUnreadSynced(count);
-
-    if (count > previousCount) {
-      await syncNotificationListFromRest();
-    }
-  } catch {
-    // 알림 동기화 실패는 다음 주기에 재시도
-  } finally {
-    notificationSyncInFlight = false;
-  }
-}
-
 async function syncNotificationsFromRest(): Promise<void> {
   if (notificationSyncInFlight) {
     return;
@@ -158,60 +115,20 @@ function clearTimers(): void {
     clearInterval(fastInboxTimer);
     fastInboxTimer = null;
   }
-  if (safetyInboxTimer !== null) {
-    clearInterval(safetyInboxTimer);
-    safetyInboxTimer = null;
-  }
-  if (unreadPollTimer !== null) {
-    clearInterval(unreadPollTimer);
-    unreadPollTimer = null;
-  }
   if (listSafetyTimer !== null) {
     clearInterval(listSafetyTimer);
     listSafetyTimer = null;
   }
 }
 
-function listSafetyIntervalMs(): number {
-  return isMoabomWebSocketConnected()
-    ? MOABOM_NOTIFICATION_LIST_SAFETY_CONNECTED_MS
-    : MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS;
-}
-
-function rescheduleListSafetyTimer(): void {
-  if (listSafetyTimer !== null) {
-    clearInterval(listSafetyTimer);
-    listSafetyTimer = null;
-  }
-  if (!syncActive) {
-    return;
-  }
-  listSafetyTimer = setInterval(() => {
-    void syncNotificationsFromRest();
-  }, listSafetyIntervalMs());
-}
-
-function safetyInboxIntervalMs(): number {
-  return isMoabomWebSocketConnected()
-    ? MOABOM_CHAT_INBOX_SYNC_SAFETY_CONNECTED_MS
-    : MOABOM_CHAT_INBOX_SYNC_SAFETY_MS;
-}
-
-function rescheduleSafetyInboxTimer(): void {
-  if (safetyInboxTimer !== null) {
-    clearInterval(safetyInboxTimer);
-    safetyInboxTimer = null;
-  }
-  if (!syncActive) {
-    return;
-  }
-  safetyInboxTimer = setInterval(() => {
-    void syncInboxFromRest();
-  }, safetyInboxIntervalMs());
-}
-
-function schedulePolling(): void {
+/**
+ * WS 연결 중에는 REST 폴링 없음. 끊김 시에만 인박스·알림 안전망.
+ */
+function scheduleDisconnectedPolling(): void {
   clearTimers();
+  if (!syncActive || isMoabomWebSocketConnected()) {
+    return;
+  }
 
   fastInboxTimer = setInterval(() => {
     if (!isMoabomWebSocketConnected()) {
@@ -219,27 +136,49 @@ function schedulePolling(): void {
     }
   }, MOABOM_CHAT_INBOX_SYNC_FAST_MS);
 
-  unreadPollTimer = setInterval(() => {
-    void pollUnreadCountAndMaybeSyncList();
-  }, MOABOM_NOTIFICATION_UNREAD_POLL_MS);
+  listSafetyTimer = setInterval(() => {
+    if (!isMoabomWebSocketConnected()) {
+      void syncNotificationsFromRest();
+    }
+  }, MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS);
+}
 
-  rescheduleSafetyInboxTimer();
-  rescheduleListSafetyTimer();
+function installFocusCatchUp(): void {
+  if (focusCatchUpInstalled || typeof window === 'undefined') {
+    return;
+  }
+  focusCatchUpInstalled = true;
+
+  const onVisibleOrFocus = () => {
+    if (!syncActive) {
+      return;
+    }
+    if (document.visibilityState === 'hidden') {
+      return;
+    }
+    void runCatchUpSync();
+  };
+
+  window.addEventListener('focus', onVisibleOrFocus);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      onVisibleOrFocus();
+    }
+  });
 }
 
 /**
- * 로그인 셸 상주 — WS 끊김·재연결 시 인박스·알림 REST catch-up.
- * 채팅 패널 마운트와 무관하게 동작합니다.
+ * 로그인 셸 — WS 우선. REST는 끊김·재연결·focus/visibility·패널 진입 시에만.
  */
 export function startMoabomShellChatSyncService(): void {
   if (!syncInstalled) {
     syncInstalled = true;
+    installFocusCatchUp();
     subscribeMoabomWebSocketConnectionChange(() => {
       if (!syncActive) {
         return;
       }
-      rescheduleSafetyInboxTimer();
-      rescheduleListSafetyTimer();
+      scheduleDisconnectedPolling();
       if (isMoabomWebSocketConnected()) {
         void runCatchUpSync();
       }
@@ -250,14 +189,13 @@ export function startMoabomShellChatSyncService(): void {
     return;
   }
   syncActive = true;
-  schedulePolling();
+  scheduleDisconnectedPolling();
   void runCatchUpSync();
 }
 
 export function stopMoabomShellChatSyncService(): void {
   syncActive = false;
   clearTimers();
-  lastUnreadCount = 0;
 }
 
 /** 포커스·가시성 복귀 등 — 셸 인박스 REST 1회 동기화 */
@@ -267,7 +205,7 @@ export function requestShellChatInboxSync(): void {
   }
 }
 
-/** 알림·인박스 동시 catch-up (패널 외부에서 필요 시) */
+/** 알림·인박스 동시 catch-up (패널 오픈·외부 트리거) */
 export function requestShellChatCatchUpSync(): void {
   if (syncActive) {
     void runCatchUpSync();
@@ -277,6 +215,7 @@ export function requestShellChatCatchUpSync(): void {
 export function resetMoabomShellChatSyncServiceForTest(): void {
   stopMoabomShellChatSyncService();
   syncInstalled = false;
+  focusCatchUpInstalled = false;
   inboxSyncInFlight = false;
   notificationSyncInFlight = false;
 }

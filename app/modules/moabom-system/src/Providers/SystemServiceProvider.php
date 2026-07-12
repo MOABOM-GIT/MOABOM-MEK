@@ -112,11 +112,13 @@ use Modules\Moabom\System\Support\MoabomGcsAttachmentRegistrar;
 use Modules\Moabom\System\Http\View\Composers\MoabomUserBootDeferredAssetsGhostComposer;
 use Modules\Moabom\System\Http\View\Composers\MoabomUserTemplateComposer;
 use Modules\Moabom\System\Services\ExtensionCatalogBuilder;
+use Modules\Moabom\System\Console\Commands\MoabomWarmTemplateLangStaticCommand;
 use Modules\Moabom\System\Services\HomeBackgroundService;
 use Modules\Moabom\System\Services\MoabomExtensionAssetGroupService;
 use Modules\Moabom\System\Services\MoabomModuleSettingsService;
 use Modules\Moabom\System\Services\MoabomPluginSettingsService;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
+use Modules\Moabom\System\Services\MoabomWarmTemplateLangStatic;
 use Modules\Moabom\System\Services\Shell\ShellAppUsageIngestService;
 use Modules\Moabom\System\Services\Shell\ShellRankingService;
 use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
@@ -163,6 +165,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasSyncModuleDeclarationsCommand::class,
         SaasTenantReconcileCommand::class,
         SaasSetupSharedLanguagePacksCommand::class,
+        MoabomWarmTemplateLangStaticCommand::class,
     ];
 
     /**
@@ -209,6 +212,7 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         // 코어 `app/` 수정 없이: 부트 설정·Blade 확장 에셋 맵에 DB 활성 기준을 반영한다.
         $this->app->singleton(MoabomExtensionAssetGroupService::class);
         $this->app->singleton(MoabomShellRoutesFilter::class);
+        $this->app->singleton(MoabomWarmTemplateLangStatic::class);
         $this->app->bind(ModuleSettingsService::class, MoabomModuleSettingsService::class);
         $this->app->bind(PluginSettingsService::class, MoabomPluginSettingsService::class);
         $this->app->bind(UserTemplateComposer::class, MoabomUserTemplateComposer::class);

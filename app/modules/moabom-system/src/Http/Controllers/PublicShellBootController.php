@@ -13,13 +13,14 @@ use Illuminate\Routing\Controller;
 use Modules\Moabom\System\Experience\TenantExperienceDefaultsReader;
 use Modules\Moabom\System\Http\Requests\Public\GetMoabomShellTemplateRoutesRequest;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
+use Modules\Moabom\System\Services\Shell\MoabomShellCriticalSnapshot;
 use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
 use Modules\Moabom\System\Support\MoabomPublicApiCache;
 use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 use Modules\Moabom\System\Support\MoabomUiLocales;
 
 /**
- * 홈 셸 최초 부트용 통합 API — frontend-defaults + shell routes + social providers.
+ * 홈 셸 최초 부트용 통합 API — frontend-defaults + shell routes + social providers + critical snapshot.
  *
  * @see deploy/CLOUD-RUN-PERFORMANCE.md (P1: API N회 → 1회)
  */
@@ -31,6 +32,7 @@ final class PublicShellBootController extends Controller
         TemplateService $templateService,
         MoabomShellRoutesFilter $shellRoutesFilter,
         ShellUsageIngestGuard $usageIngestGuard,
+        MoabomShellCriticalSnapshot $criticalSnapshot,
     ): JsonResponse {
         $identifier = $request->resolvedTemplate();
         $scope = $request->resolvedScope();
@@ -46,6 +48,7 @@ final class PublicShellBootController extends Controller
                     $revision,
                     $templateService,
                     $shellRoutesFilter,
+                    $criticalSnapshot,
                 ): array {
                     $routesPayload = $this->resolveShellRoutesPayload(
                         $identifier,
@@ -56,6 +59,8 @@ final class PublicShellBootController extends Controller
                     if ($routesPayload instanceof JsonResponse) {
                         throw new HttpResponseException($routesPayload);
                     }
+
+                    $critical = $criticalSnapshot->build($identifier);
 
                     return [
                         'defaults' => $defaultsReader->frontendDefaults(),
@@ -73,6 +78,12 @@ final class PublicShellBootController extends Controller
                             [],
                             $identifier,
                         )),
+                        'critical' => [
+                            'template' => $critical['template'],
+                            'cache_version' => $critical['cache_version'],
+                            'config' => $critical['config'],
+                            'home' => $critical['home'],
+                        ],
                     ];
                 },
             );

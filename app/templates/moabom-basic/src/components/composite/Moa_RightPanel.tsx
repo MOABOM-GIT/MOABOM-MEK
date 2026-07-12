@@ -446,7 +446,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     if (index === 3) handleLogout();
   };
 
-  /** 관리자 화면으로 이동합니다. */
+  /** 관리자 화면 — 새 탭(_blank). navigate→openWindow(_self) full reload 회피 (G7 engine-v1.40+) */
   const handleOpenAdmin = () => {
     if (isAiGenerationBusy()) {
       pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
@@ -455,11 +455,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
     const G7Core = (window as any).G7Core;
     if (G7Core?.dispatch) {
-      G7Core.dispatch({ handler: 'navigate', params: { path: '/admin' } });
+      G7Core.dispatch({
+        handler: 'openWindow',
+        params: { path: '/admin', target: '_blank' },
+      });
       return;
     }
 
-    window.location.href = '/admin';
+    window.open('/admin', '_blank', 'noopener,noreferrer');
   };
 
   return (

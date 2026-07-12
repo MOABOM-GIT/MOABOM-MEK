@@ -408,7 +408,7 @@ export const TagInput: React.FC<TagInputProps> = ({
       // 최대 개수 제한
       if (maxItems && newValue.length > maxItems) return;
 
-      const newValues = newValue.map((opt) => opt.value);
+      const newValues = newValue.map((opt: TagOption) => opt.value);
       setValue(newValues);
       onChange(createFakeEvent(newValues));
     },

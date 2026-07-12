@@ -198,19 +198,26 @@ export async function fetchPresenceSettings(): Promise<PresenceSettings> {
   }
 
   presenceSettingsPromise = (async () => {
-    const response = await fetch(`${API_BASE}/user/presence/settings`, {
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        ...authHeaders(),
+    const { runMoabomShellRealtimeTask } = await import('../runtime/moabomShellRealtimeRequestCoalescer');
+    return runMoabomShellRealtimeTask(
+      'presence:user-settings',
+      async () => {
+        const response = await fetch(`${API_BASE}/user/presence/settings`, {
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            ...authHeaders(),
+          },
+        });
+        const data = await parseModuleJson<PresenceSettings>(response);
+        presenceSettingsCache = {
+          value: data,
+          expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
+        };
+        return data;
       },
-    });
-    const data = await parseModuleJson<PresenceSettings>(response);
-    presenceSettingsCache = {
-      value: data,
-      expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
-    };
-    return data;
+      { minIntervalMs: 2_000 },
+    );
   })();
 
   try {

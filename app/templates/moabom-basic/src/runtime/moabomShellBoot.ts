@@ -48,6 +48,12 @@ export type MoabomShellBootData = {
         usage_ingest_token: string;
         usage_bucket_hour: string;
     };
+    critical?: {
+        template?: string;
+        cache_version?: number;
+        config?: Record<string, unknown> | null;
+        home?: Record<string, unknown> | null;
+    };
 };
 
 type ShellBootApiResponse = {
@@ -189,6 +195,8 @@ function normalizeShellBootPayload(raw: Partial<MoabomShellBootData> | undefined
         },
         social_providers: raw.social_providers,
         apps: Array.isArray(raw.apps) ? raw.apps : [],
+        shell_rankings: raw.shell_rankings,
+        critical: raw.critical,
     };
 }
 
@@ -239,6 +247,12 @@ export async function ensureMoabomShellBootLoaded(
             applyLocaleCatalog(normalized.locale_catalog);
             setShellBootApps(normalized.apps);
             writeShellBootData(normalized);
+            try {
+                const { seedMoabomShellCriticalFromBoot } = await import('./moabomShellCriticalFetch');
+                seedMoabomShellCriticalFromBoot(normalized);
+            } catch {
+                // critical seed optional
+            }
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
                 window.dispatchEvent(new CustomEvent(MOABOM_SHELL_BOOT_LOADED_EVENT, { detail: normalized }));
             }

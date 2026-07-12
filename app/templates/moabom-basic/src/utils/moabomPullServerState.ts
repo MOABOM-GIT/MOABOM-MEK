@@ -28,6 +28,7 @@ import { areMoabomSystemStatesEqual } from './moabomSystemStore';
 import { applyMoabomSystemAppearance, hasStoredMoabomSystemState, loadMoabomSystemState, saveMoabomSystemState } from './moabomSystemStore';
 import { STORAGE_KEY_RECENT_APPS } from '../shell/moaShellLayoutConstants';
 import { loadJsonSanitizedIds, saveJson } from '../shell/moaShellLocalStorage';
+import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 
 function toSettingsSnapshot(state: MoabomSystemState): Record<string, unknown> {
   return {
@@ -72,6 +73,22 @@ export function resolveEffectiveSettingsForPull(input: {
  * `defaults`(플랫폼 팔레트·테마 목록·배경 목록 등)만 반영한다.
  */
 export async function pullMoabomServerState(input: {
+  isLoggedIn: boolean;
+  coreUserLanguage?: string | null;
+  preserveShellPanelOpen: boolean;
+}): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: MainAppOrderSnapshot } | null> {
+  const coalesceKey = input.isLoggedIn
+    ? `shell:pull-server-state:auth:${input.coreUserLanguage ?? ''}`
+    : 'shell:pull-server-state:guest';
+
+  return runMoabomShellRealtimeTask(
+    coalesceKey,
+    () => pullMoabomServerStateUncoalesced(input),
+    { minIntervalMs: 2_000 },
+  );
+}
+
+async function pullMoabomServerStateUncoalesced(input: {
   isLoggedIn: boolean;
   coreUserLanguage?: string | null;
   preserveShellPanelOpen: boolean;

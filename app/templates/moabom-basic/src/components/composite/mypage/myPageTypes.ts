@@ -29,6 +29,8 @@ export interface MyPageWindowContentProps {
   initialTab?: MyPageTab;
   /** AuthManager에서 가져온 현재 사용자 정보 */
   currentUser: MyPageUser | null;
+  /** 셸 Auth SSOT — guest UI는 currentUser null이 아니라 이 플래그 기준 */
+  isLoggedIn?: boolean;
   /** 라이브러리에서 앱 실행 */
   onOpenApp?: (app: App) => void;
   /** 저장 AI 앱 편집 (create-app 셸) */

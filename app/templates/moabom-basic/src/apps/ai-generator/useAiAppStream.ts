@@ -114,15 +114,23 @@ export function useAiAppStream({
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const initialAccumulated = options.continueGeneration ? streamedRawRef.current : '';
-    preStreamRawRef.current = options.continueGeneration ? streamedRawRef.current : '';
+    const initialAccumulated = options.continueGeneration
+      ? (streamedRawRef.current.trim() || (options.currentHtml ?? '').trim())
+      : '';
+    preStreamRawRef.current = initialAccumulated;
 
+    // 최소화/닫기 분기가 useEffect 이전 tick에 돌면 busy=false로 언마운트·abort 되므로 동기 claim.
+    claimAiGenerationBusy(busyOwnerRef.current);
     setIsStreaming(true);
     setGenerationPhase(queueState ? 'queued' : 'streaming');
     setQueueState(null);
     queueTicketRef.current = null;
     if (!options.continueGeneration) {
       setStreamedRaw('');
+    } else if (initialAccumulated && !streamedRawRef.current.trim()) {
+      // finalize 후 버퍼가 비었을 때 current_html/세션 원문으로 접두를 복구
+      setStreamedRaw(initialAccumulated);
+      streamedRawRef.current = initialAccumulated;
     }
 
     try {
@@ -163,9 +171,16 @@ export function useAiAppStream({
               setSessionId(payload.session_id);
             }
 
-            const finalSource = (payload.html || streamedRawRef.current || '').trim();
+            // truncated 시 html이 비고 delta만 suffix일 수 있음 → raw(서버 병합본) 우선
+            const finalSource = (
+              payload.html
+              || payload.raw
+              || streamedRawRef.current
+              || ''
+            ).trim();
             if (finalSource) {
               setStreamedRaw(finalSource);
+              streamedRawRef.current = finalSource;
             }
 
             finalizeDraft({

@@ -100,14 +100,34 @@ moabom_post_deploy_record_phase_e() {
   moabom_content_manifest_write_entry "${MOABOM_POST_DEPLOY_MANIFEST}" "phase-e" "${digest}"
 }
 
-# auto — migration 파일 해시가 바뀐 moabom-* 모듈만 (stdout, 한 줄에 모듈 id 하나)
+# RF-31: moabom-* 외에도 활성 의존 모듈(sirsoft-board) schema 는 이미지와 같이 맞춰야 함.
+# post-deploy allowlist 에 포함할 추가 모듈 id (공백 구분).
+MOABOM_POST_DEPLOY_MIGRATION_EXTRA_MODULES="${MOABOM_POST_DEPLOY_MIGRATION_EXTRA_MODULES:-sirsoft-board}"
+
+moabom_post_deploy_migration_module_allowed() {
+  local module_id="$1"
+  [[ "${module_id}" == moabom-* ]] && return 0
+  local extra
+  for extra in ${MOABOM_POST_DEPLOY_MIGRATION_EXTRA_MODULES}; do
+    [[ "${module_id}" == "${extra}" ]] && return 0
+  done
+  return 1
+}
+
+# auto — migration 파일 해시가 바뀐 moabom-* (+ RF-31 extra) 모듈만
 moabom_post_deploy_auto_migration_modules() {
-  local module_dir module_id
+  local module_dir module_id extra
   for module_dir in "${_POST_DEPLOY_HASH_ROOT}/app/modules"/moabom-*/; do
     [[ -d "${module_dir}/database/migrations" ]] || continue
     module_id="$(basename "${module_dir}")"
     if moabom_post_deploy_module_migration_changed "${module_id}"; then
       printf '%s\n' "${module_id}"
+    fi
+  done
+  for extra in ${MOABOM_POST_DEPLOY_MIGRATION_EXTRA_MODULES}; do
+    [[ -d "${_POST_DEPLOY_HASH_ROOT}/app/modules/${extra}/database/migrations" ]] || continue
+    if moabom_post_deploy_module_migration_changed "${extra}"; then
+      printf '%s\n' "${extra}"
     fi
   done
 }

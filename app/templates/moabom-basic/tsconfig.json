@@ -22,14 +22,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Path aliases */
-    "baseUrl": ".",
+    /* Path aliases — baseUrl 제거(TS 6 deprecated), paths에 접두사 인라인 */
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "moabom-shell-i18n": ["src/i18n/moabomShellI18nSingleton.ts"],
-      "moabom-create-app-edit": ["src/apps/ai-generator/moabomCreateAppEditSession.ts"],
-      "moabom-ai-generation-activity": ["src/apps/ai-generator/aiGenerationActivity.ts"],
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "moabom-shell-i18n": ["./src/i18n/moabomShellI18nSingleton.ts"],
+      "moabom-create-app-edit": ["./src/apps/ai-generator/moabomCreateAppEditSession.ts"],
+      "moabom-ai-generation-activity": ["./src/apps/ai-generator/aiGenerationActivity.ts"],
       "@moabom-consulting/simulation-model.json": ["../../modules/moabom-consulting/resources/simulation-model.json"],
       "@moabom-cpap/recommend-rules.json": ["../../modules/moabom-cpap/resources/recommend-rules.json"],
       "@moabom-cpap/recommend-parity-fixtures.json": ["../../modules/moabom-cpap/resources/recommend-parity-fixtures.json"]

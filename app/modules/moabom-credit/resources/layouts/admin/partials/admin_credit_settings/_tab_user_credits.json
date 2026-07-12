@@ -101,7 +101,7 @@
       "id": "user_credits_grid",
       "type": "composite",
       "name": "DataGrid",
-      "blur_until_loaded": true,
+      "blur_until_loaded": { "enabled": true, "data_sources": "userCredits" },
       "props": {
         "data": "{{userCredits?.data?.items ?? []}}",
         "loading": "{{!!userCredits?.loading}}",

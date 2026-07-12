@@ -54,6 +54,15 @@ describe('aiGenerationDraft', () => {
     expect(normalized).toContain('</html>');
   });
 
+  it('열린 script가 있으면 </body></html>을 붙이지 않는다', () => {
+    const normalized = normalizePartialHtml(
+      '<!DOCTYPE html><html><head></head><body><script>window.app = {',
+    );
+
+    expect(normalized).toContain('<script>window.app = {');
+    expect(normalized).not.toMatch(/<\/body>\s*<\/html>\s*$/i);
+  });
+
   it('truncated finalize는 truncated phase로 매핑한다', () => {
     expect(inferPhaseFromFinalize({ source: PARTIAL_HTML, truncated: true }, false, false)).toBe('truncated');
   });

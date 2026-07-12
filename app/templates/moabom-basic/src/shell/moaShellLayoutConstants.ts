@@ -46,7 +46,8 @@ export const AUTH_WINDOW_HEIGHT = 520;
 export const WINDOW_CASCADE_STEP = 10;
 
 /** 관리자 저장 후 서버 defaults 재조회 디바운스(ms) */
-export const MOABOM_SHELL_SERVER_PULL_DEBOUNCE_MS = 180;
+/** focus/visibility 재pull — 이중·연속 트리거 압축 (WS-first 리팩토링) */
+export const MOABOM_SHELL_SERVER_PULL_DEBOUNCE_MS = 800;
 
 /**
  * 로그인·회원가입·비번 창, 이용약관·개인정보 처리방침 등 셸 고정 창 타이틀 배경.

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.36] - 2026-07-10
+
+### Fixed
+
+- G7 7.0.2 `UserTemplateComposer`/`TemplateComposer` 생성자에 추가된 `TemplateManager` 를 Moabom 래퍼가 전달하지 않아 SPA 셸(`/`, `/admin`, `/login`) 이 ArgumentCountError 500 이던 회귀 수정. `bundleUrls`·`templateExternals`·`active*Meta`·`extensionCacheVersion` compose 계약도 함께 채움.
+
 ## [0.8.35] - 2026-07-10
 
 ### Changed

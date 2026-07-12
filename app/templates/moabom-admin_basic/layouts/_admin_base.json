@@ -38,7 +38,7 @@
       "type": "api",
       "endpoint": "/api/admin/notifications",
       "method": "GET",
-      "auto_fetch": true,
+      "auto_fetch": false,
       "auth_required": true,
       "loading_strategy": "progressive",
       "params": {
@@ -51,7 +51,7 @@
       "type": "api",
       "endpoint": "/api/admin/notifications/unread-count",
       "method": "GET",
-      "auto_fetch": true,
+      "auto_fetch": false,
       "auth_required": true,
       "loading_strategy": "progressive",
       "initGlobal": {
@@ -64,7 +64,7 @@
       "type": "api",
       "endpoint": "/api/admin/modules/installed",
       "method": "GET",
-      "auto_fetch": true,
+      "auto_fetch": false,
       "auth_required": true,
       "loading_strategy": "progressive",
       "initGlobal": {
@@ -77,7 +77,7 @@
       "type": "api",
       "endpoint": "/api/admin/plugins/installed",
       "method": "GET",
-      "auto_fetch": true,
+      "auto_fetch": false,
       "auth_required": true,
       "loading_strategy": "progressive",
       "initGlobal": {
@@ -96,10 +96,6 @@
         {
           "handler": "refetchDataSource",
           "params": { "dataSourceId": "notification_unread_count" }
-        },
-        {
-          "handler": "refetchDataSource",
-          "params": { "dataSourceId": "notifications" }
         },
         {
           "handler": "toast",
@@ -269,6 +265,22 @@
                         "dropdownAlign": "left"
                       },
                       "actions": [
+                        {
+                          "event": "onOpen",
+                          "handler": "sequence",
+                          "params": {
+                            "actions": [
+                              {
+                                "handler": "refetchDataSource",
+                                "params": { "dataSourceId": "notifications" }
+                              },
+                              {
+                                "handler": "refetchDataSource",
+                                "params": { "dataSourceId": "notification_unread_count" }
+                              }
+                            ]
+                          }
+                        },
                         {
                           "event": "onClose",
                           "handler": "sequence",
@@ -668,6 +680,22 @@
                         "unreadOnly": "{{_global.notificationsUnreadOnly ?? true}}"
                       },
                       "actions": [
+                        {
+                          "event": "onOpen",
+                          "handler": "sequence",
+                          "params": {
+                            "actions": [
+                              {
+                                "handler": "refetchDataSource",
+                                "params": { "dataSourceId": "notifications" }
+                              },
+                              {
+                                "handler": "refetchDataSource",
+                                "params": { "dataSourceId": "notification_unread_count" }
+                              }
+                            ]
+                          }
+                        },
                         {
                           "event": "onClose",
                           "handler": "sequence",

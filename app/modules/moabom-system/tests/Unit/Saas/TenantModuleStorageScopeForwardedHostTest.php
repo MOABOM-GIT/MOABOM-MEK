@@ -37,11 +37,16 @@ class TenantModuleStorageScopeForwardedHostTest extends ModuleTestCase
 
     public function test_tenant_request_host_prefers_forwarded_header(): void
     {
+        config([
+            'moabom-system.saas.base_domain' => 'mek360.com',
+            'moabom-system.saas.platform_hosts' => ['mek360.com', 'www.mek360.com'],
+        ]);
+
         $request = Request::create(
-            'https://internal.run.app/api/test',
+            'https://mobaom-container-ptzusd23ha-du.a.run.app/api/test',
             'GET',
             server: [
-                'HTTP_HOST' => 'internal.run.app',
+                'HTTP_HOST' => 'mobaom-container-ptzusd23ha-du.a.run.app',
                 'HTTP_X_FORWARDED_HOST' => 'freshent.mek360.com',
             ],
         );

@@ -97,12 +97,13 @@
 | [handlers.md](docs/frontend/templates/sirsoft-basic/handlers.md) | sirsoft-basic 핸들러 | setTheme/initTheme: 다크/라이트 모드 전환 (admin과 동일 키 공유) |
 | [layouts.md](docs/frontend/templates/sirsoft-basic/layouts.md) | sirsoft-basic 레이아웃 | 베이스: _user_base.json (헤더 + 푸터 + 모바일 네비 + 콘텐츠 슬롯) |
 
-### 확장 시스템 [extension/](docs/extension/) (29개)
+### 확장 시스템 [extension/](docs/extension/) (30개)
 
 | 문서 | 설명 | TL;DR 핵심 |
 |------|------|-----------|
 | [cache-driver.md](docs/extension/cache-driver.md) | 캐시 드라이버 시스템 (CacheInterface) | 모든 캐시 저장은 CacheInterface 사용 (Cache:: 직접 호출 금지) |
 | [changelog-rules.md](docs/extension/changelog-rules.md) | Changelog 규칙 (Changelog Rules) | 확장/코어 버전 업 시 CHANGELOG.md에 변경사항 기록 필수 (미기록 시 버전 업 불가) |
+| [editor-spec.md](docs/extension/editor-spec.md) | 편집기 스펙 (editor-spec.json) | editor-spec.json = 편집기 팔레트/스타일 컨트롤/중첩 규칙/샘플 데이터/레시피의 선언 (... |
 | [extension-manager.md](docs/extension/extension-manager.md) | ExtensionManager (확장 관리자) | composer.json 수정 없음 - 런타임 오토로드 방식 사용 |
 | [extension-update-system.md](docs/extension/extension-update-system.md) | 확장 업데이트 시스템 (Extension Update System) | 업데이트 감지 우선순위: GitHub > _bundled (2단계, _pending 미참여) |
 | [hooks.md](docs/extension/hooks.md) | 훅 시스템 (Hook System) | Action 훅: doAction() - 부가 작업 (로그, 알림, 캐시) |
@@ -131,7 +132,7 @@
 | [upgrade-step-guide.md](docs/extension/upgrade-step-guide.md) | 업그레이드 스텝 작성 가이드 (Upgrade Step Guide) | upgrade step 이 실행되는 환경은 경로에 따라 다르다 — 섹션 9 "업그레이드 경로" 먼저 읽기 |
 | [vendor-bundle.md](docs/extension/vendor-bundle.md) | Vendor 번들 시스템 (Vendor Bundle System) | - |
 
-### 공통 (4개)
+### 공통 (5개)
 
 | 문서 | 설명 | TL;DR 핵심 |
 |------|------|-----------|
@@ -139,6 +140,7 @@
 | [database-guide.md](docs/database-guide.md) | 그누보드7 데이터베이스 개발 가이드 | 마이그레이션: 한국어 comment 필수, down() 구현 필수 |
 | [requirements.md](docs/requirements.md) | 그누보드7 시스템 요구사항 (System Requirements) | PHP 8.2+ 필수 |
 | [testing-guide.md](docs/testing-guide.md) | 그누보드7 테스트 가이드 | 테스트 통과 = 작업 완료 (작성만으로 불충분!) |
+| [e2e-testing.md](docs/testing/e2e-testing.md) | 그누보드7 Playwright E2E 테스트 가이드 | - |
 
 
 <!-- AUTO-GENERATED-END: docs-quick-reference -->
@@ -566,6 +568,20 @@ powershell -Command "npm run test:run"
 
 ---
 
+## npm install 규칙
+
+기본 `npm install`은 `package-lock.json`을 자동 수정할 수 있으므로, lock 파일 변경 의도가 없는 의존성 복구나 작업 환경 재구성에는 `npm install --package-lock=false`를 사용합니다.
+
+| 상황 | 권장 명령어 | 비고 |
+| ---- | ----------- | ---- |
+| 누락 의존성 복구 / 작업 환경 재구성 | `npm install --package-lock=false` | lock 파일 변경 없이 설치 |
+| clean install | `npm ci` | `package.json`과 `package-lock.json`이 동기화된 경우 |
+| 의존성 신규 추가/업데이트 | `npm install <pkg>` | lock 변경이 작업 범위에 포함된 경우만 |
+
+lock 파일 변경 의도가 없는 상황에서 `npm install` 단독 실행을 피합니다. `module.json`, `plugin.json`, `template.json`의 `version`을 바꾸면 해당 확장의 `package.json`, `package-lock.json`, `composer.json` 버전도 함께 동기화합니다. 의존성 재설치 없이 lock 파일의 version 필드만 갱신할 때는 `npm install --package-lock-only`를 사용합니다.
+
+---
+
 ## 핵심 원칙
 
 ### 1. 동적 로딩
@@ -760,6 +776,30 @@ php artisan module:update sirsoft-ecommerce --force
 php artisan plugin:update sirsoft-payment --force
 ```
 
+### 코어 3-번들 구조 + 공유 런타임 (engine-v1.51.0+)
+
+`core:build` 는 코어 프론트엔드를 3개 IIFE 번들로 빌드한다:
+
+| 번들 | 로드 시점 | vite config |
+|------|----------|-------------|
+| `template-engine.min.js` | 모든 페이지 (동기 `<script>`) | `vite.config.core.js` |
+| `layout-editor.min.js` | `/admin/layout-editor/*` 진입 시 런타임 주입 | `vite.config.editor.js` |
+| `devtools.min.js` | 디버그 모드에서만 런타임 주입 | `vite.config.devtools.js` |
+
+lazy 번들(편집기/devtools)이 코어 런타임(DynamicRenderer·엔진 싱글톤·React Context·DevTools 코어)을 재사용할 때는 재번들하지 않고 `window.G7Core.__runtime` 을 빌려 쓴다 — React/컨텍스트/싱글톤 인스턴스 동일성이 강제되기 때문(사본이 둘이면 "Invalid hook call"·컨텍스트 미매칭). 메인 번들이 `G7CoreGlobals` 에서 공유 대상을 `G7Core.__runtime` 에 노출하고, lazy 번들 vite config 는 React 4종(`react`/`react-dom`/`react-dom/client`/`react/jsx-runtime`)을 external→window 로, 코어 런타임 모듈을 `resolveId` 플러그인으로 `__runtime-shims/` 로 치환한다.
+
+### 확장 번들 병합 (서버측 concat)
+
+활성 모듈/플러그인의 프론트엔드 IIFE JS·CSS 는 타입별로 서버에서 하나의 번들로 병합해 서빙한다(`/api/{modules,plugins}/bundle.{js,css}?v={version}`). `ExtensionBundleService` 가 정렬·필터·concat·캐시를 전담하고, 프론트는 `window.G7Config.bundleUrls` 를 읽어 모듈 번들 → 플러그인 번들 순으로 로드한다. 병합 규율:
+
+- priority 순서는 선언형 — 실행 순서는 오직 manifest `loading.priority` 오름차순(`uasort`). 특정 확장 이름을 지목하는 분기를 두지 않는다.
+- IIFE 사이는 `\n;\n`(JS)/`\n`(CSS) 로 잇는다. 미사용 시 ASI 경계가 깨져 번들 전체 파싱 에러가 난다.
+- 소스맵은 prod strip, dev 는 개별 에셋 서빙 절대 URL 로 rewrite. 개별 에셋 서빙 라우트(`*.map` 포함)는 존치한다.
+- 번들 URL 은 반드시 same-origin(`/api/...`). 외부 origin/CDN·protocol-relative 는 gdpr preblocker 에 자기 차단된다.
+- 확장 에셋 절대경로는 `getBuiltAssetAbsolutePaths()`(=`getModulePath()`/`getPluginPath()`) 만 쓴다. `base_path("modules"|"plugins")` 직접 조립은 `_bundled` 경로 오해석 → 빈 번들.
+- concat 루프는 확장별 try/catch — 실패 확장만 skip 하고 나머지 병합을 지속한다.
+- 번들 파일명에 확장 캐시 버전을 포함(`{type}.{version}.{js,css}`). 조합 변경 시 version bump → 새 파일명 → 자동 재생성. 구파일 GC 는 `ext-bundles:cleanup` + `{module,plugin,template}:cache-clear` 가 담당한다. prod 은 version-in-path 디스크 캐시, 비프로덕션은 매 요청 concat.
+
 ### 빌드 명령어 (Artisan)
 
 ```bash
@@ -887,6 +927,8 @@ php artisan migrate:rollback
 | `templates/**/src/components/**/*.tsx` | [components.md](docs/frontend/components.md) |
 | `modules/**/Listeners/**` | [hooks.md](docs/extension/hooks.md) |
 | `plugins/**/Listeners/**` | [hooks.md](docs/extension/hooks.md) |
+| `lang/{ko,en}/**/*.php` | [database-guide.md](docs/database-guide.md) (다국어 섹션) — 코어 백엔드 다국어 |
+| `lang/{ko,en}.json`, `lang/partial/{ko,en}/**` | [data-binding-i18n.md](docs/frontend/data-binding-i18n.md) — 코어 프론트엔드 다국어 (`$t:core.*`) |
 | `lang/**` | [database-guide.md](docs/database-guide.md) (다국어 섹션) |
 | `routes/**` | [routing.md](docs/backend/routing.md) |
 | `app/Seo/**` | [seo-system.md](docs/backend/seo-system.md) |

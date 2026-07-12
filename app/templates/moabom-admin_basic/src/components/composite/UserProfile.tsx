@@ -77,7 +77,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({
   onProfileClick,
   onLogoutClick,
   className = '',
-  logoutEndpoint = '/api/admin/auth/logout',
   redirectPath = '/admin/login',
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);

@@ -303,6 +303,7 @@
     },
     "msg": {
       "profile_load_failed": "プロフィールを読み込めません。再度ログインしてください。",
+      "profile_transient_error": "プロフィールを一時的に読み込めません。しばらくしてから再試行してください。",
       "credit_load_failed": "クレジットを読み込めませんでした。",
       "activity_load_failed": "投稿を読み込めませんでした。",
       "email_missing_field": "メールを読み込めませんでした。アカウントで確認してください。",

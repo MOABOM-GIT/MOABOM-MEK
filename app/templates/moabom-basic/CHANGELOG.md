@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.7.37] - 2026-07-11
+
+### Fixed
+
+- AuthBoot transient: `/api/auth/user` 5xx로 AuthManager user가 비어도 토큰·prior `uuid`가 있으면 `_global.currentUser`를 유지해 게시판 댓글이 guest 폼으로 떨어지지 않게 함 (단일 비행·댓글 uuid 주입과 정합).
+
+## [0.7.36] - 2026-07-11
+
+### Fixed
+
+- 게시판 윈도우: 로그인 후에도 댓글 입력란이 비회원(이름·비밀번호)으로 남던 문제 — AuthManager `uuid`를 `_global.currentUser`에 매 렌더 재주입하고 인증 상태 변경 시 layout 전역을 발행.
+- 글보기 답변·원글 링크를 `href` 대신 `navigate`로 바꿔 셸 윈도우 안에서만 이동(전역 SPA 전환·지연 제거).
+
+## [0.7.35] - 2026-07-11
+
+### Fixed
+
+- AuthBoot single-flight: TemplateApp·부트·훅의 `preloadAuth`가 동일 `/api/auth/user` 요청에 합류. probe URL을 `/api/auth/user`로 바로잡고 SPA HTML 200 오인을 제거. ready/guest/unauthorized 결과 캐시로 불필요 재호출을 막음.
+
+## [0.7.34] - 2026-07-10
+
+### Fixed
+
+- 관리자 진입을 `openWindow` + `_blank`로 복원. G7 navigate fallback `_self` full reload로 느려지던 문제를 제거.
+
+## [0.7.33] - 2026-07-10
+
+### Fixed
+
+- AuthBoot: 새로고침 시 `auth_token`이 있으면 optimistic 로그인 유지. 토큰 삭제는 확정 401만.
+- Presence: 로그인·로그아웃 heartbeat 후 접속자 목록 재조회(`refreshConnectList: true`).
+
+## [0.7.32] - 2026-07-10
+
+### Fixed
+
+- 셸 부트 `tertiary-idle` 강제 2초 지연 제거. secondary/tertiary defer idle timeout 을 100ms/250ms 로 축소해 친구·알림·공지·앱·활동 등 가시 데이터 체감 지연을 줄임.
+- 좌측 공지·활동 탭은 사용자 클릭 직후 즉시 로드( defer 대기 제거 ).
+
+## [0.7.31] - 2026-07-10
+
+### Fixed
+
+- G7 7.0.2 `template.json` `externals` 에 Font Awesome 미선언으로 Icon/`fa-solid` 이 렌더되지 않던 문제 수정 (sirsoft-basic 계약과 동일 CDN SSOT). Pretendard 는 기존 자체 호스팅 유지.
+- WS 끊김 시 인박스 REST 폴링을 8초 단일 타이머로 정리(중복 30초 안전망 제거).
+
 ## [0.7.30] - 2026-07-10
 
 ### Fixed

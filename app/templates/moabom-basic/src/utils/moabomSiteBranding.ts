@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { resolveMoabomExtensionCacheVersion } from '../i18n/moabomTemplateLangJsonFetch';
 import { getMoabomShellBootData } from '../runtime/moabomShellBoot';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../i18n/moabomShellEvents';
 
 export const MOABOM_DEFAULT_LOGO_LIGHT =
@@ -192,36 +193,49 @@ export function resolveMoabomSiteLogoUrls(): MoabomSiteBrandingUrls {
 
 /**
  * shell-boot 비동기 로드 후에도 로고 URL이 갱신되도록 구독.
- * 커스텀 attachment 는 preload 성공 시에만 src 를 바꿔 엑박을 방지한다.
+ * 커스텀 attachment 는 tertiary-idle 이후 preload 성공 시에만 src 를 바꿔
+ * 콜드 부트 PHP 큐와 attachment 504 경합을 피한다.
  */
 export function useMoabomSiteLogoUrls(): MoabomSiteBrandingUrls {
   const [urls, setUrls] = useState<MoabomSiteBrandingUrls>(() => resolveMoabomSiteLogoDisplayUrls());
 
   useEffect(() => {
     let cancelled = false;
+    let cancelBoot: (() => void) | undefined;
 
-    const refresh = (): void => {
-      const displayUrls = resolveMoabomSiteLogoDisplayUrls();
-      setUrls(displayUrls);
+    const applyDisplay = (): void => {
+      setUrls(resolveMoabomSiteLogoDisplayUrls());
+    };
 
-      void resolveMoabomSiteLogoUrlsWithPreload().then(resolved => {
-        if (!cancelled) {
-          setUrls(resolved);
-        }
+    const schedulePreload = (): void => {
+      cancelBoot?.();
+      cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+        void resolveMoabomSiteLogoUrlsWithPreload().then(resolved => {
+          if (!cancelled) {
+            setUrls(resolved);
+          }
+        });
       });
     };
 
-    refresh();
+    applyDisplay();
+    schedulePreload();
 
     if (typeof window === 'undefined') {
       return;
     }
 
-    window.addEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, refresh);
+    const onBootLoaded = (): void => {
+      applyDisplay();
+      schedulePreload();
+    };
+
+    window.addEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, onBootLoaded);
 
     return () => {
       cancelled = true;
-      window.removeEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, refresh);
+      cancelBoot?.();
+      window.removeEventListener(MOABOM_SHELL_BOOT_LOADED_EVENT, onBootLoaded);
     };
   }, []);
 

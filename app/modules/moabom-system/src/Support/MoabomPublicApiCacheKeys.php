@@ -40,7 +40,7 @@ final class MoabomPublicApiCacheKeys
     public static function shellBoot(string $template, string $scope, int $defaultsRevision): string
     {
         return sprintf(
-            'moabom.public.shell_boot:%s:%s:%s:%d:%s:%s:%s',
+            'moabom.public.shell_boot:v2:%s:%s:%s:%d:%s:%s:%s',
             self::tenantScopeToken(),
             $template,
             $scope,
@@ -132,7 +132,7 @@ final class MoabomPublicApiCacheKeys
     public static function appBladeHomeShell(int $extensionEpoch): string
     {
         return sprintf(
-            'moabom.public.app_blade_shell:%s:%d:%s:%s:%s',
+            'moabom.public.app_blade_shell:v2:%s:%d:%s:%s:%s',
             self::tenantScopeToken(),
             $extensionEpoch,
             self::coreSettingsRevisionToken(),

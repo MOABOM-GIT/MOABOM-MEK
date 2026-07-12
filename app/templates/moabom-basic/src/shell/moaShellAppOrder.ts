@@ -193,6 +193,9 @@ export function mergeRecentAppIdsFromPull(input: {
  * - 로컬 customized 이고 서버 order 가 로컬의 진부분집합(누락)이면 로컬 유지 + 재동기화 유도
  * - 서버에 customized order 이고 로컬이 미커스텀/동일 계열: 서버 우선 (계정 SSOT)
  * - 어느 쪽도 미커스텀: 기본 그리드
+ *
+ * 삭제 후 stale generated-app-* 재주입 방지는 백엔드 destroy prune + library reconcile 이 SSOT.
+ * (타기기 pin 과 로컬 삭제를 merge 만으로 구분할 수 없음)
  */
 export function mergeMainAppOrderFromPull(input: {
   isLoggedIn: boolean;

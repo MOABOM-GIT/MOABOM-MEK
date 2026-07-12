@@ -121,6 +121,16 @@ final class PresenceHeartbeatService
             ]);
         }
 
+        // Identity 계약: touch=login 은 Sanctum 사용자 필수 — 미인증이면 guest upsert 금지
+        if ($touch === 'login' && $user === null) {
+            return [
+                'accepted' => false,
+                'reason' => 'login_requires_auth',
+                'visitor_id' => $visitorId,
+                'session_key' => $sessionKey,
+            ];
+        }
+
         // 회원: 닉네임 스냅샷. guest: 빈 문자열(로케일 문자열을 DB에 고정하지 않음).
         $displayName = $user
             ? (string) ($user->nickname ?: $user->name)

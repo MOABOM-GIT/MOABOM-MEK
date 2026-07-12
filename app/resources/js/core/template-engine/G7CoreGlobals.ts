@@ -18,19 +18,21 @@ import * as ReactJSXRuntime from 'react/jsx-runtime';
 import { ComponentRegistry } from './ComponentRegistry';
 import { TranslationEngine, TranslationContext } from './TranslationEngine';
 import { ActionDispatcher } from './ActionDispatcher';
-import { DataBindingEngine } from './DataBindingEngine';
+import { DataBindingEngine, dataBindingEngine } from './DataBindingEngine';
+import { DataSourceManager, dataSourceManager } from './DataSourceManager';
+import DynamicRenderer from './DynamicRenderer';
 import { useTransitionState } from './TransitionContext';
-import { useTranslation } from './TranslationContext';
-import { useResponsive } from './ResponsiveContext';
+import { useTranslation, TranslationProvider, TranslationReactContext } from './TranslationContext';
+import { useResponsive, ResponsiveProvider, ResponsiveContext } from './ResponsiveContext';
+import { responsiveManager, BREAKPOINT_PRESETS } from './ResponsiveManager';
 import { AuthManager } from '../auth/AuthManager';
 import { getApiClient } from '../api/ApiClient';
 import { createLogger, flushEarlyLogs } from '../utils/Logger';
 import { WebSocketManager } from '../websocket/WebSocketManager';
 import { G7DevToolsCore } from '../devtools/G7DevToolsCore';
-import { DiagnosticEngine } from '../devtools/DiagnosticEngine';
-import { getServerConnector } from '../devtools/ServerConnector';
-import { DevToolsPanel } from '../devtools/ui/DevToolsPanel';
-import { getStyleTracker } from '../devtools/StyleTracker';
+// DiagnosticEngine/ServerConnector/StyleTracker/DevToolsPanel 은 정적 import 하지 않는다 —
+// 디버그 전용 무거운 모듈은 별도 lazy 번들(devtools.min.js)로 분리되어 initDevToolsAPI() 가
+// isEnabled() 참일 때만 런타임 <script> 주입으로 로드한다. @since engine-v1.51.0
 import type { DiagnosticCategory } from '../devtools/types';
 import {
   renderItemChildren,
@@ -158,7 +160,11 @@ export interface G7DevToolsInterface {
   }): void;
 
   /** 네트워크 요청 시작 추적 */
-  trackRequest(url: string, method: string): string;
+  trackRequest(
+    url: string,
+    method: string,
+    options?: { requestBody?: any; dataSourceId?: string },
+  ): string;
 
   /** 네트워크 요청 완료 추적 */
   completeRequest(requestId: string, statusCode: number, response?: any): void;
@@ -171,6 +177,10 @@ export interface G7DevToolsInterface {
     id: string;
     type: 'api' | 'static' | 'route_params' | 'query_params' | 'websocket';
     endpoint?: string;
+    method?: string;
+    autoFetch?: boolean;
+    initLocal?: any;
+    initGlobal?: any;
   }): void;
 
   /** 데이터소스 로딩 시작 추적 */
@@ -736,6 +746,113 @@ function initComponentEventSystem(G7Core: any): void {
   };
 
   logger.log('전역 객체 window.G7Core.componentEvent에 노출됨');
+}
+
+/**
+ * 코어 런타임 표면을 `window.G7Core.__runtime` 으로 노출 — 편집기 lazy 번들 공유용.
+ *
+ * @since engine-v1.51.0
+ *
+ * 레이아웃 편집기 셸은 별도 번들(`layout-editor.min.js`)로 지연 로드된다(메인 번들 비대화
+ * 회피). 편집기는 코어 런타임의 렌더러/엔진/컨텍스트를 재사용해야 하는데, 이때 **동일 인스턴스
+ * 동일성**이 강제된다:
+ *
+ * - `getInstance()` 싱글톤(TranslationEngine 등)을 편집기 번들이 재번들하면 편집기 사본의
+ *   싱글톤이 메인 번들과 fork → 번역/데이터소스 상태가 어긋난다.
+ * - React Context(TranslationReactContext/ResponsiveContext 등)를 재번들하면 `createContext()`
+ *   가 두 번 실행돼 Context 객체 참조가 달라짐 → 편집기의 `useContext` 가 빈 값을 읽는다.
+ * - `DynamicRenderer` 는 사실상 코어 런타임 전체(ActionDispatcher/DataBindingEngine/모든
+ *   Context/sortable)를 끌어오므로, 재번들 시 코어 대부분이 편집기 번들에 중복된다.
+ *
+ * 이를 막기 위해 메인 번들이 이 런타임 표면을 `G7Core.__runtime` 에 노출하고, 편집기 빌드는
+ * `resolve.alias` 로 `../DynamicRenderer` 등 상대 경로를 `G7Core.__runtime` 재export shim 으로
+ * 치환한다(편집기 소스는 무수정). 결과적으로 편집기 번들은 코어 런타임을 0바이트 중복으로
+ * **빌려 쓰고**, 싱글톤/컨텍스트 동일성이 자동 보장된다.
+ *
+ * 메인 `<script>` 는 동기 선행 실행되므로, 편집기 IIFE 가 실행될 때 `__runtime` 은 항상 존재한다.
+ *
+ * @param G7Core - window.G7Core 전역 객체
+ */
+function initCoreRuntimeExports(G7Core: any): void {
+  // 이미 노출돼 있으면 멱등 (중복 init 방지)
+  if (G7Core.__runtime) return;
+
+  // 노출 대상 = 편집기가 layout-editor/ 밖으로 직접 import 하는 11개 모듈의 런타임 값만.
+  // (Slot/Transition Provider 는 편집기가 직접 import 하지 않고 메인 번들 renderTemplate 이
+  //  wrapping 하므로 __runtime 미포함. DynamicRenderer 내부의 Slot/Transition 의존은 메인 번들
+  //  DynamicRenderer 에 이미 번들돼 있어 별도 공유 불필요.)
+  G7Core.__runtime = {
+    // 렌더러 (default export) — 프리뷰 캔버스
+    DynamicRenderer,
+    // 엔진/레지스트리 클래스 (getInstance 싱글톤)
+    ComponentRegistry,
+    TranslationEngine,
+    DataSourceManager,
+    dataSourceManager,
+    DataBindingEngine,
+    dataBindingEngine,
+    ActionDispatcher,
+    // 번역 컨텍스트 (Context 객체 동일성 필수)
+    TranslationReactContext,
+    TranslationProvider,
+    useTranslation,
+    // 반응형 컨텍스트/매니저
+    ResponsiveContext,
+    ResponsiveProvider,
+    useResponsive,
+    responsiveManager,
+    BREAKPOINT_PRESETS,
+    // 인증/로거
+    AuthManager,
+    createLogger,
+    // DevTools 추적 코어 (디버그 lazy 번들이 패널/진단엔진에서 공유) @since engine-v1.51.0
+    G7DevToolsCore,
+  };
+
+  logger.log('전역 객체 window.G7Core.__runtime(코어 런타임 표면)에 노출됨');
+}
+
+/**
+ * `G7Core.layoutEditor` 예약 접수함(ready 큐) 초기화 —.
+ *
+ * 레이아웃 편집기 확장점(`registerWidget`/`registerNodeEditor`/`registerCanvasOverlay`)은
+ * 편집기 셸(lazy 번들)이 로드될 때 `exposeLayoutEditorGlobals` 가 **실제 레지스트리 함수**로
+ * 노출한다. 그러나 템플릿 `initTemplate` 은 편집기 로드 **이전**에 실행되므로, 그 시점에
+ * `G7Core.layoutEditor` 가 없으면 등록이 허공으로 사라진다.
+ *
+ * 이를 막기 위해 메인 번들에서 **경량 stub** 을 항상 먼저 노출한다. stub 의 register* 는
+ * 등록 요청을 `__queue` 에 적재만 하고, `onReady(cb)` 는 `__readyCallbacks` 에 예약한다.
+ * 편집기 셸 로드 시 `exposeLayoutEditorGlobals` 가 실제 함수로 교체하면서 `__queue` 를
+ * 일괄 flush + `__readyCallbacks` 호출한다(그 후의 호출은 즉시 등록). 이미 실제 API 가
+ * 노출돼 있으면(편집기 먼저 로드) stub 으로 덮지 않는다.
+ *
+ * 메인 번들 추가분은 함수 3개 + 배열 2개뿐(번들 비대화 ~0). 큐/콜백 공유 상태는 코드
+ * 분할(메인 vs 편집기 번들) 경계를 넘어야 하므로 모듈 변수가 아니라 `G7Core.layoutEditor`
+ * **객체 자체**(`__queue`/`__readyCallbacks`)에 둔다.
+ */
+function initLayoutEditorStub(G7Core: any): void {
+  // 편집기 셸이 먼저 로드돼 실제 API 가 이미 있으면 stub 으로 덮지 않는다.
+  if (G7Core.layoutEditor && G7Core.layoutEditor.__isStub !== true) return;
+  if (G7Core.layoutEditor && G7Core.layoutEditor.__isStub === true) return; // 중복 init 멱등
+
+  const queue: Array<[string, ...unknown[]]> = [];
+  const readyCallbacks: Array<() => void> = [];
+
+  G7Core.layoutEditor = {
+    __isStub: true,
+    __queue: queue,
+    __readyCallbacks: readyCallbacks,
+    registerWidget: (name: string, comp: unknown) => queue.push(['widget', name, comp]),
+    registerNodeEditor: (kind: string, comp: unknown) => queue.push(['nodeEditor', kind, comp]),
+    registerCanvasOverlay: (kind: string, overlay: unknown) =>
+      queue.push(['canvasOverlay', kind, overlay]),
+    /** 편집기 ready 시 호출될 콜백 예약. 이미 ready 면(=stub 아님) 즉시 호출은 실제 API 책임 */
+    onReady: (cb: () => void) => {
+      if (typeof cb === 'function') readyCallbacks.push(cb);
+    },
+  };
+
+  logger.log('전역 객체 window.G7Core.layoutEditor 예약 접수함(stub) 노출됨');
 }
 
 /**
@@ -1716,7 +1833,7 @@ function initStateAPI(G7Core: any): void {
       // handlerContext.state(버튼 클릭 시점의 componentContext.state)를 사용해야 함.
       //
       // ──────────────────────────────────────────────────────────────────
-      // [모달 scope 제한사항] (Issue #29 분석, 2026-03-25)
+      // [모달 scope 제한사항] ( 분석, 2026-03-25)
       //
       // 현재 getLocal()은 항상 페이지의 globalLocal을 반환한다.
       // modals 섹션의 isolated scope 모달 내부 커스텀 핸들러에서 호출해도
@@ -2838,164 +2955,6 @@ function initSlotAPI(G7Core: any, deps: G7CoreDependencies): void {
 }
 
 /**
- * 위지윅 편집기 API 초기화
- *
- * 위지윅 레이아웃 편집기 관련 전역 API를 window.G7Core에 노출합니다.
- *
- * @since engine-v1.11.0
- *
- * @example
- * ```ts
- * // 편집 모드 확인
- * if (G7Core.wysiwyg.isEditMode()) {
- *   // 편집 모드 전용 로직
- * }
- *
- * // 편집 모드로 진입
- * G7Core.wysiwyg.enterEditMode('home', 'sirsoft-basic');
- *
- * // 편집 모드 종료
- * G7Core.wysiwyg.exitEditMode();
- * ```
- */
-function initWysiwygEditorAPI(G7Core: any): void {
-  // 편집 모드 상태 (전역)
-  let editModeEnabled = false;
-  let currentLayoutName: string | null = null;
-  let currentTemplateId: string | null = null;
-
-  G7Core.wysiwyg = {
-    /**
-     * 현재 편집 모드 여부를 반환합니다.
-     *
-     * @returns boolean 편집 모드 여부
-     */
-    isEditMode: (): boolean => {
-      return editModeEnabled;
-    },
-
-    /**
-     * 편집 모드를 활성화합니다.
-     *
-     * @param layoutName 편집할 레이아웃명
-     * @param templateId 템플릿 ID
-     */
-    setEditMode: (layoutName: string, templateId: string): void => {
-      editModeEnabled = true;
-      currentLayoutName = layoutName;
-      currentTemplateId = templateId;
-      logger.log(`위지윅 편집 모드 활성화: ${layoutName} (${templateId})`);
-    },
-
-    /**
-     * 편집 모드를 비활성화합니다.
-     */
-    clearEditMode: (): void => {
-      editModeEnabled = false;
-      currentLayoutName = null;
-      currentTemplateId = null;
-      logger.log('위지윅 편집 모드 비활성화');
-    },
-
-    /**
-     * 현재 편집 중인 레이아웃명을 반환합니다.
-     *
-     * @returns string | null 레이아웃명 또는 null
-     */
-    getCurrentLayoutName: (): string | null => {
-      return currentLayoutName;
-    },
-
-    /**
-     * 현재 편집 중인 템플릿 ID를 반환합니다.
-     *
-     * @returns string | null 템플릿 ID 또는 null
-     */
-    getCurrentTemplateId: (): string | null => {
-      return currentTemplateId;
-    },
-
-    /**
-     * URL 쿼리 파라미터에서 편집 모드 여부를 확인합니다.
-     *
-     * @returns boolean 편집 모드 여부
-     */
-    isEditModeFromUrl: (): boolean => {
-      if (typeof window === 'undefined') {
-        return false;
-      }
-      const params = new URLSearchParams(window.location.search);
-      return params.get('mode') === 'edit';
-    },
-
-    /**
-     * 편집 모드 URL을 생성합니다.
-     * 라우트 기반 URL 형식: /{route}?mode=edit&template={templateId}
-     *
-     * @param route 라우트 경로 (예: '/', '/shop', '/board/posts')
-     * @param templateId 템플릿 ID (예: 'sirsoft-basic')
-     * @returns string 편집 모드 URL
-     */
-    getEditModeUrl: (route: string, templateId: string): string => {
-      const baseUrl = window.location.origin;
-      // 라우트가 '/'로 시작하지 않으면 추가
-      const normalizedRoute = route.startsWith('/') ? route : `/${route}`;
-      return `${baseUrl}${normalizedRoute}?mode=edit&template=${encodeURIComponent(templateId)}`;
-    },
-
-    /**
-     * 편집 모드로 진입합니다. (페이지 이동)
-     * 라우트 기반으로 편집 모드에 진입합니다.
-     *
-     * @param route 라우트 경로 (예: '/', '/shop', '/board/posts')
-     * @param templateId 템플릿 ID (예: 'sirsoft-basic')
-     */
-    enterEditMode: (route: string, templateId: string): void => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-      const url = G7Core.wysiwyg.getEditModeUrl(route, templateId);
-      window.location.href = url;
-    },
-
-    /**
-     * 편집 모드를 종료하고 일반 페이지로 이동합니다.
-     * mode, template 파라미터를 제거하고 현재 라우트에 머무릅니다.
-     */
-    exitEditMode: (): void => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-      const params = new URLSearchParams(window.location.search);
-      params.delete('mode');
-      params.delete('template');
-      const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-      window.location.href = newUrl;
-    },
-
-    /**
-     * 위지윅 편집기 모듈 버전을 반환합니다.
-     *
-     * @returns string 버전 문자열
-     */
-    getVersion: (): string => {
-      return '1.0.0';
-    },
-
-    /**
-     * 현재 구현된 Phase를 반환합니다.
-     *
-     * @returns number Phase 번호
-     */
-    getPhase: (): number => {
-      return 1;
-    },
-  };
-
-  logger.log('전역 객체 window.G7Core 위지윅 편집기 API에 노출됨 (wysiwyg)');
-}
-
-/**
  * G7Core.identity 인터페이스 초기화 (engine-v1.46.0+)
  *
  * 본인인증(IDV) 인터셉터를 템플릿/플러그인이 동일 인스턴스로 공유하기 위한 글로벌 진입점입니다.
@@ -3016,8 +2975,27 @@ function initIdentityAPI(G7Core: any): void {
     /** 모달 launcher 등록 (템플릿 부트스트랩에서 호출) */
     setLauncher: IdentityGuardInterceptor.setLauncher.bind(IdentityGuardInterceptor),
 
+    /**
+     * 428 응답을 처리합니다 (challenge 모달 launcher 호출 후 성공 시 원 요청 재실행).
+     *
+     * ActionDispatcher.handleApiCall 의 자동 인터셉트와 동일한 launcher 플로우를,
+     * 직접 fetch/G7Core.api 로 요청하는 모듈 JS 핸들러(예: 입금확인)가 재사용하기 위한 진입점.
+     * verify 성공 시 재실행 Response 를, 취소/실패/return_request 부재 시 null 을 반환한다.
+     */
+    handle: IdentityGuardInterceptor.handle.bind(IdentityGuardInterceptor),
+
+    /** 응답이 428 IDV 요구 응답인지 판별 */
+    isIdentityRequired: IdentityGuardInterceptor.isIdentityRequired.bind(IdentityGuardInterceptor),
+
     /** 등록된 launcher 가 있는지 여부 */
     hasLauncher: IdentityGuardInterceptor.hasLauncher.bind(IdentityGuardInterceptor),
+
+    /**
+     * challenge 가 자기 고유의 도메인 안내(성인인증 실패 등)를 사용자에게 표출했음을 표시.
+     * 호출 시 코어 toast 핸들러가 동일 사이클의 generic IDV 가드 토스트("본인 확인이 필요합니다") 1건을 skip.
+     * provider 플러그인이 "본인확인 성공 + 부가목적 미달" 실패를 안내한 직후 호출한다.
+     */
+    markDomainNoticeShown: IdentityGuardInterceptor.markDomainNoticeShown.bind(IdentityGuardInterceptor),
 
     /** external_redirect 흐름 — sessionStorage stash + window.location 이동 */
     redirectExternally: IdentityGuardInterceptor.redirectExternally.bind(IdentityGuardInterceptor),
@@ -3060,8 +3038,13 @@ export function initializeG7CoreGlobals(deps: G7CoreDependencies): void {
 
   const G7Core = (window as any).G7Core;
 
+  // 코어 런타임 표면 노출 (편집기 lazy 번들이 __runtime 재export shim 으로 공유)
+  initCoreRuntimeExports(G7Core);
+
   // 각 API 그룹 초기화
   initComponentEventSystem(G7Core);
+  // 레이아웃 편집기 확장점 예약 접수함(편집기 lazy 로드 전 템플릿 등록을 큐에 보존)
+  initLayoutEditorStub(G7Core);
   initCoreAPIs(G7Core, deps);
   initTranslationAPI(G7Core, deps);
   initHelperAPIs(G7Core, deps);
@@ -3077,7 +3060,6 @@ export function initializeG7CoreGlobals(deps: G7CoreDependencies): void {
   initPluginAPI(G7Core);
   initModuleAPI(G7Core);
   initSlotAPI(G7Core, deps);
-  initWysiwygEditorAPI(G7Core);
   initIdentityAPI(G7Core);
 
   logger.log('G7Core 전역 객체 초기화 완료');
@@ -3706,6 +3688,86 @@ export function initDevToolsInterface(): void {
  * G7DevTools.server.dumpState()
  * ```
  */
+/**
+ * DevTools 디버그 전용 모듈(패널 UI/진단엔진/서버커넥터/스타일추적기)의 lazy 번들 타입.
+ * @since engine-v1.51.0
+ */
+interface DevToolsBundle {
+  DiagnosticEngine: any;
+  getServerConnector: () => any;
+  getStyleTracker: () => any;
+  DevToolsPanel: any;
+}
+
+let devToolsBundleLoadPromise: Promise<DevToolsBundle> | null = null;
+
+/**
+ * DevTools lazy 번들(devtools.min.js)을 로드하고 디버그 전용 모듈 4종을 반환한다.
+ *
+ * @since engine-v1.51.0
+ *
+ * 디버그 모드에서만 호출된다. 이미 로드됨(멱등)/진행 중(in-flight 병합)/미로드(1회 주입)
+ * 를 구분한다.
+ *
+ * @returns DevTools 디버그 전용 모듈 묶음
+ * @throws {Error} 스크립트 로드 실패 또는 모듈 미노출 시
+ */
+export function loadDevToolsBundle(): Promise<DevToolsBundle> {
+  const G7Core = (window as any).G7Core;
+
+  if (G7Core?.__devtools) {
+    return Promise.resolve(G7Core.__devtools as DevToolsBundle);
+  }
+  if (devToolsBundleLoadPromise) {
+    return devToolsBundleLoadPromise;
+  }
+
+  devToolsBundleLoadPromise = new Promise<DevToolsBundle>((resolve, reject) => {
+    const src = (window as any).G7Config?.coreDevToolsAsset || '/build/core/devtools.min.js';
+    const scriptId = 'g7-devtools-bundle';
+
+    const onReady = () => {
+      const bundle = (window as any).G7Core?.__devtools;
+      if (bundle) {
+        resolve(bundle as DevToolsBundle);
+      } else {
+        reject(new Error('DevTools 번들 로드됨 — 그러나 __devtools 미노출'));
+      }
+    };
+
+    (window as any).G7Core = (window as any).G7Core || {};
+    (window as any).G7Core.__onDevToolsReady = onReady;
+
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener('load', onReady, { once: true });
+      existing.addEventListener(
+        'error',
+        () => reject(new Error(`DevTools 번들 로드 실패: ${src}`)),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = src;
+    script.async = false;
+    script.addEventListener('load', onReady, { once: true });
+    script.addEventListener(
+      'error',
+      () => {
+        devToolsBundleLoadPromise = null;
+        reject(new Error(`DevTools 번들 로드 실패: ${src}`));
+      },
+      { once: true }
+    );
+    document.head.appendChild(script);
+  });
+
+  return devToolsBundleLoadPromise;
+}
+
 export function initDevToolsAPI(): void {
   const G7Core = (window as any).G7Core;
   if (!G7Core) {
@@ -3715,7 +3777,7 @@ export function initDevToolsAPI(): void {
   const devToolsCore = G7DevToolsCore.getInstance();
   devToolsCore.initialize();
 
-  // DevTools가 비활성화된 경우 최소 API만 노출
+  // DevTools가 비활성화된 경우 최소 API만 노출 (devtools.min.js 미로드 — 초기 payload 절감)
   if (!devToolsCore.isEnabled()) {
     (window as any).G7DevTools = {
       isEnabled: () => false,
@@ -3728,6 +3790,31 @@ export function initDevToolsAPI(): void {
     logger.log('G7DevTools 비활성화됨 (디버그 모드 꺼짐)');
     return;
   }
+
+  // 디버그 모드 — DevTools lazy 번들 로드 후 전체 API 활성화 (fire-and-forget)
+  void setupDevToolsWhenEnabled(G7Core, devToolsCore);
+}
+
+/**
+ * 디버그 모드에서 DevTools lazy 번들을 로드하고 전체 API 를 활성화한다.
+ *
+ * @since engine-v1.51.0
+ *
+ * @param G7Core - window.G7Core 전역 객체
+ * @param devToolsCore - G7DevToolsCore 싱글톤 인스턴스
+ */
+async function setupDevToolsWhenEnabled(G7Core: any, devToolsCore: any): Promise<void> {
+  let bundle: DevToolsBundle;
+  try {
+    bundle = await loadDevToolsBundle();
+  } catch (error) {
+    logger.warn('DevTools 번들 로드 실패 — 최소 API 로 폴백:', error);
+    (window as any).G7DevTools = { isEnabled: () => false, enable: () => {} };
+    flushEarlyLogs();
+    return;
+  }
+
+  const { DiagnosticEngine, getServerConnector, getStyleTracker } = bundle;
 
   // G7Core.devTools 인터페이스 초기화 (renderItemChildren 등에서 사용)
   initDevToolsInterface();
@@ -4003,8 +4090,8 @@ export function initDevToolsAPI(): void {
 
   logger.log('G7DevTools 전역 객체 초기화 완료 (window.G7DevTools)');
 
-  // DevToolsPanel UI 렌더링
-  renderDevToolsPanel();
+  // DevToolsPanel UI 렌더링 (lazy 번들에서 로드한 컴포넌트 전달)
+  renderDevToolsPanel(bundle.DevToolsPanel);
 }
 
 /**
@@ -4012,8 +4099,10 @@ export function initDevToolsAPI(): void {
  *
  * 별도의 DOM 컨테이너를 생성하여 메인 앱과 독립적으로 렌더링합니다.
  * 디버그 모드가 활성화된 경우에만 렌더링됩니다.
+ *
+ * @param DevToolsPanel - lazy 번들(devtools.min.js)에서 로드한 패널 컴포넌트
  */
-function renderDevToolsPanel(): void {
+function renderDevToolsPanel(DevToolsPanel: any): void {
   // 이미 렌더링되어 있으면 스킵
   if (document.getElementById('g7-devtools-root')) {
     logger.log('DevToolsPanel 이미 렌더링됨');

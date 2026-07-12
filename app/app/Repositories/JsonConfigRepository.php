@@ -77,7 +77,8 @@ class JsonConfigRepository implements ConfigRepositoryInterface
         }
 
         $ttl = (int) config('cache.g7_json_settings_ttl', 300);
-        if ($ttl <= 0) {
+        // package:discover / 부트 초기는 CacheServiceProvider 이전 — bound 가드 필수 (RF-27)
+        if ($ttl <= 0 || ! app()->bound('cache')) {
             return $this->readCategoryFromStorage($category);
         }
 
@@ -211,7 +212,9 @@ class JsonConfigRepository implements ConfigRepositoryInterface
         $path = $this->getCategoryPath($category);
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        Cache::forget('g7_json_settings_category:'.$category);
+        if (app()->bound('cache')) {
+            Cache::forget('g7_json_settings_category:'.$category);
+        }
         $this->cache = null;
 
         try {

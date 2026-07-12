@@ -831,7 +831,7 @@
                         "id": "users_data_grid",
                         "type": "composite",
                         "name": "DataGrid",
-                        "blur_until_loaded": true,
+                        "blur_until_loaded": { "enabled": true, "data_sources": "users" },
                         "props": {
                             "columns": [
                                 {

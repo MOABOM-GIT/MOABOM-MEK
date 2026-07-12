@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Extension\Helpers\CoreBackupHelper;
+use App\Extension\Helpers\FilePermissionHelper;
 use App\Services\CoreUpdateService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -1097,7 +1099,7 @@ MD;
         File::put($tempDest.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'OrphanFile.php', '<?php // orphan');
 
         // FilePermissionHelper::copyDirectory 직접 호출로 검증
-        \App\Extension\Helpers\FilePermissionHelper::copyDirectory(
+        FilePermissionHelper::copyDirectory(
             $tempSource.DIRECTORY_SEPARATOR.'app',
             $tempDest.DIRECTORY_SEPARATOR.'app',
             removeOrphans: true
@@ -1108,6 +1110,240 @@ MD;
 
         // OrphanFile.php는 삭제됨
         $this->assertFalse(File::exists($tempDest.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'OrphanFile.php'));
+    }
+
+    // ========================================================================
+    // applyUpdate() — 기본(증분) 3-way 적용 + --prune (공개 #64)
+    // ========================================================================
+
+    /**
+     * 증분 모드(applyList 지정): 코어가 변경하지 않은 파일(applyList 미포함)은
+     * 스킵되어 사용자가 수정한 현재 디스크 내용이 보존됩니다.
+     *
+     * 이슈 #64 핵심 회귀 가드 — `.htaccess` 커스텀 블록 소실 방지.
+     */
+    public function test_apply_update_incremental_preserves_user_modified_unchanged_file(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['public']);
+
+        try {
+            // source(theirs): .htaccess 는 코어가 변경하지 않았다고 가정 → applyList 미포함
+            File::ensureDirectoryExists($source.DIRECTORY_SEPARATOR.'public');
+            File::put($source.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'.htaccess', "# core default\n");
+            File::put($source.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'index.php', "<?php // core v2\n");
+
+            // 활성(mine): 사용자가 .htaccess 에 커스텀 블록을 넣은 상태
+            File::ensureDirectoryExists($fakeBase.DIRECTORY_SEPARATOR.'public');
+            File::put($fakeBase.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'.htaccess', "# core default\n# USER CUSTOM CACHE BLOCK\n");
+            File::put($fakeBase.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'index.php', "<?php // core v1\n");
+
+            // 코어가 실제로 바꾼 파일은 index.php 뿐 (.htaccess 는 목록에 없음)
+            $applyList = ['public/index.php'];
+
+            $this->service->applyUpdate($source, null, prune: false, applyList: $applyList);
+
+            // .htaccess: 사용자 커스텀 블록 보존 (스킵)
+            $this->assertStringContainsString(
+                'USER CUSTOM CACHE BLOCK',
+                File::get($fakeBase.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'.htaccess'),
+                '.htaccess 는 applyList 에 없으므로 사용자 수정이 보존되어야 한다',
+            );
+
+            // index.php: 코어 변경분 적용
+            $this->assertStringContainsString(
+                'core v2',
+                File::get($fakeBase.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'index.php'),
+            );
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * 증분 모드: applyList 에 없는 신규 파일이 source 에 있어도 스킵됩니다.
+     * (코어가 실제 추가했다면 applyList 에 담겼을 것 — 목록이 최종 권위)
+     */
+    public function test_apply_update_incremental_applies_only_listed_files(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['app']);
+
+        try {
+            File::ensureDirectoryExists($source.DIRECTORY_SEPARATOR.'app');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Listed.php', '<?php // listed');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Unlisted.php', '<?php // unlisted');
+
+            File::ensureDirectoryExists($fakeBase.DIRECTORY_SEPARATOR.'app');
+
+            $this->service->applyUpdate($source, null, prune: false, applyList: ['app/Listed.php']);
+
+            $this->assertFileExists($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Listed.php');
+            $this->assertFileDoesNotExist(
+                $fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Unlisted.php',
+                'applyList 에 없는 파일은 복사되지 않아야 한다',
+            );
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * end-to-end 회귀 (공개 #64 / 내부 #452): 코어 업데이트가 번들 확장의 변경된
+     * `_bundled` 파일을 실제로 반영합니다.
+     *
+     * computeApplyList(3-way 산출) → applyUpdate(적용) 전 체인을 실제 config 조합
+     * (protected 에 `modules`, targets 에 `modules/_bundled`)으로 검증한다.
+     * protected 필터가 `_bundled` 갱신을 삼키던 결함으로 인해, 코어 배포본에
+     * 새 번들(vendor-bundle.json/composer.json 갱신)이 포함돼도 활성 서버의
+     * `_bundled` 가 갱신되지 않아 이후 `module:update` 무결성 검증이 실패하던
+     * 회귀를 차단한다.
+     */
+    public function test_incremental_apply_reflects_changed_bundled_extension_file(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['modules/_bundled']);
+
+        try {
+            // 실제 config 조합 재현: protected 에 부모 도메인 포함
+            config(['app.update.protected_paths' => ['.env', 'storage', 'vendor', 'modules', 'plugins', 'templates', 'lang-packs']]);
+
+            $rel = 'modules/_bundled/sirsoft-ecommerce/vendor-bundle.json';
+            $relPlatform = str_replace('/', DIRECTORY_SEPARATOR, $rel);
+
+            // base(구버전) = 옛 해시, source(신버전) = 새 해시 (코어가 변경한 번들 파일)
+            File::ensureDirectoryExists(dirname($fakeBase.DIRECTORY_SEPARATOR.$relPlatform));
+            File::put($fakeBase.DIRECTORY_SEPARATOR.$relPlatform, '{"composer_json_sha256":"OLD"}');
+            File::ensureDirectoryExists(dirname($source.DIRECTORY_SEPARATOR.$relPlatform));
+            File::put($source.DIRECTORY_SEPARATOR.$relPlatform, '{"composer_json_sha256":"NEW-differs-in-length"}');
+
+            // 3-way 산출: base != theirs → changed 로 목록 포함되어야 한다
+            $applyResult = CoreBackupHelper::computeApplyList(
+                $fakeBase,
+                $source,
+                config('app.update.targets'),
+                config('app.update.protected_paths'),
+                config('app.update.excludes'),
+            );
+            $this->assertContains($rel, $applyResult['apply'], 'changed 된 _bundled 파일이 apply 목록에 포함되어야 한다');
+
+            // 적용: 활성(base) 파일이 신버전 내용으로 갱신되어야 한다
+            $this->service->applyUpdate($source, null, prune: false, applyList: $applyResult['apply']);
+
+            $this->assertSame(
+                '{"composer_json_sha256":"NEW-differs-in-length"}',
+                File::get($fakeBase.DIRECTORY_SEPARATOR.$relPlatform),
+                '코어 업데이트가 변경된 _bundled 번들 파일을 실제로 반영해야 한다',
+            );
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * 증분 모드는 orphan(소스에 없는 대상 파일)을 삭제하지 않습니다
+     * (사용자가 추가한 신규 파일 보존).
+     */
+    public function test_apply_update_incremental_does_not_remove_orphans(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['app']);
+
+        try {
+            File::ensureDirectoryExists($source.DIRECTORY_SEPARATOR.'app');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Core.php', '<?php // core');
+
+            File::ensureDirectoryExists($fakeBase.DIRECTORY_SEPARATOR.'app');
+            File::put($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'UserAdded.php', '<?php // user file');
+
+            $this->service->applyUpdate($source, null, prune: false, applyList: ['app/Core.php']);
+
+            $this->assertFileExists(
+                $fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'UserAdded.php',
+                '증분 모드는 orphan 을 삭제하지 않아야 한다',
+            );
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * prune=true: 전체 덮어쓰기 + orphan 삭제 (기존 동작).
+     */
+    public function test_apply_update_prune_removes_orphans_and_overwrites_all(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['app']);
+
+        try {
+            File::ensureDirectoryExists($source.DIRECTORY_SEPARATOR.'app');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Core.php', '<?php // core v2');
+
+            File::ensureDirectoryExists($fakeBase.DIRECTORY_SEPARATOR.'app');
+            File::put($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Core.php', '<?php // core v1');
+            File::put($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Orphan.php', '<?php // orphan');
+
+            // prune 모드는 applyList 를 무시하고 전체 덮어쓰기
+            $this->service->applyUpdate($source, null, prune: true, applyList: ['app/Core.php']);
+
+            $this->assertStringContainsString('core v2', File::get($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Core.php'));
+            $this->assertFileDoesNotExist(
+                $fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Orphan.php',
+                'prune 모드는 orphan 을 삭제해야 한다',
+            );
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * applyList=null (백업 부재 fallback): prune 이 아니어도 전체 덮어쓰기로 회귀.
+     */
+    public function test_apply_update_null_apply_list_falls_back_to_full_overwrite(): void
+    {
+        [$source, $fakeBase, $restore] = $this->prepareApplyUpdateEnv(['app']);
+
+        try {
+            File::ensureDirectoryExists($source.DIRECTORY_SEPARATOR.'app');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'A.php', '<?php // a');
+            File::put($source.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'B.php', '<?php // b');
+
+            File::ensureDirectoryExists($fakeBase.DIRECTORY_SEPARATOR.'app');
+
+            // applyList 미지정(null) → incremental=false → 전체 복사
+            $this->service->applyUpdate($source, null, prune: false, applyList: null);
+
+            $this->assertFileExists($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'A.php');
+            $this->assertFileExists($fakeBase.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'B.php');
+        } finally {
+            $restore();
+        }
+    }
+
+    /**
+     * applyUpdate 환경(격리 base_path + config targets)을 준비합니다.
+     *
+     * @param  array<int, string>  $targets  config('app.update.targets') 로 설정할 값
+     * @return array{0:string, 1:string, 2:\Closure} [source 경로, fakeBase 경로, 복원 클로저]
+     */
+    private function prepareApplyUpdateEnv(array $targets): array
+    {
+        $source = storage_path('test_apply3_src_'.uniqid());
+        $fakeBase = storage_path('test_apply3_base_'.uniqid());
+        $this->tempDirs[] = $source;
+        $this->tempDirs[] = $fakeBase;
+        File::ensureDirectoryExists($source);
+        File::ensureDirectoryExists($fakeBase);
+
+        $originalBasePath = base_path();
+        app()->setBasePath($fakeBase);
+
+        config([
+            'app.update.targets' => $targets,
+            'app.update.excludes' => [],
+            'app.update.protected_paths' => ['.env', 'storage', 'vendor', 'node_modules', '.git'],
+        ]);
+
+        $restore = function () use ($originalBasePath): void {
+            app()->setBasePath($originalBasePath);
+        };
+
+        return [$source, $fakeBase, $restore];
     }
 
     // ========================================================================
@@ -1186,7 +1422,7 @@ MD;
      * 만 있을 때, 활성 디렉토리(`templates/sirsoft-basic` 등) 가 자동 발견 폴백의
      * removeOrphans 로 삭제되지 않아야 한다.
      *
-     * 회귀 시나리오 (#347): beta.4 의 `isCoveredByApplied` 가 단방향 검사만 수행하여
+     * 회귀 시나리오: beta.4 의 `isCoveredByApplied` 가 단방향 검사만 수행하여
      * applied=['templates/_bundled'] 일 때 source 의 'templates' 자체를 신규 항목으로
      * 오인 → `copyDirectory(removeOrphans:true)` 가 base 의 활성 sirsoft-* 서브디렉토리를
      * orphan 으로 판정하여 삭제.
@@ -1240,7 +1476,7 @@ MD;
             // 활성 디렉토리는 source 에 부재하지만 base 에 보존되어야 함 (회귀 차단)
             $this->assertFileExists(
                 $fakeBase.DIRECTORY_SEPARATOR.'templates'.DIRECTORY_SEPARATOR.'sirsoft-basic'.DIRECTORY_SEPARATOR.'manifest.json',
-                '활성 templates/sirsoft-basic 이 자동 발견 폴백에 의해 삭제되어서는 안 된다 (#347 회귀)'
+                '활성 templates/sirsoft-basic 이 자동 발견 폴백에 의해 삭제되어서는 안 된다'
             );
         } finally {
             app()->setBasePath($originalBasePath);
@@ -1248,7 +1484,162 @@ MD;
     }
 
     /**
-     * modules/, plugins/ 에도 동일 패턴 보존 확인 (#347 회귀).
+     * 회귀: 사용자가 `_bundled/` 바로 아래에 직접 생성한 커스텀 확장 디렉토리가
+     * 코어 업데이트의 정상 targets 흐름(removeOrphans:true)에 의해 삭제되지 않아야 한다.
+     *
+     * 확장 3종 + 언어팩 4개 도메인 전부 검증한다.
+     *
+     * 회귀 시나리오: targets 의 `{domain}/_bundled` 를 source 기준으로 sync 할 때,
+     * source(신버전 코어 배포본)에 없는 사용자 디렉토리(`_bundled/my-project`) 가
+     * orphan 으로 판정되어 삭제되던 결함 (공개 gnuboard/g7 #43 제보).
+     */
+    public function test_apply_update_preserves_user_added_bundled_subdir_all_domains(): void
+    {
+        $domains = [
+            'modules' => 'sirsoft-ecommerce',
+            'plugins' => 'sirsoft-payment',
+            'templates' => 'sirsoft-basic',
+            'lang-packs' => 'g7-core-ja',
+        ];
+
+        $sourcePath = storage_path('test_388_src_'.uniqid());
+        $this->tempDirs[] = $sourcePath;
+        File::ensureDirectoryExists($sourcePath);
+
+        $fakeBase = storage_path('test_388_base_'.uniqid());
+        $this->tempDirs[] = $fakeBase;
+        File::ensureDirectoryExists($fakeBase);
+
+        $targets = [];
+
+        foreach ($domains as $domain => $bundledId) {
+            $targets[] = $domain.'/_bundled';
+
+            // source: {domain}/_bundled/{bundledId} 만 보유 (코어 번들 확장)
+            $srcExt = $sourcePath.DIRECTORY_SEPARATOR.$domain.DIRECTORY_SEPARATOR.'_bundled'.DIRECTORY_SEPARATOR.$bundledId;
+            File::ensureDirectoryExists($srcExt);
+            File::put($srcExt.DIRECTORY_SEPARATOR.'manifest.json', '{"identifier":"'.$bundledId.'","version":"1.0.0"}');
+
+            // base: 코어 번들 확장 + 사용자 추가 디렉토리(my-project) + 사용자 추가 파일(메모.txt)
+            $baseBundled = $fakeBase.DIRECTORY_SEPARATOR.$domain.DIRECTORY_SEPARATOR.'_bundled';
+            $baseExt = $baseBundled.DIRECTORY_SEPARATOR.$bundledId;
+            File::ensureDirectoryExists($baseExt);
+            File::put($baseExt.DIRECTORY_SEPARATOR.'manifest.json', '{"identifier":"'.$bundledId.'","version":"0.9.0"}');
+
+            // 사용자 추가 디렉토리 (source 에 없음)
+            $userDir = $baseBundled.DIRECTORY_SEPARATOR.'my-project';
+            File::ensureDirectoryExists($userDir);
+            File::put($userDir.DIRECTORY_SEPARATOR.'custom.json', '{"mine":true}');
+
+            // 사용자 추가 단일 파일 (source 에 없음)
+            File::put($baseBundled.DIRECTORY_SEPARATOR.'memo.txt', 'keep me');
+        }
+
+        $originalBasePath = base_path();
+        app()->setBasePath($fakeBase);
+
+        try {
+            config([
+                'app.update.targets' => $targets,
+                'app.update.excludes' => [],
+                'app.update.protected_paths' => ['.env', 'storage', 'vendor', 'node_modules', '.git'],
+            ]);
+
+            $this->service->applyUpdate($sourcePath);
+
+            foreach ($domains as $domain => $bundledId) {
+                $baseBundled = $fakeBase.DIRECTORY_SEPARATOR.$domain.DIRECTORY_SEPARATOR.'_bundled';
+
+                // 사용자 추가 디렉토리 보존
+                $this->assertFileExists(
+                    $baseBundled.DIRECTORY_SEPARATOR.'my-project'.DIRECTORY_SEPARATOR.'custom.json',
+                    $domain.'/_bundled/my-project 가 코어 업데이트에 의해 삭제되어서는 안 된다'
+                );
+
+                // 사용자 추가 단일 파일 보존
+                $this->assertFileExists(
+                    $baseBundled.DIRECTORY_SEPARATOR.'memo.txt',
+                    $domain.'/_bundled/memo.txt 가 코어 업데이트에 의해 삭제되어서는 안 된다'
+                );
+
+                // 코어 번들 확장은 source 기준으로 정상 sync
+                $this->assertStringContainsString(
+                    '"version":"1.0.0"',
+                    File::get($baseBundled.DIRECTORY_SEPARATOR.$bundledId.DIRECTORY_SEPARATOR.'manifest.json'),
+                    $domain.'/_bundled/'.$bundledId.' 는 source 기준으로 갱신되어야 한다'
+                );
+            }
+        } finally {
+            app()->setBasePath($originalBasePath);
+        }
+    }
+
+    /**
+     * 비회귀: `--prune` 모드에서 `_bundled` 최상위 사용자 항목은 보존하되, source 에
+     * 존재하는 코어 번들 확장 디렉토리 *내부* 의 stale 파일 정리는 그대로 유지되어야 한다.
+     *
+     * 주의: orphan(stale) 정리는 `--prune` 지정 시에만 수행된다 (공개 #64).
+     * 기본(증분) 모드는 orphan 을 삭제하지 않으므로 본 회귀 가드는 prune 컨텍스트로 검증한다.
+     * 기본 모드에서 stale 파일이 보존되는 동작은 별도 테스트
+     * (test_apply_update_incremental_does_not_remove_orphans)가 커버한다.
+     */
+    public function test_apply_update_prune_still_cleans_stale_file_inside_bundled_extension(): void
+    {
+        $sourcePath = storage_path('test_388_stale_src_'.uniqid());
+        $this->tempDirs[] = $sourcePath;
+        File::ensureDirectoryExists($sourcePath);
+
+        // source: modules/_bundled/sirsoft-ecommerce/module.json 만 (old.json 없음)
+        $srcExt = $sourcePath.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'_bundled'.DIRECTORY_SEPARATOR.'sirsoft-ecommerce';
+        File::ensureDirectoryExists($srcExt);
+        File::put($srcExt.DIRECTORY_SEPARATOR.'module.json', '{"version":"1.0.0"}');
+
+        $fakeBase = storage_path('test_388_stale_base_'.uniqid());
+        $this->tempDirs[] = $fakeBase;
+        File::ensureDirectoryExists($fakeBase);
+
+        // base: 코어 번들 확장 내부에 source 에 없는 stale 파일(old.json) + 사용자 디렉토리
+        $baseBundled = $fakeBase.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'_bundled';
+        $baseExt = $baseBundled.DIRECTORY_SEPARATOR.'sirsoft-ecommerce';
+        File::ensureDirectoryExists($baseExt);
+        File::put($baseExt.DIRECTORY_SEPARATOR.'module.json', '{"version":"0.9.0"}');
+        File::put($baseExt.DIRECTORY_SEPARATOR.'old.json', 'stale');
+
+        $userDir = $baseBundled.DIRECTORY_SEPARATOR.'my-project';
+        File::ensureDirectoryExists($userDir);
+        File::put($userDir.DIRECTORY_SEPARATOR.'custom.json', '{"mine":true}');
+
+        $originalBasePath = base_path();
+        app()->setBasePath($fakeBase);
+
+        try {
+            config([
+                'app.update.targets' => ['modules/_bundled'],
+                'app.update.excludes' => [],
+                'app.update.protected_paths' => ['.env', 'storage', 'vendor', 'node_modules', '.git'],
+            ]);
+
+            // --prune 컨텍스트: orphan(stale) 정리 활성화
+            $this->service->applyUpdate($sourcePath, null, prune: true);
+
+            // 코어 번들 확장 내부의 stale 파일은 정리되어야 함
+            $this->assertFileDoesNotExist(
+                $baseExt.DIRECTORY_SEPARATOR.'old.json',
+                '--prune 모드에서 코어 번들 확장 내부의 stale 파일은 정리되어야 한다'
+            );
+
+            // 사용자 추가 디렉토리는 보존
+            $this->assertFileExists(
+                $userDir.DIRECTORY_SEPARATOR.'custom.json',
+                '사용자 추가 _bundled/my-project 는 보존되어야 한다'
+            );
+        } finally {
+            app()->setBasePath($originalBasePath);
+        }
+    }
+
+    /**
+     * modules/, plugins/ 에도 동일 패턴 보존 확인.
      */
     public function test_apply_update_preserves_active_module_and_plugin_dirs_same_pattern(): void
     {
@@ -1310,11 +1701,11 @@ MD;
             // 활성 모듈/플러그인 디렉토리 보존
             $this->assertFileExists(
                 $fakeBase.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'sirsoft-ecommerce'.DIRECTORY_SEPARATOR.'module.json',
-                '활성 modules/sirsoft-ecommerce 이 보존되어야 한다 (#347 회귀)'
+                '활성 modules/sirsoft-ecommerce 이 보존되어야 한다'
             );
             $this->assertFileExists(
                 $fakeBase.DIRECTORY_SEPARATOR.'plugins'.DIRECTORY_SEPARATOR.'sirsoft-payment'.DIRECTORY_SEPARATOR.'plugin.json',
-                '활성 plugins/sirsoft-payment 이 보존되어야 한다 (#347 회귀)'
+                '활성 plugins/sirsoft-payment 이 보존되어야 한다'
             );
 
             // _bundled sync 정상

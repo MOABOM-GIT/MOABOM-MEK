@@ -233,10 +233,6 @@
                     {
                         "type": "basic",
                         "name": "Div",
-                        "blur_until_loaded": {
-                            "enabled": true,
-                            "data_sources": "popularPosts"
-                        },
                         "props": {
                             "className": "glass-panel rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700"
                         },

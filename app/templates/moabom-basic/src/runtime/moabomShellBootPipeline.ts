@@ -13,7 +13,7 @@ import { MOABOM_BOOT_PHASE_CHANGED_EVENT } from '../i18n/moabomShellEvents';
 import { handlerMap } from '../handlers';
 import { ensureMoabomShellBootLoaded } from './moabomShellBoot';
 import { ensureMoabomShellAuthPreloaded } from './moabomShellAuthPreload';
-import { awaitMoabomGeneratedAppLibraryPrefetch } from './moabomGeneratedAppLibraryLoad';
+import { awaitMoabomGeneratedAppLibraryPrefetch, prefetchMoabomGeneratedAppLibrary } from './moabomGeneratedAppLibraryLoad';
 
 const BOOT_PERF_PREFIX = 'moabom:boot:';
 
@@ -218,19 +218,15 @@ function registerTemplateHandlers(): void {
   registerHandlers();
 }
 
-async function runShellCriticalPhase(): Promise<void> {
-  await ensureMoabomShellBootLoaded();
-  advanceMoabomBootPhase('shell-critical');
-}
-
-async function runAuthReadyPhase(): Promise<void> {
-  await ensureMoabomShellAuthPreloaded();
-  advanceMoabomBootPhase('auth-ready');
-}
-
-async function runCatalogCriticalPhase(): Promise<void> {
-  await awaitMoabomGeneratedAppLibraryPrefetch();
+/**
+ * catalog 은 홈 셸 first-paint 를 막지 않는다.
+ * 단계만 통과시키고 library prefetch 는 백그라운드 — 앱 오픈 경로가 awaitMoabomGeneratedAppLibraryPrefetch 로 합류.
+ */
+function runCatalogCriticalPhaseNonBlocking(): void {
   advanceMoabomBootPhase('catalog-critical');
+  void awaitMoabomGeneratedAppLibraryPrefetch().catch((error) => {
+    logger.warn('generated-app-library prefetch failed (non-blocking).', error);
+  });
 }
 
 function runPwaIdlePhase(): void {
@@ -282,17 +278,29 @@ export function startMoabomShellBootPipeline(): void {
     registerTemplateHandlers();
 
     void (async () => {
-      await runShellCriticalPhase();
-      await runAuthReadyPhase();
-      await runCatalogCriticalPhase();
+      // shell-boot + auth preload 병렬 — 직렬 waterfall 제거
+      const bootPromise = ensureMoabomShellBootLoaded();
+      const authPromise = ensureMoabomShellAuthPreloaded();
+      await bootPromise;
+      advanceMoabomBootPhase('shell-critical');
+      await authPromise;
+      advanceMoabomBootPhase('auth-ready');
+      // Auth 확정 후 library prefetch — sync 단계 prefetch 는 memberKey 도착 전 invalidate 와 이중 fetch
+      prefetchMoabomGeneratedAppLibrary();
+
+      // catalog 비차단 — secondary(알림 unread 등)를 library 완료 전에 진행
+      runCatalogCriticalPhaseNonBlocking();
       advanceMoabomBootPhase('secondary');
 
+      // tertiary: 친구·알림·앱·공지 등 사용자 가시 데이터.
+      // 과거 timeout 2000ms 는 first-paint 양보용이었으나 인터랙션 전체를 늦춰 제거.
+      // idle 콜백만으로 한 프레임 양보하고 즉시 진행한다.
       scheduleIdle(() => {
         advanceMoabomBootPhase('tertiary-idle');
         whenWindowLoad(() => {
           scheduleIdle(runPwaIdlePhase, 3000);
         });
-      }, 2000);
+      }, 0);
     })();
   });
 }

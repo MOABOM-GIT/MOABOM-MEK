@@ -157,7 +157,7 @@
                         "id": "main_grid",
                         "type": "basic",
                         "name": "Div",
-                        "blur_until_loaded": true,
+                        "blur_until_loaded": { "enabled": true, "data_sources": ["menus", "modules", "roles"] },
                         "props": {
                             "className": "mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6"
                         },

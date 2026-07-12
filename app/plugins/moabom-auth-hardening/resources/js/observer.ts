@@ -1,8 +1,8 @@
 /**
  * MutationObserver 기반 하드닝 엔진
  *
- * 전역 observer 를 설치하여 DOM 에 새로 추가되는 input 까지 포함해
- * autocomplete 주입을 지속적으로 수행합니다.
+ * 폼·입력 표면이 추가될 때만 autocomplete 주입을 수행한다.
+ * documentElement 전역 subtree 감시는 유지하되, 입력 관련 노드가 없으면 즉시 return.
  */
 
 import { applyAutocompleteHardening } from './autocompleteInjector';
@@ -28,17 +28,30 @@ function defer(task: () => void): void {
     }
 }
 
+const FORM_CONTROL_SELECTOR = 'input, textarea, select, form, [contenteditable="true"]';
+
+function nodeMayContainFormControls(node: ParentNode): boolean {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+    }
+    const el = node as Element;
+    if (el.matches?.(FORM_CONTROL_SELECTOR)) {
+        return true;
+    }
+    return Boolean(el.querySelector?.(FORM_CONTROL_SELECTOR));
+}
+
 /**
  * MutationRecord 배열에서 하드닝 대상이 될 가능성이 있는 노드를 수집합니다.
  *
  * 성능상 addedNodes 만 관심 대상이며 (삭제된 노드는 무시),
- * 속성 변화는 추적하지 않습니다 (autocomplete 추가 제거 루프 방지).
+ * 입력/폼 관련 노드가 없으면 스킵한다.
  */
 function collectTargets(records: MutationRecord[]): ParentNode[] {
     const targets: ParentNode[] = [];
     for (const record of records) {
         record.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.nodeType === Node.ELEMENT_NODE && nodeMayContainFormControls(node as ParentNode)) {
                 targets.push(node as ParentNode);
             }
         });
@@ -50,6 +63,21 @@ function collectTargets(records: MutationRecord[]): ParentNode[] {
  * observer 인스턴스 (중복 설치 방지용 싱글톤)
  */
 let installedObserver: MutationObserver | null = null;
+let pendingTargets: ParentNode[] = [];
+let pendingIdle = false;
+
+function flushPendingTargets(): void {
+    const targets = pendingTargets;
+    pendingTargets = [];
+    pendingIdle = false;
+    for (const target of targets) {
+        try {
+            applyAutocompleteHardening(target);
+        } catch (err) {
+            console.debug('[moabom-auth-hardening] harden target failed', err);
+        }
+    }
+}
 
 /**
  * 전역 MutationObserver 를 설치합니다.
@@ -61,20 +89,13 @@ export function installGlobalHardeningObserver(): void {
     if (installedObserver) return;
 
     const observer = new MutationObserver(records => {
-        // 성능 보호: idle 타이밍에 처리 (입력 중 레이아웃 스래싱 방지)
         const targets = collectTargets(records);
         if (targets.length === 0) return;
 
-        defer(() => {
-            for (const target of targets) {
-                try {
-                    applyAutocompleteHardening(target);
-                } catch (err) {
-                    // 개별 노드 처리 실패가 observer 전체를 중단시키지 않도록 방어
-                    console.debug('[moabom-auth-hardening] harden target failed', err);
-                }
-            }
-        });
+        pendingTargets.push(...targets);
+        if (pendingIdle) return;
+        pendingIdle = true;
+        defer(flushPendingTargets);
     });
 
     observer.observe(document.documentElement, {
@@ -96,4 +117,6 @@ export function __resetHardeningObserverForTest(): void {
         installedObserver.disconnect();
         installedObserver = null;
     }
+    pendingTargets = [];
+    pendingIdle = false;
 }

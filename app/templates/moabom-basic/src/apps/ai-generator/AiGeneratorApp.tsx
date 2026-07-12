@@ -177,7 +177,14 @@ export function AiGeneratorApp() {
         if (prepared.html) {
           setDraftHtml(prepared.html);
         }
-        clearStreamedBuffer();
+        // 이어하기 가능하면 streamedRaw(접두 SSOT)를 비우지 않는다.
+        // clear 하면 continue 시 initialAccumulated가 비어 suffix만 남고 앱 HTML이 깨진다.
+        const canContinue = draft.truncated
+          || prepared.completeness !== 'complete'
+          || prepared.canContinue;
+        if (!canContinue) {
+          clearStreamedBuffer();
+        }
       }
 
       if (draft.truncated) {
@@ -350,15 +357,24 @@ export function AiGeneratorApp() {
   const draftView = isStreaming
     ? streamingDraftView
     : {
-        source: debouncedDraftHtml,
-        completeness: debouncedPrepared.completeness,
-        previewHtml: debouncedPrepared.html,
-        saveHtml: debouncedPrepared.html,
-        canSave: debouncedPrepared.canSave,
-        canContinue: debouncedPrepared.canContinue,
+        source: draftHtml || debouncedDraftHtml,
+        completeness: persistPrepared.completeness,
+        // 미리보기·요소선택은 debounce 없이 즉시 — finalize 직후 패널 깜빡임 방지
+        previewHtml: persistPrepared.html,
+        saveHtml: persistPrepared.html,
+        canSave: persistPrepared.canSave,
+        canContinue: persistPrepared.canContinue,
       };
 
   const previewHtml = draftView.previewHtml;
+
+  /** 생성·수정·이어하기·요소선택 패치가 공유하는 작업 HTML SSOT */
+  const resolveWorkingHtml = useCallback((): string => {
+    if (persistPrepared.completeness === 'complete' && persistPrepared.html.trim()) {
+      return persistPrepared.html;
+    }
+    return streamedRaw.trim() || draftSource || persistPrepared.html || '';
+  }, [draftSource, persistPrepared.completeness, persistPrepared.html, streamedRaw]);
   /** opaque-origin sandbox 용 Inspector 브릿지 — srcDoc 전용, 저장 HTML 에는 넣지 않음 */
   const iframePreviewHtml = useMemo(
     () => (previewHtml ? injectPreviewInspectorBridge(previewHtml) : ''),
@@ -375,15 +391,15 @@ export function AiGeneratorApp() {
     if (isStreaming) {
       return { flex: '1 1 0%', minHeight: 0, height: 'auto' as const };
     }
-    if (isHtmlPaste) {
-      return hasPreviewContent
-        ? undefined
-        : { flex: '1 1 0%', minHeight: 0, height: 'auto' as const };
+    // 직접입력: 미리보기 전엔 에디터만 패널을 채움. 미리보기 후에는 AI 생성과 동일하게
+    // split/cqh 높이 제약을 적용해 CodeMirror 문서 높이로 패널이 폭주하지 않게 한다.
+    if (isHtmlPaste && !hasPreviewContent) {
+      return { flex: '1 1 0%', minHeight: 0, height: 'auto' as const };
     }
     if (!(splitPane.enabled && hasPreviewContent)) {
       return undefined;
     }
-    // 1열: flex % 대신 높이(cqh) — 패널이 콘텐츠 높이로 늘어나도 코드/프리뷰가 잠기지 않음
+    // 1열(모바일·좁은 창): flex % 대신 cqh — 상한 40cqh 로 코드 영역을 넉넉히 확보
     if (isOneColumn) {
       const codeCqh = 12 + splitPane.ratio * 36;
       return {
@@ -475,8 +491,8 @@ export function AiGeneratorApp() {
 
     try {
       const currentHtml = continueGeneration
-        ? persistPrepared.html || draftSource
-        : persistPrepared.html || '';
+        ? resolveWorkingHtml()
+        : (persistPrepared.html || '');
 
       await runStream({
         prompt: appendHostedModernStoragePrompt(
@@ -508,7 +524,7 @@ export function AiGeneratorApp() {
       setSavedMessage('');
       setNotice('');
       try {
-        const currentHtml = persistPrepared.html || draftSource || '';
+        const currentHtml = resolveWorkingHtml();
         if (!currentHtml.trim()) {
           setError(t('moa_apps_ai.validation.html_required'));
           return;
@@ -942,12 +958,11 @@ export function AiGeneratorApp() {
             className={`moa-ai-preview-stage ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
             style={previewPaneStyle}
           >
-            {!hidesAiControls && !isWebsiteLink && !isHtmlPaste && iframePreviewHtml ? (
+            {!hidesAiControls && !isWebsiteLink && !isHtmlPaste && iframePreviewHtml && !isGenerationLocked ? (
               <AiAppInspectorPanel
                 enabled
                 iframeRef={previewIframeRef}
                 previewHtml={iframePreviewHtml}
-                disabled={isStreaming || isGenerationLocked}
                 onRequestPatch={handleInspectorPatch}
                 t={t}
               />

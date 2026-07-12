@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Api\Base\PublicBaseController;
 use App\Http\Requests\Public\Module\ServeModuleAssetRequest;
+use App\Services\ExtensionBundleService;
 use App\Services\ModuleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -17,9 +18,52 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class PublicModuleController extends PublicBaseController
 {
     public function __construct(
-        private readonly ModuleService $moduleService
+        private readonly ModuleService $moduleService,
+        private readonly ExtensionBundleService $bundleService
     ) {
         parent::__construct();
+    }
+
+    /**
+     * 활성 모듈 프론트엔드 IIFE 병합 번들(JS)을 서빙합니다.
+     *
+     * 활성 global 모듈 에셋이 없으면 빈 200 응답(text/javascript)을 반환한다
+     * (프론트는 빈 스크립트 로드로 무해). 그 외에는 병합 파일을 fileResponse 로
+     * 서빙(ETag/304/환경별 Cache-Control 재사용).
+     *
+     * @return BinaryFileResponse|Response 병합 JS 파일 응답 또는 빈 응답
+     */
+    public function serveBundleJs(): BinaryFileResponse|Response
+    {
+        $this->logApiUsage('modules.bundle', ['kind' => 'js']);
+
+        $version = $this->bundleService->getCurrentVersion();
+        $path = $this->bundleService->getBundleFilePath('module', 'js', $version);
+
+        if ($path === '') {
+            return response('', 200)->header('Content-Type', 'text/javascript');
+        }
+
+        return $this->fileResponse($path, 'text/javascript', 31536000);
+    }
+
+    /**
+     * 활성 모듈 프론트엔드 병합 번들(CSS)을 서빙합니다.
+     *
+     * @return BinaryFileResponse|Response 병합 CSS 파일 응답 또는 빈 응답
+     */
+    public function serveBundleCss(): BinaryFileResponse|Response
+    {
+        $this->logApiUsage('modules.bundle', ['kind' => 'css']);
+
+        $version = $this->bundleService->getCurrentVersion();
+        $path = $this->bundleService->getBundleFilePath('module', 'css', $version);
+
+        if ($path === '') {
+            return response('', 200)->header('Content-Type', 'text/css');
+        }
+
+        return $this->fileResponse($path, 'text/css', 31536000);
     }
 
     /**
@@ -28,7 +72,7 @@ class PublicModuleController extends PublicBaseController
      * @param  ServeModuleAssetRequest  $request  검증된 요청 (경로, 확장자 검증 완료)
      * @param  string  $identifier  모듈 식별자 (vendor-module 형식)
      * @param  string  $path  에셋 경로 (dist/js/module.iife.js 등)
-     * @return BinaryFileResponse|JsonResponse|Response
+     * @return BinaryFileResponse|JsonResponse|Response 파일 응답 또는 에러 응답
      */
     public function serveAsset(
         ServeModuleAssetRequest $request,
@@ -54,5 +98,58 @@ class PublicModuleController extends PublicBaseController
 
         // 파일 반환 (ETag 및 환경별 캐싱 헤더 포함, 1년 캐시)
         return $this->fileResponse($result['filePath'], $result['mimeType'], 31536000);
+    }
+
+    /**
+     * 모듈 편집기 스펙 조회 — editor-spec.json 반환
+     *
+     * 활성 모듈만 대상으로 하며, 활성 디렉토리 → _bundled 폴백 순으로 읽어
+     * 템플릿 serveEditorSpec 과 동일한 응답 형태(`data.spec`)로 반환한다.
+     * 비활성/미존재 모듈은 404. 파일 미작성은 spec=null 정상 응답.
+     *
+     * @param  string  $identifier  모듈 식별자 (vendor-module 형식)
+     * @return JsonResponse 편집기 스펙 응답
+     */
+    public function serveEditorSpec(string $identifier): JsonResponse
+    {
+        $this->logApiUsage('modules.editor_spec', ['identifier' => $identifier]);
+
+        $result = $this->moduleService->getEditorSpec($identifier);
+
+        if (! $result['success']) {
+            return $this->notFound(__('modules.errors.not_found', ['module' => $identifier]));
+        }
+
+        $message = $result['spec'] === null
+            ? __('templates.messages.editor_spec_empty')
+            : __('templates.messages.editor_spec_retrieved');
+
+        return $this->success($message, [
+            'identifier' => $identifier,
+            'spec' => $result['spec'],
+        ]);
+    }
+
+    /**
+     * 모듈 컴포넌트 정의 파일 서빙 — components.json 반환
+     *
+     * 편집 모드 부팅 시 ComponentRegistry 가 활성 확장 매니페스트를 네임스페이스
+     * 병합하기 위해 fetch 한다. 미생성(구버전 모듈) 시 빈 components 로
+     * 폴백한다(무손실 보존 디그레이드).
+     *
+     * @param  string  $identifier  모듈 식별자
+     * @return JsonResponse 컴포넌트 정의 응답
+     */
+    public function serveComponents(string $identifier): JsonResponse
+    {
+        $this->logApiUsage('modules.components', ['identifier' => $identifier]);
+
+        $result = $this->moduleService->getComponents($identifier);
+
+        if (! $result['success']) {
+            return $this->notFound(__('modules.errors.not_found', ['module' => $identifier]));
+        }
+
+        return $this->cachedJsonResponse($result['components'] ?? new \stdClass, 3600);
     }
 }

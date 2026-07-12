@@ -6,10 +6,6 @@
   "comment": "게시글 상세 (본문 카드 + 댓글 + 답글)",
   "type": "basic",
   "name": "Div",
-  "blur_until_loaded": {
-    "enabled": true,
-    "data_sources": "post"
-  },
   "children": [
     {
       "comment": "게시글 본문 카드",
@@ -339,14 +335,23 @@
                   "text": "{{post?.data?.parent?.category ?? ''}}"
                 },
                 {
-                  "comment": "제목 (클릭 가능, 굵게)",
+                  "comment": "제목 (클릭 시 셸 윈도우 내 원글 이동 — href 금지)",
                   "type": "basic",
-                  "name": "A",
+                  "name": "Button",
                   "props": {
-                    "href": "/board/{{route.slug}}/{{post?.data?.parent?.id ?? ''}}",
-                    "className": "font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    "type": "button",
+                    "className": "font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left cursor-pointer bg-transparent border-0 p-0"
                   },
-                  "text": "{{post?.data?.parent?.title ?? ''}}"
+                  "text": "{{post?.data?.parent?.title ?? ''}}",
+                  "actions": [
+                    {
+                      "type": "click",
+                      "handler": "navigate",
+                      "params": {
+                        "path": "/board/{{route.slug}}/{{post?.data?.parent?.id ?? ''}}"
+                      }
+                    }
+                  ]
                 },
                 {
                   "comment": "삭제됨 배지",

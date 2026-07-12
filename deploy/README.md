@@ -2,6 +2,8 @@
 
 Cloud Build → Cloud Run 배포 파이프라인과 검증 게이트. **운영 이미지는 이 경로로만** 만든다.
 
+런타임 계약(Identity / DataGate / AuthBoot): [`RUNTIME-CONTRACTS.md`](RUNTIME-CONTRACTS.md).
+
 ```mermaid
 flowchart LR
   subgraph pre [제출 전]

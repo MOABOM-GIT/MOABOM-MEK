@@ -63,6 +63,12 @@ class MoabomJsonConfigRepository extends JsonConfigRepository
             return $this->categoryMemo[$category];
         }
 
+        if (! app()->bound('cache')) {
+            $this->categoryMemo[$category] = $this->readCategoryBypassingCache($category);
+
+            return $this->categoryMemo[$category];
+        }
+
         $this->categoryMemo[$category] = Cache::remember(
             $this->scopedSettingsCacheKey($category),
             $ttl,
@@ -121,8 +127,10 @@ class MoabomJsonConfigRepository extends JsonConfigRepository
             return false;
         }
 
-        Cache::forget('g7_json_settings_category:'.$category);
-        Cache::forget($this->scopedSettingsCacheKey($category));
+        if (app()->bound('cache')) {
+            Cache::forget('g7_json_settings_category:'.$category);
+            Cache::forget($this->scopedSettingsCacheKey($category));
+        }
         unset($this->categoryMemo[$category]);
 
         try {

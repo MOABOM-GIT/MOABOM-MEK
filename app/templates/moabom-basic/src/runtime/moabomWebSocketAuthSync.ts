@@ -2,6 +2,7 @@ import { hasShellAccessToken } from '../api/moabomShellAccess';
 import {
   isMoabomWebSocketConnected,
   refreshMoabomWebSocketConnectionWatch,
+  subscribeMoabomWebSocketConnectionChange,
 } from './moabomWebSocketConnection';
 
 export const MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT = 'moabom-websocket-auth-synced';
@@ -32,31 +33,50 @@ function getAuthManager(): {
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSyncedAuth: boolean | null = null;
+let pendingConnectedUnsub: (() => void) | null = null;
+let pendingConnectedTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function dispatchAuthSyncedEvent(): void {
   refreshMoabomWebSocketConnectionWatch();
   window.dispatchEvent(new CustomEvent(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT));
 }
 
+function clearPendingConnectedWait(): void {
+  if (pendingConnectedUnsub) {
+    pendingConnectedUnsub();
+    pendingConnectedUnsub = null;
+  }
+  if (pendingConnectedTimeout !== null) {
+    clearTimeout(pendingConnectedTimeout);
+    pendingConnectedTimeout = null;
+  }
+}
+
 function dispatchAuthSyncedWhenReady(shouldConnect: boolean): void {
+  clearPendingConnectedWait();
+
   if (!shouldConnect) {
     dispatchAuthSyncedEvent();
     return;
   }
 
-  const waitForConnected = (attempt = 0) => {
-    if (isMoabomWebSocketConnected()) {
-      dispatchAuthSyncedEvent();
-      return;
-    }
-    if (attempt >= 50) {
-      dispatchAuthSyncedEvent();
-      return;
-    }
-    window.setTimeout(() => waitForConnected(attempt + 1), 100);
-  };
+  if (isMoabomWebSocketConnected()) {
+    dispatchAuthSyncedEvent();
+    return;
+  }
 
-  waitForConnected();
+  // 폴링 대신 connection change 구독 + 5s 상한
+  pendingConnectedUnsub = subscribeMoabomWebSocketConnectionChange(() => {
+    if (!isMoabomWebSocketConnected()) {
+      return;
+    }
+    clearPendingConnectedWait();
+    dispatchAuthSyncedEvent();
+  });
+  pendingConnectedTimeout = window.setTimeout(() => {
+    clearPendingConnectedWait();
+    dispatchAuthSyncedEvent();
+  }, 5_000);
 }
 
 /**

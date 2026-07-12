@@ -1,5 +1,7 @@
-import { moabomApiPut } from '../api/moabomAuthenticatedApi';
+import { createShellModuleApi } from '../api/moabomShellHttp';
 import { sanitizeMainAppOrderIds } from '../shell/moaShellAppOrder';
+
+const systemApi = createShellModuleApi('moabom-system');
 
 const SAVE_DEBOUNCE_MS = 400;
 const MAX_RECENT_APP_IDS = 10;
@@ -32,10 +34,13 @@ async function drainRecentAppIdsQueue(): Promise<void> {
   pendingIds = null;
 
   try {
-    await moabomApiPut('/api/modules/moabom-system/user/settings', {
-      shell: {
-        home: {
-          recentAppIds: next,
+    await systemApi('user/settings', {
+      method: 'PUT',
+      body: {
+        shell: {
+          home: {
+            recentAppIds: next,
+          },
         },
       },
     });

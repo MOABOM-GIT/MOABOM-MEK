@@ -385,7 +385,7 @@
                                 "id": "module_card_grid",
                                 "type": "composite",
                                 "name": "CardGrid",
-                                "blur_until_loaded": true,
+                                "blur_until_loaded": { "enabled": true, "data_sources": "modules" },
                                 "props": {
                                     "data": "{{modules?.data?.data ?? []}}",
                                     "gridColumns": 1,

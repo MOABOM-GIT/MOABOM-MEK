@@ -24,6 +24,8 @@ export interface GenerateAiAppPayload {
 
 export interface GenerateAiAppResult {
   html: string;
+  /** 스트림 병합 원문(truncated 시 html이 비어도 이어하기용 SSOT) */
+  raw?: string;
   model_id: string;
   provider: string;
   fallback?: boolean;

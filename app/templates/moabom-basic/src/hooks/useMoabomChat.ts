@@ -50,7 +50,7 @@ import {
   isMoabomWebSocketConnected,
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
-import { requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
+import { requestShellChatCatchUpSync, requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 import type { ChatMessageCreatedPayload, ChatMemberLeftPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
 import {
@@ -681,6 +681,7 @@ export function useMoabomChat(
     if (cached.length > 0) {
       setConversations(cached);
     }
+    requestShellChatCatchUpSync();
     void loadConversations(undefined, { silent: cached.length > 0 });
     void loadBlocks();
   }, [loadBlocks, loadConversations]);
@@ -827,17 +828,11 @@ export function useMoabomChat(
     clearMoabomShellActiveChat();
   }, []);
 
-  const conversationChannelKey = useMemo(() => {
-    const channels = new Set(
-      conversations
-        .map(conversation => conversation.channel)
-        .filter((channel): channel is string => Boolean(channel)),
-    );
-    if (activeConversation?.channel) {
-      channels.add(activeConversation.channel);
-    }
-    return [...channels].sort().join('\0');
-  }, [activeConversation?.channel, conversations]);
+  // 활성 대화 채널만 구독 — 목록 전체 × 이벤트 폭증 방지. 인박스 갱신은 notification 채널.
+  const conversationChannelKey = useMemo(
+    () => activeConversation?.channel ?? '',
+    [activeConversation?.channel],
+  );
 
   useEffect(() => {
     return registerShellChatInboxCacheListener(cached => {

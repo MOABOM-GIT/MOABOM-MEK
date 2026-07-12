@@ -98,12 +98,17 @@ check_patch_capsule_symbols() {
     || fail "ActionDispatcher.ts 에 G7 순정 reloadModuleHandlers 누락"
   grep -q 'reloadPluginHandlers' "${APP}/resources/js/core/template-engine/ActionDispatcher.ts" \
     || fail "ActionDispatcher.ts 에 G7 순정 reloadPluginHandlers 누락"
-  grep -q 'GoogleCloudStorageServiceProvider' "${PATCH}" \
-    || fail "moabom-core.patch 에 GCS Provider 누락"
+  grep -q 'EarlyGoogleCloudStorageServiceProvider' "${PATCH}" \
+    || fail "moabom-core.patch 에 EarlyGoogleCloudStorageServiceProvider 누락 (RF-28)"
   grep -q 'applyStorageDriverConfig' "${PATCH}" \
     || fail "moabom-core.patch 에 storage_driver named disk 적용 로직 누락"
   grep -q 'applyStorageDriverConfig' "${APP}/app/Providers/SettingsServiceProvider.php" \
     || fail "SettingsServiceProvider.php 에 storage_driver named disk 적용 로직 미적용"
+  # RF-27: SettingsServiceProvider → JsonConfig Cache 가 CacheServiceProvider 이전
+  grep -q "app()->bound('cache')" "${PATCH}" \
+    || fail "moabom-core.patch 에 JsonConfig bound('cache') 가드 누락 (RF-27)"
+  grep -q 'G7_JSON_SETTINGS_CACHE_TTL=0' "${ROOT}/deploy/Dockerfile" \
+    || fail "Dockerfile package:discover 에 G7_JSON_SETTINGS_CACHE_TTL=0 누락 (RF-27)"
   ok "패치 capsule 필수 심볼 적용 상태"
 }
 
@@ -119,10 +124,10 @@ else
   fail "composer.json: GCS Spatie 패키지 누락 (패치 밖 필수)"
 fi
 
-if grep -q 'GoogleCloudStorageServiceProvider' "${APP}/bootstrap/providers.php" 2>/dev/null; then
-  ok "bootstrap/providers.php: GCS Provider"
+if grep -q 'EarlyGoogleCloudStorageServiceProvider' "${APP}/bootstrap/providers.php" 2>/dev/null; then
+  ok "bootstrap/providers.php: Early GCS Provider (RF-28)"
 else
-  fail "bootstrap/providers.php: Spatie GCS Provider 누락"
+  fail "bootstrap/providers.php: EarlyGoogleCloudStorageServiceProvider 누락 (RF-28)"
 fi
 
 if grep -q 'trustProxies' "${APP}/bootstrap/app.php" 2>/dev/null; then

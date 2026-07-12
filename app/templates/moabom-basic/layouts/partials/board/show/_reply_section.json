@@ -91,14 +91,23 @@
                   }
                 },
                 {
-                  "comment": "제목 (클릭 시 해당 답글로 이동)",
+                  "comment": "제목 (클릭 시 셸 게시판 윈도우 내 이동 — href 금지: 전역 SPA 네비 유발)",
                   "type": "basic",
-                  "name": "A",
+                  "name": "Button",
                   "props": {
-                    "href": "/board/{{route.slug}}/{{reply.id}}",
-                    "className": "text-lg font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    "type": "button",
+                    "className": "text-lg font-bold text-blue-600 dark:text-blue-400 hover:underline text-left cursor-pointer bg-transparent border-0 p-0"
                   },
-                  "text": "{{reply?.title ?? ''}}"
+                  "text": "{{reply?.title ?? ''}}",
+                  "actions": [
+                    {
+                      "type": "click",
+                      "handler": "navigate",
+                      "params": {
+                        "path": "/board/{{route.slug}}/{{reply.id}}"
+                      }
+                    }
+                  ]
                 },
                 {
                   "comment": "삭제됨 배지",

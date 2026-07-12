@@ -5,7 +5,7 @@
         "ko": "Moabom Basic",
         "en": "Moabom Basic"
     },
-    "version": "0.7.30",
+    "version": "0.7.37",
     "license": "MIT",
     "description": {
         "ko": "Moabom 기본 사용자 템플릿",
@@ -71,5 +71,13 @@
         "responsive": true,
         "multi_language": true,
         "multi_currency": false
-    }
+    },
+    "externals": [
+        {
+            "id": "fontawesome",
+            "type": "style",
+            "url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
+            "preconnect": "https://cdnjs.cloudflare.com"
+        }
+    ]
 }

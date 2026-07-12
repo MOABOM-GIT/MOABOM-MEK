@@ -2,6 +2,7 @@
 
 namespace App\Extension;
 
+use App\Contracts\Extension\CacheableExtensionInterface;
 use App\Contracts\Extension\CacheInterface;
 use App\Contracts\Extension\PluginInterface;
 use App\Contracts\Extension\StorageInterface;
@@ -20,7 +21,7 @@ use ReflectionClass;
  *
  * 참고: 플러그인은 모듈과 달리 관리자 메뉴(getAdminMenus)를 추가할 수 없습니다.
  */
-abstract class AbstractPlugin implements PluginInterface
+abstract class AbstractPlugin implements CacheableExtensionInterface, PluginInterface
 {
     /**
      * 플러그인 디렉토리 경로 (캐시)
@@ -846,6 +847,46 @@ abstract class AbstractPlugin implements PluginInterface
     }
 
     /**
+     * OG 기본값 키별 데이터 출처(연결 칩) 메타 선언 — 편집기 전용
+     *
+     * `seoOgDefaults()` 의 평문값이 어느 데이터에서 왔는지(`{{...}}`)를 편집기 [검색엔진] 탭이
+     * 연결 칩으로 보여주고 교체할 수 있도록, 키별 데이터 경로(표현식)와 사용자용 라벨을 제공합니다.
+     * 운영 렌더링은 본 메서드를 호출하지 않습니다 — 편집기 미리보기만 소비. 미오버라이드면
+     * 종전대로 resolve 된 평문을 보여줍니다(하위호환·평문 폴백). 상세: AbstractModule 동명 메서드.
+     *
+     * @param  string  $pageType  페이지 타입
+     * @return array<string, array{expr: string, label: string|array<string, string>}> 키별 데이터 경로 메타 (label = 번역 키 권장)
+     */
+    public function seoOgDefaultMeta(string $pageType): array
+    {
+        return [];
+    }
+
+    /**
+     * Twitter 카드 기본값 키별 데이터 출처(연결 칩) 메타 선언 — 편집기 전용
+     *
+     * @param  string  $pageType  페이지 타입
+     * @return array<string, array{expr: string, label: string|array<string, string>}> 키별 데이터 경로 메타 (label = 번역 키 권장)
+     */
+    public function seoTwitterDefaultMeta(string $pageType): array
+    {
+        return [];
+    }
+
+    /**
+     * 구조화 데이터 속성별 데이터 출처(연결 칩) 메타 선언 — 편집기 전용
+     *
+     * `seoStructuredData()` 중첩 객체를 점 경로 키로 평탄화한 기준으로 선언합니다(예: `offers.price`).
+     *
+     * @param  string  $pageType  페이지 타입
+     * @return array<string, array{expr: string, label: array<string, string>|string}> 점 경로 키별 데이터 경로 메타
+     */
+    public function seoStructuredDataMeta(string $pageType): array
+    {
+        return [];
+    }
+
+    /**
      * 그누보드7 코어 요구 버전 제약 반환
      *
      * plugin.json의 g7_version 필드에서 읽습니다. 오버라이드 가능합니다.
@@ -965,6 +1006,30 @@ abstract class AbstractPlugin implements PluginInterface
             if (file_exists($cssPath)) {
                 $result['css'] = $assets['css']['output'];
             }
+        }
+
+        return $result;
+    }
+
+    /**
+     * 빌드된 에셋의 절대 파일 경로를 반환합니다.
+     *
+     * `getBuiltAssetPaths()` 는 plugin.json 의 상대 output 경로를 돌려주므로
+     * 파일을 실제로 읽으려면 플러그인 루트(`getPluginPath()`: 활성 dir 또는
+     * `_bundled` 실제 위치)를 앞에 붙여야 한다. 서버측 번들 병합
+     * (ExtensionBundleService)이 `getAssetFilePath()` 의
+     * `base_path("plugins/{id}/...")` 하드코딩을 복제하지 않고 `_bundled`
+     * 확장에서도 정확한 경로를 얻도록 이 게터를 SSoT 로 쓴다.
+     *
+     * @return array 빌드된 에셋 절대 경로 배열 ['js' => '...', 'css' => '...']
+     */
+    public function getBuiltAssetAbsolutePaths(): array
+    {
+        $relative = $this->getBuiltAssetPaths();
+        $result = [];
+
+        foreach ($relative as $kind => $output) {
+            $result[$kind] = $this->getPluginPath().'/'.$output;
         }
 
         return $result;

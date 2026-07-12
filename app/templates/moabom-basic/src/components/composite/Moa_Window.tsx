@@ -72,7 +72,7 @@ export interface WindowProps {
   minHeight?: number;
   isMaximized?: boolean;
   isMinimized?: boolean;
-  /** true 이면 최소화 시에도 children 을 숨김 호스트에 마운트 유지 (AI 생성 백그라운드) */
+  /** 하위 호환 — 셸은 최소화 시 항상 마운트 유지(isMinimized면 숨김 호스트) */
   preserveContentWhenMinimized?: boolean;
   zIndex?: number;
   onClose?: () => void;
@@ -562,34 +562,35 @@ const WindowComponent: React.FC<WindowProps> = ({
     }
   }, [isDragging, isResizing, dragStart, resizeStart, minWidth, minHeight, size.width, size.height]);
 
-  if (isMinimized && preserveContentWhenMinimized) {
-    return (
-      <Div className="moa-create-app-bg-host" aria-hidden="true">
-        {children}
-      </Div>
-    );
-  }
-
-  if (isMinimized) return null;
+  // 최소화 시에도 같은 트리를 유지한다. early return(null) 하면 children remount로
+  // 앱 상태가 초기화된다 — 태스크바 복원 시 이어 쓰기 불가.
+  void preserveContentWhenMinimized;
+  const hideForBackground = isMinimized;
 
   /** 뷰포트에 맞춤(최대화)일 때 모서리 반경 0 — 데스크톱·모바일(compact) 공통 */
   const isEdgeToEdge = isMaximized;
 
-  const containerStyle: React.CSSProperties = compact
-    ? isMaximized
-      ? { position: 'fixed', inset: 0, width: '100vw', height: '100dvh', zIndex, resize: 'none' }
-      : { position: 'fixed', left: 10, top: 10, width: 'calc(100vw - 20px)', height: 'calc(100dvh - 20px)', zIndex, resize: 'none' }
-    : isMaximized
-    ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex }
-    : { position: 'fixed', left: position.x, top: position.y, width: size.width, height: size.height, zIndex };
+  const containerStyle: React.CSSProperties | undefined = hideForBackground
+    ? undefined
+    : compact
+      ? isMaximized
+        ? { position: 'fixed', inset: 0, width: '100vw', height: '100dvh', zIndex, resize: 'none' }
+        : { position: 'fixed', left: 10, top: 10, width: 'calc(100vw - 20px)', height: 'calc(100dvh - 20px)', zIndex, resize: 'none' }
+      : isMaximized
+        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex }
+        : { position: 'fixed', left: position.x, top: position.y, width: size.width, height: size.height, zIndex };
 
   return (
     <Div
       ref={windowRef}
       data-window-id={id}
-      className={`${isDragging ? 'cursor-move' : ''} ${className}`.trim()}
+      className={`${isDragging ? 'cursor-move' : ''} ${className} ${hideForBackground ? 'moa-shell-window-bg-host moa-create-app-bg-host' : ''}`.trim()}
       style={containerStyle}
-      onPointerDownCapture={() => onFocus && onFocus()}
+      aria-hidden={hideForBackground ? true : undefined}
+      onPointerDownCapture={() => {
+        if (hideForBackground) return;
+        onFocus && onFocus();
+      }}
     >
       <Div
         className={`moa-window-frame absolute inset-0 flex flex-col h-full w-full min-h-0 ${

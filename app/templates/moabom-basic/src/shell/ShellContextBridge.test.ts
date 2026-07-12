@@ -41,6 +41,7 @@ describe('ShellContextBridge', () => {
   it('publishShellLayoutContext 는 비로그인 시 currentUser null (게시판 guest 폼 분기)', () => {
     (window as unknown as { G7Core?: unknown }).G7Core = {
       AuthManager: { getInstance: () => ({ getUser: () => null }) },
+      api: { getToken: () => null },
     };
     const setGlobalState = vi.fn();
     const merged = publishShellLayoutContext({
@@ -52,6 +53,35 @@ describe('ShellContextBridge', () => {
       currentUser: null,
       shell: expect.objectContaining({ isAuthenticated: false }),
     });
+  });
+
+  it('AuthManager 비어 있어도 토큰+prior uuid 면 currentUser 를 유지한다 (auth/user 5xx transient)', () => {
+    (window as unknown as { G7Core?: unknown }).G7Core = {
+      AuthManager: { getInstance: () => ({ getUser: () => null }) },
+      api: { getToken: () => 'tok' },
+    };
+    const merged = mergeShellContextIntoGlobalState({
+      currentUser: {
+        uuid: '22222222-2222-4222-8222-222222222222',
+        name: '유지',
+      },
+    });
+    expect(merged.currentUser).toMatchObject({
+      uuid: '22222222-2222-4222-8222-222222222222',
+      name: '유지',
+    });
+    expect(merged.shell).toMatchObject({ isAuthenticated: true });
+  });
+
+  it('토큰 없으면 prior uuid 가 있어도 currentUser 를 null 로 둔다', () => {
+    (window as unknown as { G7Core?: unknown }).G7Core = {
+      AuthManager: { getInstance: () => ({ getUser: () => null }) },
+      api: { getToken: () => null },
+    };
+    const merged = mergeShellContextIntoGlobalState({
+      currentUser: { uuid: '22222222-2222-4222-8222-222222222222', name: '옛값' },
+    });
+    expect(merged.currentUser).toBeNull();
   });
 
   it('publishShellLayoutContext 는 templateApp 에 currentUser 를 발행한다', () => {

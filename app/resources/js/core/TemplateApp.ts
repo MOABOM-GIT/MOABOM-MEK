@@ -15,6 +15,7 @@ import { evaluateRenderCondition } from './template-engine/helpers/RenderHelpers
 import { ComponentRegistry } from './template-engine/ComponentRegistry';
 import { DataSourceManager } from './template-engine/DataSourceManager';
 import { initTemplateEngine, renderTemplate, destroyTemplate, getState, updateTemplateData } from './template-engine';
+import { checkLayoutEditorMode } from './template-engine/layout-editor/hooks/useEditorMode';
 import { ErrorDisplay } from './template-engine/ErrorDisplay';
 import { toTemplateEngineError } from './template-engine/TemplateEngineError';
 import { ErrorPageHandler } from './template-engine/ErrorPageHandler';
@@ -25,7 +26,7 @@ import { getErrorHandlingResolver } from './error';
 import type { ErrorHandlingMap } from './types/ErrorHandling';
 import { createLogger, Logger } from './utils/Logger';
 import { webSocketManager } from './websocket/WebSocketManager';
-import { getModuleAssetLoader, parseModuleAssetsFromConfig, parsePluginAssetsFromConfig } from './modules';
+import { getModuleAssetLoader, parseModuleAssetsFromConfig, parsePluginAssetsFromConfig, parseBundleUrlsFromConfig } from './modules';
 import { SystemBannerManager } from './template-engine/SystemBannerManager';
 /**
  * DevTools 추적 - G7DevToolsCore.getInstance() 직접 호출 대신 G7Core.devTools를 사용합니다.
@@ -237,8 +238,17 @@ export class TemplateApp {
     private globalStateListeners: Set<(state: GlobalState) => void> = new Set();
     /** 현재 진행 중인 라우트 변경 요청 ID (새 요청 시 이전 요청 무시용) */
     private currentRouteChangeId: number = 0;
-    /** 현재 레이아웃의 데이터 소스 정의 (refetch용) */
+    /** 현재 레이아웃의 데이터 소스 정의 (if 조건으로 필터링된 결과 — refetch용) */
     private currentDataSources: any[] = [];
+    /**
+     * 현재 레이아웃의 원본 데이터 소스 정의 (if 필터링 전 전체).
+     *
+     * replace:true navigate(탭 전환/필터 변경)로 진입하는 updateQueryParams 경로는
+     * 변경된 query 컨텍스트로 데이터소스 if 를 재평가해야 한다. currentDataSources(필터링된
+     * 스냅샷)만으로는 직전 진입 시점 조건에 고정되어, 탭 전환 시 다른 탭의 데이터소스가
+     * 잘못 선택되는 회귀가 발생한다. 원본을 보존해 재평가 가능하게 한다.
+     */
+    private currentRawDataSources: any[] = [];
     /** 현재 라우트 파라미터 (refetch용) */
     private currentRouteParams: Record<string, string> = {};
     /** 현재 쿼리 파라미터 (refetch용) */
@@ -675,6 +685,32 @@ export class TemplateApp {
             // 8.5 routeNotFound 이벤트 핸들러 등록 (404 에러 페이지 처리)
             this.router.on('routeNotFound', (path: string) => this.handleRouteNotFound(path));
 
+            // 8.6 레이아웃 편집기 모드 가드
+            //
+            // URL 이 `/admin/layout-editor/:identifier` 패턴이면 라우터 매칭을 건너뛰고
+            // 직접 renderTemplate 호출 — template-engine.ts 의 checkLayoutEditorMode 분기가
+            // LayoutEditorChrome 을 같은 reactRoot + 코어 컨텍스트 안에서 렌더한다.
+            //
+            // 이 가드가 없으면 `/admin/layout-editor/...` 가 일반 라우트에 매칭되지 않아
+            // routeNotFound → 404 페이지 렌더 흐름을 타게 되고, 그 안의 renderTemplate
+            // 호출에서야 비로소 편집기 분기가 작동한다. 결과적으로 화면은 정상이지만
+            // 콘솔에 `[Router] No route matched` 워닝 + 불필요한 `/api/layouts/.../404.json`
+            // fetch 가 발생하며, 후속 Phase 에서 라우트 의존 기능 도입 시 회귀 위험이 있다.
+            if (typeof window !== 'undefined' && checkLayoutEditorMode(window.location.pathname)) {
+                logger.log('Layout editor mode detected — skipping router match');
+                await renderTemplate({
+                    containerId: 'app',
+                    layoutJson: { components: [] } as any,
+                    dataContext: {},
+                    translationContext: {
+                        templateId: this.config.templateId,
+                        locale: this.config.locale,
+                    },
+                });
+                logger.log('Template App initialized in layout editor mode');
+                return;
+            }
+
             // 9. 초기 라우트 처리
             this.router.navigateToCurrentPath();
 
@@ -686,38 +722,61 @@ export class TemplateApp {
     }
 
     /**
-     * 모듈/플러그인 에셋 로드
+     * 모듈/플러그인 에셋 로드 (서버측 병합 번들)
      *
-     * window.G7Config.moduleAssets 및 pluginAssets에서 에셋 정보를 읽어
-     * 동적으로 JS/CSS를 로드합니다.
+     * window.G7Config.bundleUrls 에서 병합 번들 URL 을 읽어 모듈 번들 →
+     * 플러그인 번들 순으로 로드한다. 각 번들은 활성 확장 IIFE 를 priority 순으로
+     * 이어붙인 단일 파일이며, 로드 즉시 각 IIFE 가 자가등록(핸들러/리스너)을
+     * 실행한다. 개별 로딩(loadActiveExtensionAssets)과 실행 계약은 동일하다.
      *
-     * 모듈 JS는 IIFE 형태로 빌드되어 로드 즉시 initModule()이 실행되고,
-     * ActionDispatcher에 핸들러가 등록됩니다.
+     * 모듈 → 플러그인 순서를 유지하는 이유: gdpr preblocker 등 인터셉터가
+     * 플러그인 번들 내 priority 최상단으로 오되 모듈보다는 뒤에 실행된다
+     * (2번들 구조). bundleUrls 가 없으면(구버전 blade) 개별 로딩으로 폴백한다.
+     *
+     * @since engine-v1.52.0 (서버측 번들 로딩으로 전환)
      */
     private async loadExtensionAssets(): Promise<void> {
         try {
             const moduleAssetLoader = getModuleAssetLoader();
+            const bundleUrls = parseBundleUrlsFromConfig();
 
-            // 모듈 에셋 로드
-            const moduleAssets = parseModuleAssetsFromConfig();
-            if (moduleAssets.length > 0) {
-                logger.log('Loading module assets:', moduleAssets.map(m => m.identifier));
-                await moduleAssetLoader.loadActiveExtensionAssets(moduleAssets);
+            // bundleUrls 부재 시 개별 로딩 폴백 (회귀 안전)
+            if (!bundleUrls) {
+                await this.loadExtensionAssetsIndividually();
+                return;
             }
 
-            // 플러그인 에셋 로드
-            const pluginAssets = parsePluginAssetsFromConfig();
-            if (pluginAssets.length > 0) {
-                logger.log('Loading plugin assets:', pluginAssets.map(p => p.identifier));
-                await moduleAssetLoader.loadActiveExtensionAssets(pluginAssets);
-            }
+            // 모듈 번들 → 플러그인 번들 순서 (gdpr 는 플러그인 번들 내 최상단)
+            await moduleAssetLoader.loadBundle('module', bundleUrls.moduleJs, bundleUrls.moduleCss);
+            await moduleAssetLoader.loadBundle('plugin', bundleUrls.pluginJs, bundleUrls.pluginCss);
 
-            if (moduleAssets.length > 0 || pluginAssets.length > 0) {
-                logger.log('Extension assets loaded successfully');
-            }
+            logger.log('Extension bundle assets loaded successfully');
         } catch (error) {
             // 에셋 로드 실패는 경고만 출력하고 앱 계속 진행
             logger.warn('Failed to load extension assets:', error);
+        }
+    }
+
+    /**
+     * 개별 확장 에셋 로드 (bundleUrls 부재 시 폴백)
+     *
+     * window.G7Config.moduleAssets/pluginAssets 에서 확장별 개별 URL 을 읽어
+     * priority 순으로 각각 로드한다. 서버측 번들이 준비되지 않은 구버전 blade
+     * 환경 회귀 안전용.
+     */
+    private async loadExtensionAssetsIndividually(): Promise<void> {
+        const moduleAssetLoader = getModuleAssetLoader();
+
+        const moduleAssets = parseModuleAssetsFromConfig();
+        if (moduleAssets.length > 0) {
+            logger.log('Loading module assets (individual fallback):', moduleAssets.map(m => m.identifier));
+            await moduleAssetLoader.loadActiveExtensionAssets(moduleAssets);
+        }
+
+        const pluginAssets = parsePluginAssetsFromConfig();
+        if (pluginAssets.length > 0) {
+            logger.log('Loading plugin assets (individual fallback):', pluginAssets.map(p => p.identifier));
+            await moduleAssetLoader.loadActiveExtensionAssets(pluginAssets);
         }
     }
 
@@ -891,11 +950,14 @@ export class TemplateApp {
             const blockingSources = dataSources.filter(
                 (source: any) => source.loading_strategy === 'blocking'
             );
-            // WebSocket 소스는 이벤트 리스너(실시간 알림)이지 데이터 제공자가 아님
-            // Step 6에서 별도로 구독 처리되므로 progressive 목록에서 제외
+            // WebSocket / auto_fetch:false 소스는 초기 progressive fetch 대상이 아님
+            // Step 6(WS) 또는 refetchDataSource(수동)로만 채워지므로 progressive 목록에서 제외
             // 포함 시 progressiveDataInit에서 undefined로 초기화되어 blur_until_loaded가 영구 블러됨
             const progressiveAndBackgroundSources = dataSources.filter(
-                (source: any) => (source.loading_strategy || 'progressive') !== 'blocking' && source.type !== 'websocket'
+                (source: any) =>
+                    (source.loading_strategy || 'progressive') !== 'blocking'
+                    && source.type !== 'websocket'
+                    && source.auto_fetch !== false
             );
 
             // 2.5 transition 오버레이: blocking 데이터 fetch 전 또는 wait_for 명시 시 표시 (@since engine-v1.24.0, wait_for engine-v1.30.0)
@@ -911,6 +973,7 @@ export class TemplateApp {
             const waitForActive = waitForIds.length > 0 && dataSources.some((source: any) =>
                 waitForIds.includes(source.id)
                 && source.type !== 'websocket'
+                && source.auto_fetch !== false
                 && (source.loading_strategy || 'progressive') !== 'background'
             );
             if ((blockingSources.length > 0 || waitForActive) && layoutData.transition_overlay) {
@@ -941,6 +1004,8 @@ export class TemplateApp {
 
             // 현재 데이터 소스 정보 저장 (refetch용)
             this.currentDataSources = dataSources;
+            // 원본(if 필터링 전) 보존 — updateQueryParams(replace:true) 의 if 재평가용
+            this.currentRawDataSources = rawDataSources;
             this.currentRouteParams = route.params || {};
             this.currentQueryParams = queryParams;
 
@@ -2114,7 +2179,22 @@ export class TemplateApp {
             const overlay = document.createElement('div');
             overlay.id = 'g7-transition-overlay';
             overlay.setAttribute('aria-hidden', 'true');
-            overlay.style.cssText = `position:fixed;inset:0;z-index:9999;pointer-events:none;background:${bgCss};${extraCss}`;
+            // cssText 일괄 설정 대신 개별 속성으로 — backdrop-filter 같은 미지원 프로퍼티가
+            // 한 선언 블록에 섞이면 일부 CSS 파서(jsdom 테스트 환경)가 그 블록 전체를 거부해
+            // 앞선 background 까지 무효화한다. 개별 setProperty 는 미지원 속성만 무시되고
+            // background 등 나머지는 보존된다(실제 브라우저 동작은 cssText 일괄과 동일).
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.zIndex = '9999';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.background = bgCss;
+            // blur 스타일의 backdrop-filter — `prop:value;` 쌍을 분해해 개별 적용(브라우저에선
+            // 적용, 미지원 파서에선 무시되어도 background 보존).
+            for (const decl of extraCss.split(';')) {
+                const idx = decl.indexOf(':');
+                if (idx === -1) continue;
+                overlay.style.setProperty(decl.slice(0, idx).trim(), decl.slice(idx + 1).trim());
+            }
             document.body.appendChild(overlay);
             this.transitionOverlayEl = overlay;
         }
@@ -2517,7 +2597,7 @@ export class TemplateApp {
     private showRouteError(error: Error): void {
         // 레이아웃 fetch 401 가드: 토큰 만료 등으로 권한이 사라진 상태에서
         // 레이아웃을 받지 못하면 코어가 로그인 페이지로 자동 리다이렉트한다.
-        // (Issue #301 — 사용자 인식 문제 해결: 시스템 장애 화면 대신 안내 토스트)
+        // ( — 사용자 인식 문제 해결: 시스템 장애 화면 대신 안내 토스트)
         //
         // hadToken 판정 (reason='session_expired' 부여 여부):
         //   - 현재 apiClient 가 토큰을 보유했거나
@@ -3701,10 +3781,28 @@ export class TemplateApp {
         this.currentQueryParams = newQueryParams;
         logger.log('currentQueryParams updated:', Object.fromEntries(newQueryParams.entries()));
 
-        // 3. auto_fetch: true인 데이터 소스들 refetch
+        // 3. 데이터소스 if 재평가
+        // replace:true navigate(탭 전환/필터 변경)는 query 컨텍스트가 바뀌므로, 직전 진입 시점에
+        // 필터링된 currentDataSources 스냅샷을 재사용하면 다른 탭의 데이터소스가 잘못 선택된다.
+        // 원본(currentRawDataSources)을 변경된 query + 최신 _global 로 다시 filterByCondition 한다.
+        // 원본 미보존(구버전 캐시 등) 시 기존 currentDataSources 로 안전 폴백.
+        const reevalManager = new DataSourceManager();
+        const latestGlobal = getState().currentDataContext?._global || this.globalState || {};
+        const reevalContext = {
+            route: this.currentRouteParams || {},
+            query: parseQueryParams(this.currentQueryParams),
+            _global: latestGlobal,
+        };
+        const reevaluatedSources = Array.isArray(this.currentRawDataSources) && this.currentRawDataSources.length > 0
+            ? reevalManager.filterByCondition(this.currentRawDataSources, reevalContext as any)
+            : this.currentDataSources;
+        // 재평가 결과를 현재 데이터소스로 갱신 (이후 wait_for 판정/refetchDataSource 가 참조)
+        this.currentDataSources = reevaluatedSources;
+
+        // 4. auto_fetch: true인 데이터 소스들 refetch
         // WebSocket 소스는 이벤트 리스너(실시간 알림)이지 fetch 대상이 아님 (engine-v1.32.2 정책)
         // handleRouteChange progressive 경로와 동일하게 호출 전에 필터링하여 계약 일관성 확보
-        const autoFetchDataSources = this.currentDataSources.filter(
+        const autoFetchDataSources = reevaluatedSources.filter(
             (ds: any) => ds.auto_fetch !== false && ds.type !== 'websocket'
         );
 

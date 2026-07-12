@@ -303,6 +303,7 @@
     },
     "msg": {
       "profile_load_failed": "无法加载资料，请重新登录。",
+      "profile_transient_error": "暂时无法加载资料，请稍后重试。",
       "credit_load_failed": "无法加载点数。",
       "activity_load_failed": "无法加载帖子。",
       "email_missing_field": "无法读取邮箱，请在账号中核对。",

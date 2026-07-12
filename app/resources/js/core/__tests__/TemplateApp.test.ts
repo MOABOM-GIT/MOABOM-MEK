@@ -1628,11 +1628,12 @@ describe('TemplateApp', () => {
           },
         ];
 
-        // TemplateApp.ts의 progressive 필터 로직 (engine-v1.32.2)
+        // TemplateApp.ts의 progressive 필터 로직 (engine-v1.32.2 + auto_fetch:false DataGate)
         const progressiveAndBackgroundSources = dataSources.filter(
           (source: any) =>
             (source.loading_strategy || 'progressive') !== 'blocking' &&
-            source.type !== 'websocket'
+            source.type !== 'websocket' &&
+            source.auto_fetch !== false
         );
 
         const ids = progressiveAndBackgroundSources.map((s) => s.id);
@@ -1660,7 +1661,8 @@ describe('TemplateApp', () => {
         const progressiveAndBackgroundSources = dataSources.filter(
           (source: any) =>
             (source.loading_strategy || 'progressive') !== 'blocking' &&
-            source.type !== 'websocket'
+            source.type !== 'websocket' &&
+            source.auto_fetch !== false
         );
         const progressiveDataSourceIds = progressiveAndBackgroundSources.map((s: any) => s.id);
 
@@ -1725,6 +1727,67 @@ describe('TemplateApp', () => {
         const targetId = wsSource.target_source || wsSource.id;
         expect(targetId).toBe('notification_unread_count');
         expect(targetId).not.toBe('notification_ws');
+      });
+    });
+
+    /**
+     * [TS-AUTO-FETCH-FALSE-1] auto_fetch:false 소스는 progressive 목록에서 제외 (DataGate)
+     *
+     * Moabom admin notifications 등 deferred fetch 소스가 progressiveDataInit에
+     * undefined로 남으면 blur_until_loaded:true 전역 스캔이 영구 블러됨.
+     */
+    describe('[TS-AUTO-FETCH-FALSE-1] auto_fetch:false 소스 progressive 필터 제외', () => {
+      const progressiveFilter = (source: any) =>
+        (source.loading_strategy || 'progressive') !== 'blocking' &&
+        source.type !== 'websocket' &&
+        source.auto_fetch !== false;
+
+      it('auto_fetch:false 소스는 progressiveAndBackgroundSources에 포함되지 않아야 함', () => {
+        const dataSources = [
+          { id: 'users', type: 'api', endpoint: '/api/admin/users' },
+          {
+            id: 'notifications',
+            type: 'api',
+            endpoint: '/api/admin/notifications',
+            auto_fetch: false,
+          },
+          {
+            id: 'notification_ws',
+            type: 'websocket',
+            channel: 'core.user.notifications.1',
+            event: 'notification.received',
+          },
+        ];
+
+        const ids = dataSources.filter(progressiveFilter).map((s) => s.id);
+        expect(ids).toEqual(['users']);
+      });
+
+      it('auto_fetch:false 키가 dataContext에 없으면 blur_until_loaded:true가 해제되어야 함', () => {
+        const systemKeys = ['route', 'query', '_global', '_local', '_dataSourceErrors'];
+
+        const dataContextBefore = {
+          users: { data: [{ id: 1 }] },
+          notifications: undefined,
+          route: {},
+          query: {},
+          _global: {},
+        };
+        const hasUndefinedBefore = Object.keys(dataContextBefore)
+          .filter((key) => !systemKeys.includes(key) && !key.startsWith('_'))
+          .some((key) => (dataContextBefore as any)[key] === undefined);
+        expect(hasUndefinedBefore).toBe(true);
+
+        const dataContextAfter = {
+          users: { data: [{ id: 1 }] },
+          route: {},
+          query: {},
+          _global: {},
+        };
+        const hasUndefinedAfter = Object.keys(dataContextAfter)
+          .filter((key) => !systemKeys.includes(key) && !key.startsWith('_'))
+          .some((key) => (dataContextAfter as any)[key] === undefined);
+        expect(hasUndefinedAfter).toBe(false);
       });
     });
 

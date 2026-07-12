@@ -119,10 +119,10 @@
   overflow: hidden;
 }
 
-/* 1열 기본 코드 높이 — 좁은 창에서 인라인(조절 바)이 있으면 덮어씀 */
+/* 1열 기본 코드 높이 — 인라인(조절 바)이 있으면 덮어씀. 상한 40cqh 로 모바일 작업 영역 확보 */
 .moa-ai-preview-panel .moa-ai-split-pane__code {
   flex: 0 0 auto;
-  height: clamp(10rem, 28cqh, 18rem);
+  height: clamp(10rem, 28cqh, 40cqh);
 }
 
 @container moa-app-window (width >= 640px) {
@@ -196,6 +196,7 @@
   min-height: 0;
 }
 
+.moa-shell-window-bg-host,
 .moa-create-app-bg-host {
   position: fixed;
   left: -10000px;
@@ -213,6 +214,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .moa-chat-bubble--menu-open {

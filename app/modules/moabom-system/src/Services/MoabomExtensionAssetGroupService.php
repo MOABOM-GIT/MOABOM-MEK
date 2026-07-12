@@ -11,7 +11,6 @@ use App\Extension\PluginManager;
 use Modules\Moabom\System\Support\ExtensionFrontendAssetCollector;
 
 /**
-/**
  * 확장 프론트엔드 에셋 맵을 수집한 뒤 DB 비활성 확장 항목을 제거한다.
  *
  * View Composer 바인딩 교체 후 compose 단계에서만 사용한다.

@@ -3,7 +3,7 @@
 namespace Modules\Sirsoft\Board\Services;
 
 use App\Contracts\Extension\ModuleSettingsInterface;
-use App\Models\NotificationDefinition;
+use App\Contracts\Repositories\NotificationDefinitionRepositoryInterface;
 use App\Services\NotificationDefinitionService;
 use App\Traits\NormalizesSettingsData;
 use Illuminate\Support\Arr;
@@ -39,9 +39,11 @@ class BoardSettingsService implements ModuleSettingsInterface
      * 생성자
      *
      * @param  BoardPermissionService  $permissionService  게시판 권한 서비스
+     * @param  NotificationDefinitionRepositoryInterface  $notificationDefinitionRepository  알림 정의 저장소
      */
     public function __construct(
         private readonly BoardPermissionService $permissionService,
+        private readonly NotificationDefinitionRepositoryInterface $notificationDefinitionRepository,
     ) {
         //
     }
@@ -166,6 +168,16 @@ class BoardSettingsService implements ModuleSettingsInterface
                 }
             }
 
+            // 신고 알림 활성화 토글 제거(알림 정의 활성화는 알림 설정 메뉴에서 관리)에 따라
+            // notify_admin_on_report / notify_author_on_report_action 은 항상 활성(true)으로 강제 저장한다.
+            // 신고 알림 발송 게이트(BoardNotificationDataListener)가 이 값을 참조하므로,
+            // false 로 저장되면 알림이 발송되지 않는다. 채널별 발송 여부는 알림 정의 템플릿에서 제어한다.
+            // (향후 토글 부활 가능성을 고려해 syncNotificationDefinitionStatus 는 유지)
+            if ($category === 'report_policy') {
+                $categorySettings['notify_admin_on_report'] = true;
+                $categorySettings['notify_author_on_report_action'] = true;
+            }
+
             $processedSettings = $this->normalizeCategoryData($categorySettings, $categoryDefaults);
 
             if (! $this->saveCategorySettings($category, $processedSettings)) {
@@ -192,8 +204,7 @@ class BoardSettingsService implements ModuleSettingsInterface
      * 설정 OFF 시 해당 알림 정의를 비활성화하여
      * NotificationHookListener가 훅을 구독하지 않도록 합니다.
      *
-     * @param array $reportPolicy 신고 정책 설정
-     * @return void
+     * @param  array  $reportPolicy  신고 정책 설정
      */
     private function syncNotificationDefinitionStatus(array $reportPolicy): void
     {
@@ -204,18 +215,30 @@ class BoardSettingsService implements ModuleSettingsInterface
 
         $changed = false;
 
+        // sirsoft-board 확장의 알림 정의를 한 번만 조회 (type 매칭은 메모리에서 수행)
+        $boardDefinitions = $this->notificationDefinitionRepository
+            ->getByExtension('module', self::MODULE_IDENTIFIER)
+            ->keyBy('type');
+
         foreach ($syncMap as $settingKey => $definitionType) {
             if (! array_key_exists($settingKey, $reportPolicy)) {
                 continue;
             }
 
-            $updated = NotificationDefinition::where('type', $definitionType)
-                ->where('extension_identifier', 'sirsoft-board')
-                ->update(['is_active' => (bool) $reportPolicy[$settingKey]]);
+            $definition = $boardDefinitions->get($definitionType);
 
-            if ($updated > 0) {
-                $changed = true;
+            if ($definition === null) {
+                continue;
             }
+
+            $desiredActive = (bool) $reportPolicy[$settingKey];
+
+            if ((bool) $definition->is_active === $desiredActive) {
+                continue;
+            }
+
+            $this->notificationDefinitionRepository->update($definition, ['is_active' => $desiredActive]);
+            $changed = true;
         }
 
         // 알림 정의 캐시 무효화 (NotificationHookListener가 새 상태를 읽도록)
@@ -273,12 +296,11 @@ class BoardSettingsService implements ModuleSettingsInterface
      * 신고 관리 권한에 역할을 재할당합니다.
      *
      * @param  array  $reportPermissions  { view_roles: [...], manage_roles: [...] }
-     * @return void
      */
     public function syncReportPermissionRoles(array $reportPermissions): void
     {
         $this->permissionService->syncModulePermissionRoles([
-            'sirsoft-board.reports.view'   => $reportPermissions['view_roles'] ?? [],
+            'sirsoft-board.reports.view' => $reportPermissions['view_roles'] ?? [],
             'sirsoft-board.reports.manage' => $reportPermissions['manage_roles'] ?? [],
         ]);
     }
@@ -298,8 +320,6 @@ class BoardSettingsService implements ModuleSettingsInterface
 
     /**
      * 캐시 초기화
-     *
-     * @return void
      */
     public function clearCache(): void
     {
@@ -350,24 +370,18 @@ class BoardSettingsService implements ModuleSettingsInterface
     {
         return $this->resolveCategorySettings(
             $category,
-            fn (): array => $this->loadLegacyLocalCategorySettings($category),
+            function () use ($category): array {
+                $path = $this->getCategoryFilePath($category);
+
+                if (! File::exists($path)) {
+                    return [];
+                }
+
+                $content = File::get($path);
+
+                return json_decode($content, true) ?? [];
+            },
         );
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function loadLegacyLocalCategorySettings(string $category): array
-    {
-        $path = $this->getCategoryFilePath($category);
-
-        if (! File::exists($path)) {
-            return [];
-        }
-
-        $decoded = json_decode(File::get($path), true);
-
-        return is_array($decoded) ? array_diff_key($decoded, ['_meta' => true]) : [];
     }
 
     /**
@@ -385,6 +399,7 @@ class BoardSettingsService implements ModuleSettingsInterface
             function () use ($category, $settings): bool {
                 $storagePath = $this->getStoragePath();
 
+                // 디렉토리 생성
                 if (! File::isDirectory($storagePath)) {
                     File::makeDirectory($storagePath, 0755, true);
                 }
@@ -395,6 +410,11 @@ class BoardSettingsService implements ModuleSettingsInterface
                 return File::put($path, $content) !== false;
             },
         );
+    }
+
+    protected function getPersistentModuleIdentifier(): string
+    {
+        return self::MODULE_IDENTIFIER;
     }
 
     /**
@@ -415,10 +435,5 @@ class BoardSettingsService implements ModuleSettingsInterface
     private function getStoragePath(): string
     {
         return storage_path('app/modules/'.self::MODULE_IDENTIFIER.'/settings');
-    }
-
-    protected function getPersistentModuleIdentifier(): string
-    {
-        return self::MODULE_IDENTIFIER;
     }
 }

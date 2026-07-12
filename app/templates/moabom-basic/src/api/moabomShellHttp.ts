@@ -4,12 +4,20 @@
  * G7 `ApiClient` 인터셉터(전역 onUnauthorized 리다이렉트)를 타지 않는 fetch 레이어.
  * 백엔드 미들웨어와 대응: none | optional.sanctum | auth:sanctum
  */
+import { MOABOM_SHELL_AUTH_EXPIRED_EVENT } from '../i18n/moabomShellEvents';
 import { moabomT } from '../i18n/moabomT';
 import {
   clearShellAccessToken,
   getShellAccessToken,
   hasShellAccessToken,
 } from './moabomShellAccess';
+
+function publishShellAuthExpired(): void {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(MOABOM_SHELL_AUTH_EXPIRED_EVENT));
+}
 
 export type MoabomShellAuthMode = 'none' | 'optional' | 'required';
 
@@ -172,6 +180,7 @@ export async function requestShellJson<T>(
   if (response.status === 401) {
     if (token) {
       clearShellAccessToken();
+      publishShellAuthExpired();
       throw new MoabomShellAuthExpiredError();
     }
     throw new MoabomShellAuthRequiredError();

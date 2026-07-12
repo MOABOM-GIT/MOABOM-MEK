@@ -18,6 +18,7 @@ import {
   buildBoardFetchToken,
   getBoardPayloadCacheEntry,
   patchBoardPayloadCacheDataContext,
+  runBoardPayloadInflight,
   setBoardPayloadCacheEntry,
 } from '../../shell/boardWindowPayloadCache';
 import { moaShellBoardSlugFromAppId } from '../../shell/moaShellBoardIds';
@@ -60,6 +61,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
   const [urlEpoch, setUrlEpoch] = useState(0);
   const payloadRef = useRef<BoardWindowRenderPayload | null>(null);
   const dataContextRef = useRef<Record<string, unknown> | null>(null);
+  const loadRequestIdRef = useRef(0);
   payloadRef.current = payload;
   dataContextRef.current = dataContext;
 
@@ -77,6 +79,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
       return;
     }
 
+    const requestId = ++loadRequestIdRef.current;
     const query = resolveBoardWindowQuery();
     const cacheKey = buildBoardPayloadCacheKey(boardSlug, boardPostId, boardMode, query, authStateKey);
     const fetchToken = buildBoardFetchToken(cacheKey, urlEpoch);
@@ -84,6 +87,9 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     const keepContent = payloadRef.current != null || cached != null;
 
     if (cached) {
+      if (requestId !== loadRequestIdRef.current) {
+        return;
+      }
       setPayload(cached);
       setDataContext(cached.dataContext);
       setLoading(false);
@@ -100,7 +106,12 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     setError(null);
 
     try {
-      const next = await loadBoardWindowRenderPayload(boardSlug, boardPostId, boardMode, query);
+      const next = await runBoardPayloadInflight(cacheKey, () => (
+        loadBoardWindowRenderPayload(boardSlug, boardPostId, boardMode, query)
+      ));
+      if (requestId !== loadRequestIdRef.current) {
+        return;
+      }
       setBoardPayloadCacheEntry(cacheKey, fetchToken, next);
       setPayload(next);
       setDataContext(next.dataContext);
@@ -117,13 +128,18 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
         onResolvedTitleRef.current(title);
       }
     } catch (e) {
+      if (requestId !== loadRequestIdRef.current) {
+        return;
+      }
       if (!keepContent) {
         setPayload(null);
       }
       setError(e instanceof Error ? e.message : t('moa_shell.center.board_error'));
     } finally {
-      setLoading(false);
-      setRefetching(false);
+      if (requestId === loadRequestIdRef.current) {
+        setLoading(false);
+        setRefetching(false);
+      }
     }
   }, [authStateKey, boardMode, boardPostId, boardSlug, t, urlEpoch]);
 
@@ -201,7 +217,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
     <Div className={`${APP_WINDOW_BODY_CLASS} relative flex min-h-0 min-w-0 flex-1 flex-col`}>
       {refetching ? (
         <Div
-          className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[1px]"
+          className="absolute inset-0 z-20 flex items-center justify-center bg-background/40"
           aria-busy="true"
           role="status"
         >

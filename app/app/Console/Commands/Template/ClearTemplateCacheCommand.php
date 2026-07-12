@@ -4,10 +4,9 @@ namespace App\Console\Commands\Template;
 
 use App\Contracts\Extension\CacheInterface;
 use App\Extension\TemplateManager;
-use App\Extension\Traits\ClearsTemplateCaches;
 use App\Models\Template;
 use App\Models\TemplateLayout;
-use App\Services\LayoutService;
+use App\Services\ExtensionBundleService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -30,7 +29,7 @@ class ClearTemplateCacheCommand extends Command
     public function __construct(
         private TemplateManager $templateManager,
         private CacheInterface $cache,
-        private LayoutService $layoutService,
+        private ExtensionBundleService $bundleService
     ) {
         parent::__construct();
     }
@@ -81,17 +80,32 @@ class ClearTemplateCacheCommand extends Command
 
         $clearedCount = 0;
 
+        // 1. 레이아웃 캐시 삭제
         $templateRecord = Template::where('identifier', $identifier)->first();
-        $clearedCount += $this->forgetVersionedTemplateCaches($identifier, $templateRecord);
+        if ($templateRecord) {
+            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
+            foreach ($layouts as $layout) {
+                $this->cache->forget("layout.{$identifier}.{$layout->name}");
+                $clearedCount++;
+            }
+        }
 
-        // 활성 템플릿 타입 캐시 삭제
+        // 2. Routes 캐시 삭제
+        $this->cache->forget("template.routes.{$identifier}");
+        $clearedCount++;
+
+        // 3. 다국어 파일 캐시 삭제
+        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
+        foreach ($supportedLocales as $locale) {
+            $this->cache->forget("template.language.{$identifier}.{$locale}");
+            $clearedCount++;
+        }
+
+        // 4. 활성 템플릿 타입 캐시 삭제
         if ($templateRecord) {
             $this->cache->forget("templates.active.{$templateRecord->type}");
             $clearedCount++;
         }
-
-        $this->bumpExtensionCacheVersion();
-        $clearedCount++;
 
         $this->info('✅ '.__('templates.commands.cache_clear.success_single', [
             'template' => $identifier,
@@ -112,24 +126,37 @@ class ClearTemplateCacheCommand extends Command
         $this->info(__('templates.commands.cache_clear.clearing_all'));
 
         $clearedCount = 0;
+        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
 
         // 모든 설치된 템플릿의 캐시 삭제
         $templates = Template::all();
 
         foreach ($templates as $templateRecord) {
-            $clearedCount += $this->forgetVersionedTemplateCaches(
-                $templateRecord->identifier,
-                $templateRecord,
-            );
+            // 1. 레이아웃 캐시 삭제
+            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
+            foreach ($layouts as $layout) {
+                $this->cache->forget("layout.{$templateRecord->identifier}.{$layout->name}");
+                $clearedCount++;
+            }
+
+            // 2. Routes 캐시 삭제
+            $this->cache->forget("template.routes.{$templateRecord->identifier}");
+            $clearedCount++;
+
+            // 3. 다국어 파일 캐시 삭제
+            foreach ($supportedLocales as $locale) {
+                $this->cache->forget("template.language.{$templateRecord->identifier}.{$locale}");
+                $clearedCount++;
+            }
         }
 
-        // 활성 템플릿 타입 캐시 삭제
+        // 4. 활성 템플릿 타입 캐시 삭제
         $this->cache->forget('templates.active.admin');
         $this->cache->forget('templates.active.user');
         $clearedCount += 2;
 
-        $this->bumpExtensionCacheVersion();
-        $clearedCount++;
+        // 5. 확장 프론트엔드 병합 번들 파일 전체 삭제 (템플릿 캐시 정리는 페이지 전면 갱신)
+        $clearedCount += $this->bundleService->clearBundles();
 
         $this->info('✅ '.__('templates.commands.cache_clear.success_all', [
             'count' => $clearedCount,
@@ -138,46 +165,5 @@ class ClearTemplateCacheCommand extends Command
         Log::info(__('templates.commands.cache_clear.success_all', [
             'count' => $clearedCount,
         ]));
-    }
-
-    /**
-     * 버전 포함·레거시 키를 함께 삭제합니다.
-     */
-    private function forgetVersionedTemplateCaches(string $identifier, ?Template $templateRecord): int
-    {
-        $clearedCount = 0;
-        $cacheVersion = ClearsTemplateCaches::getExtensionCacheVersion();
-        $versionSuffix = ".v{$cacheVersion}";
-
-        if ($templateRecord) {
-            $layouts = TemplateLayout::where('template_id', $templateRecord->id)->get();
-            foreach ($layouts as $layout) {
-                $this->cache->forget("layout.{$identifier}.{$layout->name}{$versionSuffix}");
-                $this->cache->forget("layout.{$identifier}.{$layout->name}");
-                $this->layoutService->clearDependentLayoutsCache($templateRecord->id, (string) $layout->name);
-                $clearedCount += 2;
-            }
-        }
-
-        $this->cache->forget("template.routes.{$identifier}{$versionSuffix}");
-        $this->cache->forget("template.routes.{$identifier}");
-        $clearedCount += 2;
-
-        $supportedLocales = config('app.supported_locales', ['ko', 'en']);
-        foreach ($supportedLocales as $locale) {
-            $this->cache->forget("template.language.{$identifier}.{$locale}{$versionSuffix}");
-            $this->cache->forget("template.language.{$identifier}.{$locale}");
-            $clearedCount += 2;
-        }
-
-        return $clearedCount;
-    }
-
-    /**
-     * 프론트엔드가 새 캐시 키로 lang/routes를 요청하도록 버전을 올립니다.
-     */
-    private function bumpExtensionCacheVersion(): void
-    {
-        $this->cache->put('ext.cache_version', time());
     }
 }

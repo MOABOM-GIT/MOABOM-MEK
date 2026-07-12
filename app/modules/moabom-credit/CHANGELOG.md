@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.3] - 2026-07-10
+
+### Fixed
+
+- 유저 크레딧 DataGrid `blur_until_loaded`를 `userCredits` 스코프로 제한해 `_admin_base` deferred 알림 소스와 영구 blur 충돌을 제거했습니다.
+
 ## [0.2.2] - 2026-07-10
 
 ### Changed

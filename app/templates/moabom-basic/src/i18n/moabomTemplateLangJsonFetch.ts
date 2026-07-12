@@ -83,7 +83,7 @@ export async function fetchMoabomTemplateLangJson(
 }
 
 export async function waitForMoabomTranslationEngine(
-  maxWaitMs = 8_000,
+  maxWaitMs = 3_000,
   pollMs = 50,
 ): Promise<TranslationEngineLike | null> {
   const started = Date.now();
@@ -109,7 +109,7 @@ export async function resolveMoabomTemplateLangDictionary(
 ): Promise<Record<string, unknown>> {
   const bustCache = options?.bustCache ?? false;
 
-  const engine = await waitForMoabomTranslationEngine(bustCache ? 0 : 8_000);
+  const engine = await waitForMoabomTranslationEngine(bustCache ? 0 : 3_000);
   if (engine) {
     try {
       const dict = await engine.loadTranslations(

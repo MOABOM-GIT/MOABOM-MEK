@@ -8,14 +8,8 @@
 
         <title>{{ config('app.name', '그누보드7') }}</title>
 
-        <!-- Fonts (disabled: bunny Inter CDN) -->
-        {{-- <link rel="preconnect" href="https://fonts.bunny.net"> --}}
-        {{-- <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" /> --}}
-
-        <!-- Font Awesome CDN (non-blocking: first paint 후 적용, 아이콘·클래스명 유지) -->
-        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
-        <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+        <!-- 템플릿 외부 리소스 (template.json의 externals) -->
+        @include('partials.template-externals-head')
 
         <!-- Fallback UI 스타일 -->
         @if(empty($activeUserTemplate))
@@ -24,10 +18,10 @@
 
         <!-- 템플릿 컴포넌트 스타일 -->
         @if(!empty($activeUserTemplate))
-        <link rel="stylesheet" href="/api/templates/assets/{{ $activeUserTemplate }}/css/components.css?v={{ \App\Extension\ModuleManager::getExtensionCacheVersion() }}">
+        <link rel="stylesheet" href="/api/templates/assets/{{ $activeUserTemplate }}/css/components.css?v={{ $extensionCacheVersion }}">
         @endif
     </head>
-    <body class="font-sans antialiased">
+    <body>
         <!-- React 렌더링 루트 -->
         <div id="app" data-template-id="{{ $activeUserTemplate ?? '' }}">
             <!-- Progressive Enhancement: 템플릿 없음 Fallback UI -->
@@ -45,8 +39,23 @@
                 modules: @json($moduleSettings ?? []),
                 moduleAssets: @json($moduleAssets ?? []),
                 pluginAssets: @json($pluginAssets ?? []),
-                appConfig: @json($appConfig ?? [])
+                bundleUrls: @json($bundleUrls ?? null),
+                activeModules: @json($activeModulesMeta ?? []),
+                activePlugins: @json($activePluginsMeta ?? []),
+                appConfig: @json($appConfig ?? []),
+                // 레이아웃 편집기 lazy 번들 URL — `/admin/layout-editor/*` 진입 시에만 런타임
+                // <script> 주입으로 로드된다(초기 접속 payload 에 미포함). filemtime 캐시버스팅,
+                // 미빌드 상태 대비 file_exists 가드.
+                coreEditorAsset: '{{ asset('build/core/layout-editor.min.js') }}?v={{ file_exists(public_path('build/core/layout-editor.min.js')) ? filemtime(public_path('build/core/layout-editor.min.js')) : 0 }}',
+                // DevTools lazy 번들 URL — 디버그 모드에서만 런타임 <script> 주입으로 로드.
+                coreDevToolsAsset: '{{ asset('build/core/devtools.min.js') }}?v={{ file_exists(public_path('build/core/devtools.min.js')) ? filemtime(public_path('build/core/devtools.min.js')) : 0 }}',
+                // 확장 캐시 버전 SSoT — 클라이언트 fetch (`?v=`) 동반 필수.
+                // 자세한 설명은 admin.blade.php 참조.
+                cache_version: {{ (int) ($extensionCacheVersion ?? 0) }}
             };
+            @if(!empty($shellCritical))
+            window.__MOABOM_SHELL_CRITICAL__ = @json($shellCritical);
+            @endif
             @if(isset($errorCode) && isset($errorLayout))
             // 에러 상태 정보 (503 의존성 미충족 등)
             window.G7Error = {
@@ -57,11 +66,15 @@
             @endif
         </script>
 
+        @include('partials.template-externals-scripts', ['position' => 'before-core'])
+
         <!-- 코어 렌더링 엔진 -->
         <script src="/build/core/template-engine.min.js?v={{ filemtime(public_path('build/core/template-engine.min.js')) }}"></script>
 
+        @include('partials.template-externals-scripts', ['position' => 'before-template'])
+
         <!-- 템플릿 컴포넌트 번들 (IIFE) -->
-        <script src="/api/templates/assets/{{ $activeUserTemplate }}/js/components.iife.js?v={{ \App\Extension\ModuleManager::getExtensionCacheVersion() }}"></script>
+        <script src="/api/templates/assets/{{ $activeUserTemplate }}/js/components.iife.js?v={{ $extensionCacheVersion }}"></script>
 
         <!-- 템플릿 엔진 초기화 (TemplateApp 사용) -->
         <script>
@@ -84,6 +97,8 @@
                 console.error('[User] G7Core.initTemplateApp is not available');
             }
         </script>
+
+        @include('partials.template-externals-scripts', ['position' => 'body-end'])
         @endif
     </body>
 </html>

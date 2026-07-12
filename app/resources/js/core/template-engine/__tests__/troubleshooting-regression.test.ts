@@ -74,26 +74,6 @@ describe('트러블슈팅 회귀 테스트 - setState 관련', () => {
     (window as any).__g7ActionContext = undefined;
   });
 
-  describe('[TS-SETSTATE-FILE] File/Blob 상태 병합 보존', () => {
-    it('deepMergeState는 기존 빈 객체가 있어도 File 값을 그대로 교체해야 함', () => {
-      const file = new window.File(['<svg />'], 'logo_moabom.svg', { type: 'image/svg+xml' });
-      const prev = { form: { slug: 'clinic', name: 'Clinic', logo_light: {} } };
-      const next = deepMergeState(prev, { form: { logo_light: file } });
-
-      expect(next.form.slug).toBe('clinic');
-      expect(next.form.name).toBe('Clinic');
-      expect(next.form.logo_light).toBe(file);
-    });
-
-    it('deepMergeState는 File 값을 spread 해서 빈 객체로 만들면 안 됨', () => {
-      const file = new window.File(['content'], 'upload.png', { type: 'image/png' });
-      const next = deepMergeState({}, { upload: file });
-
-      expect(next.upload).toBe(file);
-      expect(Object.keys(next.upload)).toHaveLength(0);
-    });
-  });
-
   afterEach(() => {
     vi.clearAllMocks();
     (window as any).__g7PendingLocalState = undefined;

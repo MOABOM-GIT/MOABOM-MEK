@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { copyFileSync, mkdirSync, readdirSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 
 // 다국어 파일 복사 플러그인
 function copyLangFiles() {
@@ -10,6 +10,11 @@ function copyLangFiles() {
         closeBundle() {
             const srcLangDir = path.resolve(__dirname, 'resources/js/core/lang');
             const destLangDir = path.resolve(__dirname, 'public/build/core/lang');
+
+            if (!existsSync(srcLangDir)) {
+                console.log('skip copy-lang-files: resources/js/core/lang 없음');
+                return;
+            }
 
             mkdirSync(destLangDir, { recursive: true });
 

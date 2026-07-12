@@ -10,6 +10,7 @@ import { cpapReturnAppMetadata } from '../apps/cpap-return/metadata';
 import { consultingAppMetadata } from '../apps/consulting/metadata';
 import { globalSearchAppMetadata } from '../apps/global-search/metadata';
 import { hospitalInfoAppMetadata } from '../apps/hospital-info/metadata';
+import { mysumIntegrationAppMetadata } from '../apps/mysum-integration/metadata';
 import { refurbRequestAppMetadata } from '../apps/refurb-request/metadata';
 import { rentalDashboardAppMetadata } from '../apps/rental-dashboard/metadata';
 import { settlementAppMetadata } from '../apps/settlement/metadata';
@@ -44,6 +45,7 @@ export const APPS: App[] = [
   hospitalInfoAppMetadata,
   globalSearchAppMetadata,
   { id: 'mypage',       name: '마이페이지',    description: '내 프로필과 설정 관리', icon: 'user-cog',      gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', category: 'basic', source: 'system' },
+  mysumIntegrationAppMetadata,
   consultingAppMetadata,
   cpapMaskFitAppMetadata,
   cpapRentalAppMetadata,

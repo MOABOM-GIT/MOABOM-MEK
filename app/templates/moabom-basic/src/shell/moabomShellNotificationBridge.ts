@@ -13,6 +13,7 @@ import { extractChatConversationUuidFromUrl, extractChatSenderUuidFromUrl } from
 import { isMoabomShellActiveChatWithUser } from '../runtime/moabomShellActiveChat';
 import { registerShellNotificationHandler } from './ShellRealtimeStore';
 import { isShellChatConversationMuted } from './moabomShellChatInboxCache';
+import { bumpShellUnreadBadgeFromRealtime } from './moabomShellUnreadBadge';
 
 type NotificationCacheListener = (items: ShellNotificationItem[]) => void;
 
@@ -75,12 +76,21 @@ function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): 
   }
 
   const notificationType = payload.type?.trim() ?? '';
+  const senderUuid = extractChatSenderUuidFromUrl(payload.url);
+  const suppressActiveChat = notificationType === 'chat_message'
+    && Boolean(senderUuid)
+    && isMoabomShellActiveChatWithUser(senderUuid!);
+
+  // 배지: 활성 대화 억제만 제외 — mute 는 토스트만 막고 배지는 REST 대체로 반영
+  if (!suppressActiveChat) {
+    bumpShellUnreadBadgeFromRealtime();
+  }
+
   if (shouldSuppressChatNotificationToast(payload)) {
     return;
   }
 
-  const senderUuid = extractChatSenderUuidFromUrl(payload.url);
-  if (notificationType === 'chat_message' && senderUuid && isMoabomShellActiveChatWithUser(senderUuid)) {
+  if (suppressActiveChat) {
     return;
   }
 

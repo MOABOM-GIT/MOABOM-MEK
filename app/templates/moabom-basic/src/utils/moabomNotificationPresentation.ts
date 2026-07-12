@@ -1,7 +1,8 @@
 import type { IconName } from '../components/basic/IconTypes';
+import { iconNameMap } from '../components/basic/IconTypes';
 
 export interface NotificationVisual {
-  icon: IconName;
+  icon: IconName | keyof typeof iconNameMap;
   iconColor: string;
   iconBg: string;
 }

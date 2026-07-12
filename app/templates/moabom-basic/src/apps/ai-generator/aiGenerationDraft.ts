@@ -59,6 +59,15 @@ export function isCompleteHtmlDocument(input: string): boolean {
   return extractCompleteHtml(input) !== '';
 }
 
+/** script/style 태그가 닫히지 않았으면 true — 조기 </body></html> 삽입 방지 */
+export function hasUnclosedScriptOrStyle(html: string): boolean {
+  const openScript = (html.match(/<script\b[^>]*>/gi) || []).length;
+  const closeScript = (html.match(/<\/script>/gi) || []).length;
+  const openStyle = (html.match(/<style\b[^>]*>/gi) || []).length;
+  const closeStyle = (html.match(/<\/style>/gi) || []).length;
+  return openScript > closeScript || openStyle > closeStyle;
+}
+
 /** 미완성 HTML을 미리보기·저장 가능한 최소 문서로 정규화합니다. */
 export function normalizePartialHtml(input: string): string {
   const html = stripMarkdownHtmlFence(input);
@@ -72,6 +81,7 @@ export function normalizePartialHtml(input: string): string {
 
   const hasHtmlRoot = /<!DOCTYPE html>/i.test(html) || /<html\b/i.test(html);
   const hasBodyOpen = /<body\b/i.test(html);
+  const leaveOpen = hasUnclosedScriptOrStyle(html);
   let document = html;
 
   if (!hasHtmlRoot) {
@@ -83,9 +93,7 @@ export function normalizePartialHtml(input: string): string {
   <title>Moabom Draft</title>
 </head>
 <body>
-${html}
-</body>
-</html>`;
+${html}${leaveOpen ? '' : '\n</body>\n</html>'}`;
   } else if (!hasBodyOpen) {
     if (/<\/head>/i.test(document)) {
       document = document.replace(/<\/head>/i, '</head><body>');
@@ -94,14 +102,18 @@ ${html}
     } else {
       document = document.replace(/<html\b[^>]*>/i, (match) => `${match}<head><meta charset="utf-8"></head><body>`);
     }
-    document = `${document}</body></html>`;
+    if (!leaveOpen) {
+      document = `${document}</body></html>`;
+    }
   }
 
-  if (!/<\/body>/i.test(document)) {
-    document = `${document}</body>`;
-  }
-  if (!/<\/html>/i.test(document)) {
-    document = `${document}</html>`;
+  if (!leaveOpen) {
+    if (!/<\/body>/i.test(document)) {
+      document = `${document}</body>`;
+    }
+    if (!/<\/html>/i.test(document)) {
+      document = `${document}</html>`;
+    }
   }
 
   return injectAiPreviewSafety(document);

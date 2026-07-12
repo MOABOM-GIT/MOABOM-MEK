@@ -353,6 +353,7 @@
     },
     "msg": {
       "profile_load_failed": "프로필 정보를 불러오지 못했습니다. 다시 로그인해 주세요.",
+      "profile_transient_error": "프로필 정보를 일시적으로 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "credit_load_failed": "크레딧 정보를 불러오지 못했습니다.",
       "activity_load_failed": "게시글을 불러오지 못했습니다.",
       "email_missing_field": "이메일 정보를 불러오지 못했습니다. 계정 관리에서 이메일을 확인해 주세요.",
@@ -608,6 +609,10 @@
     "consulting": {
       "name": "스마트 컨설팅",
       "description": "업체 수익성 시뮬레이션 · 전자계약"
+    },
+    "mysum-integration": {
+      "name": "마이숨 데이터 연동",
+      "description": "마이숨(DX) ↔ 스마트케어360 연동 회의 브리프"
     },
     "global-search": {
       "name": "전체검색",

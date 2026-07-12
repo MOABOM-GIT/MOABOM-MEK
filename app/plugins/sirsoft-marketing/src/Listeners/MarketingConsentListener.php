@@ -267,70 +267,75 @@ class MarketingConsentListener implements HookListenerInterface
      */
     public function filterResourceData(array $data, User $user): array
     {
-        $consents = $this->service->getAllByUserId($user->id)->keyBy('consent_key');
-        $activeChannelKeys = $this->service->getActiveChannelKeys();
-        $enabledLegalKeys = $this->service->getEnabledLegalKeys();
-        $allActiveKeys = array_unique(array_merge(
-            $activeChannelKeys,
-            [MarketingConsent::MASTER_KEY],
-            $enabledLegalKeys
-        ));
+        try {
+            $consents = $this->service->getAllByUserId($user->id)->keyBy('consent_key');
+            $activeChannelKeys = $this->service->getActiveChannelKeys();
+            $enabledLegalKeys = $this->service->getEnabledLegalKeys();
+            $allActiveKeys = array_unique(array_merge(
+                $activeChannelKeys,
+                [MarketingConsent::MASTER_KEY],
+                $enabledLegalKeys
+            ));
 
-        // 동의 상태 병합
-        foreach ($allActiveKeys as $key) {
-            $record = $consents->get($key);
-            $data[$key] = $record?->is_consented ?? false;
-            $data["{$key}_at"] = $record?->consented_at?->toIso8601String();
+            // 동의 상태 병합
+            foreach ($allActiveKeys as $key) {
+                $record = $consents->get($key);
+                $data[$key] = $record?->is_consented ?? false;
+                $data["{$key}_at"] = $record?->consented_at?->toIso8601String();
+            }
+
+            // 프론트엔드 조건부 렌더링용 플래그 — 마케팅 전체 동의
+            $marketingSlug = $this->pluginSettings->get(self::PLUGIN_ID, 'marketing_consent_terms_slug', '');
+            $data['marketing_consent_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'marketing_consent_enabled', true);
+            $data['marketing_consent_terms_slug']     = $marketingSlug ?: null;
+            $data['marketing_consent_terms_slug_set'] = ! empty($marketingSlug);
+
+            // 프론트엔드 조건부 렌더링용 플래그 — 법적 동의 항목
+            $thirdPartySlug = $this->pluginSettings->get(self::PLUGIN_ID, 'third_party_consent_terms_slug', '');
+            $data['third_party_consent_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'third_party_consent_enabled');
+            $data['third_party_consent_terms_slug']     = $thirdPartySlug ?: null;
+            $data['third_party_consent_terms_slug_set'] = ! empty($thirdPartySlug);
+
+            $infoSlug = $this->pluginSettings->get(self::PLUGIN_ID, 'info_disclosure_terms_slug', '');
+            $data['info_disclosure_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'info_disclosure_enabled');
+            $data['info_disclosure_terms_slug']     = $infoSlug ?: null;
+            $data['info_disclosure_terms_slug_set'] = ! empty($infoSlug);
+
+            // 프론트엔드 조건부 렌더링용 플래그 — 채널별 (channels JSON 기반 동적 처리)
+            $locale = app()->getLocale();
+            $channelsMeta = [];
+            foreach ($this->service->getAllChannels() as $channel) {
+                $key  = $channel['key'];
+                $slug = $channel['page_slug'] ?? '';
+                $data["{$key}_enabled"]        = (bool) ($channel['enabled'] ?? true);
+                $data["{$key}_terms_slug"]     = $slug ?: null;
+                $data["{$key}_terms_slug_set"] = ! empty($slug);
+
+                $channelsMeta[] = [
+                    'key'            => $key,
+                    'label'          => $channel['label'][$locale] ?? $channel['label']['ko'] ?? $key,
+                    'enabled'        => (bool) ($channel['enabled'] ?? true),
+                    'terms_slug'     => $slug ?: null,
+                    'terms_slug_set' => ! empty($slug),
+                ];
+            }
+
+            // 채널 목록 배열 — 프론트엔드 iteration용
+            $data['channels'] = $channelsMeta;
+
+            // 동의 이력 추가
+            $data['consent_histories'] = $this->service->getHistories($user->id)
+                ->map(fn ($history) => [
+                    'channel_key' => $history->channel_key,
+                    'action' => $history->action,
+                    'source' => $history->source,
+                    'created_at' => $history->created_at?->format('Y-m-d H:i:s'),
+                ])
+                ->toArray();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // schema drift / 플러그인 미마이그레이션 시 auth·프로필 500 차단
+            return $data;
         }
-
-        // 프론트엔드 조건부 렌더링용 플래그 — 마케팅 전체 동의
-        $marketingSlug = $this->pluginSettings->get(self::PLUGIN_ID, 'marketing_consent_terms_slug', '');
-        $data['marketing_consent_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'marketing_consent_enabled', true);
-        $data['marketing_consent_terms_slug']     = $marketingSlug ?: null;
-        $data['marketing_consent_terms_slug_set'] = ! empty($marketingSlug);
-
-        // 프론트엔드 조건부 렌더링용 플래그 — 법적 동의 항목
-        $thirdPartySlug = $this->pluginSettings->get(self::PLUGIN_ID, 'third_party_consent_terms_slug', '');
-        $data['third_party_consent_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'third_party_consent_enabled');
-        $data['third_party_consent_terms_slug']     = $thirdPartySlug ?: null;
-        $data['third_party_consent_terms_slug_set'] = ! empty($thirdPartySlug);
-
-        $infoSlug = $this->pluginSettings->get(self::PLUGIN_ID, 'info_disclosure_terms_slug', '');
-        $data['info_disclosure_enabled']        = (bool) $this->pluginSettings->get(self::PLUGIN_ID, 'info_disclosure_enabled');
-        $data['info_disclosure_terms_slug']     = $infoSlug ?: null;
-        $data['info_disclosure_terms_slug_set'] = ! empty($infoSlug);
-
-        // 프론트엔드 조건부 렌더링용 플래그 — 채널별 (channels JSON 기반 동적 처리)
-        $locale = app()->getLocale();
-        $channelsMeta = [];
-        foreach ($this->service->getAllChannels() as $channel) {
-            $key  = $channel['key'];
-            $slug = $channel['page_slug'] ?? '';
-            $data["{$key}_enabled"]        = (bool) ($channel['enabled'] ?? true);
-            $data["{$key}_terms_slug"]     = $slug ?: null;
-            $data["{$key}_terms_slug_set"] = ! empty($slug);
-
-            $channelsMeta[] = [
-                'key'            => $key,
-                'label'          => $channel['label'][$locale] ?? $channel['label']['ko'] ?? $key,
-                'enabled'        => (bool) ($channel['enabled'] ?? true),
-                'terms_slug'     => $slug ?: null,
-                'terms_slug_set' => ! empty($slug),
-            ];
-        }
-
-        // 채널 목록 배열 — 프론트엔드 iteration용
-        $data['channels'] = $channelsMeta;
-
-        // 동의 이력 추가
-        $data['consent_histories'] = $this->service->getHistories($user->id)
-            ->map(fn ($history) => [
-                'channel_key' => $history->channel_key,
-                'action' => $history->action,
-                'source' => $history->source,
-                'created_at' => $history->created_at?->format('Y-m-d H:i:s'),
-            ])
-            ->toArray();
 
         return $data;
     }

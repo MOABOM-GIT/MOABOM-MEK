@@ -220,7 +220,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       index={currentIndex}
       plugins={plugins}
       on={{
-        view: ({ index }) => {
+        view: ({ index }: { index: number }) => {
           if (index !== currentIndexRef.current) {
             setCurrentIndex(index);
           }

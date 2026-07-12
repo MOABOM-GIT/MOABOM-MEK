@@ -18,7 +18,9 @@
         "wait_for": [
             "role_check",
             "clone_source",
-            "permissions"
+            "permissions",
+            "installed_modules",
+            "installed_plugins"
         ]
     },
     "data_sources": [

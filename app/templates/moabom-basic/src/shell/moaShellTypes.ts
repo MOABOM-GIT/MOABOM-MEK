@@ -15,6 +15,8 @@ export interface HomePageProps {
 }
 
 export interface MoaCurrentUser {
+  /** G7 `/api/auth/user` · 게시판 `!_global.currentUser?.uuid` 분기 SSOT */
+  uuid?: string;
   name: string;
   level: number;
   point: number;
@@ -27,6 +29,7 @@ export interface MoaCurrentUser {
 }
 
 export interface AuthUserLike {
+  uuid?: string;
   id?: number | string;
   name?: string;
   nickname?: string;
@@ -51,7 +54,14 @@ export function buildMoaCurrentUser(
 ): MoaCurrentUser | null {
   if (!user) return null;
 
+  const uuid = typeof user.uuid === 'string' ? user.uuid.trim() : '';
+  const idKey =
+    user.id !== undefined && user.id !== null && user.id !== ''
+      ? String(user.id)
+      : '';
+
   return {
+    uuid: uuid || undefined,
     name: user.nickname || user.name || user.email || nameFallback,
     level: user.level || 1,
     point: user.point || 0,
@@ -60,9 +70,6 @@ export function buildMoaCurrentUser(
     is_super: user.is_super,
     social_provider: user.social_provider,
     language: user.language === 'ko' || user.language === 'en' ? user.language : undefined,
-    memberKey:
-      user.id !== undefined && user.id !== null && user.id !== ''
-        ? String(user.id)
-        : (user.email ?? ''),
+    memberKey: uuid || idKey || (user.email ?? ''),
   };
 }

@@ -3,11 +3,19 @@
  *
  * - secondary: presence·알림 unread·실시간 WS 등 2차 API
  * - tertiary-idle: 날씨·layout prefetch·랭킹·telemetry 등 3차 비긴급 작업
+ *
+ * idle timeout 은 “브라우저가 한가할 때까지 최대 대기”다.
+ * 사용자 가시 데이터에 2~3초를 두면 탭/패널 전체가 체감 지연된다 → 짧게 유지.
  */
 
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 
 type DeferredTask = () => void | Promise<void>;
+
+/** secondary 큐 — 한 프레임 양보 수준 */
+const SECONDARY_IDLE_TIMEOUT_MS = 100;
+/** tertiary 큐 — 비긴급이지만 수 초 대기는 금지 */
+const TERTIARY_IDLE_TIMEOUT_MS = 250;
 
 let secondaryQueue: DeferredTask[] = [];
 let secondaryFlushScheduled = false;
@@ -60,7 +68,7 @@ export function deferShellSecondaryWork(task: DeferredTask, delayMs = 400): void
       () => { secondaryFlushScheduled = true; },
       () => { secondaryFlushScheduled = false; },
       delayMs,
-      2000,
+      SECONDARY_IDLE_TIMEOUT_MS,
     );
   });
 }
@@ -76,7 +84,7 @@ export function deferShellTertiaryWork(task: DeferredTask, delayMs = 600): void 
       () => { tertiaryFlushScheduled = true; },
       () => { tertiaryFlushScheduled = false; },
       delayMs,
-      3000,
+      TERTIARY_IDLE_TIMEOUT_MS,
     );
   });
 }

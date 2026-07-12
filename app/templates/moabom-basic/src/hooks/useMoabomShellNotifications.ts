@@ -23,8 +23,13 @@ import {
   shellNotificationReadTimestamp,
 } from '../utils/moabomShellNotificationUtils';
 import { MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../layout/moabomShellPanelLayout';
-import { MOABOM_SHELL_UNREAD_SYNCED_EVENT } from '../runtime/moabomShellChatSyncService';
+import {
+  MOABOM_SHELL_UNREAD_SYNCED_EVENT,
+  requestShellChatCatchUpSync,
+} from '../runtime/moabomShellChatSyncService';
+import { syncEstimatedShellUnreadCount } from '../shell/moabomShellUnreadBadge';
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
+import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 
 interface UseMoabomShellNotificationsOptions {
   isLoggedIn: boolean;
@@ -48,10 +53,16 @@ export function useMoabomShellNotifications({
   const refreshUnreadCount = useCallback(async () => {
     if (!isLoggedIn) {
       setUnreadCount(0);
+      syncEstimatedShellUnreadCount(0);
       return;
     }
-    const count = await fetchShellUnreadCount();
+    const count = await runMoabomShellRealtimeTask(
+      'notifications:unread-count',
+      () => fetchShellUnreadCount(),
+      { minIntervalMs: 750 },
+    );
     setUnreadCount(count);
+    syncEstimatedShellUnreadCount(count);
   }, [isLoggedIn]);
 
   const loadPage = useCallback(async (page: number, append: boolean) => {
@@ -83,11 +94,11 @@ export function useMoabomShellNotifications({
         }
         return nextItems;
       });
-      await refreshUnreadCount();
+      // unread 는 로그인 1회 + WS/bridge 경로만 — list 로드마다 중복 refresh 금지
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, refreshUnreadCount]);
+  }, [isLoggedIn]);
 
   const reloadList = useCallback(async () => {
     pageRef.current = 1;
@@ -119,6 +130,7 @@ export function useMoabomShellNotifications({
         return next;
       });
       setUnreadCount(0);
+      syncEstimatedShellUnreadCount(0);
     } finally {
       setMarkingAll(false);
     }
@@ -138,6 +150,7 @@ export function useMoabomShellNotifications({
       setItems([]);
       setShellNotificationCache([]);
       setUnreadCount(0);
+      syncEstimatedShellUnreadCount(0);
       setHasMore(false);
       pageRef.current = 1;
     } finally {
@@ -209,6 +222,7 @@ export function useMoabomShellNotifications({
       const detail = (event as CustomEvent<{ count: number }>).detail;
       if (typeof detail?.count === 'number') {
         setUnreadCount(detail.count);
+        syncEstimatedShellUnreadCount(detail.count);
       }
     };
     window.addEventListener(MOABOM_SHELL_UNREAD_SYNCED_EVENT, onUnreadSynced);
@@ -221,6 +235,7 @@ export function useMoabomShellNotifications({
     }
 
     return whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      requestShellChatCatchUpSync();
       void reloadList();
     });
   }, [alarmTabActive, isLoggedIn, reloadList]);

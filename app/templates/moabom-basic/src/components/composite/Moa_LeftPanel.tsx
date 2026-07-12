@@ -30,19 +30,17 @@ import {
   subscribeShellNoticeBoardChanged,
   type ShellNoticeBoardChangedDetail,
 } from '../../shell/moaShellNoticeBoardEvents';
-import { deferShellSecondaryWork, deferShellTertiaryWork } from '../../shell/moaShellDeferredWork';
+import { deferShellTertiaryWork } from '../../shell/moaShellDeferredWork';
 import { prefetchBoardWindowLayouts } from '../../shell/boardWindowPrefetch';
 import type { NoticeBadgeKind, ShellNoticePreviewItem } from '../../shell/moaShellNoticeBoardPreview';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX, MOABOM_SHELL_SUB_TAB_SLOT_PX } from '../../layout/moabomShellPanelLayout';
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
-import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
+import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteDisplayName, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
 import { Moa_PanelEmptyState } from './Moa_PanelEmptyState';
 import { Moa_PanelLoadingState } from './Moa_PanelLoadingState';
 import { Moa_ActivityRankBadge } from './Moa_ActivityRankBadge';
-import { useMoabomActivityLevel } from '../../hooks/useMoabomActivityLevel';
-import { getShellAccessToken } from '../../api/moabomShellAccess';
 
 type LeftPanelNoticeItem = ShellNoticePreviewItem;
 
@@ -99,6 +97,8 @@ export interface LeftPanelProps {
   onOpenBoard?: (slug: string, postId?: string) => void;
   /** 공개 프로필 윈도우 열기 */
   onOpenUserProfile?: (userUuid: string, displayName?: string) => void;
+  /** 셸 Auth SSOT — 토큰 단독 판정 대신 사용 */
+  isLoggedIn?: boolean;
 }
 
 /** 랭킹 행 — 앱 이름·설명(좁은 패널·마퀴 높이 이슈 없이 말줄임으로 항상 표시) */
@@ -204,9 +204,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onClose,
   onOpenBoard,
   onOpenUserProfile,
+  isLoggedIn: _isLoggedIn = false,
 }) => {
+  void _isLoggedIn;
   const isDark = useMoabomDarkMode();
   const { t } = useMoabomShellT();
+  const siteDisplayName = useMoabomSiteDisplayName();
   const { lightUrl: logoImageLight, darkUrl: logoImageDark } = useMoabomSiteLogoUrls();
   const preferredLogoSrc = isDark ? logoImageDark : logoImageLight;
   const [logoSrc, setLogoSrc] = useState(preferredLogoSrc);
@@ -259,8 +262,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const noticeReloadRef = useRef<((_detail?: ShellNoticeBoardChangedDetail) => void) | null>(null);
   const activeNavRef = useRef(activeNav);
   const noticePreviewStaleRef = useRef(false);
-  const isShellAuthed = Boolean(getShellAccessToken());
-  const { level: ownActivityLevel } = useMoabomActivityLevel(isShellAuthed);
   const selfRanking = useMemo(
     () => userRankings.find((row) => row.is_self) ?? null,
     [userRankings],
@@ -309,9 +310,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       return;
     }
 
-    deferShellTertiaryWork(() => {
-      reloadRankings();
-    }, 120);
+    // 활동 탭 진입 직후 즉시 로드 (idle/defer 대기 없음)
+    reloadRankings();
 
     return () => {
       rankingAbortRef.current?.abort();
@@ -369,7 +369,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       controller.abort();
       controller = new AbortController();
       const signal = controller.signal;
-      deferShellSecondaryWork(() => loadNoticeBoardItems(signal), 120);
+      // 사용자가 공지 탭을 연 직후 — idle/defer 없이 즉시 로드
+      void loadNoticeBoardItems(signal);
     };
 
     noticeReloadRef.current = reload;
@@ -463,23 +464,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         pointerEvents: isOpen ? undefined : 'none',
       }}
     >
-      {/* 로고 */}
+      {/* 로고 + 멀티테넌트 업체명 (로그인 레벨 뱃지 아님) */}
       <Div className="glass p-6 shrink-0 flex flex-col items-center gap-2 rounded-2xl relative">
         <Img
           key={logoSrc}
           src={logoSrc}
-          alt="SMARTCARE"
+          alt={siteDisplayName}
           className="h-8 mb-2 object-contain cursor-pointer"
           onClick={() => (window.location.href = '/')}
           onError={() => {
             setLogoSrc(prev => resolveMoabomSiteLogoImgRecoveryUrl(prev, isDark ? 'dark' : 'light'));
           }}
         />
-        <Div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: 'color-mix(in srgb, var(--moa-point-color) 8%, transparent)' }}>
-          <Moa_ActivityRankBadge
-            level={ownActivityLevel?.level ?? selfRanking?.level?.level ?? 1}
-            slug={ownActivityLevel?.slug ?? selfRanking?.level?.slug ?? 'iron'}
-          />
+        <Div
+          className="flex items-center justify-center max-w-full px-3 py-1 rounded-full"
+          style={{ background: 'color-mix(in srgb, var(--moa-point-color) 8%, transparent)' }}
+        >
+          <Span className="text-xs font-bold text-primary truncate" title={siteDisplayName}>
+            {siteDisplayName}
+          </Span>
         </Div>
       </Div>
 

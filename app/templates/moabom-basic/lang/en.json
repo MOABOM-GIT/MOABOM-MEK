@@ -348,6 +348,7 @@
     },
     "msg": {
       "profile_load_failed": "Could not load profile. Please sign in again.",
+      "profile_transient_error": "Could not load profile temporarily. Please try again shortly.",
       "credit_load_failed": "Could not load credits.",
       "activity_load_failed": "Could not load posts.",
       "email_missing_field": "Could not load email. Check it under Account.",
@@ -607,6 +608,10 @@
     "consulting": {
       "name": "Smart Consulting",
       "description": "Company profitability simulation & e-contract"
+    },
+    "mysum-integration": {
+      "name": "MySum Data Integration",
+      "description": "MySum (DX) ↔ Smartcare360 integration brief"
     },
     "global-search": {
       "name": "Global Search",

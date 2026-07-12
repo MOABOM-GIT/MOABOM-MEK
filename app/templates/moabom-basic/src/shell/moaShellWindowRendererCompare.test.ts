@@ -26,6 +26,7 @@ function baseProps(overrides: Partial<Moa_ShellWindowRendererProps> = {}): Moa_S
     compactWindow: false,
     authStateKey: '',
     currentUser: null,
+    isLoggedIn: false,
     createdApps: [],
     favoriteApps: [],
     recentApps: [],

@@ -68,6 +68,17 @@ describe('어드민 베이스 transition_overlay (이슈 #245)', () => {
         const inner = findById(wrapper!.children, 'main_content');
         expect(inner).toBeDefined();
     });
+
+    it('메뉴 전환 병목 완화: unread/installed 는 auto_fetch false (스피너 Promise.all 제외)', () => {
+        const byId = new Map<string, any>(
+            ((adminBase as any).data_sources ?? []).map((s: any) => [s.id, s]),
+        );
+        for (const id of ['notification_unread_count', 'installed_modules', 'installed_plugins']) {
+            expect(byId.get(id)?.auto_fetch, `${id} auto_fetch`).toBe(false);
+        }
+        expect(byId.get('admin_menu')?.auto_fetch).not.toBe(false);
+        expect(byId.get('current_user')?.auto_fetch).not.toBe(false);
+    });
 });
 
 describe('목록 페이지 페이지네이션 transition_overlay_target 가드 (이슈 #245)', () => {
@@ -351,4 +362,32 @@ describe('어드민 폼 컨테이너 전체 페이지 blur 제거 (이슈 #245)'
             expect(node!.blur_until_loaded).toBeUndefined();
         });
     }
+});
+
+describe('admin_settings 탭별 data_source 지연 로드', () => {
+    const byId = new Map<string, any>(
+        ((adminSettings as any).data_sources ?? []).map((s: any) => [s.id, s]),
+    );
+
+    it('settings 는 항상 fetch (탭 if 없음)', () => {
+        expect(byId.get('settings')?.if).toBeUndefined();
+        expect(byId.get('settings')?.auto_fetch).toBe(true);
+    });
+
+    it.each([
+        ['language_packs', 'language_packs'],
+        ['systemInfo', 'info'],
+        ['appKey', 'info'],
+        ['notificationDefinitions', 'notification_definitions'],
+        ['availableChannels', 'notification_definitions'],
+        ['identityProviders', 'identity'],
+        ['identityPurposes', 'identity'],
+        ['identityMessages', 'identity'],
+        ['adminIdentityPolicies', 'identity'],
+        ['policies', 'identity'],
+    ] as const)('%s 는 tab === %s 일 때만 fetch', (id, tab) => {
+        const source = byId.get(id);
+        expect(source?.if, id).toBeDefined();
+        expect(String(source.if)).toContain(`=== '${tab}'`);
+    });
 });

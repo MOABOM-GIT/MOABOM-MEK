@@ -13,14 +13,13 @@ import { installMoabomGhostRoutesFetch } from './runtime/moabomGhostRoutesFetch'
 import { installMoabomExtensionDeferredBootstrap } from './runtime/moabomExtensionDeferredBootstrap';
 import { ensureMoaShellErrorPageHandlerPatched } from './shell/installMoaShellErrorNavigateBridge';
 import { installMoabomShellBootFetch, prefetchMoabomShellBoot } from './runtime/moabomShellBoot';
-import { prefetchMoabomGeneratedAppLibrary } from './runtime/moabomGeneratedAppLibraryLoad';
+import { installMoabomShellCriticalFetch } from './runtime/moabomShellCriticalFetch';
 import { startMoabomShellBootPipeline } from './runtime/moabomShellBootPipeline';
 import { installMoabomPwaExtensionResyncConsume } from './runtime/pwa/moabomPwaExtensionResync';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
+import { installMoabomShellAuthSingleFlight } from './runtime/moabomShellAuthSingleFlight';
 import { installMoabomWebSocketAuthSync } from './runtime/moabomWebSocketAuthSync';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
-import { schedulePrefetchUserProfileWindowLayouts } from './shell/userProfileWindowPrefetch';
-import { schedulePrefetchBoardWindowLayouts } from './shell/boardWindowPrefetch';
 import { schedulePrefetchRecentMoabomShellAppChunks } from './runtime/moabomShellAppChunkPrefetch';
 
 // 지연 로드 셸 IIFE가 메인과 동일한 React Context를 쓰도록 싱글톤 모듈을 전역에 노출 (vite.shell-*.config.ts external)
@@ -153,10 +152,12 @@ export { templateMetadata };
 /**
  * 템플릿 초기화 함수
  *
+ * Auth single-flight 를 부트 파이프라인보다 먼저 설치해 TemplateApp preloadAuth 와 합류한다.
  * 핸들러·PWA 등록은 `startMoabomShellBootPipeline()` 이 DOMContentLoaded 이후 순차 처리한다.
  */
 export function initTemplate(): void {
   if (typeof window !== 'undefined') {
+    installMoabomShellAuthSingleFlight();
     startMoabomShellBootPipeline();
   }
 }
@@ -170,12 +171,13 @@ if (typeof window !== 'undefined') {
       });
     installMoabomTemplateLangFetchDedupe();
     bootstrapMoabomShellAuthConfig();
+    installMoabomShellAuthSingleFlight();
     installMoabomWebSocketAuthSync();
     installMoabomShellBootFetch();
+    installMoabomShellCriticalFetch();
     prefetchMoabomShellBoot();
     installMoabomExtensionDeferredBootstrap();
     installMoabomGhostRoutesFetch();
-    prefetchMoabomGeneratedAppLibrary();
     ensureMoaShellErrorPageHandlerPatched();
     installMoabomPwaExtensionResyncConsume();
 }
@@ -184,7 +186,6 @@ initTemplate();
 
 if (typeof window !== 'undefined') {
     registerSirsoftEcommerceLayoutPrefetch();
-    schedulePrefetchUserProfileWindowLayouts();
-    schedulePrefetchBoardWindowLayouts();
+    // board/profile layout 은 창 오픈·좌측 탭 진입 시 prefetch (전역 tertiary 선로드 제거)
     schedulePrefetchRecentMoabomShellAppChunks();
 }

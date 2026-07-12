@@ -1,9 +1,11 @@
-import { moabomApiPut } from '../api/moabomAuthenticatedApi';
+import { createShellModuleApi } from '../api/moabomShellHttp';
 import { sanitizeMainAppOrderIds, saveLocalMainAppOrder } from '../shell/moaShellAppOrder';
 import {
   loadMainUnpinnedGeneratedIds,
   sanitizeMainUnpinnedGeneratedIds,
 } from '../shell/moaShellMainAppUnpinned';
+
+const systemApi = createShellModuleApi('moabom-system');
 
 export interface ShellHomePersistInput {
   order: string[];
@@ -74,19 +76,35 @@ async function drainQueue(): Promise<void> {
     const next = pendingShellHome;
     pendingShellHome = null;
 
-    try {
-      await moabomApiPut('/api/modules/moabom-system/user/settings', {
-        shell: {
-          home: {
-            mainAppOrder: next.order,
-            mainAppOrderCustomized: next.customized,
-            mainUnpinnedGeneratedIds: next.unpinnedGeneratedIds,
+    let saved = false;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await systemApi('user/settings', {
+          method: 'PUT',
+          body: {
+            shell: {
+              home: {
+                mainAppOrder: next.order,
+                mainAppOrderCustomized: next.customized,
+                mainUnpinnedGeneratedIds: next.unpinnedGeneratedIds,
+              },
+            },
           },
-        },
-      });
-      shellHomeDirty = false;
-      lastResolveAt = Date.now();
-    } catch {
+        });
+        shellHomeDirty = false;
+        lastResolveAt = Date.now();
+        saved = true;
+        break;
+      } catch {
+        if (attempt === 0) {
+          await new Promise<void>(resolve => {
+            setTimeout(resolve, 400);
+          });
+        }
+      }
+    }
+
+    if (!saved) {
       /* UI는 이미 로컬에 반영됨 — dirty 유지해 pull 롤백 방지 */
       shellHomeDirty = true;
       lastResolveAt = Date.now();

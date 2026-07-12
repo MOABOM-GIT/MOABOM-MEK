@@ -114,9 +114,23 @@ class WebsiteLinkIconStorageService
 
     public function response(GeneratedApp $app): ?StreamedResponse
     {
-        $path = $this->resolveStoredPath($app);
+        $path = $this->resolveStoredPathForServe($app);
         if ($path === null) {
             return null;
+        }
+
+        // storage->response 는 exists+stream 이중 GCS. get 한 번으로 스트리밍.
+        $content = $this->storage->get(self::STORAGE_CATEGORY, $path);
+        if ($content === null) {
+            $discovered = $this->discoverStoredIconPath((int) $app->id);
+            if ($discovered === null || $discovered === $path) {
+                return null;
+            }
+            $path = $discovered;
+            $content = $this->storage->get(self::STORAGE_CATEGORY, $path);
+            if ($content === null) {
+                return null;
+            }
         }
 
         $metadata = is_array($app->metadata) ? $app->metadata : [];
@@ -125,16 +139,13 @@ class WebsiteLinkIconStorageService
             $mime = $this->guessMimeFromPath($path);
         }
 
-        return $this->storage->response(
-            self::STORAGE_CATEGORY,
-            $path,
-            basename($path),
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline',
-                'Cache-Control' => 'public, max-age=86400, immutable',
-            ],
-        );
+        return new StreamedResponse(static function () use ($content): void {
+            echo $content;
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.basename($path).'"',
+            'Cache-Control' => 'public, max-age=86400, immutable',
+        ]);
     }
 
     public function iconRoutePath(int $appId): string
@@ -154,6 +165,8 @@ class WebsiteLinkIconStorageService
     }
 
     /**
+     * persist·존재 확인용 — GCS exists / discover.
+     *
      * @param  array<string, mixed>  $metadata
      */
     private function resolveStoredPath(GeneratedApp $app, array $metadata = []): ?string
@@ -168,6 +181,32 @@ class WebsiteLinkIconStorageService
         }
 
         return $this->discoverStoredIconPath((int) $app->id);
+    }
+
+    /**
+     * 아이콘 GET — metadata path 우선(exists 생략), 없으면 discover.
+     * 실제 바이트 확인은 storage->get 에 맡긴다.
+     */
+    private function resolveStoredPathForServe(GeneratedApp $app): ?string
+    {
+        $metadata = is_array($app->metadata) ? $app->metadata : [];
+        $metadataPath = $this->metadataStoredIconPath((int) $app->id, $metadata);
+        if ($metadataPath !== null) {
+            return $metadataPath;
+        }
+
+        return $this->discoverStoredIconPath((int) $app->id);
+    }
+
+    /**
+     * library/API 직렬화 — DB stored_icon_path 만 신뢰(GCS 호출 없음).
+     * 파일이 없으면 GET 에서 404·repair.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function resolveStoredPathFromMetadata(GeneratedApp $app, array $metadata): ?string
+    {
+        return $this->metadataStoredIconPath((int) $app->id, $metadata);
     }
 
     /**
@@ -307,7 +346,7 @@ class WebsiteLinkIconStorageService
             return $metadata;
         }
 
-        $storedPath = $this->resolveStoredPath($app, $metadata);
+        $storedPath = $this->resolveStoredPathFromMetadata($app, $metadata);
         if ($storedPath === null) {
             return $this->applyTitleIconFallback($metadata);
         }

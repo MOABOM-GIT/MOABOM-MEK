@@ -71,22 +71,45 @@ describe('installMoabomGhostRoutesFetch', () => {
         window.fetch = globalThis.fetch;
     });
 
-    it('이커머스 메타가 없으면 routes.json 요청이 Ghost API로 바뀌지 않는다', async () => {
-        const innerMock = vi.fn().mockResolvedValue(new Response('{"success":true,"data":{"routes":[]}}', { status: 200 }));
+    it('홈 경로 routes.json 은 full routes 대신 shell-boot/Ghost 경로를 쓴다', async () => {
+        const innerMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+            const href = String(input);
+            if (href.includes('shell-boot')) {
+                return new Response(JSON.stringify({
+                    success: true,
+                    data: {
+                        defaults: { appearance: {} },
+                        defaults_revision: 1,
+                        site: {},
+                        locale_catalog: {},
+                        shell_routes: { version: '1', routes: [{ path: '/', layout: 'home' }] },
+                        social_providers: [],
+                        apps: [],
+                    },
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            if (href.includes('template-routes-shell')) {
+                return new Response(JSON.stringify({
+                    success: true,
+                    data: { version: '1', routes: [{ path: '/', layout: 'home' }] },
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            return new Response(`unexpected:${href}`, { status: 500 });
+        });
         vi.stubGlobal('window', {
             ...window,
             fetch: innerMock,
-            location: { href: 'https://example.com/', origin: 'https://example.com' } as Location,
+            location: { href: 'https://example.com/', origin: 'https://example.com', pathname: '/' } as Location,
             G7Config: { moduleAssets: {}, deferredModuleAssets: {} },
         } as unknown as Window & typeof globalThis);
 
         installMoabomGhostRoutesFetch();
         const routesUrl = 'https://example.com/api/templates/moabom-basic/routes.json?v=1';
-        await window.fetch(routesUrl);
-
-        expect(innerMock).toHaveBeenCalled();
-        const firstArg = innerMock.mock.calls[0]?.[0];
-        expect(String(firstArg)).toBe(routesUrl);
-        expect(String(firstArg)).not.toContain('template-routes-shell');
+        const res = await window.fetch(routesUrl);
+        expect(res.ok).toBe(true);
+        const body = await res.json() as { success?: boolean; data?: { routes?: unknown[] } };
+        expect(body.success).toBe(true);
+        expect(Array.isArray(body.data?.routes)).toBe(true);
+        expect(innerMock.mock.calls.some(call => String(call[0]).includes('/routes.json'))).toBe(false);
     });
 });

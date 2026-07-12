@@ -11,6 +11,7 @@ import {
   type StoredGeneratedAppSummary,
 } from '../api/moabomAppsApi';
 import { hasShellAccessToken } from '../api/moabomShellAccess';
+import { runMoabomShellRealtimeTask } from './moabomShellRealtimeRequestCoalescer';
 
 export interface MoabomGeneratedAppLibraryPayload {
   owned: StoredGeneratedAppSummary[];
@@ -21,6 +22,7 @@ export interface MoabomGeneratedAppLibraryPayload {
 
 let libraryCache: MoabomGeneratedAppLibraryPayload | null = null;
 let libraryLoadPromise: Promise<MoabomGeneratedAppLibraryPayload> | null = null;
+let guestSharedPromise: Promise<MoabomGeneratedAppLibraryPayload> | null = null;
 
 function isSummaryList(value: unknown): value is StoredGeneratedAppSummary[] {
   return Array.isArray(value);
@@ -65,7 +67,8 @@ export function seedMoabomGeneratedAppLibrary(raw: unknown): void {
 
 export function invalidateMoabomGeneratedAppLibraryCache(): void {
   libraryCache = null;
-  libraryLoadPromise = null;
+  guestSharedPromise = null;
+  // libraryLoadPromise 는 유지 — 끊으면 prefetch·catalog 이중 fetch
 }
 
 function ensureLoggedInLibraryLoadStarted(): Promise<MoabomGeneratedAppLibraryPayload> {
@@ -74,20 +77,22 @@ function ensureLoggedInLibraryLoadStarted(): Promise<MoabomGeneratedAppLibraryPa
   }
 
   if (!libraryLoadPromise) {
-    libraryLoadPromise = fetchGeneratedAppLibrary()
-      .then((payload) => {
+    libraryLoadPromise = runMoabomShellRealtimeTask(
+      'apps:generated-library',
+      () => fetchGeneratedAppLibrary().then((payload) => {
         libraryCache = payload;
         return payload;
-      })
-      .finally(() => {
-        libraryLoadPromise = null;
-      });
+      }),
+      { minIntervalMs: 2_000 },
+    ).finally(() => {
+      libraryLoadPromise = null;
+    });
   }
 
   return libraryLoadPromise;
 }
 
-/** index.ts 부트 — G7 AuthManager 완료 전 library API 선행 */
+/** auth-ready 이후 — memberKey 확정 전 sync prefetch 와 catalog invalidate 경합 방지 */
 export function prefetchMoabomGeneratedAppLibrary(): void {
   if (!hasShellAccessToken() || libraryCache || libraryLoadPromise) {
     return;
@@ -116,8 +121,29 @@ export async function loadMoabomGeneratedAppLibrary(
   isLoggedIn: boolean,
 ): Promise<MoabomGeneratedAppLibraryPayload> {
   if (!isLoggedIn) {
-    const shared = await fetchSharedGeneratedApps();
-    return { owned: [], shared, hasMoreOwned: false };
+    // 게스트 shared 는 tertiary 이후에만 — 콜드 부트 PHP 큐에서 summary/attachment 와 경합하지 않음
+    if (libraryCache) {
+      return libraryCache;
+    }
+    if (!guestSharedPromise) {
+      guestSharedPromise = runMoabomShellRealtimeTask(
+        'apps:generated-shared:guest',
+        async () => {
+          const { whenMoabomBootPhaseAtLeast } = await import('./moabomShellBootPipeline');
+          await new Promise<void>((resolve) => {
+            whenMoabomBootPhaseAtLeast('tertiary-idle', () => resolve());
+          });
+          const shared = await fetchSharedGeneratedApps();
+          const payload = { owned: [] as StoredGeneratedAppSummary[], shared, hasMoreOwned: false };
+          libraryCache = payload;
+          return payload;
+        },
+        { minIntervalMs: 1_000 },
+      ).finally(() => {
+        guestSharedPromise = null;
+      });
+    }
+    return guestSharedPromise;
   }
 
   return ensureLoggedInLibraryLoadStarted();
@@ -125,4 +151,6 @@ export async function loadMoabomGeneratedAppLibrary(
 
 export function __resetMoabomGeneratedAppLibraryLoadForTest(): void {
   invalidateMoabomGeneratedAppLibraryCache();
+  guestSharedPromise = null;
+  libraryLoadPromise = null;
 }

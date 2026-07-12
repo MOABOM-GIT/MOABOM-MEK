@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { BoardComponentDefinition } from './boardWindowLayoutRuntime';
+import { mergeShellContextIntoGlobalState } from './ShellContextBridge';
 
 type ActionDispatcherLike = {
   createHandler?: (
@@ -63,14 +64,14 @@ export function mergeBoardWindowLiveGlobalState(
       ? (baseContext._global as Record<string, unknown>)
       : {};
 
+  // AuthManager 기준 currentUser.uuid 를 매 렌더 재해석 — 캐시·불완전 live 객체로
+  // 게시판 guest 폼(`!_global.currentUser?.uuid`)이 남는 회귀를 막는다.
   return {
     ...baseContext,
-    _global: {
+    _global: mergeShellContextIntoGlobalState({
       ...baseGlobal,
       ...liveGlobal,
-      shell: liveGlobal.shell ?? baseGlobal.shell,
-      currentUser: liveGlobal.currentUser ?? baseGlobal.currentUser,
-    },
+    }),
   };
 }
 

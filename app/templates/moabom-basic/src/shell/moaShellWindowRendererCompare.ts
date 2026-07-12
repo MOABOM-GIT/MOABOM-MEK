@@ -42,6 +42,9 @@ export function areShellWindowRendererPropsEqual(
   }
 
   if (isMyPageWindow(prev.win)) {
+    if (prev.isLoggedIn !== next.isLoggedIn) {
+      return false;
+    }
     if (prev.currentUser !== next.currentUser) {
       return false;
     }

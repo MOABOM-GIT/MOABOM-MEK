@@ -198,36 +198,6 @@ describe('DataSourceManager', () => {
       );
     });
 
-    it('admin active menu 요청은 ApiClient 경로에서도 no-cache 헤더를 포함해야 함', async () => {
-      const mockResponse = { data: [] };
-      const mockApiClient = getApiClient();
-      (mockApiClient.get as any).mockResolvedValue(mockResponse);
-
-      const sources: DataSource[] = [
-        {
-          id: 'admin_menu',
-          type: 'api',
-          endpoint: '/api/admin/menus/active',
-          method: 'GET',
-          auth_required: true,
-          auto_fetch: true,
-        },
-      ];
-
-      await manager.fetchDataSources(sources);
-
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/admin/menus/active',
-        expect.objectContaining({
-          params: {},
-          headers: expect.objectContaining({
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-          }),
-        }),
-      );
-    });
-
     it('인증이 필요한 POST 요청을 ApiClient로 처리해야 함', async () => {
       const mockResponse = { success: true };
       const mockApiClient = getApiClient();

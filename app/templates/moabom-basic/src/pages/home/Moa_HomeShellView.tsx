@@ -223,7 +223,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
       initialY={isAuthWin ? undefined : win.initialY}
       isMaximized={win.isMaximized}
       isMinimized={win.isMinimized}
-      preserveContentWhenMinimized={isCreateAppShellWin && Boolean(win.isGenerationBackground)}
+      preserveContentWhenMinimized={win.isMinimized}
       onClose={handleClose}
       onMinimize={handleMinimize}
       onMaximize={handleMaximize}
@@ -418,6 +418,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
       compactWindow={compactWindow}
       authStateKey={authStateKey}
       currentUser={currentUser}
+      isLoggedIn={isLoggedIn}
       createdApps={createdApps}
       createdAppsLoading={createdAppsLoading}
       favoriteApps={favoriteApps}
@@ -447,6 +448,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     createdApps,
     createdAppsLoading,
     currentUser,
+    isLoggedIn,
     deleteSavedGeneratedApp,
     favoriteApps,
     handleMyPageTabChange,
@@ -543,6 +545,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
           createdApps={leftPanelMyApps}
           ownedGeneratedAppsLoading={libraryHydration === 'loading' && isLoggedIn}
           sharedApps={sharedGeneratedApps}
+          isLoggedIn={isLoggedIn}
           onAddApp={handleAddAppToMain} onOpenBoard={openBoardWindow} onOpenUserProfile={openUserProfileWindow} isOverlay={isMobileOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {
             setLeftOpen(false);
             updateSystemState({ layout: { leftPanelOpen: false } });

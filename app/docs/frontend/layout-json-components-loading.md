@@ -258,6 +258,20 @@
 - `blocking` loading_strategy는 렌더링 전에 데이터를 로드하므로 blur가 보이지 않을 수 있음
 - 레이아웃 JSON 수정 후 DB 동기화 필요 (시더 재실행 또는 관리자 화면에서 업데이트)
 
+### deferred fetch 소스와 blur 게이트 (DataGate 계약)
+
+`auto_fetch: false` 인 데이터 소스(드롭다운 오픈 시 `refetchDataSource` 등)와 `type: "websocket"` 소스는 **초기 progressive fetch 대상이 아니다**.
+
+엔진(`TemplateApp`)은 이들을 `progressiveDataInit`에 넣지 않는다. `undefined` 키가 dataContext에 영구 잔존하면 `blur_until_loaded: true`(전역 키 스캔)가 해제되지 않기 때문이다.
+
+| 소스 | 초기 progressiveDataInit | blur 게이트 |
+|------|--------------------------|-------------|
+| `auto_fetch: true` (기본) progressive/background | 포함 (`undefined` → fetch 후 채움) | 해당 |
+| `auto_fetch: false` | **제외** | 해당 없음 (수동 refetch 후 키 생성) |
+| `type: websocket` | **제외** | 해당 없음 |
+
+권장: 페이지 그리드는 `{ "enabled": true, "data_sources": "users" }`처럼 **페이지 소스만** 스코프하는 객체 형태를 우선한다.
+
 ---
 
 ## 페이지 전환 오버레이 (transition_overlay)

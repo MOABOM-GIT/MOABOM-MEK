@@ -153,8 +153,17 @@ export interface MoabomPresenceProviderProps {
 }
 
 /**
- * 셸 SSOT — heartbeat·Reverb 구독·접속 설정 동기화.
- * UI 패널(RightPanel)과 분리해 우측 패널 닫힘·탭 전환과 무관하게 세션을 유지한다.
+ * 우측 접속자/친구 탭(또는 패널)이 활성일 때만 revision·주기 heartbeat.
+ * 로그인 idle 에서는 세션 touch만 유지한다.
+ */
+const MoabomPresenceSurfaceActiveContext = createContext<{
+  presenceSurfaceActive: boolean;
+  setPresenceSurfaceActive: (active: boolean) => void;
+} | null>(null);
+
+/**
+ * 셸 SSOT — auth/WS coordinator·세션 touch.
+ * revision 구독·주기 heartbeat는 presenceSurfaceActive 일 때만.
  */
 export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceProviderProps) {
   const { t } = useMoabomShellT();
@@ -167,6 +176,7 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   const [presenceSettings, setPresenceSettings] = useState<PresenceSettings | null>(null);
   const [presenceSettingsHydrated, setPresenceSettingsHydrated] = useState(false);
   const [presenceSettingsLoading, setPresenceSettingsLoading] = useState(false);
+  const [presenceSurfaceActive, setPresenceSurfaceActive] = useState(false);
 
   const ownPresenceRef = useRef<OwnPresenceState | null>(null);
   const settingsHydratedRef = useRef(false);
@@ -178,6 +188,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   /** 저장 완료 전 heartbeat·API 재조회가 낙관적 설정을 덮어쓰지 않도록 보호 */
   const localPendingSettingsRef = useRef<LocalPendingPresenceSettings | null>(null);
   const heartbeatDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceSurfaceActiveRef = useRef(false);
+
+  useEffect(() => {
+    presenceSurfaceActiveRef.current = presenceSurfaceActive;
+  }, [presenceSurfaceActive]);
 
   useEffect(() => {
     ownPresenceRef.current = ownPresence;
@@ -477,13 +492,8 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       return;
     }
     sessionBootstrappedRef.current = true;
-    deferShellSecondaryWork(() => {
-      void (async () => {
-        await refreshSummary();
-        await runHeartbeat({ skipSummaryRefresh: true, refreshConnectList: true });
-      })();
-    }, 120);
-  }, [refreshSummary, runHeartbeat]);
+    // idle: summary·목록 선로드 없음 — 탭 진입·로그인 touch 시에만
+  }, []);
 
   useEffect(() => {
     const wasLoggedIn = wasLoggedInRef.current;
@@ -504,17 +514,13 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       setOnlineUsers(prev => applyOptimisticLoginToOnlineUsers(prev, ownPresenceRef.current));
       deferShellSecondaryWork(() => {
         void (async () => {
-          // SSOT: visitor_id 행을 회원으로 upsert 한 뒤, 같은 경로에서 목록을 다시 읽는다.
+          // 세션 touch 만 — summary/online 은 presenceSurfaceActive 시 조회 (부트 폭주 방지)
           await runHeartbeat({
             touch: 'login',
             skipSummaryRefresh: true,
-            refreshConnectList: true,
+            refreshConnectList: false,
           });
-          await Promise.all([
-            refreshSummary(),
-            refreshFriends(),
-            hydrateOwnSettings(),
-          ]);
+          await hydrateOwnSettings();
         })();
       }, 120);
       return;
@@ -525,12 +531,11 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
       setOnlineUsers(prev => applyOptimisticLogoutToOnlineUsers(prev, loggedOutUuid));
     }
     selfUserUuidRef.current = null;
+    setPresenceSurfaceActive(false);
     void runHeartbeat({ touch: 'logout', refreshConnectList: true });
   }, [
     hydrateOwnSettings,
     isLoggedIn,
-    refreshFriends,
-    refreshSummary,
     runHeartbeat,
   ]);
 
@@ -576,15 +581,21 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   }, []);
 
   useEffect(() => {
+    if (!presenceSurfaceActive || !isLoggedIn) {
+      return;
+    }
     const intervalSec = summary?.heartbeat_interval_sec ?? 60;
     const timer = window.setInterval(() => {
       void runHeartbeat({ refreshConnectList: false });
     }, intervalSec * 1000);
     return () => window.clearInterval(timer);
-  }, [runHeartbeat, summary?.heartbeat_interval_sec]);
+  }, [isLoggedIn, presenceSurfaceActive, runHeartbeat, summary?.heartbeat_interval_sec]);
 
   useEffect(() => {
     return subscribeMoabomWebSocketConnectionChange(() => {
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       if (isMoabomWebSocketConnected()) {
         scheduleShellPresenceCatchUp();
       }
@@ -592,6 +603,9 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
   }, []);
 
   const invalidatePresenceFromRevision = useCallback((targets: PresenceRefetchTargets) => {
+    if (!presenceSurfaceActiveRef.current) {
+      return;
+    }
     const tasks: Promise<void>[] = [];
     if (targets.summary) {
       tasks.push(refreshSummary());
@@ -611,13 +625,22 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     invalidatePresenceFromRevision,
   ]);
 
-  useEffect(() => registerShellPlatformSummaryInvalidate(refreshSummary), [refreshSummary]);
+  useEffect(() => {
+    if (!presenceSurfaceActive) {
+      return;
+    }
+    return registerShellPlatformSummaryInvalidate(refreshSummary);
+  }, [presenceSurfaceActive, refreshSummary]);
 
   const revisionSubscriptionKeyRef = useRef<string | null>(null);
   const platformRevisionSubscriptionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!summary?.revision_channel) {
+    if (!presenceSurfaceActive || !summary?.revision_channel) {
+      if (revisionSubscriptionKeyRef.current) {
+        unsubscribePresenceRevisionChannel(revisionSubscriptionKeyRef.current);
+        revisionSubscriptionKeyRef.current = null;
+      }
       return;
     }
 
@@ -630,10 +653,14 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
         revisionSubscriptionKeyRef.current = null;
       }
     };
-  }, [summary?.revision_channel, wsAuthEpoch]);
+  }, [presenceSurfaceActive, summary?.revision_channel, wsAuthEpoch]);
 
   useEffect(() => {
-    if (!summary?.platform_revision_channel) {
+    if (!presenceSurfaceActive || !summary?.platform_revision_channel) {
+      if (platformRevisionSubscriptionKeyRef.current) {
+        unsubscribePresenceRevisionChannel(platformRevisionSubscriptionKeyRef.current);
+        platformRevisionSubscriptionKeyRef.current = null;
+      }
       return;
     }
 
@@ -646,10 +673,43 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
         platformRevisionSubscriptionKeyRef.current = null;
       }
     };
-  }, [summary?.platform_revision_channel, wsAuthEpoch]);
+  }, [presenceSurfaceActive, summary?.platform_revision_channel, wsAuthEpoch]);
+
+  useEffect(() => {
+    if (!presenceSurfaceActive) {
+      return;
+    }
+
+    let cancelled = false;
+    const cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      if (cancelled || !presenceSurfaceActiveRef.current) {
+        return;
+      }
+      void (async () => {
+        if (isLoggedIn) {
+          await refreshSummary();
+          if (cancelled || !presenceSurfaceActiveRef.current) {
+            return;
+          }
+          await runHeartbeat({ skipSummaryRefresh: true, refreshConnectList: true });
+          return;
+        }
+        // 게스트: heartbeat·summary 생략 — online 목록만 (부트 PHP 폭주·504 방지)
+        await refreshOnline();
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+      cancelBoot();
+    };
+  }, [isLoggedIn, presenceSurfaceActive, refreshOnline, refreshSummary, runHeartbeat]);
 
   useEffect(() => {
     return subscribeMoabomPresenceFriendsChanged(() => {
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       void Promise.all([refreshOnline(), refreshFriends()]);
     });
   }, [refreshFriends, refreshOnline]);
@@ -668,22 +728,34 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     };
     const handlePresenceContextChanged = () => {
       applyActivitySubtitleLocally();
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       if (ownPresenceRef.current?.subtitle_mode === 'activity') {
         scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handlePathChanged = () => {
       applyActivitySubtitleLocally();
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       if (ownPresenceRef.current?.subtitle_mode === 'activity') {
         scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handleVisibilityChange = () => {
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       if (document.visibilityState === 'visible') {
         scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
       }
     };
     const handleWindowFocus = () => {
+      if (!presenceSurfaceActiveRef.current) {
+        return;
+      }
       scheduleDebouncedHeartbeat({ refreshConnectList: !isMoabomWebSocketConnected() });
     };
 
@@ -763,17 +835,35 @@ export function MoabomPresenceProvider({ isLoggedIn, children }: MoabomPresenceP
     presenceSettingsLoading,
   ]);
 
+  const surfaceValue = useMemo(() => ({
+    presenceSurfaceActive,
+    setPresenceSurfaceActive,
+  }), [presenceSurfaceActive]);
+
   return (
-    <MoabomPresenceSummaryContext.Provider value={summaryValue}>
-      <MoabomPresenceOnlineContext.Provider value={onlineValue}>
-        <MoabomPresenceFriendsContext.Provider value={friendsValue}>
-          <MoabomPresenceSettingsContext.Provider value={settingsValue}>
-            {children}
-          </MoabomPresenceSettingsContext.Provider>
-        </MoabomPresenceFriendsContext.Provider>
-      </MoabomPresenceOnlineContext.Provider>
-    </MoabomPresenceSummaryContext.Provider>
+    <MoabomPresenceSurfaceActiveContext.Provider value={surfaceValue}>
+      <MoabomPresenceSummaryContext.Provider value={summaryValue}>
+        <MoabomPresenceOnlineContext.Provider value={onlineValue}>
+          <MoabomPresenceFriendsContext.Provider value={friendsValue}>
+            <MoabomPresenceSettingsContext.Provider value={settingsValue}>
+              {children}
+            </MoabomPresenceSettingsContext.Provider>
+          </MoabomPresenceFriendsContext.Provider>
+        </MoabomPresenceOnlineContext.Provider>
+      </MoabomPresenceSummaryContext.Provider>
+    </MoabomPresenceSurfaceActiveContext.Provider>
   );
+}
+
+export function useMoabomPresenceSurfaceActive(): {
+  presenceSurfaceActive: boolean;
+  setPresenceSurfaceActive: (active: boolean) => void;
+} {
+  const ctx = useContext(MoabomPresenceSurfaceActiveContext);
+  if (!ctx) {
+    throw new Error('useMoabomPresenceSurfaceActive must be used within MoabomPresenceProvider');
+  }
+  return ctx;
 }
 
 export function useMoabomPresenceSummary(): MoabomPresenceSummarySlice {

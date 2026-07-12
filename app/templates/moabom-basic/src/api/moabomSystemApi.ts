@@ -1,10 +1,17 @@
-import { moabomApiGet, moabomApiPost, moabomApiPut, type MoabomApiResult } from './moabomAuthenticatedApi';
+import {
+  createShellModuleApi,
+  MoabomShellAuthExpiredError,
+  MoabomShellAuthRequiredError,
+  MoabomShellModuleApiError,
+  requestShellJson,
+} from './moabomShellHttp';
+import type { MoabomApiResult } from './moabomAuthenticatedApi';
 import type { MoabomSystemDefaults, MoabomSystemState } from '../types/moabomSystem';
-import type { MoabomSettingsApiPayload } from '../utils/moabomSystemServerMerge';
 import { setMoabomLocaleCatalog, type MoabomLocaleCatalog } from '../utils/moabomLocaleCatalog';
 import { ensureMoabomShellBootLoaded, getMoabomShellBootData } from '../runtime/moabomShellBoot';
 import { seedMoabomGeneratedAppLibrary } from '../runtime/moabomGeneratedAppLibraryLoad';
 import type { MoabomGeneratedAppLibraryPayload } from '../runtime/moabomGeneratedAppLibraryLoad';
+import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 
 interface ApiSystemSettingsResponse {
   success?: boolean;
@@ -34,6 +41,37 @@ let userSystemSettingsCache: {
   value: MoabomApiResult<ApiSystemSettingsResponse['data']>;
   expiresAt: number;
 } | null = null;
+
+const systemModuleApi = createShellModuleApi('moabom-system');
+
+function shellFailure<T>(error: unknown): MoabomApiResult<T> {
+  if (error instanceof MoabomShellAuthRequiredError || error instanceof MoabomShellAuthExpiredError) {
+    return { ok: false, success: false, message: error.message, kind: 'unauthorized' };
+  }
+  if (error instanceof MoabomShellModuleApiError) {
+    return {
+      ok: false,
+      success: false,
+      message: error.message,
+      kind: error.status === 401 || error.status === 403 ? 'unauthorized' : 'transient',
+    };
+  }
+  return {
+    ok: false,
+    success: false,
+    message: error instanceof Error ? error.message : 'request failed',
+    kind: 'transient',
+  };
+}
+
+async function shellResult<T>(invoke: () => Promise<T>): Promise<MoabomApiResult<T>> {
+  try {
+    const data = await invoke();
+    return { ok: true, success: true, data };
+  } catch (error) {
+    return shellFailure<T>(error);
+  }
+}
 
 export function invalidateMoabomSystemSettingsCache(): void {
   userSystemSettingsCache = null;
@@ -85,7 +123,9 @@ export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSy
   }
 
   userSystemSettingsPromise = (async () => {
-    const result = await moabomApiGet<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings');
+    const result = await shellResult(() =>
+      systemModuleApi<ApiSystemSettingsResponse['data']>('user/settings'),
+    );
     applyUserSettingsResponseSideEffects(result.data);
     if (result.ok) {
       userSystemSettingsCache = {
@@ -103,7 +143,6 @@ export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSy
   }
 }
 
-/** 비로그인 셸/게스트용 — 플랫폼 기본값 + `defaults_revision` */
 export async function fetchMoabomPublicFrontendDefaults(): Promise<PublicFrontendDefaultsResult> {
   const now = Date.now();
   if (publicFrontendDefaultsCache && publicFrontendDefaultsCache.expiresAt > now) {
@@ -137,7 +176,10 @@ export async function fetchMoabomPublicFrontendDefaults(): Promise<PublicFronten
     const response = await fetch('/api/modules/moabom-system/public/frontend-defaults', {
       headers: { Accept: 'application/json' },
     });
-    const payload = (await response.json()) as {
+    if (!response.ok) {
+      return { ok: false };
+    }
+    const payload = await response.json() as {
       success?: boolean;
       data?: {
         defaults?: MoabomSystemDefaults;
@@ -145,72 +187,98 @@ export async function fetchMoabomPublicFrontendDefaults(): Promise<PublicFronten
         locale_catalog?: MoabomLocaleCatalog;
       };
     };
-
-    const ok = response.ok && !!payload.success;
-    const d = payload.data;
-    if (d?.locale_catalog) {
-      setMoabomLocaleCatalog(d.locale_catalog);
+    if (!payload.success || !payload.data?.defaults) {
+      return { ok: false };
     }
-    const result = {
-      ok,
-      defaults: d?.defaults,
-      defaults_revision: typeof d?.defaults_revision === 'number' ? d.defaults_revision : 0,
-      locale_catalog: d?.locale_catalog,
+    if (payload.data.locale_catalog) {
+      setMoabomLocaleCatalog(payload.data.locale_catalog);
+    }
+    return {
+      ok: true,
+      defaults: payload.data.defaults,
+      defaults_revision: payload.data.defaults_revision ?? 0,
+      locale_catalog: payload.data.locale_catalog,
     };
-
-    if (ok) {
-      publicFrontendDefaultsCache = {
-        value: result,
-        expiresAt: Date.now() + FRONTEND_DEFAULTS_MEMORY_TTL_MS,
-      };
-    }
-
-    return result;
   })();
 
   try {
-    return await publicFrontendDefaultsPromise;
+    const value = await publicFrontendDefaultsPromise;
+    if (value.ok) {
+      publicFrontendDefaultsCache = {
+        value,
+        expiresAt: Date.now() + FRONTEND_DEFAULTS_MEMORY_TTL_MS,
+      };
+    }
+    return value;
   } finally {
     publicFrontendDefaultsPromise = null;
   }
 }
 
-/** 로그인: user/settings, 비로그인: public/frontend-defaults 병합용 페이로드 */
-export async function loadMoabomSettingsPayloadForMerge(isLoggedIn: boolean): Promise<MoabomSettingsApiPayload | null> {
-  if (isLoggedIn) {
-    const r = await fetchMoabomSystemSettings();
-    if (!r.ok) {
-      return null;
-    }
-    const rev = typeof r.data?.defaults_revision === 'number' ? r.data.defaults_revision : 0;
-    return {
-      defaults: r.data?.defaults,
-      settings: r.data?.settings as Record<string, unknown> | undefined,
-      defaults_revision: rev,
-      generated_app_library: r.data?.generated_app_library,
-    };
-  }
-  const r = await fetchMoabomPublicFrontendDefaults();
-  if (!r.ok || !r.defaults) {
-    return null;
-  }
-  return {
-    defaults: r.defaults,
-    settings: {},
-    defaults_revision: r.defaults_revision ?? 0,
-  };
+/** 관리자 defaults + (로그인 시) user settings — pull/merge SSOT */
+export async function loadMoabomSettingsPayloadForMerge(isLoggedIn: boolean): Promise<{
+  defaults?: MoabomSystemDefaults;
+  settings?: Record<string, unknown>;
+  defaults_revision: number;
+  generated_app_library?: MoabomGeneratedAppLibraryPayload;
+} | null> {
+  return runMoabomShellRealtimeTask(
+    isLoggedIn ? 'system:settings-merge:auth' : 'system:settings-merge:guest',
+    async () => {
+      if (isLoggedIn) {
+        const r = await fetchMoabomSystemSettings();
+        if (!r.ok) {
+          return null;
+        }
+        const rev = typeof r.data?.defaults_revision === 'number' ? r.data.defaults_revision : 0;
+        return {
+          defaults: r.data?.defaults,
+          settings: r.data?.settings as Record<string, unknown> | undefined,
+          defaults_revision: rev,
+          generated_app_library: r.data?.generated_app_library,
+        };
+      }
+      const r = await fetchMoabomPublicFrontendDefaults();
+      if (!r.ok || !r.defaults) {
+        return null;
+      }
+      return {
+        defaults: r.defaults,
+        settings: {},
+        defaults_revision: r.defaults_revision ?? 0,
+      };
+    },
+    { minIntervalMs: 2_000 },
+  );
 }
 
-/** 코어 프로필 언어 — `coreSyncLanguageFromMoabomPref` 결과를 POST */
+/** @deprecated loadMoabomSettingsPayloadForMerge 사용 */
+export async function fetchMoabomSystemBootstrap(isLoggedIn: boolean) {
+  return loadMoabomSettingsPayloadForMerge(isLoggedIn);
+}
+
+/** 코어 프로필 언어 — `coreSyncLanguageFromMoabomPref` 결과를 POST (세션 경계, shell fetch) */
 export async function updateCoreUserLanguage(language: string): Promise<{ ok: boolean }> {
-  const result = await moabomApiPost('/api/user/profile/update-language', { language });
-  return { ok: result.ok };
+  try {
+    await requestShellJson('/api/user/profile/update-language', 'required', {
+      method: 'POST',
+      body: { language },
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export async function saveMoabomSystemSettings(
   settings: MoabomSystemState,
 ): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
-  const result = await moabomApiPut<ApiSystemSettingsResponse['data']>('/api/modules/moabom-system/user/settings', settings);
+  const result = await shellResult(() =>
+    systemModuleApi<ApiSystemSettingsResponse['data']>('user/settings', {
+      method: 'PUT',
+      body: settings,
+    }),
+  );
   if (result.data?.locale_catalog) {
     setMoabomLocaleCatalog(result.data.locale_catalog);
   }

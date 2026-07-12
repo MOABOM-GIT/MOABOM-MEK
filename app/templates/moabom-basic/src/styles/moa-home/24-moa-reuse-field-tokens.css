@@ -5,7 +5,7 @@
 @layer components {
   .moa-reuse-core {
     @apply w-full min-w-0 text-sm text-gray-600 dark:text-gray-300;
-    @apply placeholder:text-gray-400 dark:placeholder:text-gray-500;
+    @apply placeholder:text-gray-500 dark:placeholder:text-gray-400;
     @apply outline-none transition-[outline-color,box-shadow] disabled:opacity-[0.55] disabled:cursor-not-allowed;
   }
 

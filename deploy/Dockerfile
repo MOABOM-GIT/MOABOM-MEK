@@ -51,7 +51,7 @@ RUN grep -q "Route::delete('blocks/{userUuid}'" modules/moabom-chat/src/routes/a
 RUN rm -f .env .env.* 2>/dev/null || true \
     && mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views \
     && composer dump-autoload --optimize --no-dev --no-scripts \
-    && FILESYSTEM_DISK=local APP_ENV=local php artisan package:discover --ansi --no-interaction
+    && FILESYSTEM_DISK=local APP_ENV=local G7_JSON_SETTINGS_CACHE_TTL=0 php artisan package:discover --ansi --no-interaction
 
 # --- 2) Frontend build (G7 core + 활성 템플릿 dist) ---
 FROM node:22-bookworm-slim AS assets
@@ -60,8 +60,11 @@ COPY app/package.json app/package-lock.json ./
 RUN npm ci
 COPY app/ ./
 COPY deploy/check-bundle-budget.sh ./deploy/check-bundle-budget.sh
-# 코어 번들 (public/build/core)
-RUN npm run build:core 2>/dev/null || npm run build 2>/dev/null || true
+# 코어 번들 (public/build/core) — 실패 시 구 번들 실어 올리면 DataGate/엔진 수정이 운영에 안 감 (RF-29)
+RUN npm run build:core \
+ && test -f public/build/core/template-engine.min.js \
+ && grep -q 'auto_fetch' public/build/core/template-engine.min.js \
+ || (echo "ERROR: npm run build:core failed or DataGate (auto_fetch) missing in template-engine.min.js" && exit 1)
 # 활성 템플릿/모듈 dist — 모든 빌드는 Cloud Build 안에서 (호스트 빌드 금지 SSOT)
 RUN cd templates/moabom-admin_basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
 RUN cd templates/moabom-basic && MOABOM_BUILD_ENV=cloudbuild npm ci && MOABOM_BUILD_ENV=cloudbuild npm run build
@@ -85,7 +88,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu/ \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql mysqli gd zip intl opcache bcmath pcntl exif ldap \
-    && pecl install redis \
+    && pecl channel-update pecl.php.net \
+    && (pecl install redis-6.1.0 || pecl install https://github.com/phpredis/phpredis/archive/refs/tags/6.1.0.tar.gz) \
     && pecl install imagick \
     && docker-php-ext-enable redis imagick \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS \
@@ -93,6 +97,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY deploy/nginx-cloudrun.conf /etc/nginx/conf.d/default.conf
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/moabom.conf
+COPY deploy/php-fpm/zz-moabom.conf /usr/local/etc/php-fpm.d/zz-moabom.conf
 COPY deploy/cloudrun-entrypoint.sh /usr/local/bin/cloudrun-entrypoint.sh
 COPY deploy/cloudrun-deferred-sync.sh deploy/saas-module-sync.sh deploy/saas-clone-tenant.sh deploy/saas-extension-bootstrap.sh deploy/saas-tenant-extension-sync.sh /var/www/html/deploy/
 RUN chmod +x /usr/local/bin/cloudrun-entrypoint.sh /var/www/html/deploy/cloudrun-deferred-sync.sh

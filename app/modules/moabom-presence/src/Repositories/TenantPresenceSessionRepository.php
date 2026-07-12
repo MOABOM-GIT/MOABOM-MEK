@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Modules\Moabom\Presence\Contracts\TenantPresenceSessionRepositoryInterface;
 use Modules\Moabom\Presence\Enums\PresenceAvailability;
 use Modules\Moabom\Presence\Models\TenantPresenceSession;
+use Modules\Moabom\Presence\Support\PresenceConnectListNormalizer;
 use Modules\Moabom\Presence\Support\PresenceTenantSchema;
 
 class TenantPresenceSessionRepository implements TenantPresenceSessionRepositoryInterface
@@ -184,7 +185,12 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
             return 0;
         }
 
-        return $this->connectVisibleQuery($since)->count();
+        // 목록(TenantOnlineUsersService)과 동일 dedupe — raw row count 이중 집계 방지
+        $sessions = $this->connectVisibleQuery($since)
+            ->orderByDesc('last_seen_at')
+            ->get();
+
+        return PresenceConnectListNormalizer::dedupe($sessions, PHP_INT_MAX)->count();
     }
 
     public function hasActiveSessionForUser(int $userId, \DateTimeInterface $since): bool

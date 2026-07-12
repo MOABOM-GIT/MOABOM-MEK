@@ -93,7 +93,7 @@ import { loadJson, saveJson } from '../../shell/moaShellLocalStorage';
 import { pushInfoToast, pushWarningToast } from '../../runtime/moaShellToasts';
 import type { MoabomSystemLanguage } from '../../types/moabomSystem';
 import type { AuthUserLike, MoaCurrentUser, ShellUrlSync } from '../../shell/moaShellTypes';
-import { buildMoaCurrentUser, isGuestOnlyAuthMode } from '../../shell/moaShellTypes';
+import { isGuestOnlyAuthMode } from '../../shell/moaShellTypes';
 import { resolveErrorShellWindowTitle } from '../../shell/moaShellErrorTitles';
 import { notifyBoardShellUrlChanged } from '../../shell/moaShellBoardBridge';
 import { publishShellPresenceForeground } from '../../shell/moaShellPresenceBridge';
@@ -104,13 +104,13 @@ import {
 } from '../../shell/userProfileWindowPrefetch';
 import type { ShellSurfaceOpenAction } from '../../shell/shellSurfaceTypes';
 import { commitShellWindows } from '../../shell/shellWindowsCommit';
+import {
+  resolveForegroundShellWindow,
+  shouldKeepMinimizedShellWindowsAlive,
+} from '../../shell/shellForegroundWindow';
 
 function resolveForegroundShellAppId(items: WindowState[]): string | null {
-  const visible = items.filter(item => !item.isMinimized);
-  if (visible.length === 0) {
-    return null;
-  }
-  return [...visible].sort((a, b) => b.zIndex - a.zIndex)[0]?.appId ?? null;
+  return resolveForegroundShellWindow(items)?.appId ?? null;
 }
 
 /** 열린·태스크바 창의 최대 zIndex 위 — 부모 창 포커스와 nextZIndex 드리프트 대비 */
@@ -176,15 +176,6 @@ function getCenteredWindowPosition(
 
 function countOpenWindows(windows: WindowState[]): number {
   return windows.filter(w => !w.isMinimized).length;
-}
-
-function resolveForegroundShellWindow(items: WindowState[]): WindowState | null {
-  const visible = items.filter(item => !item.isMinimized);
-  const pool = visible.length > 0 ? visible : items;
-  if (pool.length === 0) {
-    return null;
-  }
-  return [...pool].sort((a, b) => b.zIndex - a.zIndex)[0] ?? null;
 }
 
 function doesShellLocationMatchWindow(pathname: string, search: string, win: WindowState): boolean {
@@ -254,8 +245,9 @@ export function useMoaShellWindows({
   appsById,
   recordRecentApp,
   applyAuthState,
-  setCurrentUser,
+  setCurrentUser: _setCurrentUser,
 }: UseMoaShellWindowsOptions) {
+  void _setCurrentUser;
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1000);
   const [taskbarItems, setTaskbarItems] = useState<WindowState[]>(() => (
@@ -287,6 +279,7 @@ export function useMoaShellWindows({
       initialY: w.initialY,
       myPageInitialTab: w.myPageInitialTab,
       editGeneratedAppId: w.editGeneratedAppId,
+      isGenerationBackground: w.isGenerationBackground,
       boardSlug: w.boardSlug,
       boardPostId: w.boardPostId,
       appCommunityServerId: w.appCommunityServerId,
@@ -427,6 +420,7 @@ export function useMoaShellWindows({
     if (!sync.skipUrl) {
       const nextPath = formatShellPath({ kind: 'me', tab: initialTab });
       if (existing) {
+        setTaskbarItems(prev => prev.filter(w => w.id !== existing.id));
         commitWindows(prev => {
           const ex = prev.find(w => w.appId === myPageApp.id);
           if (!ex) return prev;
@@ -435,6 +429,7 @@ export function useMoaShellWindows({
                 ...w,
                 zIndex: nextZIndex,
                 isMinimized: false,
+                isGenerationBackground: false,
                 myPageInitialTab: initialTab,
                 gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
               }
@@ -462,11 +457,13 @@ export function useMoaShellWindows({
     commitWindows(prev => {
       const ex = prev.find(w => w.appId === myPageApp.id);
       if (ex) {
+        setTaskbarItems(taskbarPrev => taskbarPrev.filter(w => w.id !== ex.id));
         return prev.map(w => w.id === ex.id
           ? {
               ...w,
               zIndex: nextZIndex,
               isMinimized: false,
+              isGenerationBackground: false,
               myPageInitialTab: initialTab,
               gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
             }
@@ -517,8 +514,15 @@ export function useMoaShellWindows({
           const authWindowsNormalized = prev.filter(w => !authWindowIds.has(w.appId) || w.appId === mode);
           const existing = authWindowsNormalized.find(w => w.appId === mode);
           if (existing) {
+            setTaskbarItems(taskbarPrev => taskbarPrev.filter(w => w.id !== existing.id));
             return authWindowsNormalized.map(w => w.id === existing.id
-              ? { ...w, zIndex: currentZIndex, isMinimized: false, gradient: MOA_SHELL_POINT_TITLE_GRADIENT }
+              ? {
+                  ...w,
+                  zIndex: currentZIndex,
+                  isMinimized: false,
+                  isGenerationBackground: false,
+                  gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+                }
               : w);
           }
 
@@ -548,8 +552,15 @@ export function useMoaShellWindows({
         const authWindowsNormalized = prev.filter(w => !authWindowIds.has(w.appId) || w.appId === mode);
         const existing = authWindowsNormalized.find(w => w.appId === mode);
         if (existing) {
+          setTaskbarItems(taskbarPrev => taskbarPrev.filter(w => w.id !== existing.id));
           return authWindowsNormalized.map(w => w.id === existing.id
-            ? { ...w, zIndex: currentZIndex, isMinimized: false, gradient: MOA_SHELL_POINT_TITLE_GRADIENT }
+            ? {
+                ...w,
+                zIndex: currentZIndex,
+                isMinimized: false,
+                isGenerationBackground: false,
+                gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+              }
             : w);
         }
 
@@ -571,19 +582,27 @@ export function useMoaShellWindows({
     });
   }, [commitWindows, isLoggedIn, restoreTaskbarWindow, t]);
 
-  const minimizeCreateAppForBackground = useCallback((target: WindowState) => {
+  /**
+   * 최소화: windows에 남겨 마운트 유지 + 태스크바 아이콘.
+   * isGenerationBackground는 create-app 생성 busy일 때만 — idle 최소화와 구분.
+   */
+  const minimizeWindowToTaskbar = useCallback((
+    target: WindowState,
+    options?: { generationBackground?: boolean },
+  ) => {
     if (taskbarItemsRef.current.length >= MAX_TASKBAR_ITEMS) {
       pushWarningToast(t('moa_shell.home.toast_max_taskbar', { max: MAX_TASKBAR_ITEMS }));
       return;
     }
 
-    pushInfoToast(t('moa_apps_ai.toast_generation_background'));
+    const generationBackground = options?.generationBackground === true
+      || (target.appId === createAppShellMetadata.id && isAiGenerationBusy());
 
     const backgroundWin: WindowState = {
       ...target,
       isMaximized: false,
       isMinimized: true,
-      isGenerationBackground: true,
+      isGenerationBackground: generationBackground,
     };
 
     setTaskbarItems(prev => {
@@ -604,6 +623,14 @@ export function useMoaShellWindows({
       }
     }
   }, [commitWindows, t]);
+
+  const minimizeCreateAppForBackground = useCallback((target: WindowState) => {
+    const busy = isAiGenerationBusy();
+    if (busy) {
+      pushInfoToast(t('moa_apps_ai.toast_generation_background'));
+    }
+    minimizeWindowToTaskbar(target, { generationBackground: busy });
+  }, [minimizeWindowToTaskbar, t]);
 
   const openCreateAppShell = useCallback((
     sync: ShellUrlSync = {},
@@ -646,7 +673,7 @@ export function useMoaShellWindows({
     setCreateAppEditServerId(editGeneratedAppId);
     const { name: resolvedTitle } = resolveAppStrings(app, language);
     const existingInWindows = windowsRef.current.find(w => w.appId === app.id);
-    if (existingInWindows?.isGenerationBackground) {
+    if (existingInWindows?.isMinimized || existingInWindows?.isGenerationBackground) {
       setTaskbarItems(prev => prev.filter(w => w.id !== existingInWindows.id));
     }
     commitWindows(prev => {
@@ -754,10 +781,12 @@ export function useMoaShellWindows({
     commitWindows(prev => {
       const ex = prev.find(w => w.appId === app.id);
       if (ex) {
+        setTaskbarItems(taskbarPrev => taskbarPrev.filter(w => w.id !== ex.id));
         return prev.map(w => w.id === ex.id ? {
           ...w,
           zIndex,
           isMinimized: false,
+          isGenerationBackground: false,
           gradient: app.gradient,
           icon: app.icon,
           title: resolvedTitle,
@@ -864,6 +893,7 @@ export function useMoaShellWindows({
       }
 
       if (existing) {
+        setTaskbarItems(prev => prev.filter(w => w.id !== existing.id));
         commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
@@ -871,6 +901,7 @@ export function useMoaShellWindows({
             title: resolvedTitle,
             zIndex: nextZIndex,
             isMinimized: false,
+            isGenerationBackground: false,
           }
           : w)));
         setNextZIndex(z => z + 1);
@@ -963,6 +994,7 @@ export function useMoaShellWindows({
       }
 
       if (existing) {
+        setTaskbarItems(prev => prev.filter(w => w.id !== existing.id));
         commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
@@ -971,6 +1003,7 @@ export function useMoaShellWindows({
             boardMode,
             zIndex,
             isMinimized: false,
+            isGenerationBackground: false,
           }
           : w)));
         setNextZIndex(zIndex + 1);
@@ -1047,6 +1080,7 @@ export function useMoaShellWindows({
 
       if (existing) {
         const zIndex = bumpZIndex();
+        setTaskbarItems(prev => prev.filter(w => w.id !== existing.id));
         commitWindows(prev => prev.map(w => (w.id === existing.id
           ? {
             ...w,
@@ -1055,6 +1089,7 @@ export function useMoaShellWindows({
             appCommunityCanWrite: Boolean(options.canWrite),
             zIndex,
             isMinimized: false,
+            isGenerationBackground: false,
           }
           : w)));
         return;
@@ -1256,8 +1291,15 @@ export function useMoaShellWindows({
         return;
       }
       if (existing) {
+        setTaskbarItems(prev => prev.filter(w => w.id !== existing.id));
         setWindows(prev => prev.map(w => (w.id === existing.id
-          ? { ...w, zIndex: nextZIndex, isMinimized: false, gradient: MOA_SHELL_POINT_TITLE_GRADIENT }
+          ? {
+              ...w,
+              zIndex: nextZIndex,
+              isMinimized: false,
+              isGenerationBackground: false,
+              gradient: MOA_SHELL_POINT_TITLE_GRADIENT,
+            }
           : w)));
         setNextZIndex(z => z + 1);
         return;
@@ -1304,9 +1346,14 @@ export function useMoaShellWindows({
             }
             break;
           }
-          if (isAiGenerationBusy()) {
+          // 최소화된 창이 남아 있으면 windows를 비우지 않는다 (마운트·UI 상태 유지).
+          if (shouldKeepMinimizedShellWindowsAlive(windowsRef.current, isAiGenerationBusy())) {
+            const alreadyBackground = windowsRef.current.some(w => Boolean(w.isMinimized));
             keepCreateAppAliveDuringBusyClear();
-            pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            // 의도적 최소화 직후 home 동기화에서는 차단 토스트를 내지 않는다.
+            if (isAiGenerationBusy() && !alreadyBackground) {
+              pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            }
             break;
           }
           commitWindows(() => []);
@@ -1353,9 +1400,12 @@ export function useMoaShellWindows({
           openErrorWindow(route.code as ShellErrorCode, { skipUrl: true });
           break;
         case 'router': {
-          if (isAiGenerationBusy()) {
+          if (shouldKeepMinimizedShellWindowsAlive(windowsRef.current, isAiGenerationBusy())) {
+            const alreadyBackground = windowsRef.current.some(w => Boolean(w.isMinimized));
             keepCreateAppAliveDuringBusyClear();
-            pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            if (isAiGenerationBusy() && !alreadyBackground) {
+              pushInfoToast(t('moa_apps_ai.toast_generation_in_progress_blocked'));
+            }
             break;
           }
           commitWindows(() => []);
@@ -1417,12 +1467,15 @@ export function useMoaShellWindows({
   }, []);
 
   const closeWindow = useCallback((win: WindowState) => {
+    // create-app 생성 중 닫기 = 최소화(마운트·SSE 유지). 최소화 상태에서는 UI X가 없으므로
+    // isGenerationBackground 단독 가드는 불필요 — busy만 보면 된다.
     if (win.appId === createAppShellMetadata.id && isAiGenerationBusy()) {
       minimizeCreateAppForBackground(win);
       return;
     }
 
     const remaining = commitWindows(prev => prev.filter(w => w.id !== win.id));
+    setTaskbarItems(prev => prev.filter(w => w.id !== win.id));
 
     if (typeof window === 'undefined') {
       return;
@@ -1446,22 +1499,13 @@ export function useMoaShellWindows({
     const target = windowsRef.current.find(w => w.id === id);
     if (!target) return;
 
-    if (target.appId === createAppShellMetadata.id && isAiGenerationBusy()) {
+    if (target.appId === createAppShellMetadata.id) {
       minimizeCreateAppForBackground(target);
       return;
     }
 
-    if (taskbarItemsRef.current.length >= MAX_TASKBAR_ITEMS) {
-      pushWarningToast(t('moa_shell.home.toast_max_taskbar', { max: MAX_TASKBAR_ITEMS }));
-      return;
-    }
-
-    setWindows(prev => prev.filter(w => w.id !== id));
-    setTaskbarItems(prev => {
-      if (prev.some(w => w.id === id)) return prev;
-      return [...prev, toTaskbarItem(target)];
-    });
-  }, [minimizeCreateAppForBackground, t]);
+    minimizeWindowToTaskbar(target);
+  }, [minimizeCreateAppForBackground, minimizeWindowToTaskbar]);
 
   const toggleMaximize = useCallback((id: string) => {
     setWindows(p => p.map(w => {
@@ -1478,8 +1522,11 @@ export function useMoaShellWindows({
     }
 
     const zIndex = allocateShellZIndex(windowsRef.current, taskbarItemsRef.current, nextZIndex);
+    setTaskbarItems(prev => prev.filter(w => w.id !== id));
     commitWindows(prev => prev.map(w => (
-      w.id === id ? { ...w, zIndex, isMinimized: false } : w
+      w.id === id
+        ? { ...w, zIndex, isMinimized: false, isGenerationBackground: false }
+        : w
     )));
     setNextZIndex(zIndex + 1);
   }, [commitWindows, nextZIndex]);
@@ -1508,8 +1555,12 @@ export function useMoaShellWindows({
   }, [applyAuthState, closeAuthWindows]);
 
   const handleShellProfileUpdated = useCallback((user?: AuthUserLike | null) => {
-    setCurrentUser(buildMoaCurrentUser(user ?? null, t('moa_shell.common.user_fallback')));
-  }, [setCurrentUser, t]);
+    // Auth SSOT — setCurrentUser 단독 호출 금지. null은 부분 갱신 실패로 보고 기존 세션 유지.
+    if (user == null) {
+      return;
+    }
+    applyAuthState(true, user);
+  }, [applyAuthState]);
 
   const openShellSurface = useCallback((
     action: ShellSurfaceOpenAction,

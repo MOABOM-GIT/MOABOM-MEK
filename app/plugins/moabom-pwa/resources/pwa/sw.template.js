@@ -35,6 +35,7 @@ const CDN_CACHE = `${CACHE_PREFIX}-cdn-v${__VERSION__}`;
 const FRONTEND_DEFAULTS_CACHE = `${CACHE_PREFIX}-frontend-defaults-v${__VERSION__}`;
 const SHELL_BOOT_CACHE = `${CACHE_PREFIX}-shell-boot-v${__VERSION__}`;
 const LAYOUT_JSON_CACHE = `${CACHE_PREFIX}-layout-json-v${__VERSION__}`;
+const WEBSITE_ICON_CACHE = `${CACHE_PREFIX}-website-icon-v${__VERSION__}`;
 
 /** PWA 사용자 템플릿 — 이 prefix 아래 asset 만 SW cache-first 대상. */
 const PWA_USER_TEMPLATE_ASSETS_PREFIX = '/api/templates/assets/moabom-basic/';
@@ -73,11 +74,23 @@ function normalizeCacheKey(url) {
   return next.toString();
 }
 
+/** website-icon 은 icon_token 이 바뀌어도 동일 이미지 — pathname 만 캐시 키 */
+function websiteIconCacheKey(url) {
+  const next = new URL(url.toString());
+  return next.origin + next.pathname;
+}
+
 const queryNormalizationPlugin = {
   async cacheKeyWillBeUsed({ request }) {
     // Cache API 키에는 URL만 필요하다. 원본 RequestInit(mode: "navigate" 등)을
     // 복사하면 브라우저가 금지하는 Request 조합이 생길 수 있으므로 문자열 키만 반환한다.
     return normalizeCacheKey(new URL(request.url));
+  },
+};
+
+const websiteIconCacheKeyPlugin = {
+  async cacheKeyWillBeUsed({ request }) {
+    return websiteIconCacheKey(new URL(request.url));
   },
 };
 
@@ -154,9 +167,15 @@ registerRoute(
       !request.headers.has('Authorization') &&
       !precachedPathnames.has(path) &&
       (
-        (path.startsWith('/api/templates/assets/') && /\/(css|js|img)\//.test(path)) ||
+        (path.startsWith('/api/templates/assets/') && /\/(css|js|img|fonts)\//.test(path)) ||
+        (path.startsWith('/api/modules/assets/') && /\/(?:dist\/)?(?:css|js|img)\//.test(path)) ||
         (path.startsWith('/api/plugins/assets/') && /\/(?:dist\/)?(?:css|js|img)\//.test(path)) ||
-        (path.startsWith('/build/core/') && path.endsWith('.min.js'))
+        /^\/api\/templates\/[^/]+\/components\.json$/.test(path) ||
+        (path.startsWith('/build/core/') && path.endsWith('.min.js')) ||
+        path === '/api/modules/bundle.js' ||
+        path === '/api/modules/bundle.css' ||
+        path === '/api/plugins/bundle.js' ||
+        path === '/api/plugins/bundle.css'
       )
     );
   },
@@ -226,6 +245,23 @@ registerRoute(
     request.method === 'GET' &&
     !isBypassed(url) &&
     !request.headers.has('Authorization') &&
+    /^\/api\/modules\/moabom-apps\/apps\/generated\/\d+\/website-icon$/.test(url.pathname)
+  ),
+  new CacheFirst({
+    cacheName: WEBSITE_ICON_CACHE,
+    plugins: [
+      websiteIconCacheKeyPlugin,
+      createCacheGuardPlugin(),
+      new ExpirationPlugin({ maxEntries: 80, maxAgeSeconds: 86400 }),
+    ],
+  }),
+);
+
+registerRoute(
+  ({ url, request }) => (
+    request.method === 'GET' &&
+    !isBypassed(url) &&
+    !request.headers.has('Authorization') &&
     url.pathname === '/api/modules/moabom-system/public/shell-boot'
   ),
   new CacheFirst({
@@ -246,7 +282,9 @@ registerRoute(
   ),
   new NetworkFirst({
     cacheName: HTML_CACHE,
-    networkTimeoutSeconds: 3,
+    // 네트워크가 느리면 0.4s 후 stale HTML 로 즉시 페인트 (흰 화면 대기 축소).
+    // 실시간·API 와 무관 — 문서 네비게이션만.
+    networkTimeoutSeconds: 0.4,
     plugins: [queryNormalizationPlugin, createCacheGuardPlugin()],
   }),
 );
