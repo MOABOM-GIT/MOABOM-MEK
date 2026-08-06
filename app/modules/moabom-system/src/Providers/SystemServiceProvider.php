@@ -16,12 +16,16 @@ use App\Services\PluginSettingsService;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\View;
 use Modules\Moabom\System\Contracts\ExtensionCatalogBuilderInterface;
+use Modules\Moabom\System\Contracts\NotificationMaintenanceRepositoryInterface;
 use Modules\Moabom\System\Contracts\ShellAppUsageRepositoryInterface;
 use Modules\Moabom\System\Contracts\SystemSettingsServiceInterface;
 use Modules\Moabom\System\Experience\TenantExperienceDefaultsReader;
 use Modules\Moabom\System\Experience\TenantExperienceRevision;
 use Modules\Moabom\System\Experience\TenantSettingsWriter;
 use Modules\Moabom\System\Console\Commands\MoabomModuleSyncDeclarationsCommand;
+use Modules\Moabom\System\Console\Commands\MoabomNotificationCleanupCommand;
+use Modules\Moabom\System\Console\Commands\MoabomQueueProbeCommand;
+use Modules\Moabom\System\Console\Commands\MoabomQueueWakePendingCommand;
 use Modules\Moabom\System\Console\Commands\SaasDiffTenantCommand;
 use Modules\Moabom\System\Console\Commands\SaasInspectDbCommand;
 use Modules\Moabom\System\Console\Commands\SaasMeasureSplitBrainCommand;
@@ -39,6 +43,8 @@ use Modules\Moabom\System\Console\Commands\SaasTenantRepairCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantReconcileCommand;
 use Modules\Moabom\System\Console\Commands\SaasPlatformMigrateCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantsMigrateCommand;
+use Modules\Moabom\System\Console\Commands\SaasTenantsBaselineMigrationsCommand;
+use Modules\Moabom\System\Console\Commands\SaasSchemaSyncCommand;
 use Modules\Moabom\System\Console\Commands\SaasPlatformSettingsRestoreCommand;
 use Modules\Moabom\System\Console\Commands\SaasTenantAdminTokenCommand;
 use Modules\Moabom\System\Console\Commands\SaasPlatformAdminTokenCommand;
@@ -63,6 +69,7 @@ use Modules\Moabom\System\Http\Middleware\ResolveMoabomTenant;
 use Modules\Moabom\System\Http\Middleware\RestrictPlatformApiToPlatformHost;
 use App\Repositories\JsonConfigRepository;
 use Modules\Moabom\System\Repositories\MoabomJsonConfigRepository;
+use Modules\Moabom\System\Repositories\NotificationMaintenanceRepository;
 use Modules\Moabom\System\Repositories\ShellAppUsageRepository;
 use Modules\Moabom\System\Saas\PlatformConnectionFactory;
 use Modules\Moabom\System\Saas\TenantContext;
@@ -91,6 +98,7 @@ use Modules\Moabom\System\Console\Commands\SaasSyncTenantLanguagePacksCommand;
 use Modules\Moabom\System\Console\Commands\SaasSetupSharedLanguagePacksCommand;
 use Modules\Moabom\System\Saas\TenantCachePurger;
 use Modules\Moabom\System\Saas\TenantScopedCacheDecorator;
+use Modules\Moabom\System\Saas\TenantExtensionRevisionResolver;
 use Modules\Moabom\System\Saas\Deprovision\TenantDeprovisionGuard;
 use Modules\Moabom\System\Saas\Deprovision\TenantDeprovisioner;
 use Modules\Moabom\System\Saas\Deprovision\TenantDeprovisionerInterface;
@@ -100,10 +108,12 @@ use Modules\Moabom\System\Saas\SaasCachedConfigBridge;
 use Modules\Moabom\System\Saas\TenantContextSwitcher;
 use Modules\Moabom\System\Saas\PlatformModuleLayoutReconciler;
 use Modules\Moabom\System\Saas\TenantRuntimeBootstrap;
+use Modules\Moabom\System\Saas\Queue\CloudTasksQueueWakeDispatcher;
 use Modules\Moabom\System\Saas\Queue\TenantQueueBootstrapper;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Queue;
@@ -119,10 +129,12 @@ use Modules\Moabom\System\Services\MoabomModuleSettingsService;
 use Modules\Moabom\System\Services\MoabomPluginSettingsService;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
 use Modules\Moabom\System\Services\MoabomWarmTemplateLangStatic;
+use Modules\Moabom\System\Notifications\MoabomNotificationChannelManager;
 use Modules\Moabom\System\Services\Shell\ShellAppUsageIngestService;
 use Modules\Moabom\System\Services\Shell\ShellRankingService;
 use Modules\Moabom\System\Services\Shell\ShellUsageIngestGuard;
 use Modules\Moabom\System\Services\SystemSettingsService;
+
 class SystemServiceProvider extends BaseModuleServiceProvider
 {
     /**
@@ -130,6 +142,9 @@ class SystemServiceProvider extends BaseModuleServiceProvider
      */
     protected array $commands = [
         MoabomModuleSyncDeclarationsCommand::class,
+        MoabomNotificationCleanupCommand::class,
+        MoabomQueueProbeCommand::class,
+        MoabomQueueWakePendingCommand::class,
         SaasPlatformMigrateCommand::class,
         SaasTenantRegisterCommand::class,
         SaasTenantReseedSettingsCommand::class,
@@ -143,6 +158,8 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         SaasMigrateModuleSettingsToDbCommand::class,
         SaasMigrateG7CoreSettingsToDbCommand::class,
         SaasTenantsMigrateCommand::class,
+        SaasTenantsBaselineMigrationsCommand::class,
+        SaasSchemaSyncCommand::class,
         SaasTenantRepairCommand::class,
         SaasSyncTenantAdminMenusCommand::class,
         SaasSyncTenantLanguagePacksCommand::class,
@@ -193,11 +210,18 @@ class SystemServiceProvider extends BaseModuleServiceProvider
             __DIR__.'/../../config/moabom-system.php',
             'moabom-system',
         );
+        if (config('moabom-system.queue_plane.mode', 'legacy') !== 'legacy') {
+            config(['queue.connections.database.after_commit' => true]);
+        }
         SaasCachedConfigBridge::applyIfNeeded();
         $this->configureCoreRuntimeGuards();
 
         $this->app->scoped(SystemSettingsServiceInterface::class, SystemSettingsService::class);
         $this->app->bind(ExtensionCatalogBuilderInterface::class, ExtensionCatalogBuilder::class);
+        $this->app->bind(
+            NotificationMaintenanceRepositoryInterface::class,
+            NotificationMaintenanceRepository::class,
+        );
         $this->app->bind(ShellAppUsageRepositoryInterface::class, ShellAppUsageRepository::class);
         $this->app->scoped(ShellAppUsageIngestService::class);
         $this->app->scoped(ShellRankingService::class);
@@ -217,6 +241,10 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         $this->app->bind(PluginSettingsService::class, MoabomPluginSettingsService::class);
         $this->app->bind(UserTemplateComposer::class, MoabomUserTemplateComposer::class);
         $this->app->bind(TemplateComposer::class, MoabomTemplateComposer::class);
+        $this->app->singleton(
+            \Illuminate\Notifications\ChannelManager::class,
+            fn ($app) => new MoabomNotificationChannelManager($app),
+        );
 
         MoabomGcsAttachmentRegistrar::register($this->app);
 
@@ -240,11 +268,13 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         $this->app->singleton(PlatformModuleLayoutReconciler::class);
         // ConfigRepositoryInterface(scoped) 주입 — singleton 이면 Run 워커에서 platform general memo 가 tenant 요청에 새어남
         $this->app->scoped(SaasCoreSettingsHydrator::class);
+        $this->app->scoped(TenantExtensionRevisionResolver::class);
         $this->app->singleton(TenantRuntimeBootstrap::class);
         // 큐 부트스트래퍼는 좁은 TenantContextSwitcher 계약에만 의존(final 유지 + 테스트 가능).
         $this->app->bind(TenantContextSwitcher::class, TenantRuntimeBootstrap::class);
         // 큐 잡 테넌트 전파/복원 (C1) — 워커 프로세스 동안 스택 유지를 위해 singleton.
         $this->app->singleton(TenantQueueBootstrapper::class);
+        $this->app->singleton(CloudTasksQueueWakeDispatcher::class);
         $this->app->singleton(TenantPackageCatalog::class);
         $this->app->singleton(TenantPackageDatabaseSeeder::class);
         $this->app->singleton(TenantDatabaseBootstrapper::class);
@@ -289,7 +319,11 @@ class SystemServiceProvider extends BaseModuleServiceProvider
 
         if (config('moabom-system.saas.enabled', false)) {
             $this->app->extend(CacheInterface::class, static function (CacheInterface $cache, $app): CacheInterface {
-                return new TenantScopedCacheDecorator($cache, $app->make(TenantContext::class));
+                return new TenantScopedCacheDecorator(
+                    $cache,
+                    $app->make(TenantContext::class),
+                    $app->make(TenantExtensionRevisionResolver::class),
+                );
             });
         }
     }
@@ -439,5 +473,6 @@ class SystemServiceProvider extends BaseModuleServiceProvider
         $events->listen(JobProcessed::class, [TenantQueueBootstrapper::class, 'onJobSettled']);
         $events->listen(JobFailed::class, [TenantQueueBootstrapper::class, 'onJobSettled']);
         $events->listen(JobExceptionOccurred::class, [TenantQueueBootstrapper::class, 'onJobSettled']);
+        $events->listen(JobQueued::class, [CloudTasksQueueWakeDispatcher::class, 'onJobQueued']);
     }
 }

@@ -8,6 +8,9 @@
  * Automatically supplemented by active language packs.
  */
 return [
+    'notification_subscription' => [
+        'label' => 'Marketing Notifications',
+    ],
     'email_subscription' => [
         'label' => 'Email Marketing',
     ],

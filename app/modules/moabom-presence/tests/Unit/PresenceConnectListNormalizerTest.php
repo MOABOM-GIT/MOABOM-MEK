@@ -90,11 +90,27 @@ class PresenceConnectListNormalizerTest extends TestCase
         $this->assertSame(10, $result->first()?->user_id);
     }
 
+    public function test_hides_guest_matching_viewer_masked_ip(): void
+    {
+        $sessions = new Collection([
+            $this->makeSession('guest-shadow', null, now(), 'visitor-old', '8.232.*.*'),
+            $this->makeSession('guest-other', null, now()->subSeconds(1), 'visitor-other', '1.2.*.*'),
+            $this->makeSession('member-key', 10, now()->subSeconds(5), 'visitor-me'),
+        ]);
+
+        $result = PresenceConnectListNormalizer::dedupe($sessions, 10, '8.232.*.*');
+
+        $this->assertCount(2, $result);
+        $this->assertSame(10, $result->firstWhere('user_id', 10)?->user_id);
+        $this->assertSame('visitor-other', $result->firstWhere('user_id', null)?->visitor_id);
+    }
+
     private function makeSession(
         string $sessionKey,
         ?int $userId,
         Carbon $lastSeenAt,
         ?string $visitorId = null,
+        ?string $clientIpMasked = null,
     ): TenantPresenceSession {
         $session = new TenantPresenceSession;
         $session->forceFill([
@@ -103,6 +119,7 @@ class PresenceConnectListNormalizerTest extends TestCase
             'user_id' => $userId,
             'display_name' => $userId ? 'User '.$userId : '방문자',
             'is_authenticated' => $userId !== null,
+            'client_ip_masked' => $clientIpMasked,
             'last_seen_at' => $lastSeenAt,
         ]);
 

@@ -6,6 +6,8 @@ import {
   clearConversationLeft,
 } from '../runtime/moabomShellChatLeftConversations';
 import { registerShellChatInboxHandler } from '../shell/ShellRealtimeStore';
+import { bumpShellUnreadBadgeProvisional } from './moabomShellUnreadBadge';
+import { getMoabomShellActiveConversationUuid } from '../runtime/moabomShellActiveChat';
 
 type InboxCacheListener = (conversations: ChatConversation[]) => void;
 
@@ -13,6 +15,12 @@ let cachedConversations: ChatConversation[] = [];
 const conversationMuteOverrides = new Map<string, boolean>();
 const cacheListeners = new Set<InboxCacheListener>();
 let inboxBridgeInstalled = false;
+
+type ChatInboxPayload = ChatMessageCreatedPayload & {
+  removed?: boolean;
+  reason?: string;
+  user_uuid?: string;
+};
 
 function syncConversationMuteOverrides(conversations: ChatConversation[]): void {
   conversations.forEach(row => {
@@ -31,12 +39,19 @@ function notifyCacheListeners(): void {
   cacheListeners.forEach(listener => listener(cachedConversations));
 }
 
-function applyChatInboxPayload(payload: ChatMessageCreatedPayload & { removed?: boolean; reason?: string }): void {
+function applyChatInboxPayload(payload: ChatInboxPayload): void {
   const conversationUuid = payload.conversation_uuid
     ?? payload.message?.conversation_uuid
     ?? payload.conversation?.uuid;
   if (!conversationUuid) {
     return;
+  }
+  if (
+    payload.notification_expected
+    && payload.message_uuid
+    && getMoabomShellActiveConversationUuid() !== conversationUuid
+  ) {
+    bumpShellUnreadBadgeProvisional(payload.message_uuid);
   }
 
   if (payload.removed || payload.reason === 'member.left.self') {
@@ -81,13 +96,15 @@ function applyChatInboxPayload(payload: ChatMessageCreatedPayload & { removed?: 
   }
 
   if (payload.conversation) {
-    cachedConversations = upsertConversation(cachedConversations, payload.conversation);
+    const conversation = getMoabomShellActiveConversationUuid() === conversationUuid
+      ? { ...payload.conversation, unread_count: 0 }
+      : payload.conversation;
+    cachedConversations = upsertConversation(cachedConversations, conversation);
     notifyCacheListeners();
     return;
   }
 
-  const incomingMessage = payload.message
-    ?? (payload.conversation?.latest_message as ChatMessage | undefined);
+  const incomingMessage: ChatMessage | undefined = payload.message;
   if (!incomingMessage) {
     return;
   }
@@ -98,7 +115,9 @@ function applyChatInboxPayload(payload: ChatMessageCreatedPayload & { removed?: 
         ...item,
         latest_message: incomingMessage,
         last_message_at: payload.last_message_at ?? incomingMessage.created_at ?? item.last_message_at,
-        unread_count: item.unread_count + 1,
+        unread_count: getMoabomShellActiveConversationUuid() === conversationUuid
+          ? 0
+          : item.unread_count + 1,
       }
       : item
   ));
@@ -151,9 +170,15 @@ export function installShellChatInboxCacheBridge(): void {
   registerShellChatInboxHandler(applyChatInboxPayload);
 }
 
-export function resetShellChatInboxCacheForTest(): void {
+/** 인증 계정 경계 전환 — bridge/listener 수명은 유지하고 사용자 데이터만 폐기한다. */
+export function clearShellChatInboxCache(): void {
   cachedConversations = [];
   conversationMuteOverrides.clear();
+  notifyCacheListeners();
+}
+
+export function resetShellChatInboxCacheForTest(): void {
+  clearShellChatInboxCache();
   cacheListeners.clear();
   inboxBridgeInstalled = false;
 }

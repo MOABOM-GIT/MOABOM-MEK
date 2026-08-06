@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.35] - 2026-08-06
+
+### Added
+
+- 친구 요청·수락을 앱 종료 상태에서도 받을 수 있도록 FCM 알림을 추가했습니다.
+
+### Changed
+
+- 단순 소켓 연결 상태 대신 private 채널 challenge 응답이 확인된 세션만 온라인으로 판정해 FCM 누락을 방지합니다.
+
+## [0.1.34] - 2026-08-05
+
+### Changed
+
+- realtime-state catch-up이 Presence 도메인을 요청한 경우에만 접속자·친구 목록을 집계합니다.
+- 친구 온라인 상태 조회를 전체 활성 세션 PHP 필터에서 친구 user_id SQL 조회로 바꾸고, summary 카운트는 identity 최소 열만 읽도록 경량화했습니다.
+
+## [0.1.33] - 2026-07-29
+
+### Fixed
+
+- 로그인 후에도 남던 동일 IP 방문자(다른 visitor_id) shadow — 인증 heartbeat 마다 IP guest 를 정리하고, 접속자 목록 조회 시 본인 요청 IP 와 같은 guest 행을 숨깁니다. 폴링·채널·heartbeat 주기는 늘리지 않습니다.
+
+## [0.1.32] - 2026-07-12
+
+### Fixed
+
+- 로그인(`touch=login`) 시 동일 마스크 IP guest 잔여 행을 즉시 정리해, 다른 `visitor_id`로 남던 방문자가 TTL까지 보이지 않게 했습니다.
+
 ## [0.1.31] - 2026-07-10
 
 ### Fixed

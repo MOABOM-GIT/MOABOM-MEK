@@ -19,28 +19,18 @@ if [ "${MOABOM_SYNC_PACKAGE_EXTENSIONS:-true}" = "true" ]; then
   php artisan moabom:saas:sync-package-extensions --no-interaction || true
 fi
 
-# active tenant DB — hospital-default modules/plugins 동기화
+# active tenant DB — hospital-default modules/plugins 가용성 (on/off 유지)
 if [ "${MOABOM_SAAS_ENABLED:-false}" = "true" ] && [ "${MOABOM_SYNC_TENANT_EXTENSIONS:-true}" = "true" ]; then
-  if [ "${MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE:-true}" = "true" ]; then
-    echo "[deferred-sync] Syncing tenant package extensions (activate package on/off)..."
-    php artisan moabom:saas:tenant-repair '*' \
-      --apply \
-      --package=hospital-default \
-      --skip-menus \
-      --skip-menu-rows \
-      --skip-templates \
-      --no-interaction || true
-  else
-    echo "[deferred-sync] Syncing tenant package extensions (insert-only, preserve on/off)..."
-    php artisan moabom:saas:tenant-repair '*' \
-      --apply \
-      --package=hospital-default \
-      --insert-only \
-      --skip-menus \
-      --skip-menu-rows \
-      --skip-templates \
-      --no-interaction || true
-  fi
+  echo "[deferred-sync] Syncing tenant package extensions (insert-only availability, RF-32)..."
+  php artisan moabom:saas:tenant-repair \
+    --apply \
+    --package=hospital-default \
+    --insert-only \
+    --skip-menus \
+    --skip-menu-rows \
+    --skip-templates \
+    --skip-legal-pages \
+    --no-interaction || true
 fi
 
 moabom_sync_template_layouts() {

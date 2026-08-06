@@ -35,13 +35,60 @@ final class GoogleFcmV1Client implements FcmClientInterface
             return FcmSendResult::disabled('fcm_not_configured');
         }
 
-        $token = $message->primaryToken();
-        if ($token === null || $token === '') {
+        $tokens = array_values(array_filter(
+            $message->deviceTokens,
+            static fn (string $token): bool => $token !== '',
+        ));
+
+        if ($tokens === []) {
             return FcmSendResult::failed('missing_device_token');
         }
 
         try {
             $accessToken = $this->fetchAccessToken();
+        } catch (Throwable $e) {
+            return FcmSendResult::failed($e->getMessage());
+        }
+
+        $sent = 0;
+        $failed = 0;
+        $invalid = [];
+        $lastMessageId = null;
+
+        foreach ($tokens as $token) {
+            $result = $this->sendOne($accessToken, $token, $message);
+            if ($result['success']) {
+                $sent++;
+                $lastMessageId = $result['message_id'] ?? $lastMessageId;
+            } else {
+                $failed++;
+                if (! empty($result['invalid'])) {
+                    $invalid[] = $token;
+                }
+            }
+        }
+
+        if ($sent === 0) {
+            return FcmSendResult::failed(
+                $failed > 0 ? 'fcm_all_failed' : 'missing_device_token',
+                $invalid,
+                $failed,
+            );
+        }
+
+        if ($failed > 0) {
+            return FcmSendResult::partial($sent, $failed, $invalid, $lastMessageId);
+        }
+
+        return FcmSendResult::ok($lastMessageId ?? 'ok', $sent);
+    }
+
+    /**
+     * @return array{success: bool, message_id?: string, invalid?: bool}
+     */
+    private function sendOne(string $accessToken, string $token, FcmMessage $message): array
+    {
+        try {
             $payload = [
                 'message' => [
                     'token' => $token,
@@ -59,6 +106,15 @@ final class GoogleFcmV1Client implements FcmClientInterface
                 $payload['message']['data'] = $message->data;
             }
 
+            $tag = trim((string) ($message->data['tag'] ?? ''));
+            if ($tag !== '') {
+                $collapseId = substr($tag, 0, 64);
+                $payload['message']['android']['notification']['tag'] = $collapseId;
+                $payload['message']['webpush']['notification']['tag'] = $collapseId;
+                $payload['message']['apns']['headers']['apns-collapse-id'] = $collapseId;
+                $payload['message']['apns']['payload']['aps']['thread-id'] = $collapseId;
+            }
+
             $response = Http::timeout(8)
                 ->withToken($accessToken)
                 ->acceptJson()
@@ -67,15 +123,24 @@ final class GoogleFcmV1Client implements FcmClientInterface
                     $payload,
                 );
 
-            if (! $response->successful()) {
-                return FcmSendResult::failed('fcm_http_'.$response->status());
+            if ($response->successful()) {
+                $messageId = (string) ($response->json('name') ?? '');
+
+                return [
+                    'success' => true,
+                    'message_id' => $messageId !== '' ? $messageId : 'ok',
+                ];
             }
 
-            $messageId = (string) ($response->json('name') ?? '');
+            $errorCode = (string) ($response->json('error.status') ?? '');
+            $errorMessage = strtolower((string) ($response->json('error.message') ?? ''));
+            $invalid = in_array($errorCode, ['NOT_FOUND', 'INVALID_ARGUMENT'], true)
+                || str_contains($errorMessage, 'unregistered')
+                || str_contains($errorMessage, 'registration-token-not-registered');
 
-            return FcmSendResult::ok($messageId !== '' ? $messageId : 'ok');
-        } catch (Throwable $e) {
-            return FcmSendResult::failed($e->getMessage());
+            return ['success' => false, 'invalid' => $invalid];
+        } catch (Throwable) {
+            return ['success' => false, 'invalid' => false];
         }
     }
 

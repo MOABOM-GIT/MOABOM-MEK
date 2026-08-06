@@ -11,7 +11,7 @@
     "settings": {
       "title": "Credit Management",
       "description": "Manage credit reward policies and user balances.",
-      "page_intro": "Reward events, daily limits, activity level thresholds, and ad settings apply to My Page credits, attendance, and shell rankings. Review each section before saving.",
+      "page_intro": "Reward events, daily limits, activity levels, ads, and AI usage fees apply to My Page credits, attendance, shell rankings, and AI Smart Chat / App Builder. Review each section before saving.",
       "read_only_message": "You do not have permission to update credit settings. This page is read-only.",
       "save_error": "An error occurred while saving credit settings.",
       "validation_error": "Please check the entered values.",
@@ -23,7 +23,9 @@
         "ads": "Ad Integration Preparation",
         "ads_description": "Settings for switching attendance rewards to Google ad-based rewards later.",
         "levels": "Activity Level Thresholds",
-        "levels_description": "Start points for 10 levels based on cumulative ranking_points. Tier names come from UI i18n."
+        "levels_description": "Start points for 10 levels based on cumulative ranking_points. Tier names come from UI i18n.",
+        "ai_spend": "AI usage fees",
+        "ai_spend_description": "Per-use personal credit rates for AI Smart Chat and AI App Builder. Disabled means free."
       },
       "fields": {
         "enabled": "Enabled",
@@ -38,6 +40,15 @@
         "max_like_received_rewards_per_day": "Like rewards per day",
         "max_comment_write_rewards_per_day": "Comment write rewards per day",
         "max_app_review_write_rewards_per_day": "App review write rewards per day",
+        "smart_chat_enabled": "AI Smart Chat billing",
+        "smart_chat_amount": "Credits per Smart Chat message",
+        "create_app_enabled": "AI App Builder billing",
+        "create_app_amount": "Credits per app generation",
+        "attachment_surcharge": "Attachment surcharge credits",
+        "web_search_surcharge": "Web search surcharge credits",
+        "token_billing_enabled": "Token-precise billing",
+        "credits_per_1k_prompt": "Credits per 1K prompt tokens",
+        "credits_per_1k_completion": "Credits per 1K completion tokens",
         "app_review_write_amount": "App review write reward",
         "attendance_requires_ad": "Require ad before attendance reward",
         "attendance_ad_provider": "Ad provider",
@@ -56,7 +67,8 @@
       "hints": {
         "daily_earn_limit": "Use 0 if you want to treat the limit as unlimited.",
         "ads": "The My Page button rewards immediately for now. Enable this later when the ad viewing flow is connected.",
-        "levels": "Lv.1 is fixed at 0. Remaining values must be non-decreasing integers shared by rankings, EXP bar, and badges."
+        "levels": "Lv.1 is fixed at 0. Remaining values must be non-decreasing integers shared by rankings, EXP bar, and badges.",
+        "ai_spend": "All billing is off (free) by default. Token-precise billing adds per-1K prompt/completion rates on top of the per-message fee."
       }
     },
     "user_credits": {

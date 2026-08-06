@@ -234,6 +234,28 @@ class AppCommunityControllerTest extends ModuleTestCase
             ->assertJsonPath('data.item.rating', 4);
     }
 
+    public function test_member_can_list_only_own_app_reviews_for_mypage(): void
+    {
+        $app = $this->createPublishedApp($this->owner->id);
+        $this->seedCommunityPost((int) $app->id, $this->visitor->id, 'default');
+        $this->bindTenantContext('default');
+
+        $this->actingAs($this->visitor)
+            ->getJson('/api/modules/moabom-apps/apps/community/reviews?limit=10&offset=0')
+            ->assertOk()
+            ->assertJsonPath('data.summary.reviews_count', 1)
+            ->assertJsonPath('data.items.0.type', 'review')
+            ->assertJsonPath('data.items.0.board_name', '공개 앱')
+            ->assertJsonPath('data.items.0.target_url', '/app/generated-app-'.$app->id)
+            ->assertJsonPath('data.pagination.has_more', false);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/modules/moabom-apps/apps/community/reviews')
+            ->assertOk()
+            ->assertJsonPath('data.summary.reviews_count', 0)
+            ->assertJsonCount(0, 'data.items');
+    }
+
     private function createPublishedApp(int $userId): \Modules\Moabom\Apps\Models\GeneratedApp
     {
         return $this->createApp($userId, GeneratedAppVisibility::Global, 'default');

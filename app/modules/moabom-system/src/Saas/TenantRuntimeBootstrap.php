@@ -52,6 +52,8 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
 
         $appUrl = $tenant->appUrl ?: $request->getScheme().'://'.$parsed['host'];
         $this->applyAppUrl($appUrl);
+        // DB row 누락 시 GCS lazy hydrate가 tenant prefix를 사용하도록 먼저 적용한다.
+        $this->filesystemConfigurator->apply($tenant);
         $this->settingsHydrator()->hydrate();
         // hydrate() 내 storage_driver 적용이 GCS path_prefix 를 플랫폼(attachments/)로 리셋하므로
         // 테넌트 prefix(tenants/{slug}/attachments) 는 hydrate 이후에 다시 적용한다.
@@ -90,6 +92,7 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
             $tenant = $context->tenant();
             if ($tenant !== null) {
                 $this->databaseConfigurator->apply($tenant);
+                $this->filesystemConfigurator->apply($tenant);
             }
         }
 
@@ -123,7 +126,10 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
         $this->tenantContext()->setTenant($tenant, $tenant->host);
         $this->databaseConfigurator->apply($tenant);
         $this->applyAppUrl($tenant->appUrl ?: 'https://'.$tenant->host);
+        // GCS lazy hydrate가 platform prefix를 읽지 않도록 tenant prefix를 먼저 적용한다.
+        $this->filesystemConfigurator->apply($tenant);
         $this->settingsHydrator()->hydrate();
+        // drivers snapshot이 storage 설정을 바꿨을 수 있으므로 최종 runtime을 재적용한다.
         $this->filesystemConfigurator->apply($tenant);
 
         HookManager::doAction('moabom.saas.tenant_resolved', $tenant, $tenant->host);
@@ -184,6 +190,9 @@ final class TenantRuntimeBootstrap implements TenantContextSwitcher
         $repo = app(ConfigRepositoryInterface::class);
         if ($repo instanceof MoabomJsonConfigRepository) {
             $repo->resetRequestState();
+        }
+        if ($repo instanceof MoabomDbConfigRepository) {
+            $repo->resetMemo();
         }
     }
 }

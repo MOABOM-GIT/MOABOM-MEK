@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Presence\Http\Controllers\Public\PresencePublicController;
 use Modules\Moabom\Presence\Http\Controllers\User\FriendshipController;
 use Modules\Moabom\Presence\Http\Controllers\User\PresenceSettingsController;
+use Modules\Moabom\Presence\Http\Controllers\User\RealtimeReachabilityController;
 
 Route::prefix('public')->middleware(['optional.sanctum'])->group(function (): void {
     Route::get('summary', [PresencePublicController::class, 'summary'])
@@ -22,6 +23,10 @@ Route::prefix('user')->middleware(['auth:sanctum'])->group(function (): void {
         ->name('user.presence.settings.show');
     Route::put('presence/settings', [PresenceSettingsController::class, 'update'])
         ->name('user.presence.settings.update');
+    Route::post('realtime/challenge', [RealtimeReachabilityController::class, 'challenge'])
+        ->name('user.realtime.challenge');
+    Route::post('realtime/challenge/ack', [RealtimeReachabilityController::class, 'acknowledge'])
+        ->name('user.realtime.challenge.acknowledge');
 
     Route::get('friends', [FriendshipController::class, 'index'])
         ->name('user.friends.index');

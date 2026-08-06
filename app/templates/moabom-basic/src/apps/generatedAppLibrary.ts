@@ -113,6 +113,8 @@ export function mapStoredGeneratedAppToLibraryApp(item: StoredGeneratedAppSummar
       launchMode: isWebsiteLink
         ? readWebsiteLinkLaunchModeFromMetadata(metadata)
         : undefined,
+      // 서버가 실은 토큰 없는 공개 앱 preview_url — Viewer 가 show 전 iframe 병렬 시작.
+      previewUrl: !isWebsiteLink && item.preview_url ? item.preview_url : undefined,
       iconImageUrl: iconImageUrl || undefined,
       ...(iconFromTitle ? { iconFromTitle: true } : {}),
     },

@@ -4,29 +4,36 @@ type PusherConnection = {
   unbind?: (event: string, callback: () => void) => void;
 };
 
+type PusherChannel = {
+  subscribed?: boolean;
+};
+
+type PusherClient = {
+  connection?: PusherConnection;
+  channel?: (name: string) => PusherChannel | undefined;
+};
+
 type ConnectionListener = () => void;
 
 const connectionListeners = new Set<ConnectionListener>();
 let watchInstalled = false;
 let boundConnection: PusherConnection | null = null;
 let boundHandler: (() => void) | null = null;
-let bindRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let bindRetryTimer: number | null = null;
 let bindRetryAttempt = 0;
 
 const BIND_RETRY_BASE_MS = 200;
 const BIND_RETRY_MAX_MS = 5_000;
 const BIND_RETRY_MAX_ATTEMPTS = 24;
 
-function readPusherConnection(): PusherConnection | null {
+function readPusherClient(): PusherClient | null {
   const manager = (window as unknown as {
     G7Core?: {
       websocket?: {
         manager?: {
           echo?: {
             connector?: {
-              pusher?: {
-                connection?: PusherConnection;
-              };
+              pusher?: PusherClient;
             };
           };
         };
@@ -34,7 +41,11 @@ function readPusherConnection(): PusherConnection | null {
     };
   }).G7Core?.websocket?.manager;
 
-  return manager?.echo?.connector?.pusher?.connection ?? null;
+  return manager?.echo?.connector?.pusher ?? null;
+}
+
+function readPusherConnection(): PusherConnection | null {
+  return readPusherClient()?.connection ?? null;
 }
 
 function notifyConnectionListeners(): void {
@@ -117,6 +128,10 @@ export function refreshMoabomWebSocketConnectionWatch(): void {
 
 export function isMoabomWebSocketConnected(): boolean {
   return readPusherConnection()?.state === 'connected';
+}
+
+export function isMoabomPrivateChannelSubscribed(channel: string): boolean {
+  return readPusherClient()?.channel?.(`private-${channel}`)?.subscribed === true;
 }
 
 export function subscribeMoabomWebSocketConnectionChange(listener: ConnectionListener): () => void {

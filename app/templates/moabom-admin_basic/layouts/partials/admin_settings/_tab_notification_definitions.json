@@ -112,7 +112,7 @@
                                     "type": "composite",
                                     "name": "Toggle",
                                     "props": {
-                                        "checked": "{{(_local.form?.notifications?.channels ?? []).find(c => c.id === ch.id)?.is_active ?? false}}",
+                                        "checked": "{{(_local.form?.notifications?.channels ?? []).find(c => c.id === ch.id)?.is_active ?? true}}",
                                         "disabled": "{{_computed.isReadOnly}}"
                                     },
                                     "actions": [
@@ -121,7 +121,7 @@
                                             "handler": "setState",
                                             "params": {
                                                 "target": "local",
-                                                "form.notifications.channels": "{{(_local.form?.notifications?.channels ?? []).map(c => c.id === ch.id ? {...c, is_active: !c.is_active} : c)}}",
+                                                "form.notifications.channels": "{{(function() { const channels = _local.form?.notifications?.channels ?? []; const current = channels.find(c => c.id === ch.id); return current ? channels.map(c => c.id === ch.id ? {...c, is_active: !(c.is_active ?? true)} : c) : [...channels, {id: ch.id, is_active: false, sort_order: channels.length}]; })()}}",
                                                 "hasChanges": true
                                             }
                                         }

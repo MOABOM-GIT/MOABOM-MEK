@@ -191,10 +191,14 @@ grep -q '"handler": "confirm"' "${ACTIVE_SYS}/resources/layouts/admin/admin_saas
   && fail "admin_saas_hospitals.json 에 handler confirm 사용 (RF-17 — apiCall.confirm 만 허용)" || true
 grep -q 'forEach' "${ACTIVE_SYS}/resources/layouts/admin/admin_saas_hospitals.json" \
   && fail "admin_saas_hospitals.json 에 forEach 사용 (RF-16 위반)" || true
-grep -q "moabom:saas:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
-  || fail "cloudrun-entrypoint.sh 가 platform-migrate 미호출 (idempotent 운영 적용용)"
-grep -q "moabom:apps:platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
-  || fail "cloudrun-entrypoint.sh 가 apps platform-migrate 미호출"
+grep -q "run-saas-phase-e-post-deploy.sh" "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy.sh post-deploy Phase E 연결 누락"
+grep -q "moabom:saas:platform-migrate" "${ROOT}/deploy/run-saas-phase-e-post-deploy.sh" \
+  || fail "post-deploy Phase E 에 platform-migrate 누락"
+grep -q "moabom:apps:platform-migrate" "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy.sh post-deploy Job 에 apps platform-migrate 누락"
+grep -q "platform-migrate" "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+  && fail "cloudrun-entrypoint.sh 에 platform migration 잔존"
 grep -q "moabom:apps:migrate-to-platform" "${ROOT}/deploy/run-saas-phase-e-post-deploy.sh" \
   && fail "run-saas-phase-e-post-deploy.sh 에 migrate-to-platform 금지 (SaaS 쓰기 SSOT=platform, 배포마다 legacy 이관 시 삭제 앱 복원)"
 grep -q 'display_name' "${ACTIVE_SYS}/src/Saas/TenantProvisioner.php" \
@@ -572,7 +576,7 @@ ok "moabom-cpap 모듈 분리 (Phase 4)"
 echo "==> [v8-15] 분리된 모듈·플러그인 기본 ON (DECOMPOSITION default-active 보장)"
 # 신규 tenant 프로비저닝 시 자동 ON 되도록 hospital-default.json 의 modules[]·plugins[] 등록 일관성 + sync 보강.
 # 활성화는 TenantDatabaseCloner 가 platform DB 의 modules/plugins 행(status=active)을 통째 복제하여 보장.
-DECOMP_MODULES=("moabom-personalization" "moabom-apps" "moabom-cpap")
+DECOMP_MODULES=("moabom-personalization" "moabom-apps" "moabom-cpap" "moabom-smart-chat")
 DECOMP_PLUGIN="moabom-weather"
 if [[ -f "${HOSPITAL_PKG}" ]]; then
   for mid in "${DECOMP_MODULES[@]}"; do
@@ -586,7 +590,7 @@ if [[ -f "${HOSPITAL_PKG}" ]]; then
   grep -q "\"${DECOMP_PLUGIN}\"" "${HOSPITAL_PKG}" \
     || fail "hospital-default.json plugins[] 에 ${DECOMP_PLUGIN} 미등록 (신규 tenant 기본 OFF 위험)"
 fi
-ok "분리된 4개 카탈로그 기본 ON 보장 (DECOMPOSITION)"
+ok "분리된 모듈·플러그인 카탈로그 기본 ON 보장 (DECOMPOSITION)"
 
 echo "==> [v8-16] moabom-basic src/dist API prefix 계약 (Cloud Build 산출물 기준)"
 # moabom-basic dist 는 Cloud Build asset stage 가 생성한다. 로컬/WSL 빌드 금지.
@@ -762,8 +766,13 @@ grep -q 'moabom:saas:tenant-reconcile' "${ROOT}/deploy/cloudrun-entrypoint.sh" "
   || fail "cloudrun-entrypoint.sh 에 tenant-reconcile 검증 패스 없음"
 grep -q 'MOABOM_VERIFY_TENANT_RECONCILE' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_VERIFY_TENANT_RECONCILE 가드 없음"
-grep -q 'moabom:saas:tenant-reconcile' "${ROOT}/deploy/run-layout-sync-job.sh" \
-  || fail "run-layout-sync-job.sh 에 tenant-reconcile 검증 패스 없음"
+TENANT_LAYOUT_VERIFY="${ROOT}/deploy/run-tenant-layout-verify-job.sh"
+grep -q 'moabom:saas:tenant-reconcile' "${TENANT_LAYOUT_VERIFY}" \
+  || fail "tenant layout verify Job 에 tenant-reconcile 검증 패스 없음"
+grep -q 'run-tenant-layout-verify-job.sh' "${ROOT}/deploy/run-layout-sync-job.sh" \
+  || fail "run-layout-sync-job.sh 에 tenant layout/UI 검증 패스 없음"
+grep -q 'run-tenant-layout-verify-job.sh' "${ROOT}/deploy/run-post-deploy-layout-pipeline.sh" \
+  || fail "manifest unchanged layout pipeline 에 tenant layout/UI 검증 패스 없음"
 grep -q 'moabom:saas:tenant-reconcile' "${PROVISION_RUNNER:-${APP}/modules/moabom-system/src/Saas/TenantProvisionArtisanRunner.php}" \
   || fail "TenantProvisionArtisanRunner 에 tenant-reconcile 수렴+검증 없음"
 ok "tenant-reconcile SSOT (orchestration + verify + 3 call-sites)"
@@ -793,15 +802,30 @@ grep -q "prefix.*self::TABLE_BASE\|prefix.\+language_packs\|->getTablePrefix\|da
 ok "shared language-packs (A안 read-through VIEW + prefix + 런타임 브리지 + 롤백)"
 grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
   || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TENANT_EXTENSIONS 가드 없음"
-grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
-  || fail "cloudrun-entrypoint.sh 에 MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE 가드 없음"
-grep -q 'insert-only' "${ROOT}/deploy/cloudrun-entrypoint.sh" "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
-  || fail "cloudrun-entrypoint.sh tenant sync 에 insert-only 분기 없음"
+grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/production.env.yaml" \
+  || fail "production.env.yaml 에 MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE 없음 (provision 문서용 SSOT)"
+grep -q 'insert-only' "${ROOT}/deploy/cloudrun-deferred-sync.sh" \
+  || fail "cloudrun-deferred-sync.sh tenant sync 는 insert-only(가용성) 여야 함 (RF-32)"
 [[ -x "${ROOT}/deploy/saas-tenant-extension-sync.sh" ]] \
   || fail "deploy/saas-tenant-extension-sync.sh 없음 또는 실행 불가"
-grep -q 'MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE' "${ROOT}/deploy/saas-tenant-extension-sync.sh" \
-  || fail "saas-tenant-extension-sync.sh 에 MOABOM_SYNC_TENANT_EXTENSIONS_ACTIVATE 분기 없음"
-ok "tenant 패키지 확장 sync (v8-19)"
+grep -q 'insert-only' "${ROOT}/deploy/saas-tenant-extension-sync.sh" \
+  || fail "saas-tenant-extension-sync.sh 는 insert-only(가용성) 여야 함 (RF-32)"
+grep -q 'moabom:saas:schema-sync' \
+  "${ROOT}/app/modules/moabom-system/src/Console/Commands/SaasSchemaSyncCommand.php" \
+  || fail "SaasSchemaSyncCommand 없음 (RF-32)"
+grep -q 'invalidatePluginStatusCache' \
+  "${ROOT}/app/modules/moabom-system/src/Saas/TenantDatabaseConfigurator.php" \
+  && fail "TenantDatabaseConfigurator 의 요청별 plugin status 캐시 무효화 제거 필요"
+grep -q 'TenantExtensionRevisionResolver' \
+  "${ROOT}/app/modules/moabom-system/src/Saas/TenantScopedCacheDecorator.php" \
+  || fail "tenant extension status revision cache key 누락"
+grep -q "'identity'" \
+  "${ROOT}/app/modules/moabom-system/src/Saas/SaasCoreSettingsHydrator.php" \
+  || fail "SaaS core settings snapshot 에 identity 카테고리 누락"
+grep -q "whereIn('category', \$categories)" \
+  "${ROOT}/app/modules/moabom-system/src/Saas/MoabomDbConfigRepository.php" \
+  || fail "G7 core settings bulk snapshot query 누락"
+ok "tenant 패키지 확장 sync + revision cache + settings snapshot (v8-19 / RF-32)"
 
 echo "==> [v8-20] Run PHP 확장 (system-info admin — bcmath 등)"
 grep -q 'bcmath' "${ROOT}/deploy/Dockerfile" \
@@ -958,6 +982,64 @@ if violations:
 print("    OK: moabom 큐 잡 TenantAwareJob 규약 (현재 직접구현 0건)")
 PY
 ok "큐 잡 테넌트 전파/복원 (v9-job-tenant)"
+
+[[ -f "${ACTIVE_SYS}/src/Saas/Queue/CloudTasksQueueWakeDispatcher.php" ]] \
+  || fail "Cloud Tasks queue wake dispatcher 없음"
+grep -q 'JobQueued::class' "${PROVIDER}" \
+  || fail "JobQueued → Cloud Tasks wake listener 누락"
+grep -q 'InternalQueueTaskController' "${ACTIVE_SYS}/src/routes/api.php" \
+  || fail "private queue service task endpoint 누락"
+grep -q "runNextJob('database'" "${ACTIVE_SYS}/src/Http/Controllers/InternalQueueTaskController.php" \
+  || fail "queue task endpoint는 HTTP-safe 단일 job runNextJob 계약이어야 함"
+grep -q "app('queue.worker')" "${ACTIVE_SYS}/src/Http/Controllers/InternalQueueTaskController.php" \
+  || fail "Laravel queue worker는 class autowire가 아닌 queue.worker binding으로 해석해야 함"
+grep -q "\\->daemon(" "${ACTIVE_SYS}/src/Http/Controllers/InternalQueueTaskController.php" \
+  && fail "queue task endpoint에서 long-running daemon 실행 금지"
+[[ -x "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh" ]] \
+  || fail "queue service 배포 정의 없음 또는 실행 불가"
+[[ -f "${ROOT}/deploy/check-runtime-plane-image-parity.sh" ]] \
+  || fail "web/queue image parity 검사 없음"
+[[ -x "${ROOT}/deploy/configure-cloud-scheduler-queue-tick.sh" ]] \
+  || fail "queue scheduler push 정의 없음 또는 실행 불가"
+[[ -x "${ROOT}/deploy/rollback-cloud-tasks-queue-plane.sh" ]] \
+  || fail "queue plane rollback 정의 없음 또는 실행 불가"
+grep -q "'queue_plane'" "${ROOT}/deploy/ssot/moabom-system.config.php" \
+  || fail "moabom-system config SSOT 에 queue_plane 누락"
+grep -qE '^MOABOM_QUEUE_PLANE_MODE: (legacy|shadow|active)$' "${ROOT}/deploy/production.env.yaml" \
+  || fail "queue plane mode는 legacy|shadow|active 중 하나여야 함"
+grep -q -- '--max-dispatches-per-second=500' "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh" \
+  || fail "Cloud Tasks rate limit 500 req/s 누락"
+grep -q -- '--max-concurrent-dispatches=5000' "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh" \
+  || fail "Cloud Tasks concurrency 5000 누락"
+grep -q 'roles/cloudtasks.enqueuer' "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh" \
+  || fail "Cloud Run runtime service account Cloud Tasks enqueue 권한 누락"
+grep -q 'roles/iam.serviceAccountUser' "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh" \
+  || fail "Cloud Tasks OIDC task 생성용 service account actAs 권한 누락"
+grep -q 'sync_queue_plane' "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy web/queue 동시 이미지 배포 누락"
+grep -q 'check-runtime-plane-image-parity.sh' "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy web/queue image parity fail-closed 누락"
+grep -q 'smoke-realtime-notifications.sh' "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy realtime notification smoke 누락"
+grep -q 'moabom:queue:probe' "${ROOT}/deploy/smoke-realtime-notifications.sh" \
+  || fail "realtime notification smoke Cloud Tasks end-to-end probe 누락"
+grep -q 'smoke-smart-chat-tools.sh' "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy smart-chat platform data smoke 누락"
+ok "Cloud Tasks push queue plane (legacy/shadow/active rollback)"
+
+echo "==> [v9-generated-app-plane] 생성앱 platform DB tenant 격리"
+_apps_connection="${APP}/modules/moabom-apps/src/Support/GeneratedAppsConnection.php"
+_apps_provider="${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php"
+_apps_repository="${APP}/modules/moabom-apps/src/Repositories/GeneratedAppRepository.php"
+grep -q 'function scopeToCurrentTenant' "${_apps_connection}" \
+  || fail "GeneratedAppsConnection tenant fail-closed scope 누락"
+grep -q 'GeneratedAppsConnection::scopeToCurrentTenant' "${_apps_provider}" \
+  || fail "스마트챗 my_apps tenant scope 누락"
+grep -q 'GeneratedApp::query()->whereKey' "${_apps_provider}" \
+  && fail "hostedApp route binding 에 tenant 잔재 테이블 fallback 잔존"
+grep -q 'findLegacyTenantRow' "${_apps_repository}" \
+  && fail "GeneratedAppRepository 에 tenant 잔재 테이블 fallback 잔존"
+ok "생성앱 platform DB tenant 격리"
 
 echo "==> [v9-iframe] AI 미리보기 iframe 출처 격리 + CSP (C2)"
 # dedicated_host: cross-origin(apps.mek360.com) → sandbox allow-scripts allow-same-origin

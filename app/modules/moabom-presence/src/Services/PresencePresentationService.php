@@ -18,15 +18,6 @@ final class PresencePresentationService
         return $preferences?->availability ?? PresenceAvailability::Online;
     }
 
-    public function isVisibleInConnectList(?PresenceUserPreference $preferences, bool $isAuthenticated): bool
-    {
-        if (! $isAuthenticated) {
-            return true;
-        }
-
-        return $this->availabilityFor($preferences) !== PresenceAvailability::Offline;
-    }
-
     public function isReachable(bool $hasActiveSession, ?PresenceUserPreference $preferences): bool
     {
         if (! $hasActiveSession) {

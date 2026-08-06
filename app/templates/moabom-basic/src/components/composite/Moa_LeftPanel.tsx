@@ -11,8 +11,8 @@ import { Img } from '../basic/Img';
 import { GlassPanel } from './Moa_GlassPanel';
 import { SubTabBar } from './Moa_SubTabBar';
 import { LeftPanelAppIcon } from './Moa_LeftPanelAppIcon';
-import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import { APPS, type App } from '../../data/Moa_apps';
+import { SYSTEM_TOOL_APP_METADATA } from '../../shell/moaShellAppLists';
 import { NAV_ITEMS } from '../../data/Moa_navigation';
 import {
   fetchShellAppRankings,
@@ -38,6 +38,7 @@ import { MOABOM_SHELL_LEFT_PANEL_BOTTOM_SLOT_PX, MOABOM_SHELL_SUB_TAB_SLOT_PX } 
 import { MOA_HOME_EDGE, MOA_HOME_OVERLAY_EDGE } from '../../shell/moaShellLayoutConstants';
 import { resolveMoabomSiteLogoImgRecoveryUrl, useMoabomSiteDisplayName, useMoabomSiteLogoUrls } from '../../utils/moabomSiteBranding';
 import { useShellSubTabSelect, useShellSubTabSettle } from '../../hooks/useShellSubTabSelect';
+import { useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { Moa_PanelEmptyState } from './Moa_PanelEmptyState';
 import { Moa_PanelLoadingState } from './Moa_PanelLoadingState';
 import { Moa_ActivityRankBadge } from './Moa_ActivityRankBadge';
@@ -224,6 +225,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [userRankings, setUserRankings] = useState<ShellUserRankingItem[]>([]);
   const [viewerOutsideTop, setViewerOutsideTop] = useState(false);
   const [rankingLoading, setRankingLoading] = useState(false);
+  const [rankingHydrated, setRankingHydrated] = useState(false);
   const [rankingLoadFailed, setRankingLoadFailed] = useState(false);
   const [myappSubTab, setMyappSubTab] = useState<'favorites' | 'myapps'>('myapps');
   const [noticeSubTab, setNoticeSubTab] = useState<'notices' | 'updates'>('notices');
@@ -233,19 +235,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   }>({ notices: [], updates: [] });
   const [noticeBoardLoading, setNoticeBoardLoading] = useState(true);
   const isOpen = leftOffset >= 0;
+  const authStateKey = useShellAuthStateKey();
   /** 데스크톱 20px / 오버레이 기본 10px / ±480px 이하 flush 시 0 */
   const panelEdge = !isOverlay ? MOA_HOME_EDGE : overlayFlushEdges ? 0 : MOA_HOME_OVERLAY_EDGE;
   const tapToAdd = isOverlay && editMode;
   const panelScrollRef = useRef<HTMLDivElement>(null);
   const panelScrollHandlers = useMoaPanelScrollDrag(panelScrollRef, { disabled: editMode });
-  const hasOwnedGeneratedApps = createdApps.some(app => app.id !== createAppShellMetadata.id);
+  const systemToolIds = useMemo(
+    () => new Set(SYSTEM_TOOL_APP_METADATA.map(app => app.id)),
+    [],
+  );
+  const hasOwnedGeneratedApps = createdApps.some(app => !systemToolIds.has(app.id));
 
+  /** 기본앱 = SYSTEM_TOOL + APPS basic — 메인 그리드와 동일 SSOT */
   const filteredApps = activeTab === 'user'
     ? [
         ...APPS.filter(a => a.category === 'user'),
         ...sharedApps.filter(app => !APPS.some(baseApp => baseApp.id === app.id)),
       ]
-    : APPS.filter(a => a.category === 'basic');
+    : [...SYSTEM_TOOL_APP_METADATA, ...APPS.filter(a => a.category === 'basic')];
 
   const rankingLibraryApps = useMemo(
     () => [...APPS, ...createdApps, ...sharedApps],
@@ -290,12 +298,14 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         setAppRankings(appsPayload.items);
         setUserRankings(usersPayload.items);
         setViewerOutsideTop(Boolean(usersPayload.viewer_outside_top));
+        setRankingHydrated(true);
       } catch {
         if (!controller.signal.aborted) {
           setAppRankings([]);
           setUserRankings([]);
           setViewerOutsideTop(false);
           setRankingLoadFailed(true);
+          setRankingHydrated(true);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -303,7 +313,15 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         }
       }
     })();
-  }, []);
+  }, [authStateKey]);
+
+  useEffect(() => {
+    rankingAbortRef.current?.abort();
+    setUserRankings([]);
+    setViewerOutsideTop(false);
+    setRankingHydrated(false);
+    setRankingLoadFailed(false);
+  }, [authStateKey]);
 
   useEffect(() => {
     if (activeNav !== 'economy') {
@@ -395,14 +413,22 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     rankingSubTab,
     settledRankingSubTab,
     setRankingSubTab,
-    () => reloadRankings(),
+    (_tab, reason) => {
+      if (reason === 'reselect') {
+        reloadRankings();
+      }
+    },
   );
   const handleMyappSubTabChange = useShellSubTabSelect(myappSubTab, settledMyappSubTab, setMyappSubTab);
   const handleNoticeSubTabChange = useShellSubTabSelect(
     noticeSubTab,
     settledNoticeSubTab,
     setNoticeSubTab,
-    () => reloadNoticeBoard(),
+    (_tab, reason) => {
+      if (reason === 'reselect') {
+        reloadNoticeBoard();
+      }
+    },
   );
 
   const handleNavChange = useCallback((navId: string) => {
@@ -522,7 +548,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           {activeNav === 'economy' && (
             <Div className="py-1">
               {rankingSubTab === 'apps' && (
-                rankingLoading ? (
+                rankingLoading || !rankingHydrated ? (
                   <Moa_PanelLoadingState label={t('moa_shell.left.rankings_loading')} />
                 ) : rankingLoadFailed ? (
                   <Moa_PanelEmptyState
@@ -577,7 +603,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                 )
               )}
               {rankingSubTab === 'users' && (
-                rankingLoading ? (
+                rankingLoading || !rankingHydrated ? (
                   <Moa_PanelLoadingState label={t('moa_shell.left.rankings_loading')} />
                 ) : rankingLoadFailed ? (
                   <Moa_PanelEmptyState

@@ -33,6 +33,28 @@ class ResolveMoabomTenant
             return $next($request);
         }
 
+        if ($request->is('api/modules/moabom-system/public/ready')) {
+            // Cloud Run probe의 내부 Host는 tenant 도메인이 아니다.
+            return $next($request);
+        }
+
+        if (
+            config('moabom-system.queue_plane.runtime_role', 'web') === 'queue'
+            && (
+                (
+                    $request->is('api/modules/moabom-system/internal/queue/*')
+                    && trim((string) $request->header('X-CloudTasks-TaskName', '')) !== ''
+                )
+                || (
+                    $request->is('api/modules/moabom-system/internal/scheduler/*')
+                    && trim((string) $request->header('X-CloudScheduler-JobName', '')) !== ''
+                )
+            )
+        ) {
+            // Cloud Tasks payload의 slug를 controller가 적용한다. run.app host를 tenant로 해석하지 않는다.
+            return $next($request);
+        }
+
         $host = TenantRequestHost::resolve($request);
         $parser = new TenantHostParser(
             (string) config('moabom-system.saas.base_domain', 'mek360.com'),

@@ -1,30 +1,37 @@
-import type { ShellNotificationReceivedPayload } from './moabomShellNotificationSocket';
 import { subscribeChatInbox } from './moabomChatSocket';
 import {
   dispatchShellChatInboxUpdated,
   dispatchShellNotificationReceived,
 } from '../shell/ShellRealtimeStore';
 import {
+  isMoabomPrivateChannelSubscribed,
   isMoabomWebSocketConnected,
   subscribeMoabomWebSocketConnectionChange,
 } from './moabomWebSocketConnection';
 import { MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT } from './moabomWebSocketAuthSync';
 import {
   subscribeShellNotificationChannel,
-  unsubscribeShellNotificationChannel,
+  shellNotificationChannelName,
+  type ShellNotificationSubscription,
 } from './moabomShellNotificationSocket';
+import {
+  acknowledgeRealtimeReachabilityChallenge,
+  requestRealtimeReachabilityChallenge,
+} from './moabomRealtimeReachability';
 
 const RESYNC_DEBOUNCE_MS = 400;
 const SUBSCRIPTION_RETRY_BASE_MS = 250;
 const SUBSCRIPTION_RETRY_MAX_MS = 5_000;
 const SUBSCRIPTION_RETRY_MAX_ATTEMPTS = 24;
+const REACHABILITY_CHALLENGE_REFRESH_MS = 120_000;
 
 let activeUserUuid: string | null = null;
-let notificationSubscriptionKey: string | null = null;
+let notificationSubscription: ShellNotificationSubscription | null = null;
 let chatInboxSubscription: { unsubscribe: () => void } | null = null;
 let coordinatorInstalled = false;
 let resyncTimer: ReturnType<typeof setTimeout> | null = null;
 let subscriptionRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let reachabilityChallengeTimer: ReturnType<typeof setTimeout> | null = null;
 let subscriptionRetryAttempt = 0;
 let lastConnectionState: string | null = null;
 
@@ -36,7 +43,40 @@ function clearSubscriptionRetryTimer(): void {
 }
 
 function subscriptionsReady(): boolean {
-  return Boolean(notificationSubscriptionKey && chatInboxSubscription);
+  if (!notificationSubscription || !chatInboxSubscription) {
+    return false;
+  }
+  if (!isMoabomWebSocketConnected() || !activeUserUuid) {
+    return true;
+  }
+  return isMoabomPrivateChannelSubscribed(shellNotificationChannelName(activeUserUuid));
+}
+
+function clearReachabilityChallengeTimer(): void {
+  if (reachabilityChallengeTimer !== null) {
+    clearTimeout(reachabilityChallengeTimer);
+    reachabilityChallengeTimer = null;
+  }
+}
+
+function scheduleReachabilityChallenge(immediate = false): void {
+  if (
+    !activeUserUuid
+    || !isMoabomWebSocketConnected()
+    || !subscriptionsReady()
+  ) {
+    clearReachabilityChallengeTimer();
+    return;
+  }
+  if (reachabilityChallengeTimer !== null) {
+    return;
+  }
+
+  reachabilityChallengeTimer = setTimeout(() => {
+    reachabilityChallengeTimer = null;
+    void requestRealtimeReachabilityChallenge()
+      .finally(() => scheduleReachabilityChallenge(false));
+  }, immediate ? 0 : REACHABILITY_CHALLENGE_REFRESH_MS);
 }
 
 function scheduleSubscriptionRetry(): void {
@@ -59,21 +99,28 @@ function scheduleSubscriptionRetry(): void {
     if (!activeUserUuid) {
       return;
     }
+    if (subscriptionRetryAttempt % 4 === 0) {
+      teardownUserChannelSubscriptions(false);
+    }
     ensureUserChannelSubscriptions(activeUserUuid);
     if (!subscriptionsReady()) {
       scheduleSubscriptionRetry();
     } else {
       subscriptionRetryAttempt = 0;
+      scheduleReachabilityChallenge(true);
     }
   }, delayMs);
 }
 
-function teardownUserChannelSubscriptions(): void {
+function teardownUserChannelSubscriptions(resetRetryAttempt = true): void {
   clearSubscriptionRetryTimer();
-  subscriptionRetryAttempt = 0;
-  if (notificationSubscriptionKey) {
-    unsubscribeShellNotificationChannel(notificationSubscriptionKey);
-    notificationSubscriptionKey = null;
+  clearReachabilityChallengeTimer();
+  if (resetRetryAttempt) {
+    subscriptionRetryAttempt = 0;
+  }
+  if (notificationSubscription) {
+    notificationSubscription.unsubscribe();
+    notificationSubscription = null;
   }
   if (chatInboxSubscription) {
     chatInboxSubscription.unsubscribe();
@@ -86,12 +133,18 @@ function ensureUserChannelSubscriptions(userUuid: string): void {
     return;
   }
 
-  if (!notificationSubscriptionKey) {
-    const key = subscribeShellNotificationChannel(userUuid, payload => {
-      dispatchShellNotificationReceived(payload);
-    });
-    if (key) {
-      notificationSubscriptionKey = key;
+  if (!notificationSubscription) {
+    const subscription = subscribeShellNotificationChannel(
+      userUuid,
+      payload => {
+        dispatchShellNotificationReceived(payload);
+      },
+      payload => {
+        void acknowledgeRealtimeReachabilityChallenge(payload);
+      },
+    );
+    if (subscription) {
+      notificationSubscription = subscription;
     }
   }
 
@@ -110,6 +163,7 @@ function ensureUserChannelSubscriptions(userUuid: string): void {
     scheduleSubscriptionRetry();
   } else {
     subscriptionRetryAttempt = 0;
+    scheduleReachabilityChallenge(true);
   }
 }
 
@@ -163,6 +217,8 @@ export function installMoabomShellRealtimeCoordinator(): void {
     return;
   }
   coordinatorInstalled = true;
+  // 설치 시점의 실제 상태를 baseline으로 삼아 첫 connected snapshot을 재연결로 오인하지 않는다.
+  lastConnectionState = isMoabomWebSocketConnected() ? 'connected' : 'disconnected';
 
   window.addEventListener(MOABOM_WEBSOCKET_AUTH_SYNCED_EVENT, () => {
     scheduleResyncMoabomShellRealtimeSubscriptions();
@@ -170,13 +226,19 @@ export function installMoabomShellRealtimeCoordinator(): void {
 
   subscribeMoabomWebSocketConnectionChange(() => {
     const state = isMoabomWebSocketConnected() ? 'connected' : 'disconnected';
-    const becameConnected = state === 'connected' && lastConnectionState !== 'connected';
+    const becameConnected = state === 'connected' && lastConnectionState === 'disconnected';
     lastConnectionState = state;
     if (becameConnected) {
       scheduleResyncMoabomShellRealtimeSubscriptions();
     }
     if (activeUserUuid && !subscriptionsReady()) {
       scheduleSubscriptionRetry();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      scheduleReachabilityChallenge(true);
     }
   });
 }

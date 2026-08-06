@@ -2,10 +2,13 @@
 
 namespace Modules\Moabom\Presence\Services;
 
+use App\Extension\HookManager;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\TenantPresenceSessionRepositoryInterface;
 use Modules\Moabom\Presence\Models\PresenceUserPreference;
+use Modules\Moabom\Presence\Support\PresenceChannelNames;
 
 final class PresenceUserPreferencesService
 {
@@ -14,6 +17,7 @@ final class PresenceUserPreferencesService
         private TenantPresenceSessionRepositoryInterface $tenantSessions,
         private PresencePresentationService $presentation,
         private PresenceRevisionService $revisionService,
+        private PresenceChannelNames $channelNames,
     ) {}
 
     public function getForUser(int $userId): PresenceUserPreference
@@ -51,7 +55,20 @@ final class PresenceUserPreferencesService
 
         $updated = $this->preferences->upsertForUser($user->id, $attributes);
         if ($updated->wasRecentlyCreated || $updated->wasChanged(array_keys($attributes))) {
-            $this->revisionService->bump('preference');
+            $revision = $this->revisionService->bump('preference');
+            HookManager::broadcast(
+                $this->channelNames->tenantOnlineChannel(),
+                'presence.member.updated',
+                [
+                    'event_id' => (string) Str::uuid(),
+                    'domain' => 'presence.member',
+                    'revision' => $revision,
+                    'occurred_at' => now()->toIso8601String(),
+                    'user_uuid' => $user->uuid,
+                    'display_name' => (string) ($user->nickname ?: $user->name),
+                    'avatar' => $this->presentation->resolveConnectListAvatar($user, $updated),
+                ] + $this->presentation->serializePublicState($user, $updated, true),
+            );
         }
 
         return $updated;

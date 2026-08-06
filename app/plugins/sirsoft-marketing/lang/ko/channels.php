@@ -7,6 +7,9 @@
  * `label_key` 가 가리키는 라벨. 활성 언어팩으로 자동 보강.
  */
 return [
+    'notification_subscription' => [
+        'label' => '마케팅 알림 수신',
+    ],
     'email_subscription' => [
         'label' => '광고성 이메일 수신',
     ],

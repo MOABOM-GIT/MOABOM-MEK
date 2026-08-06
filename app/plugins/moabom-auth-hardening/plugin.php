@@ -55,7 +55,7 @@ class Plugin extends AbstractPlugin
                     'en' => 'Mask Sensitive Console Data',
                 ],
                 'hint' => [
-                    'ko' => 'console.log/error/warn 등에 포함된 비밀번호, 토큰, 이메일, 휴대폰 번호를 마스킹합니다.',
+                    'ko' => 'console.log/error/warn 등에 포함된 비밀번호, 토큰, 이메일, 연락처를 마스킹합니다.',
                     'en' => 'Masks passwords, tokens, emails, and phone numbers printed through console.log/error/warn.',
                 ],
                 'required' => false,

@@ -2,7 +2,7 @@ import type {
   ShellAppRankingsPayload,
   ShellUserRankingsPayload,
 } from '../shell/moaShellRankingTypes';
-import { getShellAccessToken } from './moabomShellAccess';
+import { getShellAccessScopeKey, getShellAccessToken } from './moabomShellAccess';
 
 const SHELL_RANKINGS_BASE = '/api/modules/moabom-system/public/shell/rankings';
 
@@ -14,14 +14,22 @@ type RankingCacheEntry<T> = {
 };
 
 let appRankingsCache: RankingCacheEntry<ShellAppRankingsPayload> | null = null;
-let userRankingsCache: RankingCacheEntry<ShellUserRankingsPayload> | null = null;
+let userRankingsCache: (RankingCacheEntry<ShellUserRankingsPayload> & { scopeKey: string }) | null = null;
 let appRankingsPromise: Promise<ShellAppRankingsPayload> | null = null;
-let userRankingsPromise: Promise<ShellUserRankingsPayload> | null = null;
+let userRankingsPromise: {
+  scopeKey: string;
+  promise: Promise<ShellUserRankingsPayload>;
+} | null = null;
 
 export function __resetShellRankingsCacheForTest(): void {
   appRankingsCache = null;
-  userRankingsCache = null;
+  invalidateShellUserRankingsCache();
   appRankingsPromise = null;
+}
+
+/** 인증 계정 경계 전환 — 공개 앱 랭킹은 유지하고 사용자별 self 스냅샷만 폐기한다. */
+export function invalidateShellUserRankingsCache(): void {
+  userRankingsCache = null;
   userRankingsPromise = null;
 }
 
@@ -118,29 +126,40 @@ export async function fetchShellAppRankings(limit = 30): Promise<ShellAppRanking
 
 export async function fetchShellUserRankings(limit = 30): Promise<ShellUserRankingsPayload> {
   const now = Date.now();
-  if (userRankingsCache && userRankingsCache.expiresAt > now) {
+  const scopeKey = getShellAccessScopeKey();
+  if (
+    userRankingsCache?.scopeKey === scopeKey
+    && userRankingsCache.expiresAt > now
+  ) {
     return userRankingsCache.value;
   }
 
-  if (userRankingsPromise) {
-    return userRankingsPromise;
+  if (userRankingsPromise?.scopeKey === scopeKey) {
+    return userRankingsPromise.promise;
   }
 
-  userRankingsPromise = (async () => {
+  const promise = (async () => {
     const data = await fetchRankings<ShellUserRankingsPayload>(
       `${SHELL_RANKINGS_BASE}/users?limit=${encodeURIComponent(String(limit))}`,
       true,
     );
-    userRankingsCache = {
-      value: data,
-      expiresAt: Date.now() + RANKING_MEMORY_TTL_MS,
-    };
+    if (getShellAccessScopeKey() === scopeKey) {
+      userRankingsCache = {
+        scopeKey,
+        value: data,
+        expiresAt: Date.now() + RANKING_MEMORY_TTL_MS,
+      };
+    }
     return data;
   })();
+  const entry = { scopeKey, promise };
+  userRankingsPromise = entry;
 
   try {
-    return await userRankingsPromise;
+    return await promise;
   } finally {
-    userRankingsPromise = null;
+    if (userRankingsPromise === entry) {
+      userRankingsPromise = null;
+    }
   }
 }

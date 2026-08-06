@@ -4,6 +4,13 @@ import type { CpapFaceMeasurements, CpapProfileMeasurements } from './cpapMeasur
 
 type ScoreKey = 'nasal' | 'pillow' | 'full';
 type ScoreState = { score: number; reasons: string[]; warnings: string[] };
+type MeasurementAdjustmentRule = {
+  threshold: number;
+  type: ScoreKey;
+  score: number;
+  reason?: string;
+  compare?: 'lt' | 'gt';
+};
 
 const RULES = recommendRules;
 
@@ -117,7 +124,9 @@ export function recommendMask(
     }
   }
 
-  const adj = RULES.measurement_adjustments;
+  const adj = RULES.measurement_adjustments as {
+    [K in keyof typeof RULES.measurement_adjustments]: MeasurementAdjustmentRule;
+  };
   applyMeasurementAdjustment(scores, adj.nose_height_high, profileMeasurements.noseHeight, 'gt');
   applyMeasurementAdjustment(scores, adj.nose_height_low, profileMeasurements.noseHeight, 'lt');
   applyMeasurementAdjustment(scores, adj.philtrum_length, measurements.philtrumLength, 'lt');

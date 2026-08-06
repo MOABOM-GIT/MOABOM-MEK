@@ -32,6 +32,7 @@ set -euo pipefail
 : "${SECRET_MOABOM_GOOGLE_AI_API_KEY:=moabom-google-ai-api-key}"
 : "${SECRET_REVERB_APP_SECRET:=moabom-reverb-app-secret}"
 : "${SECRET_REALTIME_VM_METRICS_TOKEN:=moabom-realtime-vm-metrics-token}"
+: "${SECRET_MOABOM_FCM_SERVICE_ACCOUNT_JSON:=moabom-fcm-service-account-json}"
 
 moabom_gcp_project()             { echo "${GCP_PROJECT_ID}"; }
 moabom_gcp_region()              { echo "${GCP_REGION}"; }
@@ -57,6 +58,7 @@ moabom_gcp_secret_mappings() {
     "MOABOM_GOOGLE_AI_API_KEY=${SECRET_MOABOM_GOOGLE_AI_API_KEY}:latest"
     "REVERB_APP_SECRET=${SECRET_REVERB_APP_SECRET}:latest"
     "MOABOM_REALTIME_VM_METRICS_TOKEN=${SECRET_REALTIME_VM_METRICS_TOKEN}:latest"
+    "MOABOM_FCM_SERVICE_ACCOUNT_JSON=${SECRET_MOABOM_FCM_SERVICE_ACCOUNT_JSON}:latest"
   )
   local IFS=,
   echo "${mappings[*]}"
@@ -77,6 +79,7 @@ MOABOM_ANTHROPIC_API_KEY
 MOABOM_GOOGLE_AI_API_KEY
 REVERB_APP_SECRET
 MOABOM_REALTIME_VM_METRICS_TOKEN
+MOABOM_FCM_SERVICE_ACCOUNT_JSON
 EOF
 }
 

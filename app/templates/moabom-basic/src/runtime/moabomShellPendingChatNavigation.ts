@@ -23,3 +23,7 @@ export function consumeMoabomShellPendingChatNavigation(): MoabomShellPendingCha
   pending = null;
   return current;
 }
+
+export function clearMoabomShellPendingChatNavigation(): void {
+  pending = null;
+}

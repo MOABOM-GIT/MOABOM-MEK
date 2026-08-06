@@ -149,7 +149,7 @@ export function detectObviousInfiniteLoopRisk(html: string): boolean {
 
 export function formatGeneratedAppSecurityToast(
   violations: GeneratedAppHtmlSecurityViolation[],
-  t: (key: string) => string,
+  t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
   if (violations.length === 0) {
     return '';

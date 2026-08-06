@@ -9,7 +9,6 @@ import { Span } from '../../basic/Span';
 import { isGeneratedLibraryAppId } from '../../../apps/generatedAppLibrary';
 import { Moa_GeneratedAppIconShell } from '../Moa_GeneratedAppIconShell';
 import { Moa_OverflowMarqueeText } from '../Moa_OverflowMarqueeText';
-import { APP_STACK_GRID_CLASS } from '../../../apps/appShellTypography';
 import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import AppLoadingSpinner from '../AppLoadingSpinner';
 

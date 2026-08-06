@@ -133,6 +133,8 @@ export interface CenterPanelProps {
   onModeChange: (idx: number) => void;
   /** 필터링된 앱 목록 (순서 포함) */
   filteredApps: App[];
+  /** 계정별 메인 앱 배치를 서버에서 확정하는 중 */
+  appsLoading?: boolean;
   /** 앱 열기 핸들러 */
   onOpenApp: (app: App) => void;
   /** 최소화된 윈도우 목록 */
@@ -175,6 +177,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
   modeIdx,
   onModeChange,
   filteredApps,
+  appsLoading = false,
   onOpenApp,
   minimizedWindows,
   onFocusWindow,
@@ -378,16 +381,26 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
         ref={setGridDropRef}
         data-testid="moa-center-grid"
         className="moa-center-grid glass-sm flex-1 overflow-y-auto rounded-2xl py-12 px-10"
+        aria-busy={appsLoading}
         onClick={handleGridClick}
         onScroll={handleGridScroll}
       >
-        <SortableAppGrid
-          apps={filteredApps}
-          editMode={editMode}
-          onEnterEditMode={onEnterEditMode ?? (() => {})}
-          onOpenApp={onOpenApp}
-          onDeleteApp={onDeleteApp ?? (() => {})}
-        />
+        {appsLoading ? (
+          <Div className="flex min-h-full flex-col items-center justify-center text-center">
+            <Div className="moa-panel-placeholder-visual" aria-hidden>
+              <Div className="moa-panel-placeholder-spinner" />
+            </Div>
+            <Span className="text-sm text-secondary">{t('common.loading')}</Span>
+          </Div>
+        ) : (
+          <SortableAppGrid
+            apps={filteredApps}
+            editMode={editMode}
+            onEnterEditMode={onEnterEditMode ?? (() => {})}
+            onOpenApp={onOpenApp}
+            onDeleteApp={onDeleteApp ?? (() => {})}
+          />
+        )}
       </Div>
 
       {/* 푸터 */}

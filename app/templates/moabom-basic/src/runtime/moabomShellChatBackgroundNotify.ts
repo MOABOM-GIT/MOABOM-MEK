@@ -1,5 +1,6 @@
 import type { ShellNotificationReceivedPayload } from './moabomShellNotificationSocket';
 import { registerShellNotificationHandler } from '../shell/ShellRealtimeStore';
+import { MoabomRuntime } from './MoabomRuntime';
 
 let installed = false;
 
@@ -7,22 +8,12 @@ function canUseBrowserNotification(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
-export async function ensureMoabomChatNotificationPermission(): Promise<NotificationPermission | null> {
-  if (!canUseBrowserNotification()) {
-    return null;
-  }
-  if (Notification.permission === 'default') {
-    try {
-      return await Notification.requestPermission();
-    } catch {
-      return Notification.permission;
-    }
-  }
-  return Notification.permission;
-}
-
 function showBackgroundNotification(payload: ShellNotificationReceivedPayload): void {
-  if (!canUseBrowserNotification() || Notification.permission !== 'granted') {
+  if (
+    !canUseBrowserNotification()
+    || Notification.permission !== 'granted'
+    || MoabomRuntime.getEffectiveOption('push') === false
+  ) {
     return;
   }
   if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -40,7 +31,7 @@ function showBackgroundNotification(payload: ShellNotificationReceivedPayload): 
 }
 
 /**
- * 탭이 백그라운드일 때 OS 알림 (Phase 4 — FCM 전 웹 Notification API).
+ * Phase 4 — 탭 백그라운드 OS 알림 (앱 살아 있을 때). 종료 푸시는 moabom-fcm.
  */
 export function installMoabomShellChatBackgroundNotify(): void {
   if (installed || typeof window === 'undefined') {

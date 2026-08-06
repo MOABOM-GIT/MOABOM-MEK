@@ -5,7 +5,7 @@
         "ko": "프로필 메시지",
         "en": "Profile Messages"
     },
-    "version": "0.2.4",
+    "version": "0.2.6",
     "license": "MIT",
     "description": {
         "ko": "프로필 윈도우 1:1·그룹 메시지, 메시지 보관, 차단, 실시간 메시지 이벤트를 제공합니다.",
@@ -18,7 +18,8 @@
             "moabom-system": ">=0.7.9"
         },
         "plugins": {
-            "moabom-reverb": ">=0.1.0"
+            "moabom-reverb": ">=0.1.0",
+            "moabom-fcm": ">=0.2.0"
         }
     }
 }

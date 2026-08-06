@@ -69,6 +69,7 @@ class MarketingConsentListenerTest extends PluginTestCase
         $this->assertArrayHasKey('core.user.before_delete', $hooks);
         $this->assertArrayHasKey('core.auth.register', $hooks);
         $this->assertArrayHasKey('core.user.filter_resource_data', $hooks);
+        $this->assertArrayHasKey('moabom.notification.delivery_decision', $hooks);
     }
 
     public function test_filter_hooks_have_type_filter(): void
@@ -82,6 +83,7 @@ class MarketingConsentListenerTest extends PluginTestCase
             'core.user.update_profile_validation_rules',
             'core.user.filter_update_data',
             'core.user.filter_resource_data',
+            'moabom.notification.delivery_decision',
         ];
 
         foreach ($filterHooks as $hookName) {

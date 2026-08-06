@@ -2,10 +2,11 @@
 export const MOA_SHELL_ERROR_APP_ID = 'moa-shell-error';
 
 export type ShellErrorCode = 403 | 404 | 500 | 503 | 'maintenance';
+type ShellErrorCodeSegment = `${ShellErrorCode}`;
 
 const SHELL_ERROR_CODES = new Set<string>(['403', '404', '500', '503', 'maintenance']);
 
-export function isShellErrorCode(value: string): value is ShellErrorCode {
+export function isShellErrorCode(value: string): value is ShellErrorCodeSegment {
   return SHELL_ERROR_CODES.has(value);
 }
 
@@ -28,7 +29,7 @@ export function mapHttpStatusToShellErrorCode(status: number): ShellErrorCode | 
 export function parseShellErrorCodeFromPath(segment: string): ShellErrorCode | null {
   const decoded = decodeURIComponent(segment);
   if (isShellErrorCode(decoded)) {
-    return decoded;
+    return decoded as ShellErrorCode;
   }
   const asNum = Number(decoded);
   if (Number.isInteger(asNum) && isShellErrorCode(String(asNum))) {

@@ -1,146 +1,127 @@
-import { fetchChatConversations } from '../api/moabomChatApi';
-import {
-  fetchShellNotifications,
-  fetchShellUnreadCount,
-  type ShellNotificationItem,
-} from '../api/moabomShellNotificationsApi';
-import {
-  getShellNotificationCache,
-  setShellNotificationCache,
-} from '../shell/moabomShellNotificationBridge';
+import type { ChatConversation } from '../api/moabomChatApi';
+import type { ShellNotificationItem } from '../api/moabomShellNotificationsApi';
+import { requestShellJson } from '../api/moabomShellHttp';
+import { setShellNotificationCache } from '../shell/moabomShellNotificationBridge';
 import { setShellChatInboxCache } from '../shell/moabomShellChatInboxCache';
-import { dispatchShellNotificationReceived } from '../shell/ShellRealtimeStore';
 import { dispatchShellUnreadSynced } from '../shell/moabomShellUnreadBadge';
-import type { ShellNotificationReceivedPayload } from './moabomShellNotificationSocket';
+import { getShellAccessScopeKey } from '../api/moabomShellAccess';
 import { isMoabomWebSocketConnected, subscribeMoabomWebSocketConnectionChange } from './moabomWebSocketConnection';
 import { runMoabomShellRealtimeTask } from './moabomShellRealtimeRequestCoalescer';
+import { isMoabomShellPresenceRealtimeDemanded } from './moabomShellRealtimePresenceDemand';
 
-/** WS 끊김 시 인박스 REST 동기화 간격 */
-export const MOABOM_CHAT_INBOX_SYNC_FAST_MS = 8_000;
-/** WS 끊김 시 알림 목록·unread 안전망 */
-export const MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS = 30_000;
+/** WS 끊김 시 통합 catch-up 최초 재시도 */
+export const MOABOM_CHAT_INBOX_SYNC_FAST_MS = 15_000;
+/** WS 끊김 장기 backoff 상한 */
+export const MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS = 60_000;
+export const MOABOM_REALTIME_STATE_SYNCED_EVENT = 'moabom-realtime-state-synced';
 
 export { MOABOM_SHELL_UNREAD_SYNCED_EVENT } from '../shell/moabomShellUnreadBadge';
 
 let syncInstalled = false;
 let syncActive = false;
 let focusCatchUpInstalled = false;
-let inboxSyncInFlight = false;
-let notificationSyncInFlight = false;
-let fastInboxTimer: ReturnType<typeof setInterval> | null = null;
-let listSafetyTimer: ReturnType<typeof setInterval> | null = null;
+let syncInFlight: { requestKey: string; promise: Promise<void> } | null = null;
+let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+let fallbackAttempt = 0;
+let hasObservedConnectedSession = false;
 
-function notificationItemToPayload(item: ShellNotificationItem): ShellNotificationReceivedPayload {
-  return {
-    id: item.id,
-    type: item.type,
-    subject: item.subject ?? undefined,
-    body: item.body ?? undefined,
-    url: item.url ?? undefined,
-    data: item.data ?? null,
+export type MoabomRealtimeState = {
+  event_id?: string;
+  revision?: number;
+  occurred_at?: string;
+  notifications?: {
+    unread_count?: number;
+    items?: ShellNotificationItem[];
   };
-}
+  chat?: {
+    conversations?: ChatConversation[];
+  };
+  presence?: Record<string, unknown>;
+};
 
-function dispatchUnreadSynced(count: number): void {
-  dispatchShellUnreadSynced(count);
-}
-
-async function syncInboxFromRest(): Promise<void> {
-  if (inboxSyncInFlight) {
-    return;
+function applyRealtimeState(state: MoabomRealtimeState): void {
+  if (Array.isArray(state.notifications?.items)) {
+    setShellNotificationCache(state.notifications.items);
   }
-  inboxSyncInFlight = true;
-  try {
-    const rows = await runMoabomShellRealtimeTask(
-      'chat:inbox',
-      () => fetchChatConversations(),
-      { minIntervalMs: 750 },
-    );
-    setShellChatInboxCache(rows);
-  } catch {
-    // REST 실패 시 기존 캐시 유지
-  } finally {
-    inboxSyncInFlight = false;
+  if (typeof state.notifications?.unread_count === 'number') {
+    dispatchShellUnreadSynced(state.notifications.unread_count);
   }
-}
-
-async function syncNotificationListFromRest(forceDispatch = false): Promise<void> {
-  const result = await runMoabomShellRealtimeTask(
-    'notifications:list:first-page',
-    () => fetchShellNotifications(1, 20),
-    { minIntervalMs: 750 },
-  );
-  if (!result.ok || !result.page) {
-    return;
+  if (Array.isArray(state.chat?.conversations)) {
+    setShellChatInboxCache(state.chat.conversations);
   }
-
-  const knownIds = new Set(getShellNotificationCache().map(row => row.id));
-  if (!forceDispatch && knownIds.size === 0 && result.page.items.length > 0) {
-    setShellNotificationCache(result.page.items);
-    return;
-  }
-
-  const fresh = result.page.items.filter(item => !knownIds.has(item.id));
-  fresh.reverse().forEach(item => {
-    dispatchShellNotificationReceived(notificationItemToPayload(item));
-  });
-}
-
-async function syncNotificationsFromRest(): Promise<void> {
-  if (notificationSyncInFlight) {
-    return;
-  }
-  notificationSyncInFlight = true;
-  try {
-    const count = await runMoabomShellRealtimeTask(
-      'notifications:unread-count',
-      () => fetchShellUnreadCount(),
-      { minIntervalMs: 750 },
-    );
-    dispatchUnreadSynced(count);
-    await syncNotificationListFromRest(true);
-  } catch {
-    // 알림 동기화 실패는 다음 주기에 재시도
-  } finally {
-    notificationSyncInFlight = false;
-  }
+  window.dispatchEvent(new CustomEvent<MoabomRealtimeState>(
+    MOABOM_REALTIME_STATE_SYNCED_EVENT,
+    { detail: state },
+  ));
 }
 
 async function runCatchUpSync(): Promise<void> {
-  await Promise.all([syncInboxFromRest(), syncNotificationsFromRest()]);
+  const accessScopeKey = getShellAccessScopeKey();
+  const domains = [
+    'notifications',
+    'chat',
+    ...(isMoabomShellPresenceRealtimeDemanded() ? ['presence'] : []),
+  ];
+  const domainKey = domains.join(',');
+  const requestKey = `${accessScopeKey}:${domainKey}`;
+  if (syncInFlight?.requestKey === requestKey) {
+    return syncInFlight.promise;
+  }
+  const promise = (async () => {
+    try {
+      const state = await runMoabomShellRealtimeTask(
+        `realtime:state:${requestKey}`,
+        () => requestShellJson<MoabomRealtimeState>(
+          `/api/modules/moabom-system/user/realtime-state?domains=${encodeURIComponent(domainKey)}`,
+          'required',
+        ),
+        { minIntervalMs: 2_000 },
+      );
+      if (accessScopeKey === getShellAccessScopeKey()) {
+        applyRealtimeState(state);
+      }
+    } catch {
+      // 장애 fallback 실패는 다음 backoff에서 재시도
+    }
+  })().finally(() => {
+    if (syncInFlight?.promise === promise) {
+      syncInFlight = null;
+    }
+  });
+  syncInFlight = { requestKey, promise };
+  return promise;
 }
 
-function clearTimers(): void {
-  if (fastInboxTimer !== null) {
-    clearInterval(fastInboxTimer);
-    fastInboxTimer = null;
-  }
-  if (listSafetyTimer !== null) {
-    clearInterval(listSafetyTimer);
-    listSafetyTimer = null;
+function clearFallbackTimer(): void {
+  if (fallbackTimer !== null) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
   }
 }
 
-/**
- * WS 연결 중에는 REST 폴링 없음. 끊김 시에만 인박스·알림 안전망.
- */
-function scheduleDisconnectedPolling(): void {
-  clearTimers();
+function scheduleDisconnectedCatchUp(immediate = false): void {
+  clearFallbackTimer();
   if (!syncActive || isMoabomWebSocketConnected()) {
+    fallbackAttempt = 0;
     return;
   }
 
-  fastInboxTimer = setInterval(() => {
-    if (!isMoabomWebSocketConnected()) {
-      void syncInboxFromRest();
+  const delays = [
+    MOABOM_CHAT_INBOX_SYNC_FAST_MS,
+    30_000,
+    MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS,
+  ];
+  const delay = immediate ? 0 : delays[Math.min(fallbackAttempt, delays.length - 1)];
+  fallbackTimer = setTimeout(() => {
+    fallbackTimer = null;
+    if (!syncActive || isMoabomWebSocketConnected()) {
+      return;
     }
-  }, MOABOM_CHAT_INBOX_SYNC_FAST_MS);
-
-  listSafetyTimer = setInterval(() => {
-    if (!isMoabomWebSocketConnected()) {
-      void syncNotificationsFromRest();
-    }
-  }, MOABOM_NOTIFICATION_LIST_SAFETY_DISCONNECTED_MS);
+    void runCatchUpSync().finally(() => {
+      fallbackAttempt += 1;
+      scheduleDisconnectedCatchUp(false);
+    });
+  }, delay);
 }
 
 function installFocusCatchUp(): void {
@@ -156,6 +137,8 @@ function installFocusCatchUp(): void {
     if (document.visibilityState === 'hidden') {
       return;
     }
+    // transport connected여도 Reverb publish/auth가 깨진 zombie 연결일 수 있으므로
+    // 화면 복귀 시 coalesced 통합 상태를 1회 권위 동기화합니다.
     void runCatchUpSync();
   };
 
@@ -178,10 +161,17 @@ export function startMoabomShellChatSyncService(): void {
       if (!syncActive) {
         return;
       }
-      scheduleDisconnectedPolling();
       if (isMoabomWebSocketConnected()) {
-        void runCatchUpSync();
+        const isReconnect = hasObservedConnectedSession;
+        hasObservedConnectedSession = true;
+        clearFallbackTimer();
+        fallbackAttempt = 0;
+        if (isReconnect) {
+          void runCatchUpSync();
+        }
+        return;
       }
+      scheduleDisconnectedCatchUp(true);
     });
   }
 
@@ -189,23 +179,28 @@ export function startMoabomShellChatSyncService(): void {
     return;
   }
   syncActive = true;
-  scheduleDisconnectedPolling();
-  void runCatchUpSync();
+  hasObservedConnectedSession = isMoabomWebSocketConnected();
+  if (!hasObservedConnectedSession) {
+    // 정상 부트의 WS 연결 대기 구간은 장애가 아니다. fast backoff 뒤에도 끊긴 경우만 복구한다.
+    scheduleDisconnectedCatchUp(false);
+  }
 }
 
 export function stopMoabomShellChatSyncService(): void {
   syncActive = false;
-  clearTimers();
+  hasObservedConnectedSession = false;
+  clearFallbackTimer();
+  fallbackAttempt = 0;
 }
 
-/** 포커스·가시성 복귀 등 — 셸 인박스 REST 1회 동기화 */
+/** 호환 API — WS 장애일 때만 통합 상태 1회 동기화 */
 export function requestShellChatInboxSync(): void {
-  if (syncActive) {
-    void syncInboxFromRest();
+  if (syncActive && !isMoabomWebSocketConnected()) {
+    void runCatchUpSync();
   }
 }
 
-/** 알림·인박스 동시 catch-up (패널 오픈·외부 트리거) */
+/** 알림·인박스·Presence 통합 catch-up */
 export function requestShellChatCatchUpSync(): void {
   if (syncActive) {
     void runCatchUpSync();
@@ -216,6 +211,6 @@ export function resetMoabomShellChatSyncServiceForTest(): void {
   stopMoabomShellChatSyncService();
   syncInstalled = false;
   focusCatchUpInstalled = false;
-  inboxSyncInFlight = false;
-  notificationSyncInFlight = false;
+  syncInFlight = null;
+  hasObservedConnectedSession = false;
 }

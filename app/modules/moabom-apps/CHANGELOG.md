@@ -1,5 +1,96 @@
 # Changelog
 
+## [0.5.27] - 2026-08-05
+
+### Added
+
+- 마이페이지 게시글 관리에서 현재 사용자가 작성한 앱 리뷰를 확인할 수 있는 목록 API를 추가했습니다.
+
+## [0.5.26] - 2026-08-05
+
+### Changed
+
+- 셸 앱 레지스트리를 업체·템플릿·활성 모듈 기준으로 캐시해 설정 변경 후 shell-boot 재생성 시 앱 매니페스트 디스크 스캔을 반복하지 않도록 개선했습니다.
+
+## [0.5.25] - 2026-08-05
+
+### Fixed
+
+- 스마트챗의 내 앱과 hosted 앱 조회가 현재 업체의 platform 데이터만 사용하도록 격리해, 업체별 사용자 번호가 같을 때 다른 업체 앱이 섞일 수 있는 문제를 차단했습니다.
+
+## [0.5.24] - 2026-08-05
+
+### Changed
+
+- critical 사용자 shell-state에서는 생성앱 라이브러리 hook을 건너뛰어 전용 library API와 같은 집계를 중복 실행하지 않습니다.
+- 셸 랭킹의 공개 생성앱 범위 캐시를 provider 인스턴스 수명으로 제한해 장수 worker의 테넌트 전환 간 정적 상태 공유를 제거했습니다.
+
+## [0.5.23] - 2026-08-04
+
+### Changed
+
+- 라이브러리 목록 직렬화가 토큰 없는 공개 standard AI 앱의 `preview_url`을 포함합니다. 프론트가 show 완료 전 iframe 을 병렬 시작해 첫 렌더 워터폴을 제거합니다(hosted·비공개는 미포함).
+- 공개 standard·무토큰 프리뷰 HTML `harden()` 결과를 콘텐츠 해시 키로 2계층 캐시(per-instance + GCS 공유)합니다. 재오픈마다 반복되던 regex 하드닝 CPU 를 제거하고, HTML 변경 시 해시 불일치로 자동 무효화됩니다.
+
+## [0.5.22] - 2026-08-03
+
+### Changed
+
+- 공개 생성앱 `preview_url`은 로그인 사용자에게도 토큰을 붙이지 않아 HTML 캐시가 살아납니다. Hosted·비공개는 기존처럼 토큰 유지.
+- 라이브러리 목록 직렬화에서 `buildPreviewUrl`(Crypt) 호출 자체를 생략합니다.
+- 프리뷰 harden bridge JS 를 프로세스 캐시하고, 공개 무토큰 HTML 은 `Cache-Control: public, max-age=300` 을 씁니다.
+
+## [0.5.21] - 2026-08-03
+
+### Fixed
+
+- 관리자 AI 생성 앱 미리보기: 비공개 직접입력(`html_paste`) 앱이 토큰 없는 `/g/{id}`로 404 나던 문제 — admin `preview_url`에 viewer `preview_token`을 붙입니다.
+- 웹사이트 연결(`website_link`) 앱 미리보기가 placeholder `/g/{id}`로 열리던 문제 — `metadata.website_url` 외부 URL을 `preview_url`로 반환합니다.
+
+## [0.5.20] - 2026-08-03
+
+### Changed
+
+- AI 스트림 요청이 `html_paste`(직접 입력 HTML)를 허용합니다. 앱편집 요소선택 패치에 사용하며, 전체 생성(`GenerateAiAppRequest`)은 기존처럼 제외합니다. `website_link`는 계속 제외합니다.
+
+## [0.5.19] - 2026-07-29
+
+### Changed
+
+- AI 모델 카탈로그를 대화(chat)·코딩(create-app)으로 분리. 앱 만들기는 Claude Sonnet/Haiku · GPT-5.4/Mini · Gemini 3.6 Flash / 3.5 Flash-Lite (6). 폐기된 `gpt-5.1-chat-latest`·구 `gpt-4o` 슬롯 제거.
+
+## [0.5.18] - 2026-07-29
+
+### Fixed
+
+- 생성앱 liquid-glass 대비 probe 가 `backgroundColor` 만 보던 한계 — `backgroundImage` 그라데이션 stop 평균 휘도를 반영해 어두운 그라데이션 위에서도 칩/패널 글자·보더가 맞게 바뀝니다.
+
+## [0.5.17] - 2026-07-28
+
+### Fixed
+
+- 스마트챗 데이터 카탈로그 리소스(`apps`·`my_apps`·`app_reviews`)가 빈 테넌트 잔재 테이블을 읽던 구조 결함 — `GeneratedApp::query()` 직접 호출을 데이터 plane SSOT 접근자 `GeneratedAppsConnection::apps()/communityPosts()`(platform DB)로 교체. AI 가 실제 앱 데이터(양압기 앱 등)를 검색할 수 있게 됨.
+
+## [0.5.16] - 2026-07-28
+
+### Added
+
+- 스마트챗 데이터 카탈로그(`moabom.smart_chat.data_resources`)에 앱 도메인 리소스 직접 등록 — `apps`(공개 스코프)·`my_apps`(본인)·`app_reviews`(공개 앱 published 리뷰). 스키마 소유권 분산.
+
+## [0.5.15] - 2026-07-27
+
+### Added
+
+- AI 앱 만들기 생성 스트림에 개인 크레딧 Preflight/Settle (`CreateAppCreditGate`, `ai_spend.create_app_*`, continue는 미과금).
+
+## [0.5.14] - 2026-07-27
+
+### Changed
+
+- 생성앱 단건 show에 `include_html` 쿼리를 추가했습니다. `0`이면 메타·preview_url만 반환하고, 기본·`1`은 HTML을 포함합니다(편집·리믹스 호환).
+- 프리뷰 HTML 응답에 `Cache-Control: private, max-age=60`을 넣어 재오픈 체감을 개선합니다.
+- 웹사이트 연결 resolve는 document HTML을 1회만 조회합니다.
+
 ## [0.5.13] - 2026-07-09
 
 ### Changed

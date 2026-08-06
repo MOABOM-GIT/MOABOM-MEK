@@ -6,4 +6,6 @@ return [
     'channel_system_protected'    => '시스템 채널의 is_system 값은 변경할 수 없습니다.',
     'channel_system_cannot_delete' => '시스템 채널(:key)은 삭제할 수 없습니다.',
     'channel_has_consents'        => '채널(:key)에 동의한 회원이 :count명 있어 삭제할 수 없습니다.',
+    'notification_consent_loaded' => '마케팅 알림 동의 상태를 불러왔습니다.',
+    'notification_consent_saved'  => '마케팅 알림 동의 상태를 저장했습니다.',
 ];

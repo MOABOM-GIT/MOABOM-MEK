@@ -317,7 +317,10 @@ PATCH;
         $ownerPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $owner->id);
         $viewerPayload = $service->serialize($app->fresh(['user']), includeHtml: false, viewerUserId: $viewer->id);
         $guestPayload = $service->serialize($app->fresh(['user']), includeHtml: false);
+        $ownerWithHtml = $service->serialize($app->fresh(['user']), includeHtml: true, viewerUserId: $owner->id);
 
+        $this->assertArrayNotHasKey('html', $ownerPayload);
+        $this->assertArrayHasKey('html', $ownerWithHtml);
         $this->assertSame('standard', $ownerPayload['tier']);
         $this->assertStringContainsString('/g/'.$app->id, (string) $ownerPayload['preview_url']);
         $this->assertSame('A', $ownerPayload['owner']['nickname']);

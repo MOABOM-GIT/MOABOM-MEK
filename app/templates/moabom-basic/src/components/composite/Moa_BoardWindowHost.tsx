@@ -28,7 +28,11 @@ import { Div } from '../basic/Div';
 import AppLoadingSpinner from './AppLoadingSpinner';
 import { APP_WINDOW_BODY_CLASS } from '../../apps/appShellTypography';
 import { MoaG7ContainerHost } from './Moa_G7ContainerHost';
-import { BoardWindowG7RenderTree, splitBoardWindowComponentDefs } from '../../shell/boardWindowG7RenderTree';
+import {
+  BoardWindowG7RenderTree,
+  splitBoardWindowComponentDefs,
+  type BoardWindowG7RenderTreeProps,
+} from '../../shell/boardWindowG7RenderTree';
 
 export interface BoardWindowHostProps {
   boardSlug?: string;
@@ -240,7 +244,7 @@ export const BoardWindowHost: React.FC<BoardWindowHostProps> = ({
             actionDispatcher={actionDispatcher}
             layoutName={layoutName}
             dataRevision={dataRevision}
-            DynamicRenderer={DynamicRenderer as React.ComponentType<Record<string, unknown>>}
+            DynamicRenderer={DynamicRenderer as BoardWindowG7RenderTreeProps['DynamicRenderer']}
           />
         )}
       </MoaG7ContainerHost>

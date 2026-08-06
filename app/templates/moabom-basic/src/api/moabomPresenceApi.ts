@@ -1,7 +1,10 @@
-import { getShellAccessToken } from './moabomShellAccess';
+import { getShellAccessScopeKey, getShellAccessToken } from './moabomShellAccess';
 import { getOrCreateShellVisitorId } from '../shell/ShellContextBridge';
+import { invalidateMoabomUserShellState } from '../runtime/moabomUserShellState';
 
 export type PresenceHeartbeatTouch = 'login' | 'logout' | 'touch';
+export type PresenceWsState = 'connected' | 'disconnected';
+export type PresenceVisibilityState = 'visible' | 'hidden';
 
 export type PresenceAvailability = 'online' | 'away' | 'busy' | 'offline';
 
@@ -82,6 +85,8 @@ export type PresenceHeartbeatResult = {
   subtitle_mode?: PresenceSubtitleMode;
   presence_subtitle?: string | null;
   is_reachable?: boolean;
+  ws_reachable_until?: string | null;
+  presence_online_until?: string | null;
 };
 
 export type PublicUserPresence = {
@@ -144,11 +149,17 @@ export async function sendPresenceHeartbeat(
   statusText?: string | null,
   clientFormFactor?: ClientFormFactor | null,
   touch?: PresenceHeartbeatTouch,
+  connectivity?: {
+    wsState?: PresenceWsState;
+    visibilityState?: PresenceVisibilityState;
+  },
 ): Promise<PresenceHeartbeatResult> {
   const body: {
     status_text?: string;
     client_form_factor?: ClientFormFactor;
     touch?: PresenceHeartbeatTouch;
+    ws_state?: PresenceWsState;
+    visibility_state?: PresenceVisibilityState;
   } = {};
   const trimmed = statusText?.trim();
   if (trimmed) {
@@ -159,6 +170,12 @@ export async function sendPresenceHeartbeat(
   }
   if (touch) {
     body.touch = touch;
+  }
+  if (connectivity?.wsState) {
+    body.ws_state = connectivity.wsState;
+  }
+  if (connectivity?.visibilityState) {
+    body.visibility_state = connectivity.visibilityState;
   }
   const response = await fetch(`${API_BASE}/public/heartbeat`, {
     method: 'POST',
@@ -175,11 +192,20 @@ export async function sendPresenceHeartbeat(
 }
 
 const PRESENCE_SETTINGS_MEMORY_TTL_MS = 30_000;
-let presenceSettingsCache: { value: PresenceSettings; expiresAt: number } | null = null;
-let presenceSettingsPromise: Promise<PresenceSettings> | null = null;
+let presenceSettingsCache: {
+  scopeKey: string;
+  value: PresenceSettings;
+  expiresAt: number;
+} | null = null;
+let presenceSettingsPromise: {
+  scopeKey: string;
+  promise: Promise<PresenceSettings>;
+} | null = null;
 
 export function invalidatePresenceSettingsCache(): void {
   presenceSettingsCache = null;
+  presenceSettingsPromise = null;
+  invalidateMoabomUserShellState();
 }
 
 export function __resetPresenceSettingsCacheForTest(): void {
@@ -189,18 +215,23 @@ export function __resetPresenceSettingsCacheForTest(): void {
 
 export async function fetchPresenceSettings(): Promise<PresenceSettings> {
   const now = Date.now();
-  if (presenceSettingsCache && presenceSettingsCache.expiresAt > now) {
+  const scopeKey = getShellAccessScopeKey();
+  if (
+    presenceSettingsCache
+    && presenceSettingsCache.scopeKey === scopeKey
+    && presenceSettingsCache.expiresAt > now
+  ) {
     return presenceSettingsCache.value;
   }
 
-  if (presenceSettingsPromise) {
-    return presenceSettingsPromise;
+  if (presenceSettingsPromise?.scopeKey === scopeKey) {
+    return presenceSettingsPromise.promise;
   }
 
-  presenceSettingsPromise = (async () => {
+  const promise = (async () => {
     const { runMoabomShellRealtimeTask } = await import('../runtime/moabomShellRealtimeRequestCoalescer');
     return runMoabomShellRealtimeTask(
-      'presence:user-settings',
+      `presence:user-settings:${scopeKey}`,
       async () => {
         const response = await fetch(`${API_BASE}/user/presence/settings`, {
           credentials: 'include',
@@ -210,20 +241,26 @@ export async function fetchPresenceSettings(): Promise<PresenceSettings> {
           },
         });
         const data = await parseModuleJson<PresenceSettings>(response);
-        presenceSettingsCache = {
-          value: data,
-          expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
-        };
+        if (getShellAccessScopeKey() === scopeKey) {
+          presenceSettingsCache = {
+            scopeKey,
+            value: data,
+            expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
+          };
+        }
         return data;
       },
       { minIntervalMs: 2_000 },
     );
   })();
+  presenceSettingsPromise = { scopeKey, promise };
 
   try {
-    return await presenceSettingsPromise;
+    return await promise;
   } finally {
-    presenceSettingsPromise = null;
+    if (presenceSettingsPromise?.promise === promise) {
+      presenceSettingsPromise = null;
+    }
   }
 }
 
@@ -242,6 +279,7 @@ export async function updatePresenceSettings(
   });
   const data = await parseModuleJson<PresenceSettings>(response);
   presenceSettingsCache = {
+    scopeKey: getShellAccessScopeKey(),
     value: data,
     expiresAt: Date.now() + PRESENCE_SETTINGS_MEMORY_TTL_MS,
   };

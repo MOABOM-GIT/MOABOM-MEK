@@ -102,4 +102,66 @@ describe('normalizePresenceConnectList', () => {
     expect(next[0]?.user_uuid).toBe('user-uuid-1');
     expect(next[0]?.display_name).toBe('나');
   });
+
+  it('optimisticPromoteSelfInConnectList 는 동일 마스크 IP guest 잔여 행도 제거한다', () => {
+    const users: PresenceOnlineUser[] = [
+      {
+        ...guest('guest-me', 'visitor-me'),
+        client_ip_masked: '8.232.*.*',
+      },
+      {
+        ...guest('guest-shadow', 'visitor-old'),
+        client_ip_masked: '8.232.*.*',
+      },
+      {
+        ...guest('guest-other', 'visitor-other'),
+        client_ip_masked: '1.2.*.*',
+      },
+      {
+        session_key: 'member-key',
+        visitor_id: 'visitor-me',
+        user_uuid: 'user-uuid-1',
+        display_name: '나',
+        is_authenticated: true,
+        is_online: true,
+        friendship: 'none',
+        last_seen_at: '2026-06-24T10:00:00Z',
+      },
+    ];
+
+    const next = optimisticPromoteSelfInConnectList(users, 'visitor-me', users[3]);
+
+    expect(next).toHaveLength(2);
+    expect(next[0]?.user_uuid).toBe('user-uuid-1');
+    expect(next[1]?.visitor_id).toBe('visitor-other');
+  });
+
+  it('normalizePresenceConnectList 는 viewer IP 와 같은 guest shadow 를 숨긴다', () => {
+    const users: PresenceOnlineUser[] = [
+      {
+        ...guest('guest-shadow', 'visitor-old'),
+        client_ip_masked: '8.232.*.*',
+      },
+      {
+        ...guest('guest-other', 'visitor-other'),
+        client_ip_masked: '1.2.*.*',
+      },
+      {
+        session_key: 'member-key',
+        visitor_id: 'visitor-me',
+        user_uuid: 'user-self',
+        display_name: '나',
+        is_authenticated: true,
+        is_online: true,
+        friendship: 'none',
+        last_seen_at: '2026-06-24T10:00:00Z',
+      },
+    ];
+
+    const normalized = normalizePresenceConnectList(users, 'user-self', '8.232.*.*');
+
+    expect(normalized).toHaveLength(2);
+    expect(normalized[0]?.user_uuid).toBe('user-self');
+    expect(normalized[1]?.visitor_id).toBe('visitor-other');
+  });
 });

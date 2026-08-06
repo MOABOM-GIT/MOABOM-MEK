@@ -15,15 +15,24 @@ final class PublicRunReadyController extends Controller
 {
     public function __invoke(): JsonResponse
     {
-        $payload = ['ready' => true];
-        $status = 200;
+        $autoloadReady = is_file(base_path('bootstrap/cache/autoload-extensions.php'))
+            && filesize(base_path('bootstrap/cache/autoload-extensions.php')) > 0;
+        $payload = [
+            'ready' => false,
+            'autoload' => $autoloadReady,
+        ];
+        $status = 503;
 
         try {
             DB::connection()->select('select 1 as ok');
             $payload['db'] = true;
         } catch (\Throwable) {
-            // 콜드스타트: Laravel 라우트 응답 가능이면 200 (startup probe·scheduler). DB 는 별도 확인.
             $payload['db'] = false;
+        }
+
+        if ($autoloadReady && $payload['db'] === true) {
+            $payload['ready'] = true;
+            $status = 200;
         }
 
         return response()->json($payload, $status);

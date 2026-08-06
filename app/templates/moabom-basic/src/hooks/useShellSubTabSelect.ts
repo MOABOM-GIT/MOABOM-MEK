@@ -29,22 +29,24 @@ export function useShellSubTabSettle<T extends string>(activeTab: T): T {
 }
 
 /**
- * 셸 SubTabBar — 전환 시 setActiveTab만, settled 도착 후 같은 탭 재클릭 시 onReselect.
+ * 셸 SubTabBar — 전환 시 setActiveTab + onSelect, settled 도착 후 같은 탭 재클릭 시에도 onSelect.
+ * (우측 패널 접속자/친구/알림 탭 진입·재클릭 갱신에 사용)
  */
 export function useShellSubTabSelect<T extends string>(
   activeTab: T,
   settledTab: T,
   setActiveTab: (tab: T) => void,
-  onReselect?: (tabId: T) => void,
+  onSelect?: (tabId: T, reason: 'change' | 'reselect') => void,
 ): (tabId: string) => void {
   return useCallback((tabId: string) => {
     const next = tabId as T;
     if (next === activeTab) {
       if (next === settledTab) {
-        onReselect?.(next);
+        onSelect?.(next, 'reselect');
       }
       return;
     }
     setActiveTab(next);
-  }, [activeTab, onReselect, setActiveTab, settledTab]);
+    onSelect?.(next, 'change');
+  }, [activeTab, onSelect, setActiveTab, settledTab]);
 }

@@ -88,18 +88,32 @@ class Module extends AbstractModule
                     'ko' => '메시지방에 새 메시지가 도착하면 멤버에게 발송',
                     'en' => 'Sent to members when a new message arrives',
                 ],
-                'channels' => ['database'],
+                'channels' => ['database', 'fcm'],
                 'hooks' => ['moabom-chat.message.after_create'],
                 'variables' => [
                     ['key' => 'name', 'description' => '수신자 이름'],
                     ['key' => 'sender_name', 'description' => '발신자 표시 이름'],
                     ['key' => 'sender_uuid', 'description' => '발신자 UUID'],
                     ['key' => 'conversation_uuid', 'description' => '메시지방 UUID'],
+                    ['key' => 'message_uuid', 'description' => '메시지 UUID'],
                     ['key' => 'message_preview', 'description' => '메시지 미리보기'],
                 ],
                 'templates' => [
                     [
                         'channel' => 'database',
+                        'recipients' => [['type' => 'related_user', 'relation' => 'member']],
+                        'click_url' => '/users/{sender_uuid}/chat?conversation={conversation_uuid}',
+                        'subject' => [
+                            'ko' => '새 메시지',
+                            'en' => 'New message',
+                        ],
+                        'body' => [
+                            'ko' => '{sender_name}: {message_preview}',
+                            'en' => '{sender_name}: {message_preview}',
+                        ],
+                    ],
+                    [
+                        'channel' => 'fcm',
                         'recipients' => [['type' => 'related_user', 'relation' => 'member']],
                         'click_url' => '/users/{sender_uuid}/chat?conversation={conversation_uuid}',
                         'subject' => [

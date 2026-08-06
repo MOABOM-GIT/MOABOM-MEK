@@ -1,4 +1,3 @@
-import React from 'react';
 import { Div } from '../basic/Div';
 import { Icon } from '../basic/Icon';
 

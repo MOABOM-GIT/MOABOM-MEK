@@ -152,15 +152,50 @@ grep -q 'installMoabomShellCriticalFetch' "${BASIC}/src/index.ts" \
   || fail "moabom-basic must install shell critical fetch patch"
 grep -q 'networkTimeoutSeconds: 0.4' "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js" \
   || fail "PWA SW HTML NetworkFirst timeout must be 0.4s"
+python3 - "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js" <<'PYSW' || fail "PWA SW shell-boot StaleWhileRevalidate + maxAge 300 missing"
+import pathlib, re, sys
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+m = re.search(
+    r"pathname === '/api/modules/moabom-system/public/shell-boot'[\s\S]{0,800}?new (StaleWhileRevalidate|NetworkFirst|CacheFirst)\(",
+    text,
+)
+assert m and m.group(1) == "StaleWhileRevalidate", f"shell-boot strategy={m.group(1) if m else None}"
+block = text[m.start(): m.start() + 900]
+assert "maxAgeSeconds: 300" in block, "shell-boot maxAge missing"
+print("OK shell-boot SW StaleWhileRevalidate")
+PYSW
+grep -q "Cache-Control" "${SYS}/src/Http/Controllers/PublicShellBootController.php" \
+  || fail "PublicShellBootController must set public Cache-Control for SW cache eligibility"
 grep -q 'WEBSITE_ICON_CACHE' "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js" \
   || fail "PWA SW must CacheFirst website-icon"
 grep -q 'websiteIconCacheKeyPlugin' "${APP}/plugins/moabom-pwa/resources/pwa/sw.template.js" \
   || fail "PWA SW website-icon must cache by pathname (ignore icon_token)"
 grep -q 'moabom:warm-template-lang-static' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
-  || fail "entrypoint must warm merged template lang for nginx"
+  && fail "entrypoint must not run merged template lang warm on every cold start"
 grep -q 'ext-static/lang/\$tpl_id/\$locale.json' "${ROOT}/deploy/nginx-cloudrun.conf" \
-  || fail "nginx must serve warmed template lang JSON"
-ok "network boot critical path (shellCritical + force-defer + SW + lang static)"
+  || fail "nginx must retain template lang static/PHP fallback"
+ok "network boot critical path (shellCritical + force-defer + SW + lang fallback)"
+
+grep -q 'installMoabomUserShellStateFetch' "${BASIC}/src/index.ts" \
+  || fail "authenticated user shell-state fetch bridge missing"
+grep -q 'UserShellStateController' "${APP}/modules/moabom-system/src/routes/api.php" \
+  || fail "authenticated user shell-state endpoint missing"
+grep -q 'UserRealtimeStateController' "${APP}/modules/moabom-system/src/routes/api.php" \
+  || fail "WS outage unified realtime-state endpoint missing"
+require_file "${APP}/modules/moabom-system/src/Listeners/NotificationRealtimeStateListener.php"
+grep -q "'notification.state'" "${APP}/modules/moabom-system/src/Listeners/NotificationRealtimeStateListener.php" \
+  || fail "authoritative notification unread push missing"
+grep -q 'options?.skipSummaryRefresh === false' "${BASIC}/src/hooks/MoabomPresenceProvider.tsx" \
+  || fail "presence heartbeat must not refresh summary by default"
+grep -q 'subscribeTenantPresenceChannel' "${BASIC}/src/hooks/MoabomPresenceProvider.tsx" \
+  || fail "Reverb presence membership subscription missing"
+grep -q 'location = /pwa/sw.js' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx static service-worker fast path missing"
+grep -q 'public/pwa/sw.js' "${ROOT}/deploy/Dockerfile" \
+  || fail "Dockerfile static service-worker image output missing"
+grep -q 'MOABOM_IMAGE_TAG=${_IMAGE_TAG}' "${ROOT}/deploy/cloudbuild-v3.yaml" \
+  || fail "Cloud Build image tag is not wired to static service-worker version"
+ok "authenticated boot snapshot + push-first presence + static SW"
 
 [[ -f "${APP}/modules/moabom-apps/src/Services/MoabomShellHomeAppOrderPruner.php" ]] \
   || fail "MoabomShellHomeAppOrderPruner missing"
@@ -261,12 +296,84 @@ require_file "${BASIC}/src/shell/moabomShellUnreadBadge.ts"
 if grep -qE 'MOABOM_NOTIFICATION_UNREAD_POLL_MS|unreadPollTimer' "${CHAT_SYNC}"; then
   fail "moabomShellChatSyncService must not keep always-on unread REST polling"
 fi
-grep -q 'scheduleDisconnectedPolling' "${CHAT_SYNC}" \
-  || fail "chat sync must gate REST polling to WS-disconnected only"
+grep -q 'scheduleDisconnectedCatchUp' "${CHAT_SYNC}" \
+  || fail "realtime sync must use WS-disconnected backoff catch-up"
+grep -q 'isMoabomPrivateChannelSubscribed' "${BASIC}/src/runtime/moabomShellRealtimeCoordinator.ts" \
+  || fail "realtime coordinator must wait for private-channel subscription acknowledgement"
+if grep -q 'setInterval' "${CHAT_SYNC}"; then
+  fail "realtime fallback must use one-shot backoff, not parallel intervals"
+fi
+grep -q "realtime:state" "${CHAT_SYNC}" \
+  || fail "chat/notification/presence fallback must use unified realtime-state request"
 grep -q 'presenceSurfaceActive' "${PRESENCE_PROVIDER}" \
-  || fail "MoabomPresenceProvider must gate heartbeat/revision on presenceSurfaceActive"
-grep -q 'setPresenceSurfaceActive' "${PRESENCE_HOOK}" \
-  || fail "useMoabomPresence must activate presence surface only on connect/friend tabs"
+  || fail "MoabomPresenceProvider must retain render/list surface gating"
+grep -qE 'setInterval\([^,]+,\s*120_000\)' "${PRESENCE_PROVIDER}" \
+  || fail "presence reachability lease must be capped at one touch per 120 seconds"
+grep -q 'visibilityState' "${PRESENCE_PROVIDER}" \
+  || fail "presence heartbeat interval must respect document.visibilityState"
+grep -q 'setMoabomShellRealtimeUser\|bindMoabomShellRealtimeSession' "${PRESENCE_PROVIDER}" \
+  || fail "presence provider must bind realtime session for notification/inbox channels"
+grep -q 'bindMoabomShellRealtimeSession' "${PRESENCE_PROVIDER}" \
+  || fail "presence provider must use bindMoabomShellRealtimeSession (uuid race safe)"
+if grep -q 'startMoabomShellRealtimeCoordinator' "${PRESENCE_PROVIDER}"; then
+  fail "MoabomPresenceProvider must start channels via realtime session module"
+fi
+if grep -qE 'ensureMoabomChatNotificationPermission|startMoabomShellChatSyncService' "${PRESENCE_PROVIDER}"; then
+  fail "chat permission/sync must start from realtime session module, not PresenceProvider directly"
+fi
+REALTIME_DEMAND="${BASIC}/src/runtime/moabomShellRealtimeDemand.ts"
+require_file "${REALTIME_DEMAND}"
+grep -q 'bindMoabomShellRealtimeSession' "${REALTIME_DEMAND}" \
+  || fail "realtime session must expose bindMoabomShellRealtimeSession"
+grep -q 'UUID_RETRY' "${REALTIME_DEMAND}" \
+  || fail "realtime session must retry uuid briefly without teardown"
+grep -q 'startMoabomShellRealtimeCoordinator' "${REALTIME_DEMAND}" \
+  || fail "realtime session must start notification/inbox coordinator when logged in"
+grep -q 'markMoabomPresenceFriendsStale' "${BASIC}/src/shell/moabomPresenceFriendsSync.ts" \
+  || fail "friends stale flag required for tab-off friend_accepted without global REST"
+grep -q 'presenceSurfaceActive' "${PRESENCE_PROVIDER}" \
+  || fail "presence WS channels must remain surface-gated"
+python3 - "${PRESENCE_PROVIDER}" <<'PYPRES' || fail "presence summary warm must require presenceSurfaceActive"
+import pathlib, re, sys
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+bad = re.search(
+    r"if \(!isLoggedIn\) \{\s*setSummary\(null\);\s*return;\s*\}\s*"
+    r"return whenMoabomBootPhaseAtLeast\('secondary',\s*\(\)\s*=>\s*\{\s*void refreshSummary",
+    text,
+)
+assert bad is None, "login-global secondary refreshSummary still present"
+assert "if (!presenceSurfaceActive)" in text
+assert "void refreshSummary()" in text
+print("OK presence summary gated")
+PYPRES
+grep -q 'WS_REACHABILITY_TTL_SECONDS = 180' "${APP}/modules/moabom-presence/src/Services/PresenceHeartbeatService.php" \
+  || fail "presence WS reachability lease TTL missing"
+grep -q 'applyUserPreference' "${APP}/plugins/moabom-fcm/src/Listeners/FcmNotificationChannelListener.php" \
+  && ! grep -q 'FcmPresenceGate' "${APP}/plugins/moabom-fcm/src/Channels/FcmChannel.php" \
+  || fail "FCM must honor user system-notification preference independently of presence"
+grep -q 'setPresenceSurface(presenceSurface)' "${PRESENCE_HOOK}" \
+  && grep -q "? 'connect'" "${PRESENCE_HOOK}" \
+  && grep -q "? 'friend'" "${PRESENCE_HOOK}" \
+  || fail "useMoabomPresence must activate the exact connect/friend surface"
+grep -q 'tertiary-idle' "${BASIC}/src/hooks/useMoabomActivityLevel.ts" \
+  || fail "activity level credits fetch must wait for tertiary-idle"
+grep -q 'WEATHER_FETCH_TIMEOUT_MS' "${BASIC}/src/runtime/weather/weatherApi.ts" \
+  || fail "weather current fetch must enforce client timeout before upstream 504"
+grep -q 'AUTH_PRELOAD_TIMEOUT_MS' "${BASIC}/src/runtime/moabomShellAuthPreload.ts" \
+  || fail "auth preload must enforce client timeout before upstream 504"
+# library prefetch 는 secondary 진입 이후 (auth-ready 직후 동기 waterfall 금지)
+python3 - "${BASIC}/src/runtime/moabomShellBootPipeline.ts" <<'PYLIB' || fail "library prefetch must start after secondary phase"
+import pathlib, sys
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+sec = text.find("advanceMoabomBootPhase('secondary')")
+pref = text.find("prefetchMoabomGeneratedAppLibrary()")
+assert sec >= 0 and pref >= 0 and pref > sec, "prefetch before secondary"
+print("OK library after secondary")
+PYLIB
+# 제품 계약: 알림 탭으로 notification WS 를 끄지 말 것
+if grep -q 'setMoabomShellRealtimeDemand({ notifications: alarmTabActive' "${BASIC}/src/hooks/useMoabomShellNotifications.ts"; then
+  fail "must not gate notification WS on alarm tab (breaks live message/friend alerts)"
+fi
 # 전역 tertiary board/profile layout prefetch 제거 — 창 오픈 시만
 if grep -q 'schedulePrefetchBoardWindowLayouts' "${BASIC}/src/index.ts"; then
   fail "moabom-basic index must not schedule global board layout prefetch"
@@ -293,9 +400,15 @@ refetch_ids = [
 assert "notification_unread_count" in refetch_ids, "ws must refetch unread count"
 assert "notifications" not in refetch_ids, "ws must not refetch full notifications list"
 PYADMIN
+grep -q 'MoabomPresenceSummaryContext\|MoabomPresenceOnlineContext' "${PRESENCE_PROVIDER}" \
+  || fail "presence provider must keep split contexts to limit shell re-renders"
 grep -q 'nodeMayContainFormControls\|FORM_CONTROL_SELECTOR' \
   "${APP}/plugins/moabom-auth-hardening/resources/js/observer.ts" \
   || fail "auth-hardening observer must filter to form-control mutations"
+grep -q 'user_surface_boot' "${SYS}/config/moabom-system.php" \
+  || fail "moabom-system config must declare user_surface_boot"
+grep -q 'MoabomUserSurfaceBootAssetPolicy' "${SYS}/src/Support/MoabomUserSurfaceBootAssetPolicy.php" \
+  || fail "MoabomUserSurfaceBootAssetPolicy missing"
 ok "WS-first / lazy-load realtime invariants"
 
 # 8b. Icon 컴포넌트 사용 템플릿은 Font Awesome externals 필수 (G7 7.0.2+)
@@ -354,7 +467,57 @@ grep -q 'ActivityLevelListener' "${ACTIVITY_LEVEL}" \
   || fail "useMoabomActivityLevel must use value-push ActivityLevelListener"
 grep -q 'MOABOM_SHELL_AUTH_EXPIRED_EVENT' "${SHELL_HTTP}" \
   || fail "moabomShellHttp must publish MOABOM_SHELL_AUTH_EXPIRED_EVENT on 401"
+
+MYPAGE_TAB_HOOKS="${BASIC}/src/components/composite/mypage/tabs"
+for tab_hook in useMyPageCreditTab.ts useMyPageActivityTab.ts useMyPageProfileTab.ts; do
+  require_file "${MYPAGE_TAB_HOOKS}/${tab_hook}"
+  grep -q 'memberKey' "${MYPAGE_TAB_HOOKS}/${tab_hook}" \
+    || fail "${tab_hook} must key requests by stable memberKey"
+  grep -qE '\[activeTab, currentUser|shellLanguage, t\]' "${MYPAGE_TAB_HOOKS}/${tab_hook}" \
+    && fail "${tab_hook} must not refetch on currentUser/t identity churn"
+done
+grep -q 'presenceSettings?.availability' "${MYPAGE_TAB_HOOKS}/useMyPagePresenceSettings.ts" \
+  || fail "presence settings hydration must depend on scalar values, not provider identity"
 ok "Shell HTTP/Auth/Resource Plane guards"
+
+# 11. Account boundary / loading ownership / selective realtime aggregate
+ACCOUNT_SCOPE="${BASIC}/src/runtime/moabomShellAccountScope.ts"
+SHELL_WINDOWS="${BASIC}/src/pages/home/useMoaShellWindows.ts"
+LEFT_PANEL="${BASIC}/src/components/composite/Moa_LeftPanel.tsx"
+CHAT_HOOK="${BASIC}/src/hooks/useMoabomChat.ts"
+REALTIME_CONTROLLER="${APP}/modules/moabom-system/src/Http/Controllers/UserRealtimeStateController.php"
+APPS_PROVIDER="${APP}/modules/moabom-apps/src/Providers/AppsServiceProvider.php"
+PRESENCE_SESSIONS="${APP}/modules/moabom-presence/src/Repositories/TenantPresenceSessionRepository.php"
+require_file "${ACCOUNT_SCOPE}"
+grep -q 'installMoabomShellAccountScopeBoundary' "${BASIC}/src/pages/home/useMoabomShellAuth.ts" \
+  || fail "auth hook must install the atomic account scope boundary"
+grep -q 'clearShellChatInboxCache' "${ACCOUNT_SCOPE}" \
+  && grep -q 'invalidateShellUserRankingsCache' "${ACCOUNT_SCOPE}" \
+  && grep -q 'clearMoabomActivityLevelCache' "${ACCOUNT_SCOPE}" \
+  || fail "account scope boundary must clear chat/ranking/activity user state"
+if grep -q 'saveJson(STORAGE_KEY_TASKBAR_ICONS,' "${SHELL_WINDOWS}"; then
+  fail "taskbar persistence must include account scope"
+fi
+grep -q "reason === 'reselect'" "${LEFT_PANEL}" \
+  || fail "left subtab payload refresh must be reselect-only"
+python3 - "${CHAT_HOOK}" <<'PYCHAT' || fail "chat inbox event must have one list writer"
+import pathlib, sys
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+start = text.index("const applyIncomingChatMessage")
+end = text.index("const handleMemberLeft", start)
+body = text[start:end]
+assert "setConversations(" not in body, "hook still writes inbox list for global event"
+print("OK chat inbox single list writer")
+PYCHAT
+grep -q "query('domains'" "${REALTIME_CONTROLLER}" \
+  && grep -q "in_array('notifications', \$domains" "${REALTIME_CONTROLLER}" \
+  || fail "realtime-state must aggregate selected domains only"
+grep -q "\$scope === 'critical'" "${APPS_PROVIDER}" \
+  || fail "critical shell-state must skip generated library aggregation"
+grep -q 'listActiveForUserIds' "${PRESENCE_SESSIONS}" \
+  && grep -q "whereIn('user_id'" "${PRESENCE_SESSIONS}" \
+  || fail "presence friend sessions must be filtered by user IDs in SQL"
+ok "account boundary / loading ownership / selective realtime aggregate"
 
 if [[ "$FAIL" -ne 0 ]]; then
   echo "== moabom-refactor-invariants FAILED =="

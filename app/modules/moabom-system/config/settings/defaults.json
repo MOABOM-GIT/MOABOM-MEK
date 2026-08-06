@@ -38,8 +38,10 @@
         { "id": "sound", "label": "사운드 효과", "on_by_default": true, "user_editable": true },
         { "id": "animation", "label": "애니메이션", "on_by_default": true, "user_editable": true },
         { "id": "haptic", "label": "햅틱 피드백", "on_by_default": true, "user_editable": true },
+        { "id": "notification_center", "label": "알림센터 기록·배지 표시", "on_by_default": true, "user_editable": true },
         { "id": "toast", "label": "토스트 알림", "on_by_default": true, "user_editable": true },
-        { "id": "weather", "label": "날씨 효과", "on_by_default": true, "user_editable": true }
+        { "id": "weather", "label": "날씨 효과", "on_by_default": true, "user_editable": true },
+        { "id": "push", "label": "시스템 알림", "on_by_default": true, "user_editable": true }
       ]
     }
   },

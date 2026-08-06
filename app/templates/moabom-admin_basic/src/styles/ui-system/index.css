@@ -1,11 +1,10 @@
 /**
  * G7 Admin Template - Design Guide
- * 카테고리별 스타일 통합 import
+ *
+ * SSOT: g7-semantic.css = upstream sirsoft-admin_basic main.css
+ * (@layer components + MEDIA QUERIES). Moabom-only tokens in components.css.
+ * @see https://github.com/gnuboard/g7/blob/main/templates/_bundled/sirsoft-admin_basic/src/styles/main.css
  */
 
-@import "./colors.css";
-@import "./typography.css";
-@import "./ui-elements.css";
+@import "./g7-semantic.css";
 @import "./components.css";
-@import "./layout.css";
-@import "./other.css";

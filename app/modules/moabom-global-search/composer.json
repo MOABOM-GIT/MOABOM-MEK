@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-global-search",
+    "description": "Moabom shell global-search app module for Gnuboard7",
+    "type": "library",
+    "version": "0.1.0",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Global\\Search\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

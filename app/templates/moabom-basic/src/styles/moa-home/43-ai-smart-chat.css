@@ -1,0 +1,250 @@
+/**
+ * AI 스마트챗 — AI 앱 만들기(`moa-ai-generator-layout`)와 동일 패널 표면·그리드.
+ * 좌: 대화/폴더 사이드바, 우: 메시지·입력.
+ */
+
+.moa-ai-generator-layout.moa-ai-smart-chat-layout {
+  /* 1열: 생성기와 동일 — 콘텐츠 높이 유지 */
+  flex: 0 0 auto;
+}
+
+.moa-ai-smart-chat-sidebar {
+  min-height: 0;
+  max-height: min(40cqh, 18rem);
+  overflow: hidden;
+}
+
+.moa-ai-smart-chat-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 메시지 영역 — glass-sm-blur 표면과 짝을 이루는 라운드·패딩 */
+.moa-ai-smart-chat-messages {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 1rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 대화설정 패널 — 열리면 메시지 영역을 대체해 같은 표면·높이를 차지한다 */
+.moa-ai-smart-chat-settings {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 1rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 좌측 사이드바 — 대화 목록 행 (버튼 대신 좌측 정렬 리스트 행) */
+.moa-ai-smart-chat-conv-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.75rem;
+  padding-right: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+/* 라이브러리 글래스 토큰 — hover 는 옅게(sm), 활성은 뚜렷하게(smblur) */
+.moa-ai-smart-chat-conv-item:hover {
+  background: var(--moa-glass-sm-surface);
+}
+
+.moa-ai-smart-chat-conv-item.is-active {
+  background: var(--moa-glass-smblur-surface);
+  box-shadow: inset 0 0 0 1px var(--moa-glass-smblur-border);
+}
+
+.moa-ai-smart-chat-conv-item__label {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.05rem;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.moa-ai-smart-chat-conv-item__title {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.moa-ai-smart-chat-conv-item__time {
+  display: block;
+  line-height: 1.2;
+}
+
+.moa-ai-smart-chat-conv-item__delete {
+  flex: 0 0 auto;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.moa-ai-smart-chat-conv-item:hover .moa-ai-smart-chat-conv-item__delete,
+.moa-ai-smart-chat-conv-item.is-active .moa-ai-smart-chat-conv-item__delete,
+.moa-ai-smart-chat-conv-item__delete:focus-visible {
+  opacity: 1;
+}
+
+/* 터치 기기 — hover 없이도 삭제 버튼 항상 표시 */
+@media (hover: none) {
+  .moa-ai-smart-chat-conv-item__delete {
+    opacity: 0.6;
+  }
+}
+
+/* 답변 작성중 타이핑 인디케이터 (점 3개 바운스) */
+.moa-ai-smart-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.moa-ai-smart-chat-typing__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.moa-ai-smart-chat-typing__dots > span {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.35;
+  animation: moa-ai-smart-chat-dot 1.2s ease-in-out infinite;
+}
+
+.moa-ai-smart-chat-typing__dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.moa-ai-smart-chat-typing__dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes moa-ai-smart-chat-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* 스트리밍 중 커서 깜빡임 */
+.moa-ai-smart-chat-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: moa-ai-smart-chat-caret 1s steps(2, start) infinite;
+}
+
+@keyframes moa-ai-smart-chat-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moa-ai-smart-chat-typing__dots > span,
+  .moa-ai-smart-chat-caret {
+    animation: none;
+  }
+}
+
+/* 하단 입력행 — 첨부·Textarea·보내기 높이 SSOT (= moa-btn-medium / moa-field--medium) */
+.moa-ai-smart-chat-composer {
+  --moa-ai-smart-chat-composer-control-size: 2.45rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.moa-ai-smart-chat-composer__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  min-height: var(--moa-ai-smart-chat-composer-control-size);
+  max-height: 7.5rem;
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+  line-height: 1.35;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.moa-ai-smart-chat-composer textarea.moa-ai-smart-chat-composer__input {
+  height: auto;
+  min-height: var(--moa-ai-smart-chat-composer-control-size);
+  max-height: 7.5rem;
+}
+
+.moa-ai-smart-chat-composer .moa-ai-smart-chat-composer__attach.moa-btn {
+  flex: 0 0 var(--moa-ai-smart-chat-composer-control-size);
+  width: var(--moa-ai-smart-chat-composer-control-size);
+  min-width: var(--moa-ai-smart-chat-composer-control-size);
+  height: var(--moa-ai-smart-chat-composer-control-size);
+  min-height: var(--moa-ai-smart-chat-composer-control-size);
+  max-height: var(--moa-ai-smart-chat-composer-control-size);
+  padding: 0;
+  border-radius: 0.9rem;
+}
+
+.moa-ai-smart-chat-composer .moa-ai-smart-chat-composer__send.moa-btn {
+  flex: 0 0 auto;
+  height: var(--moa-ai-smart-chat-composer-control-size);
+  min-height: var(--moa-ai-smart-chat-composer-control-size);
+  max-height: var(--moa-ai-smart-chat-composer-control-size);
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.9rem;
+}
+
+@container moa-app-window (width >= 640px) {
+  .moa-ai-generator-layout.moa-ai-smart-chat-layout {
+    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .moa-ai-smart-chat-sidebar {
+    max-height: none;
+    height: 100%;
+  }
+
+  .moa-ai-smart-chat-main {
+    height: 100%;
+  }
+}

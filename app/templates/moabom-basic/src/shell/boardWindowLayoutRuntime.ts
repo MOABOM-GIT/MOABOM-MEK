@@ -77,12 +77,14 @@ type TemplateAppLike = {
   setGlobalState?: (updates: Record<string, unknown>) => void;
 };
 
+type DataBindingEngineLike = {
+  evaluateExpression: (expr: string, ctx: Record<string, unknown>) => unknown;
+};
+
 type G7CoreLike = {
   getDynamicRenderer?: () => React.ComponentType<Record<string, unknown>> | null;
   getComponentRegistry?: () => unknown;
-  getDataBindingEngine?: () => {
-    evaluateExpression: (expr: string, ctx: Record<string, unknown>) => unknown;
-  } | null;
+  getDataBindingEngine?: () => DataBindingEngineLike | null;
   getTranslationEngine?: () => unknown;
   getActionDispatcher?: () => unknown;
   api?: {
@@ -108,7 +110,7 @@ function getTemplateApp(): TemplateAppLike | undefined {
 function evalBindingValue(
   value: unknown,
   ctx: Record<string, unknown>,
-  engine: G7CoreLike['getDataBindingEngine'] extends () => infer R ? R : never,
+  engine: DataBindingEngineLike | null,
 ): unknown {
   if (typeof value !== 'string' || !value.includes('{{')) {
     return value;
@@ -127,7 +129,7 @@ function evalBindingValue(
 function evalScriptConditionValue(
   condition: unknown,
   ctx: Record<string, unknown>,
-  engine: NonNullable<ReturnType<G7CoreLike['getDataBindingEngine']>>,
+  engine: DataBindingEngineLike,
 ): boolean {
   if (condition == null) {
     return true;
@@ -197,7 +199,7 @@ async function loadBoardLayoutScripts(
   }
 }
 
-function resolveEndpoint(template: string, ctx: Record<string, unknown>, engine: NonNullable<ReturnType<G7CoreLike['getDataBindingEngine']>>): string {
+function resolveEndpoint(template: string, ctx: Record<string, unknown>, engine: DataBindingEngineLike): string {
   if (!template.includes('{{')) {
     return template;
   }

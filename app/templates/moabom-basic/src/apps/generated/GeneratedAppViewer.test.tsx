@@ -11,6 +11,7 @@ vi.mock('../../api/moabomAppsApi', () => ({
 }));
 
 import { fetchVisibleGeneratedApp } from '../../api/moabomAppsApi';
+import { invalidateVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
 
 function renderViewer(serverId: number) {
   return render(
@@ -24,6 +25,9 @@ describe('GeneratedAppViewer', () => {
   afterEach(() => {
     cleanup();
     vi.mocked(fetchVisibleGeneratedApp).mockReset();
+    invalidateVisibleGeneratedAppSession(7);
+    invalidateVisibleGeneratedAppSession(9);
+    invalidateVisibleGeneratedAppSession(11);
   });
 
   it('loads website_link app into iframe via metadata URL', async () => {
@@ -39,6 +43,7 @@ describe('GeneratedAppViewer', () => {
     renderViewer(9);
 
     await waitFor(() => {
+      expect(fetchVisibleGeneratedApp).toHaveBeenCalledWith(9, { includeHtml: false });
       const frame = screen.getByTitle('Naver') as HTMLIFrameElement;
       expect(frame.src).toContain('https://www.naver.com');
       expect(frame.getAttribute('sandbox')).toBe(

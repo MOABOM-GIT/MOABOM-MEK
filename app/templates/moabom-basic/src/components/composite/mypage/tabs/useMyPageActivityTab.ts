@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
-import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
+import { navigateMoabomShellPath } from '../../../../shell/navigateMoabomShellPath';
 import { openMyPageActivityBoard, type OpenMyPageActivityBoard } from '../myPageActivityBoard';
-import { fetchUserActivitiesApi } from '../myPageApi';
+import { fetchUserActivitiesApi, fetchUserAppReviewsApi } from '../myPageApi';
 import type { ActivityItem, ActivityOverview, MyPageTab, MyPageUser } from '../myPageTypes';
 
 const ACTIVITY_PAGE_SIZE = 10;
 
+function fetchActivityPage(filter: string, offset: number) {
+  const pagination = { limit: ACTIVITY_PAGE_SIZE, offset };
+  return filter === 'reviews'
+    ? fetchUserAppReviewsApi(pagination)
+    : fetchUserActivitiesApi(filter, pagination);
+}
+
 interface UseMyPageActivityTabOptions {
   activeTab: MyPageTab;
   currentUser: MyPageUser | null;
-  shellLanguage: MoabomSystemLanguage;
   t: MoabomTranslateFn;
   onOpenBoard?: OpenMyPageActivityBoard;
 }
@@ -18,7 +24,6 @@ interface UseMyPageActivityTabOptions {
 export function useMyPageActivityTab({
   activeTab,
   currentUser,
-  shellLanguage,
   t,
   onOpenBoard,
 }: UseMyPageActivityTabOptions) {
@@ -27,32 +32,42 @@ export function useMyPageActivityTab({
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityLoadingMore, setActivityLoadingMore] = useState(false);
   const [activityError, setActivityError] = useState('');
+  const loadedDataKeyRef = useRef<string | null>(null);
+
+  const memberKey = currentUser?.memberKey ?? (currentUser ? 'authenticated' : '');
 
   useEffect(() => {
-    if (activeTab !== 'activity' || !currentUser) return;
+    if (activeTab !== 'activity' || !memberKey) return;
 
     let cancelled = false;
-    setActivityLoading(true);
+    const dataKey = `${memberKey}:${activityFilter}`;
+    const hasCurrentData = loadedDataKeyRef.current === dataKey;
+    if (!hasCurrentData) {
+      setActivityOverview(null);
+      setActivityLoading(true);
+    }
     setActivityError('');
 
     void (async () => {
       try {
-        const result = await fetchUserActivitiesApi(activityFilter, {
-          limit: ACTIVITY_PAGE_SIZE,
-          offset: 0,
-        });
+        const result = await fetchActivityPage(activityFilter, 0);
         if (cancelled) return;
 
         if (!result.ok || !result.data) {
-          setActivityOverview(null);
+          if (!hasCurrentData) {
+            setActivityOverview(null);
+          }
           setActivityError(result.message ?? t('moa_mypage.msg.activity_load_failed'));
           return;
         }
 
+        loadedDataKeyRef.current = dataKey;
         setActivityOverview(result.data);
       } catch {
         if (!cancelled) {
-          setActivityOverview(null);
+          if (!hasCurrentData) {
+            setActivityOverview(null);
+          }
           setActivityError(t('moa_mypage.msg.activity_load_failed'));
         }
       } finally {
@@ -65,7 +80,7 @@ export function useMyPageActivityTab({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, currentUser, activityFilter, shellLanguage, t]);
+  }, [activeTab, activityFilter, memberKey]);
 
   const loadMoreActivities = useCallback(async () => {
     if (!activityOverview?.pagination?.has_more || activityLoadingMore || activityLoading) {
@@ -76,10 +91,7 @@ export function useMyPageActivityTab({
     setActivityError('');
 
     try {
-      const result = await fetchUserActivitiesApi(activityFilter, {
-        limit: ACTIVITY_PAGE_SIZE,
-        offset: activityOverview.items.length,
-      });
+      const result = await fetchActivityPage(activityFilter, activityOverview.items.length);
 
       if (!result.ok || !result.data) {
         setActivityError(result.message ?? t('moa_mypage.msg.activity_load_failed'));

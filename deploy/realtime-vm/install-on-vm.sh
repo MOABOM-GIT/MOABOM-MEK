@@ -69,22 +69,27 @@ sync_stack() {
 
 write_env() {
   log "Writing .env..."
-  local secret app_key
+  local app_key
   if [[ -f "${INSTALL_DIR}/.env" ]]; then
-    log ".env exists — keeping file (update REVERB_APP_SECRET manually if needed)"
+    log ".env exists — syncing REVERB_APP_SECRET from Secret Manager"
+    chmod +x "${INSTALL_DIR}/sync-reverb-secret.sh"
+    INSTALL_DIR="${INSTALL_DIR}" \
+      GCP_PROJECT="${GCP_PROJECT}" \
+      SECRET_NAME="${SECRET_NAME}" \
+      "${INSTALL_DIR}/sync-reverb-secret.sh"
     return
-  fi
-  secret="$(gcloud secrets versions access latest --secret="${SECRET_NAME}" --project="${GCP_PROJECT}" 2>/dev/null || true)"
-  if [[ -z "${secret}" ]]; then
-    log "WARN: could not read ${SECRET_NAME} — set REVERB_APP_SECRET in ${INSTALL_DIR}/.env"
-    secret=""
   fi
   app_key="base64:$(openssl rand -base64 32)"
   sed \
-    -e "s|^REVERB_APP_SECRET=.*|REVERB_APP_SECRET=${secret}|" \
+    -e "s|^REVERB_APP_SECRET=.*|REVERB_APP_SECRET=|" \
     -e "s|^APP_KEY=.*|APP_KEY=${app_key}|" \
     "${INSTALL_DIR}/env.example" > "${INSTALL_DIR}/.env"
   chmod 600 "${INSTALL_DIR}/.env"
+  chmod +x "${INSTALL_DIR}/sync-reverb-secret.sh"
+  INSTALL_DIR="${INSTALL_DIR}" \
+    GCP_PROJECT="${GCP_PROJECT}" \
+    SECRET_NAME="${SECRET_NAME}" \
+    "${INSTALL_DIR}/sync-reverb-secret.sh"
 }
 
 compose_up() {
@@ -100,6 +105,15 @@ compose_up() {
     exit 1
   fi
   log "Reverb listening on 127.0.0.1:6001"
+}
+
+install_watchdog() {
+  log "Installing realtime auto-recovery watchdog..."
+  chmod +x "${INSTALL_DIR}/watchdog.sh"
+  cp "${INSTALL_DIR}/moabom-realtime-watchdog.service" /etc/systemd/system/
+  cp "${INSTALL_DIR}/moabom-realtime-watchdog.timer" /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now moabom-realtime-watchdog.timer
 }
 
 install_nginx_http_bootstrap() {
@@ -224,6 +238,7 @@ main() {
   sync_stack
   write_env
   compose_up
+  install_watchdog
   install_nginx_http_bootstrap
   issue_tls
   install_vm_metrics

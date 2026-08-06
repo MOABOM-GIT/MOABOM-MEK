@@ -1,5 +1,8 @@
 import { notifyBoardShellUrlChanged } from '../shell/moaShellBoardBridge';
-import { setMoabomShellPendingChatNavigation } from '../runtime/moabomShellPendingChatNavigation';
+import {
+  setMoabomShellPendingChatNavigation,
+  type MoabomShellPendingChatNavigation,
+} from '../runtime/moabomShellPendingChatNavigation';
 import type { ShellNotificationItem } from '../api/moabomShellNotificationsApi';
 import { pushShellPath } from './moabomShellRoutes';
 

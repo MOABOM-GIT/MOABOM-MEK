@@ -1,6 +1,6 @@
 {
     "name": "@g7/moabom-auth-hardening",
-    "version": "0.2.3",
+    "version": "0.2.7",
     "description": "그누보드7 Moabom XSS 보안 가드 플러그인 프론트엔드 에셋",
     "private": true,
     "type": "module",

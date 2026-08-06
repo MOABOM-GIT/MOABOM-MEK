@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Moabom\System\Http\Controllers\InternalQueueTaskController;
+use Modules\Moabom\System\Http\Controllers\InternalSchedulerTickController;
 use Modules\Moabom\System\Http\Controllers\Admin\HomeBackgroundController;
 use Modules\Moabom\System\Http\Controllers\Admin\SystemSettingsController;
 use Modules\Moabom\System\Http\Controllers\HomeBackgroundFileController;
@@ -14,6 +16,8 @@ use Modules\Moabom\System\Http\Controllers\PublicRunReadyController;
 use Modules\Moabom\System\Http\Controllers\PublicShellBootController;
 use Modules\Moabom\System\Http\Controllers\PublicTemplateRoutesShellController;
 use Modules\Moabom\System\Http\Controllers\UserSystemSettingsController;
+use Modules\Moabom\System\Http\Controllers\UserRealtimeStateController;
+use Modules\Moabom\System\Http\Controllers\UserShellStateController;
 use Modules\Moabom\System\Http\Middleware\RequireMoabomPlatformHost;
 
 /*
@@ -32,6 +36,11 @@ Route::get('home-backgrounds/{id}/{variant}', [HomeBackgroundFileController::cla
 
 Route::get('public/ready', [PublicRunReadyController::class, '__invoke'])
     ->name('public.ready');
+
+Route::post('internal/queue/run', InternalQueueTaskController::class)
+    ->name('internal.queue.run');
+Route::post('internal/scheduler/tick', InternalSchedulerTickController::class)
+    ->name('internal.scheduler.tick');
 
 Route::get('public/shell-boot', [PublicShellBootController::class, '__invoke'])
     ->middleware('throttle:120,1')
@@ -72,6 +81,11 @@ Route::get('public/legal-pages/{slug}', PublicLegalPageController::class)
  */
 
 Route::prefix('user')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('shell-state', UserShellStateController::class)
+        ->name('user.shell-state');
+    Route::get('realtime-state', UserRealtimeStateController::class)
+        ->middleware('throttle:30,1')
+        ->name('user.realtime-state');
     Route::get('settings', [UserSystemSettingsController::class, 'show'])
         ->name('user.settings.show');
     Route::put('settings', [UserSystemSettingsController::class, 'store'])

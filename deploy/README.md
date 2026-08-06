@@ -134,7 +134,8 @@ flowchart LR
 
 | 스크립트 | 역할 |
 |----------|------|
-| `check-upstream-prep.sh` | 패치·가드·bundled-detach·dry-run 통합 |
+| `check-upstream-prep.sh` | 패치·가드·bundled-detach·admin semantic CSS·dry-run 통합 |
+| `sync-g7-admin-semantic-css.sh` | `sirsoft-admin_basic` `main.css` → `moabom-admin_basic` `g7-semantic.css` 동기화/검사 (`--check`) |
 | `check-core-sync-regression.sh` | core:update sync 회귀 |
 | `dry-run-upstream-patches.sh` | 패치 dry-run |
 | `core-patches/*` | G7 overlay patch 적용 스크립트와 패치 — [`README.md`](core-patches/README.md) |
@@ -145,6 +146,7 @@ flowchart LR
 | 스크립트 | 역할 |
 |----------|------|
 | `secret-manager-bootstrap.sh` | 시크릿 1회 부트스트랩 |
+| `docs/moabom-fcm.md` | FCM(Firebase) 푸시 env·Secret Manager·활성화 체크리스트 |
 | `push-moabom-mek.sh` | GitHub push |
 | `saas-config-cache-parity.sh` | 로컬 docker `config:cache` 후 tenant 격리 (선택) |
 
@@ -165,6 +167,8 @@ bash deploy/check-before-cloud-build.sh
 ./deploy/build-and-deploy.sh
 IMAGE_TAG=vN bash deploy/run-layout-sync-job.sh   # async 배포 후 수동
 bash deploy/check-upstream-prep.sh                # G7 upstream 전
+bash deploy/sync-g7-admin-semantic-css.sh --check # admin 시맨틱 CSS parity
+bash deploy/sync-g7-admin-semantic-css.sh         # drift 시 동기화 write
 ```
 
 ## 문서 SSOT

@@ -1,6 +1,6 @@
 {
   "name": "moabom-basic",
-  "version": "0.7.37",
+  "version": "0.7.66",
   "description": "Moabom Custom User Template Components",
   "type": "module",
   "main": "dist/components.js",

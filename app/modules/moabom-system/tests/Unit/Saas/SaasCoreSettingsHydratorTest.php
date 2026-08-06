@@ -39,6 +39,9 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
             'generator_enabled' => true,
             'generator_content' => 'SmartCare',
         ]);
+        $repo->saveCategory('identity', [
+            'verification_enabled' => true,
+        ]);
         $repo->saveCategory('drivers', [
             'storage_driver' => 'gcs',
             'websocket_enabled' => true,
@@ -59,6 +62,7 @@ class SaasCoreSettingsHydratorTest extends ModuleTestCase
         $this->assertSame('스마트케어360', config('g7_settings.core.general.site_name'));
         $this->assertSame('통합 케어 플랫폼', config('g7_settings.core.general.site_description'));
         $this->assertSame('SmartCare', config('g7_settings.core.seo.generator_content'));
+        $this->assertTrue(config('g7_settings.core.identity.verification_enabled'));
         $this->assertSame('Asia/Seoul', config('app.default_user_timezone'));
         $this->assertSame('ko', config('app.locale'));
         $this->assertSame('tenant.mek360.com', config('g7.websocket.client.host'));

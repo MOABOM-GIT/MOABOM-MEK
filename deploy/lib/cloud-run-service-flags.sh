@@ -42,5 +42,6 @@ moabom_cloud_run_service_deploy_args() {
     --timeout=3600 \
     --session-affinity \
     --cpu-throttling \
-    --startup-probe="tcpSocket.port=8080,initialDelaySeconds=8,timeoutSeconds=4,periodSeconds=5,failureThreshold=24"
+    --startup-probe="httpGet.path=${MOABOM_CLOUD_RUN_STARTUP_PROBE_PATH},httpGet.port=8080,initialDelaySeconds=2,timeoutSeconds=4,periodSeconds=5,failureThreshold=24" \
+    --liveness-probe="httpGet.path=/healthz,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=4,periodSeconds=30,failureThreshold=3"
 }

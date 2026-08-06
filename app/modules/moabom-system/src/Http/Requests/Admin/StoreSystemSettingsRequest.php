@@ -51,7 +51,7 @@ class StoreSystemSettingsRequest extends FormRequest
             'preferences.languages.*.label' => ['required_with:preferences.languages', 'string', 'max:80'],
             'preferences.languages.*.enabled' => ['boolean'],
             'preferences.system_options' => ['sometimes', 'array'],
-            'preferences.system_options.*.id' => ['required_with:preferences.system_options', Rule::in(['sound', 'animation', 'haptic', 'toast', 'weather'])],
+            'preferences.system_options.*.id' => ['required_with:preferences.system_options', Rule::in(['sound', 'animation', 'haptic', 'notification_center', 'toast', 'push', 'weather'])],
             'preferences.system_options.*.label' => ['required_with:preferences.system_options', 'string', 'max:80'],
             'preferences.system_options.*.on_by_default' => ['boolean'],
             'preferences.system_options.*.default' => ['boolean'],

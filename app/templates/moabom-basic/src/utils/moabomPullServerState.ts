@@ -29,6 +29,7 @@ import { applyMoabomSystemAppearance, hasStoredMoabomSystemState, loadMoabomSyst
 import { STORAGE_KEY_RECENT_APPS } from '../shell/moaShellLayoutConstants';
 import { loadJsonSanitizedIds, saveJson } from '../shell/moaShellLocalStorage';
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
+import { resolveGeneratedLibraryScopeKey } from '../apps/generatedAppLibraryAuthority';
 
 function toSettingsSnapshot(state: MoabomSystemState): Record<string, unknown> {
   return {
@@ -74,11 +75,12 @@ export function resolveEffectiveSettingsForPull(input: {
  */
 export async function pullMoabomServerState(input: {
   isLoggedIn: boolean;
+  memberKey?: string | null;
   coreUserLanguage?: string | null;
   preserveShellPanelOpen: boolean;
 }): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: MainAppOrderSnapshot } | null> {
   const coalesceKey = input.isLoggedIn
-    ? `shell:pull-server-state:auth:${input.coreUserLanguage ?? ''}`
+    ? `shell:pull-server-state:auth:${input.memberKey ?? 'pending'}:${input.coreUserLanguage ?? ''}`
     : 'shell:pull-server-state:guest';
 
   return runMoabomShellRealtimeTask(
@@ -90,9 +92,15 @@ export async function pullMoabomServerState(input: {
 
 async function pullMoabomServerStateUncoalesced(input: {
   isLoggedIn: boolean;
+  memberKey?: string | null;
   coreUserLanguage?: string | null;
   preserveShellPanelOpen: boolean;
 }): Promise<{ state: MoabomSystemState; defaults: MoabomSystemDefaults | null; mainAppOrder: MainAppOrderSnapshot } | null> {
+  if (input.isLoggedIn && !input.memberKey) {
+    return null;
+  }
+
+  const storageScopeKey = resolveGeneratedLibraryScopeKey(input.isLoggedIn, input.memberKey);
   const payload = await loadMoabomSettingsPayloadForMerge(input.isLoggedIn);
   if (!payload) {
     return null;
@@ -130,8 +138,8 @@ async function pullMoabomServerStateUncoalesced(input: {
     saveMoabomSystemState(merged);
   }
 
-  const localMainAppOrder = loadLocalMainAppOrder();
-  const localMainAppOrderCustomized = hasLocalMainAppOrderCustomized();
+  const localMainAppOrder = loadLocalMainAppOrder(storageScopeKey);
+  const localMainAppOrderCustomized = hasLocalMainAppOrderCustomized(storageScopeKey);
   const serverMainAppOrder = extractServerMainAppOrder(payload.settings);
   const serverMainAppOrderCustomized = extractServerMainAppOrderCustomized(payload.settings);
   const trustLocalShellOrder = isRecentlySavedSettings()
@@ -146,7 +154,7 @@ async function pullMoabomServerStateUncoalesced(input: {
     serverCustomized: serverMainAppOrderCustomized,
   });
 
-  const localUnpinned = [...loadMainUnpinnedGeneratedIds()];
+  const localUnpinned = [...loadMainUnpinnedGeneratedIds(storageScopeKey)];
   const serverUnpinned = extractServerMainUnpinnedGeneratedIds(payload.settings);
   const mergedUnpinned = mergeMainUnpinnedFromPull({
     isLoggedIn: input.isLoggedIn,
@@ -154,7 +162,7 @@ async function pullMoabomServerStateUncoalesced(input: {
     localUnpinned,
     serverUnpinned,
   });
-  saveMainUnpinnedGeneratedIds(mergedUnpinned);
+  saveMainUnpinnedGeneratedIds(mergedUnpinned, storageScopeKey);
 
   const orderAfterUnpinned: MainAppOrderSnapshot = {
     ...mergedMainAppOrder,
@@ -166,9 +174,9 @@ async function pullMoabomServerStateUncoalesced(input: {
     || orderAfterUnpinned.customized !== localMainAppOrderCustomized
   ) {
     if (orderAfterUnpinned.customized) {
-      saveLocalMainAppOrder(orderAfterUnpinned.order);
+      saveLocalMainAppOrder(orderAfterUnpinned.order, storageScopeKey);
     } else {
-      clearLocalMainAppOrder();
+      clearLocalMainAppOrder(storageScopeKey);
     }
   }
 

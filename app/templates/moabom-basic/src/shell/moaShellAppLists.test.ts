@@ -7,7 +7,8 @@ describe('moaShellAppLists', () => {
   it('buildMainApps returns all apps when order is empty and not customized', () => {
     const apps = buildMainApps([]);
     expect(apps.map(a => a.id)).toContain('hospital-info');
-    expect(apps).toEqual([createAppShellMetadata, ...APPS]);
+    expect(apps.map(a => a.id).slice(0, 2)).toEqual(['create-app', 'ai-smart-chat']);
+    expect(apps.map(a => a.id)).toContain('hospital-info');
   });
 
   it('buildMainApps returns empty grid when customized with empty order', () => {
@@ -15,9 +16,9 @@ describe('moaShellAppLists', () => {
   });
 
   it('buildMainApps requires explicit customized flag for filtered order', () => {
-    expect(buildMainApps(['cpap-mask'], [], {}).map(app => app.id)).toEqual([
-      createAppShellMetadata.id,
-      ...APPS.map(app => app.id),
+    expect(buildMainApps(['cpap-mask'], [], {}).map(app => app.id).slice(0, 2)).toEqual([
+      'create-app',
+      'ai-smart-chat',
     ]);
     expect(buildMainApps(['cpap-mask'], [], { customized: true }).map(app => app.id)).toEqual(['cpap-mask']);
   });
@@ -28,7 +29,7 @@ describe('moaShellAppLists', () => {
     expect(apps.map(a => a.id)).toEqual(['cpap-mask', 'mypage']);
   });
 
-  it('buildMyApps always exposes create-app first', () => {
+  it('buildMyApps only lists generated apps (no system tool apps)', () => {
     const generated = {
       id: 'generated-app-42',
       name: 'AI 저장 앱',
@@ -39,8 +40,9 @@ describe('moaShellAppLists', () => {
       source: 'user-created' as const,
     };
 
-    expect(buildMyApps([generated]).map(app => app.id)).toEqual(['create-app', 'generated-app-42']);
-    expect(buildMyApps([]).map(app => app.id)).toEqual(['create-app']);
+    expect(buildMyApps([generated]).map(app => app.id)).toEqual(['generated-app-42']);
+    expect(buildMyApps([])).toEqual([]);
+    expect(buildMyApps([createAppShellMetadata, generated]).map(app => app.id)).toEqual(['generated-app-42']);
   });
 
   it('buildRecentApps skips mypage and caps length', () => {

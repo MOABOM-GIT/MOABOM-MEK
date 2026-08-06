@@ -57,6 +57,7 @@ class CreditService
 
         $summary = $this->creditRepository->getSummary($user);
         $transactionTotal = $this->creditRepository->getTransactionCount($user);
+        $attendance = $this->attendanceStatusForUser($user);
         $transactions = $this->creditRepository->getRecentTransactions($user, $safeLimit, $safeOffset)
             ->map(fn (CreditTransaction $transaction) => $this->formatTransaction($transaction))
             ->values()
@@ -66,6 +67,7 @@ class CreditService
             'balance' => $balance->balance,
             'ranking_points' => $rankingPoints,
             'level' => $level,
+            'attendance' => $attendance,
             'summary' => [
                 ...$summary,
                 'transaction_count' => $transactionTotal,
@@ -78,6 +80,25 @@ class CreditService
                 'has_more' => ($safeOffset + count($transactions)) < $transactionTotal,
             ],
         ], $user);
+    }
+
+    /**
+     * 오늘 출석 여부와 다음 출석 가능 시각을 반환합니다.
+     *
+     * @return array{checked_today: bool, attendance_date: string, next_available_at: string}
+     */
+    private function attendanceStatusForUser(User $user): array
+    {
+        $now = CarbonImmutable::now();
+        $today = $now->toDateString();
+
+        return [
+            'checked_today' => CreditAttendance::where('user_id', $user->id)
+                ->whereDate('attendance_date', $today)
+                ->exists(),
+            'attendance_date' => $today,
+            'next_available_at' => $now->addDay()->startOfDay()->toISOString(),
+        ];
     }
 
     /**

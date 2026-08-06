@@ -52,4 +52,20 @@ enum AppType: string
             ], true)
         ));
     }
+
+    /**
+     * AI 스트림 API에 허용되는 유형.
+     *
+     * html_paste 는 전체 생성(Generate)은 막고, 앱편집 요소선택 패치 스트림만 허용한다.
+     * website_link 는 iframe 외부 사이트라 스트림 대상이 아니다.
+     *
+     * @return list<string>
+     */
+    public static function aiStreamableValues(): array
+    {
+        return array_values(array_filter(
+            self::values(),
+            static fn (string $value): bool => $value !== self::WebsiteLink->value
+        ));
+    }
 }

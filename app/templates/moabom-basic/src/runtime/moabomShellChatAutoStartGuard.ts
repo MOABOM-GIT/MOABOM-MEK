@@ -37,7 +37,11 @@ export function hasChatAutoStartBeenAttempted(peerUuid: string): boolean {
   return attemptedPeerUuids.has(normalizePeerUuid(peerUuid));
 }
 
-export function resetChatAutoStartGuardForTest(): void {
+export function clearChatAutoStartGuards(): void {
   suppressedPeerUuids.clear();
   attemptedPeerUuids.clear();
+}
+
+export function resetChatAutoStartGuardForTest(): void {
+  clearChatAutoStartGuards();
 }

@@ -1,6 +1,5 @@
 /** localStorage 키 — 메인 그리드 한 판 */
 export const STORAGE_KEY_ORDER = 'moabom_main_order';
-export const STORAGE_KEY_CREATE_APP_ORDER_MIGRATED = 'moabom_create_app_order_migrated';
 export const STORAGE_KEY_FAVORITES = 'moabom_favorites';
 export const STORAGE_KEY_TASKBAR_ICONS = 'moabom_taskbar_icons';
 export const STORAGE_KEY_RECENT_APPS = 'moabom_recent_apps';

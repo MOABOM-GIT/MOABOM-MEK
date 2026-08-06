@@ -116,7 +116,7 @@
       },
       "activity": {
         "label": "帖子管理",
-        "desc": "帖子、评论、互动"
+        "desc": "帖子、评论、评价"
       },
       "account": {
         "label": "账号",
@@ -136,6 +136,7 @@
       "section_background": "主页背景",
       "background_empty": "尚未注册任何主页背景。",
       "section_system_options": "系统选项",
+      "section_notifications": "通知选项",
       "theme_aria": "选择{label}主题",
       "theme_title": "{label}主题",
       "color_aria": "选择{color}",
@@ -170,8 +171,25 @@
       "sound": "音效",
       "animation": "动画",
       "haptic": "触感反馈",
+      "notification_center": "通知中心记录与角标显示",
       "toast": "吐司通知",
+      "push": "系统通知",
       "weather": "天气特效"
+    },
+    "notifications": {
+      "center_label": "通知中心记录与角标显示",
+      "marketing_label": "营销通知同意",
+      "marketing_save_failed": "无法保存营销通知同意设置。",
+      "push_status": {
+        "granted": "已允许",
+        "default": "需要授予权限",
+        "denied": "已被浏览器阻止",
+        "unsupported": "此设备不支持"
+      },
+      "permission_primer": {
+        "message": "开启推送通知，以免错过新消息和回复。",
+        "action": "开启通知"
+      }
     },
     "weather_status": {
       "format": "{condition} · {temp}°C",
@@ -212,6 +230,7 @@
       "total_used": "累计使用",
       "attendance": "签到",
       "attendance_loading": "处理中…",
+      "attendance_complete": "已签到",
       "recent_title": "最近记录",
       "loading_short": "加载中",
       "loading_rows": "正在加载点数记录…",
@@ -241,6 +260,7 @@
       "filter_posts": "帖子",
       "filter_comments": "评论",
       "filter_interactions": "收到的互动",
+      "filter_reviews": "应用评价",
       "likes_notice": "点赞与推荐将在论坛模块提供数据后显示于此。",
       "admin_session_notice": "您正以管理员账号登录。以下活动按当前登录的会员账号显示。",
       "loading": "正在加载帖子…",
@@ -255,12 +275,14 @@
     },
     "account": {
       "section_basic_title": "账号资料",
-      "section_basic_desc": "管理姓名、邮箱与手机号。保存后将更新会员资料。",
+      "section_basic_desc": "管理姓名、邮箱与联系方式。保存后将更新会员资料。",
+      "basic_locked_desc": "请输入密码验证后查看当前账号资料。",
+      "verify_and_show": "验证并查看",
       "loading": "正在加载账号信息…",
       "name": "姓名",
       "email": "邮箱",
       "email_synthetic_hint": "尚未绑定邮箱。请添加真实邮箱以便通知与找回。",
-      "mobile": "手机号",
+      "mobile": "联系方式",
       "mobile_placeholder": "010-0000-0000",
       "save_account": "保存账号",
       "section_security_title": "安全",
@@ -575,12 +597,12 @@
     "hint": "可按应用名称或帖子标题搜索。",
     "min_length": "请至少输入2个字符。",
     "result_count": "“{query}” 的搜索结果 {count} 条",
-    "section_system_apps": "全部应用",
-    "section_generated_apps": "我的应用·公开应用",
+    "section_system_apps": "基础应用",
+    "section_generated_apps": "我的应用",
     "section_public_apps": "公开应用",
     "section_boards": "公告板",
     "empty_system_apps": "没有匹配的应用。",
-    "empty_generated_apps": "没有匹配的我的应用或公开应用。",
+    "empty_generated_apps": "我的应用中没有匹配项。",
     "empty_public_apps": "没有匹配的公开应用。",
     "empty_boards": "没有匹配的帖子。"
   },
@@ -613,11 +635,16 @@
     "hosted_modern_storage_prompt_option": "现代 UI/UX + 在线/离线存储（推荐）",
     "hosted_modern_storage_prompt_addon": "以现代设计风格规划 UI/UX。\n选择应用服务器保存时，请同时支持在线（*.apps.mek360.com API 存储）与离线（localStorage）存储。",
     "models": {
-      "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
-      "gpt_chat_latest": "GPT-5.1 Chat",
-      "gpt4o": "GPT-5.1 Chat",
-      "gemini_flash": "Gemini 3.5 Flash"
+      "claude_haiku": "Claude Haiku 4.5",
+      "gpt_chat_latest": "GPT-5.3 Chat",
+      "gpt_chat_mini": "GPT-5.4 Mini",
+      "gpt_code": "GPT-5.4",
+      "gpt_code_mini": "GPT-5.4 Mini",
+      "gemini_flash": "Gemini 3.6 Flash",
+      "gemini_flash_lite": "Gemini 3.5 Flash-Lite",
+      "gemini_code": "Gemini 3.6 Flash",
+      "gemini_code_lite": "Gemini 3.5 Flash-Lite"
     },
     "generate": "生成",
     "modify": "重新生成修改内容",

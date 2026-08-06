@@ -21,7 +21,7 @@ describe('readAiGenerationResumeFormFields', () => {
       prompt: ' 간단한 계산기 ',
       tier: 'hosted',
       app_type: 'game',
-      model_id: 'gpt-4o',
+      model_id: 'gpt-code',
     }));
 
     expect(fields).toEqual({
@@ -29,7 +29,7 @@ describe('readAiGenerationResumeFormFields', () => {
       prompt: '간단한 계산기',
       appTier: 'hosted',
       appType: 'game',
-      modelId: 'gpt-4o',
+      modelId: 'gpt-code',
     });
   });
 

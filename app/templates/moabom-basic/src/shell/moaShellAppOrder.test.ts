@@ -1,18 +1,29 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearLocalMainAppOrder,
   extractServerMainAppOrder,
   extractServerMainAppOrderCustomized,
+  hasLocalMainAppOrderCustomized,
+  loadLocalMainAppOrder,
   mergeMainAppOrderFromPull,
   isLocalMainOrderAheadOfServer,
   materializeOrderForMutation,
   pruneStaleGeneratedAppOrderIds,
   resolveMainAppsFromOrder,
+  saveLocalMainAppOrder,
   sanitizeMainAppOrderIds,
+  setActiveMainAppOrderScopeKey,
 } from './moaShellAppOrder';
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
+import { smartChatShellMetadata } from '../apps/ai-smart-chat/metadata';
 import { APPS } from '../data/Moa_apps';
 
 describe('moaShellAppOrder', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setActiveMainAppOrderScopeKey('guest');
+  });
+
   it('sanitizeMainAppOrderIds removes duplicates and legacy ai-generator id', () => {
     expect(sanitizeMainAppOrderIds(['cpap-mask', 'ai-generator', 'cpap-mask', 'generated-app-42'])).toEqual([
       'cpap-mask',
@@ -94,6 +105,19 @@ describe('moaShellAppOrder', () => {
     })).toEqual({ order: [], customized: false });
   });
 
+  it('계정별 메인 순서를 분리하고 다른 계정의 배치를 노출하지 않는다', () => {
+    saveLocalMainAppOrder(['cpap-mask'], 'member:one');
+    saveLocalMainAppOrder(['mypage'], 'member:two');
+
+    expect(loadLocalMainAppOrder('member:one')).toEqual(['cpap-mask']);
+    expect(loadLocalMainAppOrder('member:two')).toEqual(['mypage']);
+    expect(loadLocalMainAppOrder('guest')).toEqual([]);
+
+    clearLocalMainAppOrder('member:one');
+    expect(hasLocalMainAppOrderCustomized('member:one')).toBe(false);
+    expect(loadLocalMainAppOrder('member:two')).toEqual(['mypage']);
+  });
+
   it('materializeOrderForMutation appends to visible grid when order is empty and not customized', () => {
     const visible = [{ id: 'cpap-mask' }, { id: 'mypage' }] as const;
     expect(
@@ -111,6 +135,7 @@ describe('moaShellAppOrder', () => {
   it('resolveMainAppsFromOrder shows default grid when not customized', () => {
     expect(resolveMainAppsFromOrder([], [], [], false).map(app => app.id)).toEqual([
       createAppShellMetadata.id,
+      smartChatShellMetadata.id,
       ...APPS.map(app => app.id),
     ]);
   });

@@ -61,7 +61,6 @@ export function useMyPageShellState({
   const usesShellSystem = Boolean(shellSystem);
   const systemDefaults = shellSystem?.systemDefaults ?? localSystemDefaults;
   const systemState = shellSystem?.systemState ?? localSystemState;
-  const setSystemDefaults = shellSystem?.setSystemDefaults ?? setLocalSystemDefaults;
   const setSystemState = shellSystem?.setSystemState ?? setLocalSystemState;
 
   const pullMyPageServerSnapshot = useCallback(async () => {
@@ -70,6 +69,7 @@ export function useMyPageShellState({
     if (loggedIn && !user?.memberKey) return null;
     return pullMoabomServerState({
       isLoggedIn: loggedIn,
+      memberKey: user?.memberKey,
       coreUserLanguage: user?.language ?? undefined,
       preserveShellPanelOpen: true,
     });

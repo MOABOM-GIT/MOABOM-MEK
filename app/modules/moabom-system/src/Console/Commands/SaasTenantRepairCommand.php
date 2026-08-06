@@ -65,7 +65,7 @@ class SaasTenantRepairCommand extends Command
     ];
 
     protected $signature = 'moabom:saas:tenant-repair
-        {slug : 대상 tenant slug (* = 모든 active)}
+        {slug? : 대상 tenant slug (생략/__all__ = 모든 active; Cloud Run Job 에서 * 금지 RF-12)}
         {--apply : 실제 변경 (기본은 dry-run)}
         {--sync-active-from-source : package 식별자 + source DB active 식별자 union 적용}
         {--skip-purge-tenant-forbidden-menus : tenant 금지 메뉴(slug) purge 건너뛰기}
@@ -747,6 +747,17 @@ class SaasTenantRepairCommand extends Command
                 }
 
                 if (! $sourceExists) {
+                    if ($insertOnly) {
+                        $this->line(sprintf(
+                            '  [%s] %s: [SKIP] %s (source DB %s 미존재 — insert-only)',
+                            $table,
+                            $tenantSlug,
+                            $identifier,
+                            $sourceDb,
+                        ));
+
+                        continue;
+                    }
                     $errors[] = sprintf('%s/%s(%s): source DB(%s) 미존재', $tenantSlug, $table, $identifier, $sourceDb);
                     continue;
                 }
@@ -758,7 +769,19 @@ class SaasTenantRepairCommand extends Command
                             ."SELECT {$columnListNoId} FROM `{$sourceDb}`.`{$physicalTable}` WHERE `identifier` = ?";
                         $stmt = $tenantPdo->prepare($sql);
                         $stmt->execute([$identifier]);
-                        DB::table($table)->where('identifier', $identifier)->update(['status' => 'active', 'updated_at' => now()]);
+                        // insert-only(가용성): 신규 row 는 inactive — 테넌트 on/off 자율.
+                        // provision(!insertOnly): source 스냅샷 status 유지 후 active 보장 경로와 맞춤.
+                        if ($insertOnly) {
+                            DB::table($table)->where('identifier', $identifier)->update([
+                                'status' => 'inactive',
+                                'updated_at' => now(),
+                            ]);
+                        } else {
+                            DB::table($table)->where('identifier', $identifier)->update([
+                                'status' => 'active',
+                                'updated_at' => now(),
+                            ]);
+                        }
                         $inserted++;
                     } catch (\Throwable $e) {
                         $errors[] = sprintf('%s/%s(%s): insert err=%s', $tenantSlug, $table, $identifier, $e->getMessage());
@@ -880,6 +903,16 @@ class SaasTenantRepairCommand extends Command
                 }
 
                 if (! $sourceRow) {
+                    if ($insertOnly) {
+                        $this->line(sprintf(
+                            '  [plugins] %s: [SKIP] %s (source DB %s 미존재 — insert-only)',
+                            $tenantSlug,
+                            $identifier,
+                            $sourceDb,
+                        ));
+
+                        continue;
+                    }
                     $errors[] = sprintf('%s/%s: source DB(%s) 에도 없음 — skip', $tenantSlug, $identifier, $sourceDb);
                     $this->line(sprintf('  [plugins] %s: [SKIP] %s (source DB %s 미존재)', $tenantSlug, $identifier, $sourceDb));
 
@@ -889,13 +922,20 @@ class SaasTenantRepairCommand extends Command
                 $this->line(sprintf('  [plugins] %s: [INSERT] %s (from %s)', $tenantSlug, $identifier, $sourceDb));
                 if (! $dryRun) {
                     try {
-                        // id 자동 채번. 그 외 컬럼 전체 복사 후 status='active' 강제.
+                        // id 자동 채번. 그 외 컬럼 전체 복사.
                         $sql = "INSERT INTO `{$tenantDbName}`.`{$pluginsTable}` ({$columnListNoId}) "
                             ."SELECT {$columnListNoId} FROM `{$sourceDb}`.`{$pluginsTable}` WHERE identifier = ?";
                         $stmt = $tenantPdo->prepare($sql);
                         $stmt->execute([$identifier]);
 
-                        DB::table('plugins')->where('identifier', $identifier)->update(['status' => 'active', 'updated_at' => now()]);
+                        // insert-only(가용성): 신규 row 는 inactive — 테넌트 on/off 자율.
+                        // provision(!insertOnly): source 에서 복사한 status 유지 (마스터 스냅샷).
+                        if ($insertOnly) {
+                            DB::table('plugins')->where('identifier', $identifier)->update([
+                                'status' => 'inactive',
+                                'updated_at' => now(),
+                            ]);
+                        }
 
                         $inserted++;
                     } catch (\Throwable $e) {
@@ -1013,7 +1053,8 @@ class SaasTenantRepairCommand extends Command
         }
 
         $query = DB::connection('moabom_platform')->table('moabom_saas_tenants');
-        if ($slugArg !== '*' && $slugArg !== '') {
+        // 전체: 인자 생략 · __all__ · 레거시 * (Cloud Run Job 인자로는 * 금지 RF-12)
+        if ($slugArg !== '' && $slugArg !== '*' && $slugArg !== '__all__') {
             $query->where('slug', $slugArg);
         } else {
             $query->where('status', 'active');

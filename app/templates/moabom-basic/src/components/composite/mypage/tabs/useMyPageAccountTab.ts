@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isAiGenerationBusy } from 'moabom-ai-generation-activity';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
 import { pushInfoToast } from '../../../../runtime/moaShellToasts';
@@ -18,6 +18,10 @@ export function useMyPageAccountTab({
   t,
   socialProviderLabel,
 }: UseMyPageAccountTabOptions) {
+  const [accountInfoPassword, setAccountInfoPassword] = useState('');
+  const [accountInfoVerified, setAccountInfoVerified] = useState(Boolean(socialProviderLabel));
+  const [accountInfoSubmitting, setAccountInfoSubmitting] = useState(false);
+  const [accountInfoMessage, setAccountInfoMessage] = useState<{ type: 'error'; text: string } | null>(null);
   const [securityPanel, setSecurityPanel] = useState<'none' | 'password' | 'withdraw'>('none');
   const [securityCurrentPassword, setSecurityCurrentPassword] = useState('');
   const [securityVerified, setSecurityVerified] = useState(false);
@@ -25,6 +29,36 @@ export function useMyPageAccountTab({
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
   const [securitySubmitting, setSecuritySubmitting] = useState(false);
   const [securityMessage, setSecurityMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (socialProviderLabel) {
+      setAccountInfoVerified(true);
+      setAccountInfoPassword('');
+      setAccountInfoMessage(null);
+    }
+  }, [socialProviderLabel]);
+
+  const handleVerifyAccountInfoPassword = async () => {
+    setAccountInfoSubmitting(true);
+    setAccountInfoMessage(null);
+
+    try {
+      const result = await verifyPasswordApi(accountInfoPassword);
+      if (!result.ok) {
+        setAccountInfoVerified(false);
+        setAccountInfoMessage({
+          type: 'error',
+          text: result.message ?? t('moa_mypage.msg.password_verify_failed'),
+        });
+        return;
+      }
+
+      setAccountInfoVerified(true);
+      setAccountInfoPassword('');
+    } finally {
+      setAccountInfoSubmitting(false);
+    }
+  };
 
   const openSecurityPanel = (panel: 'password' | 'withdraw') => {
     setSecurityPanel(panel);
@@ -117,6 +151,14 @@ export function useMyPageAccountTab({
   };
 
   return {
+    accountInfoPassword,
+    setAccountInfoPassword,
+    accountInfoVerified,
+    setAccountInfoVerified,
+    accountInfoSubmitting,
+    accountInfoMessage,
+    setAccountInfoMessage,
+    handleVerifyAccountInfoPassword,
     securityPanel,
     setSecurityPanel,
     securityCurrentPassword,

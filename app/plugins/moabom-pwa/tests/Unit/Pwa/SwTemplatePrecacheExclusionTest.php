@@ -42,4 +42,17 @@ class SwTemplatePrecacheExclusionTest extends PluginTestCase
         $this->assertStringContainsString('MOABOM_LAZY_PRECACHE', $src);
         $this->assertStringContainsString('addUrlsToAssetsCache', $src);
     }
+
+    #[Test]
+    public function sw_template_handles_push_and_notificationclick(): void
+    {
+        $src = (string) file_get_contents($this->templatePath());
+        $this->assertStringContainsString("addEventListener('push'", $src);
+        $this->assertStringContainsString("addEventListener('notificationclick'", $src);
+        $this->assertStringContainsString('showNotification', $src);
+        $this->assertStringContainsString('MOABOM_FCM_PUSH_RECEIVED', $src);
+        $this->assertStringContainsString('MOABOM_FCM_NOTIFICATION_CLICK', $src);
+        $this->assertStringContainsString('client.postMessage(message)', $src);
+        $this->assertStringNotContainsString('client.navigate(', $src);
+    }
 }

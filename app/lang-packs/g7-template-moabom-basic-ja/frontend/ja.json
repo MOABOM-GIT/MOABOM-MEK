@@ -371,11 +371,16 @@
       "dataviz": "データ可視化"
     },
     "models": {
-      "gemini_flash_lite": "Gemini 3.1 Flash-Lite（低コスト）",
       "claude_sonnet": "Claude Sonnet 4.6",
-      "gpt_chat_latest": "GPT-5.1 Chat",
-      "gpt4o": "GPT-5.1 Chat",
-      "gemini_flash": "Gemini 3.5 Flash"
+      "claude_haiku": "Claude Haiku 4.5",
+      "gpt_chat_latest": "GPT-5.3 Chat",
+      "gpt_chat_mini": "GPT-5.4 Mini",
+      "gpt_code": "GPT-5.4",
+      "gpt_code_mini": "GPT-5.4 Mini",
+      "gemini_flash": "Gemini 3.6 Flash",
+      "gemini_flash_lite": "Gemini 3.5 Flash-Lite",
+      "gemini_code": "Gemini 3.6 Flash",
+      "gemini_code_lite": "Gemini 3.5 Flash-Lite"
     },
     "generate": "生成",
     "modify": "変更を適用",

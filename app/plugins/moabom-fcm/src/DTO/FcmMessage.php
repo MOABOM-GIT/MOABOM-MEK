@@ -19,9 +19,4 @@ final readonly class FcmMessage
         public ?string $body = null,
         public array $data = [],
     ) {}
-
-    public function primaryToken(): ?string
-    {
-        return $this->deviceTokens[0] ?? null;
-    }
 }

@@ -1,0 +1,21 @@
+---
+description: 생성앱 데이터 plane SSOT (moabom_platform) — 빈 테넌트 잔재 테이블 재발 방지
+alwaysApply: true
+---
+
+# 생성앱 데이터 plane SSOT
+
+SaaS 활성 시 생성앱·앱 커뮤니티 데이터의 정본은 **platform DB(`moabom_platform` 커넥션)**다.
+기본(테넌트) 커넥션의 `moabom_system_generated_apps` 등 동명 테이블은 **빈 잔재 테이블**이며, 직접 쿼리하면 항상 0건이 나온다.
+
+## 규칙
+
+- `GeneratedApp::query()` / `AppCommunityPost::query()` / `GeneratedAppRow::query()` / `GeneratedAppRevision::query()` **직접 호출 금지.**
+- 항상 SSOT 접근자 사용: `GeneratedAppsConnection::apps()` / `communityPosts()` / `rows()` / `revisions()` (`app/modules/moabom-apps/src/Support/GeneratedAppsConnection.php`).
+- 예외: moabom-apps 내부 마이그레이션·모델 boot·명시적 legacy 폴백(예: `hostedApp` 라우트 바인딩).
+- 셸 랭킹 `app_id` 는 **문자열 셸 ID** — 생성앱은 `generated-app-{id}`, 모듈 앱은 레지스트리 id(`cpap-mask` 등). 숫자 PK 로 캐스팅하지 않는다.
+
+## 검증
+
+- 데이터 노출 기능(스마트챗 도구·공개 API) 추가·수정 시 정적 검증만으로 끝내지 말 것.
+- 배포 후 `bash deploy/smoke-smart-chat-tools.sh` 로 운영 데이터 기준 실제 결과(행 수·제목 매칭)를 검증한다.

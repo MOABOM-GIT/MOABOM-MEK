@@ -20,6 +20,10 @@ export function isConversationLeft(conversationUuid: string | null | undefined):
   return leftConversationUuids.has(conversationUuid.trim());
 }
 
-export function resetConversationLeftForTest(): void {
+export function clearConversationLeftState(): void {
   leftConversationUuids.clear();
+}
+
+export function resetConversationLeftForTest(): void {
+  clearConversationLeftState();
 }

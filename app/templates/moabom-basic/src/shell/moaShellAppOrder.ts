@@ -1,12 +1,8 @@
-import { createAppShellMetadata } from '../apps/ai-generator/metadata';
 import type { App } from '../data/Moa_apps';
 import { buildMainApps, mainPanelGeneratedExtras } from './moaShellAppLists';
 import { isGeneratedLibraryAppId } from '../apps/generatedAppLibrary';
 import { filterOrderExcludingUnpinned, loadMainUnpinnedGeneratedIds } from './moaShellMainAppUnpinned';
-import {
-  STORAGE_KEY_CREATE_APP_ORDER_MIGRATED,
-  STORAGE_KEY_ORDER,
-} from './moaShellLayoutConstants';
+import { STORAGE_KEY_ORDER } from './moaShellLayoutConstants';
 import { loadJson, loadJsonSanitizedIds, saveJson, stripLegacyAiGeneratorFromIds } from './moaShellLocalStorage';
 
 export const MOABOM_SHELL_ORDER_CHANGED_EVENT = 'moabom-shell-order-changed';
@@ -14,10 +10,26 @@ export const MOABOM_SHELL_ORDER_CHANGED_EVENT = 'moabom-shell-order-changed';
 const MAX_MAIN_APP_ORDER_LENGTH = 64;
 const MAX_APP_ID_LENGTH = 128;
 const APP_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+const STORAGE_KEY_ORDER_BY_SCOPE = 'moabom_main_order_v2';
 
 export interface MainAppOrderSnapshot {
   order: string[];
   customized: boolean;
+}
+
+interface MainAppOrderByScopeStorage {
+  version: 1;
+  byScope: Record<string, MainAppOrderSnapshot>;
+}
+
+let activeMainAppOrderScopeKey = 'guest';
+
+export function setActiveMainAppOrderScopeKey(scopeKey: string): void {
+  activeMainAppOrderScopeKey = scopeKey || 'guest';
+}
+
+export function getActiveMainAppOrderScopeKey(): string {
+  return activeMainAppOrderScopeKey;
 }
 
 export function isValidShellMainAppId(id: string): boolean {
@@ -53,41 +65,94 @@ export function sanitizeMainAppOrderIds(ids: unknown): string[] {
   return result;
 }
 
-/** localStorage 에 order 키가 있으면 사용자가 한 번이라도 편집한 것으로 간주 */
-export function hasLocalMainAppOrderCustomized(): boolean {
-  if (typeof localStorage === 'undefined') {
-    return false;
-  }
-  return localStorage.getItem(STORAGE_KEY_ORDER) !== null;
+function emptyScopedOrderStorage(): MainAppOrderByScopeStorage {
+  return { version: 1, byScope: {} };
 }
 
-export function loadLocalMainAppOrder(): string[] {
-  if (!hasLocalMainAppOrderCustomized()) {
+function migrateLegacyOrderIfNeeded(
+  storage: MainAppOrderByScopeStorage,
+): MainAppOrderByScopeStorage {
+  if (typeof localStorage === 'undefined') {
+    return storage;
+  }
+
+  const legacyRaw = localStorage.getItem(STORAGE_KEY_ORDER);
+  if (legacyRaw === null) {
+    return storage;
+  }
+
+  const legacyOrder = loadJsonSanitizedIds(STORAGE_KEY_ORDER, []);
+  localStorage.removeItem(STORAGE_KEY_ORDER);
+  const next: MainAppOrderByScopeStorage = {
+    ...storage,
+    byScope: {
+      ...storage.byScope,
+      guest: { order: legacyOrder, customized: true },
+    },
+  };
+  saveJson(STORAGE_KEY_ORDER_BY_SCOPE, next);
+  return next;
+}
+
+function readScopedOrderStorage(): MainAppOrderByScopeStorage {
+  const raw = loadJson<MainAppOrderByScopeStorage | null>(STORAGE_KEY_ORDER_BY_SCOPE, null);
+  const storage = raw?.version === 1 && raw.byScope && typeof raw.byScope === 'object'
+    ? raw
+    : emptyScopedOrderStorage();
+  return migrateLegacyOrderIfNeeded(storage);
+}
+
+function writeScopedOrderStorage(storage: MainAppOrderByScopeStorage): void {
+  saveJson(STORAGE_KEY_ORDER_BY_SCOPE, storage);
+}
+
+function dispatchMainAppOrderChanged(scopeKey: string): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(MOABOM_SHELL_ORDER_CHANGED_EVENT, {
+      detail: { scopeKey },
+    }));
+  }
+}
+
+/** 현재 계정 스코프에 order가 있으면 사용자가 한 번이라도 편집한 것으로 간주 */
+export function hasLocalMainAppOrderCustomized(
+  scopeKey: string = getActiveMainAppOrderScopeKey(),
+): boolean {
+  return readScopedOrderStorage().byScope[scopeKey]?.customized === true;
+}
+
+export function loadLocalMainAppOrder(
+  scopeKey: string = getActiveMainAppOrderScopeKey(),
+): string[] {
+  const snapshot = readScopedOrderStorage().byScope[scopeKey];
+  if (!snapshot?.customized) {
     return [];
   }
-  return loadJsonSanitizedIds(STORAGE_KEY_ORDER, []);
+  return sanitizeMainAppOrderIds(snapshot.order);
 }
 
-export function saveLocalMainAppOrder(ids: string[]): void {
+export function saveLocalMainAppOrder(
+  ids: string[],
+  scopeKey: string = getActiveMainAppOrderScopeKey(),
+): void {
   const sanitized = sanitizeMainAppOrderIds(ids);
-  saveJson(STORAGE_KEY_ORDER, sanitized);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(MOABOM_SHELL_ORDER_CHANGED_EVENT));
-  }
+  const storage = readScopedOrderStorage();
+  storage.byScope[scopeKey] = { order: sanitized, customized: true };
+  writeScopedOrderStorage(storage);
+  dispatchMainAppOrderChanged(scopeKey);
 }
 
-/** 기본 그리드 복귀 — localStorage order 키 제거 */
-export function clearLocalMainAppOrder(): void {
-  if (typeof localStorage === 'undefined') {
+/** 현재 계정 스코프를 기본 그리드로 복귀 */
+export function clearLocalMainAppOrder(
+  scopeKey: string = getActiveMainAppOrderScopeKey(),
+): void {
+  const storage = readScopedOrderStorage();
+  if (!storage.byScope[scopeKey]) {
     return;
   }
-  if (localStorage.getItem(STORAGE_KEY_ORDER) === null) {
-    return;
-  }
-  localStorage.removeItem(STORAGE_KEY_ORDER);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(MOABOM_SHELL_ORDER_CHANGED_EVENT));
-  }
+  delete storage.byScope[scopeKey];
+  writeScopedOrderStorage(storage);
+  dispatchMainAppOrderChanged(scopeKey);
 }
 
 export function extractServerMainAppOrder(settings: Record<string, unknown> | undefined): string[] | null {
@@ -245,24 +310,12 @@ export function isLocalMainOrderAheadOfServer(localOrder: string[], serverOrder:
   return serverOrder.every(id => localSet.has(id)) && localOrder.some(id => !serverSet.has(id));
 }
 
-export function loadInitialMainOrderSnapshot(): MainAppOrderSnapshot {
-  const customized = hasLocalMainAppOrderCustomized();
-  const storedOrder = customized ? loadLocalMainAppOrder() : [];
-
-  if (!customized || storedOrder.length === 0) {
-    return { order: storedOrder, customized };
-  }
-
-  const migrated = loadJson<boolean>(STORAGE_KEY_CREATE_APP_ORDER_MIGRATED, false);
-  if (migrated || storedOrder.includes(createAppShellMetadata.id)) {
-    return { order: storedOrder, customized };
-  }
-
-  const next = [createAppShellMetadata.id, ...storedOrder];
-  saveLocalMainAppOrder(next);
-  saveJson(STORAGE_KEY_CREATE_APP_ORDER_MIGRATED, true);
-
-  return { order: next, customized: true };
+export function loadInitialMainOrderSnapshot(
+  scopeKey: string = getActiveMainAppOrderScopeKey(),
+): MainAppOrderSnapshot {
+  const customized = hasLocalMainAppOrderCustomized(scopeKey);
+  const storedOrder = customized ? loadLocalMainAppOrder(scopeKey) : [];
+  return { order: storedOrder, customized };
 }
 
 /** @deprecated orderRef 초기화용 — `loadInitialMainOrderSnapshot().order` 사용 권장 */

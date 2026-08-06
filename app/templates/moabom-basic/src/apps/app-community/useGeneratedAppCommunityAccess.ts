@@ -8,7 +8,7 @@ export interface GeneratedAppCommunityAccess {
 }
 
 /**
- * 앱 리뷰 작성 권한 — `fetchVisibleGeneratedApp` permissions SSOT.
+ * 앱 리뷰 작성 권한 — visible 메타 show(`include_html=0`) permissions SSOT.
  * `authStateKey` 변경(로그인·로그아웃) 시 재조회한다.
  */
 export function useGeneratedAppCommunityAccess(

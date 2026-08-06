@@ -315,6 +315,16 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **조치** | platform(+tenant) 에 sirsoft-board migrate · post-deploy extra allowlist 에 `sirsoft-board` (RF-21 확장) · `PostController::show` 예외 `Log::error` |
 | **예방** | `check-deploy-recurring-guards.sh` RF-31 · 배포 후 로그인 세션/토큰으로 posts/{id} 스모크 |
 
+### RF-32: G7 업스트림 후 테넌트 스키마·플러그인 가용성 drift
+
+| | |
+|---|---|
+| **증상** | 마스터(mek360) 정상 · `*.mek360.com` 테넌트 전면 500 (`/public/ready` 포함). layout sync 중 tenant DB `original_content_hash` 등 컬럼 누락 |
+| **원인** | (1) post-deploy 가 module allowlist 만 fan-out — **코어·플러그인 DDL 미적용** (2) provision `cloneSchemaOnly` 후 **migrations 카탈로그 미복사** (3) 플러그인 코드는 이미지에 있으나 테넌트 테이블/row 없음 |
+| **정책** | 기존 테넌트 **on/off 자율** — 배포는 DDL+설치 row(가용성, insert-only). 신규 업체 추가는 마스터 설정 스냅샷(기존 provision + migrations catalog) |
+| **조치** | `moabom:saas:schema-sync` · `baselineExistingCreates`(create만) · post-deploy plane 루프 · tenant-repair `--insert-only` · `hospital-default` 에 gdpr/kginicis |
+| **예방** | `check-deploy-recurring-guards.sh` RF-32 · `check-saas-runtime-invariants.sh` insert-only · provision `copyCatalog` · **source migrations 전체 blind baseline 금지** |
+
 ### RF-14: SaaS hospitals — 모듈 레이아웃 DB 미동기화
 
 | | |
@@ -414,6 +424,24 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 | **조치** | v1.2.1 `admin_saas_hospitals.json` — 중첩 confirm 핸들러 제거 |
 | **예방** | `saas-hospitals-admin-gate.sh` — `"handler": "confirm"` 금지 |
 
+### RF-33: Reverb WS 101 정상인데 publish만 401
+
+| 항목 | 내용 |
+|------|------|
+| **증상** | 브라우저 WebSocket 연결은 101이지만 실시간 채팅·알림 이벤트가 전혀 도착하지 않음 |
+| **원인** | Secret Manager와 Reverb VM `.env`의 `REVERB_APP_SECRET` 불일치 |
+| **조치** | `realtime-vm/sync-reverb-secret.sh --restart`로 정본 동기화 후 Reverb만 recreate |
+| **예방** | `check-realtime-vm-health.sh`의 WS 101 + authenticated publish HTTP 2xx 이중 게이트 |
+
+### RF-34: Cloud Tasks queue wake 403 또는 queue endpoint 500
+
+| 항목 | 내용 |
+|------|------|
+| **403 원인** | runtime SA의 `roles/cloudtasks.enqueuer` 또는 OIDC task 생성을 위한 자기 자신 `roles/iam.serviceAccountUser` 누락 |
+| **500 원인** | `Illuminate\Queue\Worker`를 class autowire하거나 HTTP 요청 안에서 `daemon()` 실행 |
+| **조치** | queue IAM을 수렴하고 `app('queue.worker')->runNextJob()`으로 요청당 DB job 하나만 처리 |
+| **예방** | `smoke-realtime-notifications.sh` queue probe · web/queue image parity · stale job 0 검증 |
+
 ---
 
 ## 2. 배포 체크리스트 (한 사이클)
@@ -457,6 +485,7 @@ moabom_run_artisan_job … moabom:saas:sync-template-layouts '*' …
 
 | 날짜 | 태그/이슈 | 교훈 |
 |------|-----------|------|
+| 2026-08-06 | **RF-33~34** / v532 | Reverb secret 정합성은 signed publish로, Cloud Tasks는 IAM + 실제 단일 job dequeue로 검증 |
 | 2026-07-10 | **RF-29** | `build:core \|\| true` → 구 template-engine 서빙 → 관리자 blur 영구. layout-sync skip과 무관. hard-fail + DataGate 검증 |
 | 2026-07-10 | **RF-31** | 로그인 공지 상세 500 — `board_attachments.trigger_type` 미적용. post-deploy migrate 가 moabom-* 만 돌려 sirsoft-board schema drift. 배포≠코드 롤백 |
 | 2026-07-10 | **RF-30** | board attachment preview 가 로컬 `fileResponse` 의존 → GCS Cloud Run 500. 목록 API 200 과 별개. `AttachmentService::preview()` 스트리밍 |

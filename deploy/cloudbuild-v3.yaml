@@ -1,6 +1,6 @@
 # 태그는 substitutions._IMAGE_TAG 한 곳만 수정 (build -t / images 자동 동기화)
 substitutions:
-  _IMAGE_TAG: v488
+  _IMAGE_TAG: v536
   _SKIP_INNER_CHECK: 'false'
 
 steps:
@@ -24,6 +24,8 @@ steps:
       # deploy/Dockerfile 첫 stage 의 MOABOM_BUILD_ENV 가드가 cloudbuild 외 빌드를 차단합니다.
       - --build-arg
       - MOABOM_BUILD_ENV=cloudbuild
+      - --build-arg
+      - MOABOM_IMAGE_TAG=${_IMAGE_TAG}
       - -f
       - deploy/Dockerfile
       - -t

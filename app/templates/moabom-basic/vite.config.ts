@@ -185,6 +185,7 @@ export default defineConfig({
       // tsconfig.json paths 와 동일 — dts·IDE·Vite 해석 일치
       'moabom-shell-i18n': path.resolve(__dirname, 'src/i18n/moabomShellI18nSingleton.ts'),
       'moabom-create-app-edit': path.resolve(__dirname, 'src/apps/ai-generator/moabomCreateAppEditSession.ts'),
+      'moabom-create-app-prompt': path.resolve(__dirname, 'src/apps/ai-generator/moabomCreateAppPromptSession.ts'),
       'moabom-ai-generation-activity': path.resolve(__dirname, 'src/apps/ai-generator/aiGenerationActivity.ts'),
       '@moabom-consulting/simulation-model.json': path.resolve(
         __dirname,

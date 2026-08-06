@@ -32,10 +32,16 @@ grep -q 'memory_usage ??' "${TAB_INFO}" \
   && fail "_tab_info memory_usage 객체 직접 렌더 — React #31" || true
 ok "moabom-admin_basic src + Cloud Build dist 계약 + system info memory binding"
 
-# NOTE: _bundled 정합성 검사는 제거 (G7 업스트림 준비 전환 — 2026-06-07).
+# NOTE: _bundled 전체 parity 는 강제하지 않음 (G7 업스트림 준비 전환 — 2026-06-07).
 #   - moabom-admin_basic 은 활성 templates/moabom-admin_basic 가 SSOT.
-#   - _bundled 는 G7 upstream mirror 전용이며 .gcloudignore 로 Cloud Build 컨텍스트 제외.
-#   - sirsoft-admin_basic ↔ moabom-admin_basic 의 _bundled parity 는 더 이상 강제하지 않음.
+#   - 단, G7 #408 시맨틱 CSS 는 g7-semantic.css 로 동기화 의무
+#     (sirsoft-admin_basic main.css → deploy/sync-g7-admin-semantic-css.sh).
+chmod +x "${ROOT}/deploy/sync-g7-admin-semantic-css.sh" 2>/dev/null || true
+if ! "${ROOT}/deploy/sync-g7-admin-semantic-css.sh" --check --allow-missing-upstream; then
+  fail "g7-semantic.css upstream drift — bash deploy/sync-g7-admin-semantic-css.sh"
+else
+  ok "g7-semantic.css ↔ sirsoft-admin_basic main.css (or SKIP if upstream absent)"
+fi
 
 grep -q '"moabom-admin_basic"' "${PACKAGE}" \
   || fail "hospital-default package 에 moabom-admin_basic 없음"

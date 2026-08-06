@@ -3,6 +3,7 @@ import {
   MoabomShellAuthRequiredError,
   requestShellJson,
 } from './moabomShellHttp';
+import { invalidateMoabomUserShellState } from '../runtime/moabomUserShellState';
 
 export interface ShellNotificationItem {
   id: string;
@@ -48,6 +49,7 @@ async function shellGet<T>(url: string): Promise<T | null> {
 async function shellMutate(url: string, method: 'POST' | 'DELETE', body?: object): Promise<boolean> {
   try {
     await requestShellJson(url, 'required', { method, body: body ?? undefined });
+    invalidateMoabomUserShellState();
     return true;
   } catch {
     return false;

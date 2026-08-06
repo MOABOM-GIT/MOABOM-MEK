@@ -49,6 +49,16 @@ class StoreCreditSettingsRequest extends FormRequest
             'levels' => 'required|array',
             'levels.thresholds' => 'required|array|size:10',
             'levels.thresholds.*' => 'integer|min:0|max:100000000',
+            'ai_spend' => 'required|array',
+            'ai_spend.smart_chat_enabled' => 'boolean',
+            'ai_spend.smart_chat_amount' => 'integer|min:0|max:1000000',
+            'ai_spend.create_app_enabled' => 'boolean',
+            'ai_spend.create_app_amount' => 'integer|min:0|max:1000000',
+            'ai_spend.attachment_surcharge' => 'integer|min:0|max:1000000',
+            'ai_spend.web_search_surcharge' => 'integer|min:0|max:1000000',
+            'ai_spend.token_billing_enabled' => 'boolean',
+            'ai_spend.credits_per_1k_prompt' => 'integer|min:0|max:1000000',
+            'ai_spend.credits_per_1k_completion' => 'integer|min:0|max:1000000',
         ];
     }
 

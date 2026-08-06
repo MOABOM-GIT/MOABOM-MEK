@@ -8,6 +8,8 @@
  * - inspector-enable / inspector-disable (부모 → iframe)
  * - inspector-selection (iframe → 부모)
  * - backdrop-probe → backdrop-tone (부모 → iframe → 부모, liquid-glass 대비)
+ *   solid + gradient(backgroundImage stop 평균). 생성앱 SSOT:
+ *   modules/moabom-apps/resources/js/generated-app-backdrop-probe.js
  * - 비활성 시 클릭·포인터는 앱 기본 동작 그대로
  */
 export const PREVIEW_INSPECTOR_BRIDGE_SCRIPT_ID = 'moabom-preview-inspector-bridge';
@@ -141,9 +143,34 @@ export const PREVIEW_INSPECTOR_BRIDGE_JS = `(function(){
   function parseRgb(s) {
     var m = /rgba?\\(([^)]+)\\)/i.exec(s || '');
     if (!m) { return null; }
-    var p = m[1].split(',').map(function (x) { return parseFloat(x); });
-    var a = p.length > 3 ? p[3] : 1;
-    return { r: p[0] || 0, g: p[1] || 0, b: p[2] || 0, a: isNaN(a) ? 1 : a };
+    var raw = m[1].trim().replace(/\\s*\\/\\s*/g, ' ').replace(/,/g, ' ').split(/\\s+/).filter(Boolean);
+    if (raw.length < 3) { return null; }
+    var r = parseFloat(raw[0]);
+    var g = parseFloat(raw[1]);
+    var b = parseFloat(raw[2]);
+    var a = raw.length > 3 ? parseFloat(raw[3]) : 1;
+    return { r: isNaN(r) ? 0 : r, g: isNaN(g) ? 0 : g, b: isNaN(b) ? 0 : b, a: isNaN(a) ? 1 : a };
+  }
+
+  function parseHex(s) {
+    var h = String(s || '').slice(1);
+    if (h.length === 3 || h.length === 4) {
+      return {
+        r: parseInt(h.charAt(0) + h.charAt(0), 16),
+        g: parseInt(h.charAt(1) + h.charAt(1), 16),
+        b: parseInt(h.charAt(2) + h.charAt(2), 16),
+        a: h.length === 4 ? parseInt(h.charAt(3) + h.charAt(3), 16) / 255 : 1
+      };
+    }
+    if (h.length === 6 || h.length === 8) {
+      return {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16),
+        a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+      };
+    }
+    return null;
   }
 
   function compositeOnWhite(c) {
@@ -155,18 +182,60 @@ export const PREVIEW_INSPECTOR_BRIDGE_JS = `(function(){
     };
   }
 
+  function collectColorsFromCssValue(value) {
+    var colors = [];
+    var src = String(value || '');
+    var hexRe = /#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\\b/gi;
+    var hex;
+    while ((hex = hexRe.exec(src))) {
+      var hc = parseHex(hex[0]);
+      if (hc) { colors.push(hc); }
+    }
+    var rgbRe = /rgba?\\(([^)]+)\\)/gi;
+    var rgb;
+    while ((rgb = rgbRe.exec(src))) {
+      var rc = parseRgb(rgb[0]);
+      if (rc) { colors.push(rc); }
+    }
+    return colors;
+  }
+
+  /** solid 는 backgroundColor, gradient 는 backgroundImage stop 평균. */
+  function avgFromBackgroundImage(img) {
+    if (!img || img === 'none') { return null; }
+    if (!/gradient\\s*\\(/i.test(img) && !/#|rgba?\\(/i.test(img)) { return null; }
+    var colors = collectColorsFromCssValue(img);
+    if (!colors.length) { return null; }
+    var sumR = 0, sumG = 0, sumB = 0;
+    for (var i = 0; i < colors.length; i++) {
+      var c = compositeOnWhite(colors[i]);
+      sumR += c.r; sumG += c.g; sumB += c.b;
+    }
+    var n = colors.length;
+    return { r: sumR / n, g: sumG / n, b: sumB / n };
+  }
+
+  function sampleFromComputedStyle(cs) {
+    if (!cs) { return null; }
+    var fromImg = avgFromBackgroundImage(cs.backgroundImage);
+    if (fromImg) { return fromImg; }
+    var c = parseRgb(cs.backgroundColor);
+    if (c && c.a > 0) { return compositeOnWhite(c); }
+    return null;
+  }
+
   function bgAt(x, y) {
     var el = document.elementFromPoint(x, y);
     while (el && el !== document.documentElement) {
       if (el.id !== 'moabom-inspector-highlight') {
-        var c = parseRgb(getComputedStyle(el).backgroundColor);
-        if (c && c.a > 0) { return compositeOnWhite(c); }
+        var sampled = sampleFromComputedStyle(getComputedStyle(el));
+        if (sampled) { return sampled; }
       }
       el = el.parentElement;
     }
-    var base = parseRgb(getComputedStyle(document.body).backgroundColor)
-      || parseRgb(getComputedStyle(document.documentElement).backgroundColor);
-    if (base && base.a > 0) { return compositeOnWhite(base); }
+    var base = sampleFromComputedStyle(getComputedStyle(document.body))
+      || sampleFromComputedStyle(getComputedStyle(document.documentElement));
+    if (base) { return base; }
     return { r: 255, g: 255, b: 255 };
   }
 

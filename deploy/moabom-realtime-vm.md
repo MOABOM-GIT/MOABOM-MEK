@@ -137,7 +137,7 @@ VM WS handshake 성공 후:
 
 ## 6-1. 운영 health / 단일 장애점 관리
 
-현재 Realtime plane 은 `moabom-realtime-prod` 단일 VM 이 SSOT 입니다. Cloud Run 내부 sidecar 는 제거했으므로, VM 장애 시 브라우저는 REST catch-up 으로 degrade 하지만 WebSocket 실시간성은 중단됩니다.
+현재 Realtime plane 은 `moabom-realtime-prod` 단일 VM 이 SSOT 입니다. `moabom-realtime-watchdog.timer`가 매분 nginx·Reverb TCP를 확인하고 장애 프로세스를 자동 복구합니다. VM 호스트 장애 동안에는 브라우저가 FCM과 WS 연결 해제 시에만 동작하는 REST catch-up으로 degrade합니다.
 
 상시 확인:
 
@@ -163,7 +163,7 @@ sudo docker compose -f /opt/moabom-realtime/docker-compose.yml logs --tail=120 r
 3. Redis health 확인
 4. `deploy/check-realtime-vm-health.sh` 통과 확인
 
-다중 VM/Managed Redis 전환은 별도 인프라 작업입니다. 그 전까지는 Cloud Run smoke 와 위 health 스크립트로 VM 경로를 배포 전후 확인합니다.
+GCE automatic restart가 활성 상태여야 하며, 다중 VM/Managed Redis 전환 전까지 호스트 장애의 완전한 무중단 처리는 제공하지 않습니다. 현재 계약은 자동 프로세스 복구 + FCM/REST 기능 폴백으로 장애 영향을 제한합니다.
 
 ---
 

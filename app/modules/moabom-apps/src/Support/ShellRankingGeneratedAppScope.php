@@ -13,7 +13,9 @@ use Modules\Moabom\Apps\Contracts\GeneratedAppRepositoryInterface;
 final class ShellRankingGeneratedAppScope
 {
     /** @var array<string, true>|null */
-    private static ?array $allowedGeneratedShellIds = null;
+    private ?array $allowedGeneratedShellIds = null;
+    private int $resolvedGeneration = -1;
+    private static int $cacheGeneration = 0;
 
     public function __construct(
         private readonly GeneratedAppRepositoryInterface $generatedApps,
@@ -50,8 +52,11 @@ final class ShellRankingGeneratedAppScope
      */
     private function allowedGeneratedShellIds(): array
     {
-        if (self::$allowedGeneratedShellIds !== null) {
-            return self::$allowedGeneratedShellIds;
+        if (
+            $this->allowedGeneratedShellIds !== null
+            && $this->resolvedGeneration === self::$cacheGeneration
+        ) {
+            return $this->allowedGeneratedShellIds;
         }
 
         $map = [];
@@ -59,7 +64,8 @@ final class ShellRankingGeneratedAppScope
             $map['generated-app-'.$app->id] = true;
         }
 
-        self::$allowedGeneratedShellIds = $map;
+        $this->allowedGeneratedShellIds = $map;
+        $this->resolvedGeneration = self::$cacheGeneration;
 
         return $map;
     }
@@ -71,6 +77,6 @@ final class ShellRankingGeneratedAppScope
 
     public static function resetAllowedCacheForTest(): void
     {
-        self::$allowedGeneratedShellIds = null;
+        self::$cacheGeneration += 1;
     }
 }

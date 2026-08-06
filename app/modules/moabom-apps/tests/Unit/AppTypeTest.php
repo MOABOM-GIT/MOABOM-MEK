@@ -22,4 +22,12 @@ class AppTypeTest extends ModuleTestCase
             AppType::aiGeneratableValues()
         );
     }
+
+    public function test_ai_streamable_values_include_html_paste_exclude_website_link(): void
+    {
+        $this->assertSame(
+            ['general', 'html_paste', '3d', 'game', 'dataviz'],
+            AppType::aiStreamableValues()
+        );
+    }
 }

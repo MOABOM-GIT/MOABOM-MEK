@@ -189,7 +189,7 @@ export function navigateMoabomNotificationUrl(
   if (
     navigateMoabomChatNotification({
       type: notificationType ?? '',
-      url,
+      url: url ?? null,
       data: notificationData,
     })
   ) {

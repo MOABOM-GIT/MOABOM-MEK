@@ -32,6 +32,7 @@ final class SaasCoreSettingsHydrator
         'core_update',
         'geoip',
         'seo',
+        'identity',
     ];
 
     /** @var array<string, array<string, mixed>>|null */

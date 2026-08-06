@@ -59,7 +59,7 @@ class MarketingConsentService
         $raw = $this->pluginSettings->get(self::PLUGIN_ID, 'channels', '[]');
         $channels = json_decode($raw, true);
 
-        return is_array($channels) ? $channels : [];
+        return is_array($channels) ? array_values($channels) : [];
     }
 
     /**
@@ -78,6 +78,17 @@ class MarketingConsentService
         $emailLabelKey = 'sirsoft-marketing::channels.email_subscription.label';
 
         return [
+            [
+                'key'       => 'notification_subscription',
+                'label_key' => 'sirsoft-marketing::channels.notification_subscription.label',
+                'label'     => [
+                    'ko' => __('sirsoft-marketing::channels.notification_subscription.label', [], 'ko'),
+                    'en' => __('sirsoft-marketing::channels.notification_subscription.label', [], 'en'),
+                ],
+                'page_slug' => '',
+                'enabled'   => true,
+                'is_system' => true,
+            ],
             [
                 'key'       => 'email_subscription',
                 'label_key' => $emailLabelKey,
@@ -126,6 +137,18 @@ class MarketingConsentService
     public function getAllByUserId(int $userId): Collection
     {
         return $this->repository->getAllByUserId($userId);
+    }
+
+    public function isConsented(int $userId, string $consentKey): bool
+    {
+        try {
+            return (bool) $this->repository
+                ->findByUserAndKey($userId, $consentKey)
+                ?->is_consented;
+        } catch (\Throwable) {
+            // 광고성 알림은 동의 상태를 확인할 수 없으면 발송하지 않습니다.
+            return false;
+        }
     }
 
     /**

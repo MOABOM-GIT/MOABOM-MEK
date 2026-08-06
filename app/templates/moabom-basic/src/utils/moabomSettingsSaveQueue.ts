@@ -1,5 +1,6 @@
 import type { MoabomSystemState } from '../types/moabomSystem';
 import { saveMoabomSystemSettings } from '../api/moabomSystemApi';
+import { getShellAccessScopeKey } from '../api/moabomShellAccess';
 
 /**
  * 사용자 시스템 설정(`/api/modules/moabom-system/user/settings`) 저장 요청을 **직렬화**한다.
@@ -16,23 +17,24 @@ import { saveMoabomSystemSettings } from '../api/moabomSystemApi';
  */
 
 let inflight: Promise<void> | null = null;
-let pendingState: MoabomSystemState | null = null;
+let pendingState: { state: MoabomSystemState; accessScopeKey: string } | null = null;
 let lastRequestAt = 0;
 let lastResolveAt = 0;
+let settingsAccessScopeKey = 'guest';
 
 /** 저장 요청이 마지막으로 발사된 시각(epoch ms) — pull 측이 저장 직후 덮어쓰기 방지에 사용 */
 export function getLastSaveRequestAt(): number {
-  return lastRequestAt;
+  return settingsAccessScopeKey === getShellAccessScopeKey() ? lastRequestAt : 0;
 }
 
 /** 저장 응답이 마지막으로 도착한 시각(epoch ms) */
 export function getLastSaveResolveAt(): number {
-  return lastResolveAt;
+  return settingsAccessScopeKey === getShellAccessScopeKey() ? lastResolveAt : 0;
 }
 
 /** 현재 저장 요청이 서버에서 응답 대기 중인지 여부 */
 export function isSavingSettings(): boolean {
-  return inflight !== null;
+  return settingsAccessScopeKey === getShellAccessScopeKey() && inflight !== null;
 }
 
 /**
@@ -45,6 +47,9 @@ export function isSavingSettings(): boolean {
  * @param windowMs 저장 응답 도착 후 쿨다운을 유지할 밀리초 (기본 600)
  */
 export function isRecentlySavedSettings(windowMs = 600): boolean {
+  if (settingsAccessScopeKey !== getShellAccessScopeKey()) {
+    return false;
+  }
   if (inflight !== null) {
     return true;
   }
@@ -58,9 +63,13 @@ async function drainQueue(): Promise<void> {
   while (pendingState !== null) {
     const next = pendingState;
     pendingState = null;
+    if (next.accessScopeKey !== getShellAccessScopeKey()) {
+      continue;
+    }
+    settingsAccessScopeKey = next.accessScopeKey;
     lastRequestAt = Date.now();
     try {
-      await saveMoabomSystemSettings(next);
+      await saveMoabomSystemSettings(next.state);
     } catch {
       /* 저장 실패는 조용히 스킵 (UI는 이미 낙관적으로 반영됨) */
     } finally {
@@ -81,7 +90,9 @@ async function drainQueue(): Promise<void> {
  * 반환값: 현재 호출이 관찰한 "마지막 flush"가 끝날 때 resolve 되는 Promise.
  */
 export function queueSaveMoabomSystemSettings(state: MoabomSystemState): Promise<void> {
-  pendingState = state;
+  const accessScopeKey = getShellAccessScopeKey();
+  settingsAccessScopeKey = accessScopeKey;
+  pendingState = { state, accessScopeKey };
 
   if (inflight) {
     return inflight;
@@ -101,4 +112,5 @@ export function __resetMoabomSettingsSaveQueueForTest(): void {
   pendingState = null;
   lastRequestAt = 0;
   lastResolveAt = 0;
+  settingsAccessScopeKey = 'guest';
 }

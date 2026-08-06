@@ -7,42 +7,42 @@ import {
 } from './useShellSubTabSelect';
 
 describe('useShellSubTabSelect', () => {
-  it('다른 탭이면 setActiveTab만 호출한다', () => {
+  it('다른 탭이면 change 사유로 setActiveTab과 onSelect를 호출한다', () => {
     const setActiveTab = vi.fn();
-    const onReselect = vi.fn();
-    const { result } = renderHook(() => useShellSubTabSelect('a', 'a', setActiveTab, onReselect));
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useShellSubTabSelect('a', 'a', setActiveTab, onSelect));
 
     act(() => {
       result.current('b');
     });
 
     expect(setActiveTab).toHaveBeenCalledWith('b');
-    expect(onReselect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('b', 'change');
   });
 
-  it('active·settled 가 같을 때만 onReselect를 호출한다', () => {
+  it('active·settled 가 같을 때만 재클릭 onSelect를 호출한다', () => {
     const setActiveTab = vi.fn();
-    const onReselect = vi.fn();
-    const { result } = renderHook(() => useShellSubTabSelect('a', 'a', setActiveTab, onReselect));
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useShellSubTabSelect('a', 'a', setActiveTab, onSelect));
 
     act(() => {
       result.current('a');
     });
 
     expect(setActiveTab).not.toHaveBeenCalled();
-    expect(onReselect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith('a', 'reselect');
   });
 
-  it('전환 중(active !== settled) 재클릭은 onReselect를 호출하지 않는다', () => {
+  it('전환 중(active !== settled) 재클릭은 onSelect를 호출하지 않는다', () => {
     const setActiveTab = vi.fn();
-    const onReselect = vi.fn();
-    const { result } = renderHook(() => useShellSubTabSelect('b', 'a', setActiveTab, onReselect));
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useShellSubTabSelect('b', 'a', setActiveTab, onSelect));
 
     act(() => {
       result.current('b');
     });
 
-    expect(onReselect).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
     expect(setActiveTab).not.toHaveBeenCalled();
   });
 });

@@ -65,10 +65,13 @@ for provider in google kakao naver; do
   echo "    ${provider}: https://${BROKER_HOST}/api/modules/moabom-social-auth/oauth/${provider}/callback"
 done
 
-echo "==> [sns-4] Cloud Run entrypoint seed hook"
-grep -q 'moabom:social-auth:seed-platform-master' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
-  || fail "cloudrun-entrypoint.sh 에 seed-platform-master 없음"
-ok "entrypoint platform master seed"
+echo "==> [sns-4] post-deploy platform seed hook"
+grep -q 'moabom:social-auth:seed-platform-master' "${ROOT}/deploy/build-and-deploy.sh" \
+  || fail "build-and-deploy.sh post-deploy seed-platform-master 없음"
+if grep -q 'moabom:social-auth:seed-platform-master' "${ROOT}/deploy/cloudrun-entrypoint.sh"; then
+  fail "cold start entrypoint 에 seed-platform-master 재유입 금지"
+fi
+ok "post-deploy platform master seed"
 
 echo "==> [sns-5] moabom-basic popup OAuth (src + dist)"
 DIST_JS="${ROOT}/app/templates/moabom-basic/dist/js/components.iife.js"

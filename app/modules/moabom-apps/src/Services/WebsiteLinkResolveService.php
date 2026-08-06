@@ -27,7 +27,8 @@ class WebsiteLinkResolveService
 
         $body = $this->urlGuard->fetchDocumentBody($url);
         $themeColor = $body !== null ? $this->extractThemeColor($body) : null;
-        $icon = $this->iconExtractionService->probeIconCandidate($url);
+        // document HTML 은 1회만 조회 — probe 에 body 를 넘겨 이중 fetch 를 막는다.
+        $icon = $this->iconExtractionService->probeIconCandidate($url, $body);
 
         return [
             'url' => $url,

@@ -102,6 +102,55 @@ class AppCommunityService
     }
 
     /**
+     * 마이페이지 게시글 관리에 표시할 현재 사용자의 앱 리뷰 목록입니다.
+     *
+     * @return array<string, mixed>
+     */
+    public function listReviewsForUser(int $userId, int $limit = 10, int $offset = 0): array
+    {
+        $result = $this->postRepository->listPublishedReviewsForUser($userId, $limit, $offset);
+
+        return [
+            'summary' => [
+                'posts_count' => 0,
+                'comments_count' => 0,
+                'interactions_count' => 0,
+                'reviews_count' => $result['total'],
+            ],
+            'items' => $result['items']
+                ->map(function (AppCommunityPost $post): array {
+                    $appId = (int) $post->generated_app_id;
+                    $appTitle = trim((string) ($post->generatedApp?->title ?? ''));
+                    $rating = max(0, (int) ($post->rating ?? 0));
+
+                    return [
+                        'id' => 'review:'.(int) $post->id,
+                        'type' => 'review',
+                        'type_label' => __('moabom-apps::messages.apps.community.my_review_label'),
+                        'icon' => 'star',
+                        'title' => (string) $post->title,
+                        'description' => (string) $post->body,
+                        'board_name' => $appTitle !== ''
+                            ? $appTitle
+                            : __('moabom-apps::messages.apps.community.unknown_app'),
+                        'target_url' => $appId > 0 ? '/app/generated-app-'.$appId : null,
+                        'meta' => __('moabom-apps::messages.apps.community.rating_meta', ['rating' => $rating]),
+                        'occurred_at' => $post->created_at?->toIso8601String(),
+                        'occurred_at_human' => $post->created_at?->diffForHumans(),
+                    ];
+                })
+                ->values()
+                ->all(),
+            'pagination' => [
+                'limit' => max(1, min(50, $limit)),
+                'offset' => max(0, $offset),
+                'total' => $result['total'],
+                'has_more' => (max(0, $offset) + $result['items']->count()) < $result['total'],
+            ],
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function showPost(int $appId, int $postId, ?int $viewerUserId): array

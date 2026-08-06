@@ -116,7 +116,7 @@
       },
       "activity": {
         "label": "投稿管理",
-        "desc": "投稿・コメント・反応"
+        "desc": "投稿・コメント・レビュー"
       },
       "account": {
         "label": "アカウント",
@@ -136,6 +136,7 @@
       "section_background": "ホーム背景",
       "background_empty": "登録されたホーム背景がありません。",
       "section_system_options": "システムオプション",
+      "section_notifications": "通知オプション",
       "theme_aria": "{label}テーマを選択",
       "theme_title": "{label}テーマ",
       "color_aria": "{color}を選択",
@@ -170,8 +171,25 @@
       "sound": "効果音",
       "animation": "アニメーション",
       "haptic": "触覚フィードバック",
+      "notification_center": "通知センターの記録・バッジ表示",
       "toast": "トースト通知",
+      "push": "システム通知",
       "weather": "天気エフェクト"
+    },
+    "notifications": {
+      "center_label": "通知センターの記録・バッジ表示",
+      "marketing_label": "マーケティング通知への同意",
+      "marketing_save_failed": "マーケティング通知の同意を保存できませんでした。",
+      "push_status": {
+        "granted": "許可済み",
+        "default": "権限の許可が必要",
+        "denied": "ブラウザでブロック済み",
+        "unsupported": "この端末では未対応"
+      },
+      "permission_primer": {
+        "message": "新しいメッセージや返信を見逃さないよう、プッシュ通知をオンにしてください。",
+        "action": "通知をオンにする"
+      }
     },
     "weather_status": {
       "format": "{condition} · {temp}°C",
@@ -212,6 +230,7 @@
       "total_used": "累計使用",
       "attendance": "出席チェック",
       "attendance_loading": "処理中…",
+      "attendance_complete": "出席完了",
       "recent_title": "最近の取引",
       "loading_short": "読み込み中",
       "loading_rows": "クレジット履歴を読み込み中…",
@@ -241,6 +260,7 @@
       "filter_posts": "投稿",
       "filter_comments": "コメント",
       "filter_interactions": "受け取った反応",
+      "filter_reviews": "アプリレビュー",
       "likes_notice": "おすすめやいいねは、掲示板モジュールがデータを提供するとここに表示されます。",
       "admin_session_notice": "管理者アカウントでログインしています。以下の活動は、現在ログインしている会員基準で表示されます。",
       "loading": "投稿を読み込み中…",
@@ -255,12 +275,14 @@
     },
     "account": {
       "section_basic_title": "アカウント情報",
-      "section_basic_desc": "名前・メール・携帯番号を管理します。保存すると会員情報が更新されます。",
+      "section_basic_desc": "名前・メール・連絡先を管理します。保存すると会員情報が更新されます。",
+      "basic_locked_desc": "現在のアカウント情報を表示するには、パスワードを確認してください。",
+      "verify_and_show": "確認して表示",
       "loading": "アカウント情報を読み込み中…",
       "name": "名前",
       "email": "メール",
       "email_synthetic_hint": "メールが未登録です。通知や復旧のために実際のメールを追加してください。",
-      "mobile": "携帯番号",
+      "mobile": "連絡先",
       "mobile_placeholder": "010-0000-0000",
       "save_account": "アカウントを保存",
       "section_security_title": "セキュリティ",
@@ -575,12 +597,12 @@
     "hint": "アプリ名や投稿タイトルで検索できます。",
     "min_length": "検索語は2文字以上入力してください。",
     "result_count": "「{query}」の検索結果 {count}件",
-    "section_system_apps": "全体アプリ",
-    "section_generated_apps": "マイアプリ・公開アプリ",
+    "section_system_apps": "基本アプリ",
+    "section_generated_apps": "マイアプリ",
     "section_public_apps": "公開アプリ",
     "section_boards": "掲示板",
     "empty_system_apps": "一致するアプリがありません。",
-    "empty_generated_apps": "一致するマイアプリ・公開アプリがありません。",
+    "empty_generated_apps": "一致するマイアプリがありません。",
     "empty_public_apps": "一致する公開アプリがありません。",
     "empty_boards": "一致する投稿がありません。"
   },
@@ -613,11 +635,16 @@
     "hosted_modern_storage_prompt_option": "モダンUI/UX + オンライン・オフライン保存（推奨）",
     "hosted_modern_storage_prompt_addon": "モダンなデザインでUI/UXを設計してください。\nアプリサーバー保存では、オンライン（*.apps.mek360.com APIストレージ）とオフライン（localStorage）の両方に対応してください。",
     "models": {
-      "gemini_flash_lite": "Gemini 3.1 Flash-Lite",
       "claude_sonnet": "Claude Sonnet 4.6",
-      "gpt_chat_latest": "GPT-5.1 Chat",
-      "gpt4o": "GPT-5.1 Chat",
-      "gemini_flash": "Gemini 3.5 Flash"
+      "claude_haiku": "Claude Haiku 4.5",
+      "gpt_chat_latest": "GPT-5.3 Chat",
+      "gpt_chat_mini": "GPT-5.4 Mini",
+      "gpt_code": "GPT-5.4",
+      "gpt_code_mini": "GPT-5.4 Mini",
+      "gemini_flash": "Gemini 3.6 Flash",
+      "gemini_flash_lite": "Gemini 3.5 Flash-Lite",
+      "gemini_code": "Gemini 3.6 Flash",
+      "gemini_code_lite": "Gemini 3.5 Flash-Lite"
     },
     "generate": "生成",
     "modify": "変更内容を再生成",

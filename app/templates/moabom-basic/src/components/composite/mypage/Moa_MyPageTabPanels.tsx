@@ -38,6 +38,13 @@ export interface Moa_MyPageTabPanelsProps {
   systemDefaults: MoabomSystemDefaults | null;
   systemState: MoabomSystemState;
   onSystemStateChange: (next: MoabomSystemState) => void;
+  notificationPreferences: {
+    marketingEnabled: boolean;
+    marketingAvailable: boolean;
+    marketingLoading: boolean;
+    marketingSaving: boolean;
+    setMarketingConsent: (enabled: boolean) => Promise<void>;
+  };
   onOpenApp?: (app: App) => void;
   favoriteApps: App[];
   recentApps: App[];
@@ -70,6 +77,8 @@ export interface Moa_MyPageTabPanelsProps {
       setSubtitleMode: (value: PresenceSubtitleMode) => void;
       showAvatarInConnectList: boolean;
       setShowAvatarInConnectList: (value: boolean) => void;
+      acceptChatRequests: boolean;
+      setAcceptChatRequests: (value: boolean) => void;
       loading: boolean;
       saving: boolean;
       error: string | null;
@@ -83,6 +92,7 @@ export interface Moa_MyPageTabPanelsProps {
     creditHasMore?: boolean;
     creditError: string;
     attendanceLoading: boolean;
+    attendanceChecked: boolean;
     attendanceMessage: string;
     onAttendanceCheck: () => void;
     onLoadMoreCredits?: () => void;
@@ -104,6 +114,14 @@ export interface Moa_MyPageTabPanelsProps {
   };
   account: {
     socialProviderLabel: string | null;
+    accountInfoPassword: string;
+    setAccountInfoPassword: (value: string) => void;
+    accountInfoVerified: boolean;
+    setAccountInfoVerified: (value: boolean) => void;
+    accountInfoSubmitting: boolean;
+    accountInfoMessage: { type: 'error'; text: string } | null;
+    setAccountInfoMessage: (value: { type: 'error'; text: string } | null) => void;
+    onVerifyAccountInfoPassword: () => void;
     securityPanel: 'none' | 'password' | 'withdraw';
     setSecurityPanel: (panel: 'none' | 'password' | 'withdraw') => void;
     securityCurrentPassword: string;
@@ -134,6 +152,7 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
   systemDefaults,
   systemState,
   onSystemStateChange,
+  notificationPreferences,
   onOpenApp,
   favoriteApps,
   recentApps,
@@ -214,7 +233,9 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
           { id: 'sound', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.sound, user_editable: true },
           { id: 'animation', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.animation, user_editable: true },
           { id: 'haptic', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.haptic, user_editable: true },
+          { id: 'notification_center', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.notification_center, user_editable: true },
           { id: 'toast', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.toast, user_editable: true },
+          { id: 'push', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.push, user_editable: true },
           { id: 'weather', label: '', on_by_default: DEFAULT_MOABOM_SYSTEM.preferences.systemOptions.weather, user_editable: true },
         ]).map(opt => {
           const tk = `moa_mypage.system_options.${opt.id}`;
@@ -222,6 +243,7 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
           return { ...opt, label: tr !== tk ? tr : opt.label || opt.id };
         })}
         onChange={onSystemStateChange}
+        marketingConsent={notificationPreferences}
       />
     );
   }
@@ -237,6 +259,7 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
         creditHasMore={credit.creditHasMore}
         creditError={credit.creditError}
         attendanceLoading={credit.attendanceLoading}
+        attendanceChecked={credit.attendanceChecked}
         attendanceMessage={credit.attendanceMessage}
         onAttendanceCheck={credit.onAttendanceCheck}
         onLoadMoreCredits={credit.onLoadMoreCredits}
@@ -296,6 +319,14 @@ export const Moa_MyPageTabPanels: React.FC<Moa_MyPageTabPanelsProps> = ({
       profileErr={profile.profileErr}
       profileSaveSubmitting={profile.profileSaveSubmitting}
       socialProviderLabel={account.socialProviderLabel}
+      accountInfoPassword={account.accountInfoPassword}
+      setAccountInfoPassword={account.setAccountInfoPassword}
+      accountInfoVerified={account.accountInfoVerified}
+      setAccountInfoVerified={account.setAccountInfoVerified}
+      accountInfoSubmitting={account.accountInfoSubmitting}
+      accountInfoMessage={account.accountInfoMessage}
+      setAccountInfoMessage={account.setAccountInfoMessage}
+      onVerifyAccountInfoPassword={account.onVerifyAccountInfoPassword}
       securityPanel={account.securityPanel}
       setSecurityPanel={account.setSecurityPanel}
       securityCurrentPassword={account.securityCurrentPassword}

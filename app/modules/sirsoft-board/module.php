@@ -830,15 +830,67 @@ class Module extends AbstractModule
      */
     public function getNotificationDefinitions(): array
     {
-        return [
-            $this->newCommentDefinition(),
-            $this->replyCommentDefinition(),
-            $this->postReplyDefinition(),
-            $this->postActionDefinition(),
-            $this->newPostAdminDefinition(),
-            $this->reportReceivedAdminDefinition(),
-            $this->reportActionDefinition(),
-        ];
+        return array_map(
+            fn (array $definition): array => $this->withFcmPushChannel($definition),
+            [
+                $this->newCommentDefinition(),
+                $this->replyCommentDefinition(),
+                $this->postReplyDefinition(),
+                $this->postActionDefinition(),
+                $this->newPostAdminDefinition(),
+                $this->reportReceivedAdminDefinition(),
+                $this->reportActionDefinition(),
+            ],
+        );
+    }
+
+    /**
+     * database 템플릿을 복제해 fcm 채널을 추가한다 (관리자 알림설정·오프라인 푸시).
+     *
+     * @param  array<string, mixed>  $definition
+     * @return array<string, mixed>
+     */
+    private function withFcmPushChannel(array $definition): array
+    {
+        $channels = $definition['channels'] ?? [];
+        if (! is_array($channels)) {
+            $channels = [];
+        }
+        if (! in_array('fcm', $channels, true)) {
+            $channels[] = 'fcm';
+        }
+        $definition['channels'] = $channels;
+
+        $templates = $definition['templates'] ?? [];
+        if (! is_array($templates)) {
+            return $definition;
+        }
+
+        foreach ($templates as $template) {
+            if (($template['channel'] ?? null) === 'fcm') {
+                $definition['templates'] = $templates;
+
+                return $definition;
+            }
+        }
+
+        $databaseTemplate = null;
+        foreach ($templates as $template) {
+            if (($template['channel'] ?? null) === 'database') {
+                $databaseTemplate = $template;
+                break;
+            }
+        }
+
+        if (is_array($databaseTemplate)) {
+            $fcmTemplate = $databaseTemplate;
+            $fcmTemplate['channel'] = 'fcm';
+            $templates[] = $fcmTemplate;
+        }
+
+        $definition['templates'] = $templates;
+
+        return $definition;
     }
 
     /**
@@ -905,7 +957,7 @@ class Module extends AbstractModule
             'hook_prefix' => 'sirsoft-board',
             'name' => ['ko' => '대댓글 알림', 'en' => 'Reply Comment Notification'],
             'description' => ['ko' => '댓글에 대댓글이 작성되면 댓글 작성자에게 발송', 'en' => 'Sent to comment author when a reply is posted'],
-            'channels' => ['mail', 'database'],
+            'channels' => ['mail', 'database', 'fcm'],
             'hooks' => ['sirsoft-board.comment.after_create'],
             'variables' => [
                 ['key' => 'name', 'description' => '수신자 이름'],
@@ -945,6 +997,13 @@ class Module extends AbstractModule
                     'body' => ['ko' => '{comment_author}님이 \'{board_name}\'의 댓글에 답글을 남겼습니다.', 'en' => '{comment_author} replied to your comment in \'{board_name}\'.'],
                     'click_url' => '{post_url}',
                 ],
+                [
+                    'channel' => 'fcm',
+                    'recipients' => [['type' => 'related_user', 'relation' => 'parent_comment_author', 'exclude_trigger_user' => true]],
+                    'subject' => ['ko' => '댓글에 답글이 달렸습니다', 'en' => 'New reply to your comment'],
+                    'body' => ['ko' => '{comment_author}님이 \'{board_name}\'의 댓글에 답글을 남겼습니다.', 'en' => '{comment_author} replied to your comment in \'{board_name}\'.'],
+                    'click_url' => '{post_url}',
+                ],
             ],
         ];
     }
@@ -959,7 +1018,7 @@ class Module extends AbstractModule
             'hook_prefix' => 'sirsoft-board',
             'name' => ['ko' => '답변글 알림', 'en' => 'Post Reply Notification'],
             'description' => ['ko' => '게시글에 답변글이 작성되면 원글 작성자에게 발송', 'en' => 'Sent to original post author when a reply post is created'],
-            'channels' => ['mail', 'database'],
+            'channels' => ['mail', 'database', 'fcm'],
             'hooks' => ['sirsoft-board.post.after_create'],
             'variables' => [
                 ['key' => 'name', 'description' => '수신자 이름'],
@@ -990,6 +1049,13 @@ class Module extends AbstractModule
                 ],
                 [
                     'channel' => 'database',
+                    'recipients' => [['type' => 'related_user', 'relation' => 'original_post_author', 'exclude_trigger_user' => true]],
+                    'subject' => ['ko' => '게시글에 답변이 등록되었습니다', 'en' => 'A reply has been posted to your post'],
+                    'body' => ['ko' => '\'{board_name}\'의 게시글 \'{post_title}\'에 답변이 등록되었습니다.', 'en' => 'A reply has been posted to your post \'{post_title}\' in \'{board_name}\'.'],
+                    'click_url' => '{post_url}',
+                ],
+                [
+                    'channel' => 'fcm',
                     'recipients' => [['type' => 'related_user', 'relation' => 'original_post_author', 'exclude_trigger_user' => true]],
                     'subject' => ['ko' => '게시글에 답변이 등록되었습니다', 'en' => 'A reply has been posted to your post'],
                     'body' => ['ko' => '\'{board_name}\'의 게시글 \'{post_title}\'에 답변이 등록되었습니다.', 'en' => 'A reply has been posted to your post \'{post_title}\' in \'{board_name}\'.'],

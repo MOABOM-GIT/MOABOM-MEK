@@ -25,6 +25,7 @@ run_gate "core-patches" bash "${ROOT}/deploy/check-core-patches.sh"
 run_gate "g7-core-guards" bash "${ROOT}/deploy/check-g7-core-guard-regression.sh"
 run_gate "bundled-detach" bash "${ROOT}/deploy/check-bundled-detach-regression.sh"
 run_gate "core-sync" bash "${ROOT}/deploy/check-core-sync-regression.sh"
+run_gate "admin-semantic-css" bash "${ROOT}/deploy/sync-g7-admin-semantic-css.sh" --check
 run_gate "upstream-dry-run" bash "${ROOT}/deploy/dry-run-upstream-patches.sh"
 
 echo ""

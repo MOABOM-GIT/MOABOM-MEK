@@ -3,6 +3,8 @@
 namespace Modules\Moabom\Chat\Providers;
 
 use App\Extension\BaseModuleServiceProvider;
+use App\Extension\HookManager;
+use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Modules\Moabom\Chat\Contracts\ChatRepositoryInterface;
@@ -31,6 +33,7 @@ class ChatServiceProvider extends BaseModuleServiceProvider
         parent::boot();
 
         $this->registerChatChannels();
+        $this->registerRealtimeStateHook();
         $this->app->booted(fn (): mixed => $this->registerMissingUserRoutes());
     }
 
@@ -74,5 +77,21 @@ class ChatServiceProvider extends BaseModuleServiceProvider
 
             return app(ChatService::class)->canAccessConversation($user, $conversationUuid);
         });
+    }
+
+    private function registerRealtimeStateHook(): void
+    {
+        HookManager::addFilter('moabom.user_realtime_state', function (
+            array $state,
+            User $user,
+            array $domains = ['notifications', 'chat', 'presence'],
+        ): array {
+            if (! in_array('chat', $domains, true)) {
+                return $state;
+            }
+            $state['chat'] = app(ChatService::class)->listConversations($user);
+
+            return $state;
+        }, 20, 3);
     }
 }

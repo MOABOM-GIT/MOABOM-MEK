@@ -11,8 +11,16 @@ import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
 import { Moa_OverflowMarqueeText } from './Moa_OverflowMarqueeText';
 import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
-import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
+import {
+  brandedAppIconClassName,
+  brandedTitleGradientClassName,
+  getBrandedShellCssVars,
+  isBrandedShellAppId,
+} from '../../apps/brandedShellChrome';
+import { isGeneratedLibraryAppId, parseGeneratedLibraryServerId } from '../../apps/generatedAppLibrary';
 import { warmMoabomShellAppChunk, hasMoabomShellAppChunk } from '../../apps';
+import { loadVisibleGeneratedAppSession } from '../../apps/generated/generatedAppVisibleSessionCache';
+import { useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
 
 /** 서브타이틀 마퀴 허용 최대 글자 수 — 초과 시 말줄임만 */
@@ -46,8 +54,10 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
   onDeleteApp,
 }) => {
   const { t } = useMoabomShellT();
+  const authStateKey = useShellAuthStateKey();
   const { name: displayName, description: displayDescription } = useResolvedAppStrings(app);
   const isCreateApp = app.id === createAppShellMetadata.id;
+  const isBrandedApp = isBrandedShellAppId(app.id);
   const isGeneratedApp = isGeneratedLibraryAppId(app.id);
   const {
     attributes,
@@ -78,13 +88,22 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
   }, [editMode, app, onOpenApp, wasLongPress]);
 
   const handlePointerEnter = useCallback(() => {
-    if (editMode || isGeneratedApp) {
+    if (editMode) {
+      return;
+    }
+    if (isGeneratedApp) {
+      const serverId = parseGeneratedLibraryServerId(app.id);
+      if (serverId != null) {
+        void loadVisibleGeneratedAppSession(serverId, authStateKey, { includeHtml: false }).catch(() => {
+          // hover warm — 실패는 오픈 시 Viewer 가 처리
+        });
+      }
       return;
     }
     if (hasMoabomShellAppChunk(app.id)) {
       warmMoabomShellAppChunk(app.id);
     }
-  }, [app.id, editMode, isGeneratedApp]);
+  }, [app.id, authStateKey, editMode, isGeneratedApp]);
 
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
@@ -138,20 +157,20 @@ export const DraggableAppIcon: React.FC<DraggableAppIconProps> = ({
         draggable={false}
         style={{
           cursor: editMode ? 'grab' : 'pointer',
-          ...(isCreateApp ? getCreateAppShellCssVars() : {}),
+          ...(isBrandedApp ? getBrandedShellCssVars(app.id) : {}),
         }}
       >
         <Moa_GeneratedAppIconShell
           app={app}
-          isCreateApp={isCreateApp}
+          isCreateApp={isBrandedApp}
           showUserBadge={isGeneratedApp}
           badgeSize="lg"
-          iconClassName={`${isCreateApp ? 'create-app-icon' : ''} moa-main-app-icon rounded-3xl shadow-lg group-hover:shadow-xl transition-shadow`}
-          symbolClassName={`moa-main-app-symbol text-white drop-shadow ${isCreateApp ? 'relative z-[1]' : ''}`}
+          iconClassName={`${brandedAppIconClassName(app.id)} moa-main-app-icon rounded-3xl shadow-lg group-hover:shadow-xl transition-shadow`}
+          symbolClassName={`moa-main-app-symbol text-white drop-shadow ${isBrandedApp ? 'relative z-[1]' : ''}`}
         />
         <Div className="text-center w-full min-w-0">
           <Span
-            className={`moa-app-icon-label ${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-main-app-title font-bold leading-tight`}
+            className={`moa-app-icon-label ${isBrandedApp ? brandedTitleGradientClassName(app.id) || 'create-app-title-gradient' : 'text-primary'} moa-main-app-title font-bold leading-tight`}
             title={displayName}
           >
             {displayName}

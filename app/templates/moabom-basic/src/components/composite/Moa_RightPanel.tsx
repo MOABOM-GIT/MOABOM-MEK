@@ -54,6 +54,8 @@ export interface RightPanelProps {
   rightOffset: number;
   /** 로그인 상태 */
   isLoggedIn: boolean;
+  /** 알림센터 기록·배지의 effective 사용자 설정 */
+  notificationCenterEnabled?: boolean;
   /** 현재 사용자 정보 */
   currentUser: { name: string; level: number; point: number; avatar?: string | null; is_admin?: boolean; is_super?: boolean } | null;
   /** 마이페이지 윈도우 열기 */
@@ -97,7 +99,7 @@ const PRESENCE_ROW_ACTION_BUTTON_CLASS =
 interface PresenceUserActionsMenuProps {
   userUuid: string;
   displayName: string;
-  friendship?: 'none' | 'outgoing_pending' | 'incoming_pending' | 'accepted';
+  friendship?: 'none' | 'outgoing_pending' | 'incoming_pending' | 'accepted' | 'blocked';
   isLoggedIn: boolean;
   onOpenShellSurface?: (action: ShellSurfaceOpenAction) => void;
   onAddFriend: (userUuid: string) => void | Promise<void>;
@@ -289,6 +291,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   width,
   rightOffset,
   isLoggedIn,
+  notificationCenterEnabled = true,
   currentUser,
   onOpenMyPage,
   onOpenAuth,
@@ -337,7 +340,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     reloadList: reloadNotifications,
   } = useMoabomShellNotifications({
     isLoggedIn,
-    alarmTabActive: settledRightTab === 'alarm',
+    alarmTabActive: rightTab === 'alarm',
     newNotificationToastText: t('moa_shell.right.new_notification_received'),
     newNotificationOpenText: t('moa_shell.right.notification_open'),
   });
@@ -354,8 +357,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     addFriend,
     acceptFriend,
   } = useMoabomPresence({
-    connectTabActive: settledRightTab === 'connect',
-    friendTabActive: settledRightTab === 'friend',
+    connectTabActive: rightTab === 'connect',
+    friendTabActive: rightTab === 'friend',
   });
 
   const onlineSummaryLabel = t('moa_shell.right.online_summary_live', {
@@ -392,11 +395,20 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   }, [profileLevel.level]);
 
   const rightTabsWithBadges = useMemo(
-    () => rightTabs.map(tab => (tab.id === 'alarm' ? { ...tab, badge: unreadCount } : tab)),
-    [rightTabs, unreadCount],
+    () => rightTabs.map(tab => (
+      tab.id === 'alarm'
+        ? { ...tab, badge: notificationCenterEnabled ? unreadCount : 0 }
+        : tab
+    )),
+    [notificationCenterEnabled, rightTabs, unreadCount],
   );
 
-  const handleRightTabChange = useShellSubTabSelect(rightTab, settledRightTab, setRightTab, tabId => {
+  const handleRightTabChange = useShellSubTabSelect(rightTab, settledRightTab, setRightTab, (tabId, reason) => {
+    // 탭 변경 시 데이터 로드는 각 Provider의 active-tab effect가 단독 소유한다.
+    // 여기서는 이미 열린 탭을 다시 누른 명시적 새로고침만 처리한다.
+    if (reason !== 'reselect') {
+      return;
+    }
     if (tabId === 'connect') {
       void refreshOnline();
     } else if (tabId === 'friend') {
@@ -576,7 +588,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {rightTab === 'connect' && (
                 <Div className="py-3">
                   <>
-                    <Span className="text-xs text-muted px-1 block">{onlineSummaryLabel}</Span>
+                    <Div className="flex items-center gap-2 px-1">
+                      <Span className="text-xs text-muted">{onlineSummaryLabel}</Span>
+                      {loadingOnline ? (
+                        <Span
+                          className="moa-panel-placeholder-spinner moa-panel-placeholder-spinner--inline shrink-0"
+                          role="status"
+                          aria-busy="true"
+                          aria-label={t('moa_shell.right.presence_loading')}
+                        />
+                      ) : null}
+                    </Div>
                     {loadingOnline && onlineUsers.length === 0 && (
                       <Moa_PanelLoadingState label={t('moa_shell.right.presence_loading')} />
                     )}
@@ -662,7 +684,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {rightTab === 'friend' && (
                 <Div className="py-3">
                   <>
-                    <Span className="text-xs text-muted px-1 block">{friendsSummaryLabel}</Span>
+                    <Div className="flex items-center gap-2 px-1">
+                      <Span className="text-xs text-muted">{friendsSummaryLabel}</Span>
+                      {isLoggedIn && loadingFriends ? (
+                        <Span
+                          className="moa-panel-placeholder-spinner moa-panel-placeholder-spinner--inline shrink-0"
+                          role="status"
+                          aria-busy="true"
+                          aria-label={t('moa_shell.right.presence_loading')}
+                        />
+                      ) : null}
+                    </Div>
                     {!isLoggedIn && (
                       <Moa_PanelEmptyState
                         icon="lock"

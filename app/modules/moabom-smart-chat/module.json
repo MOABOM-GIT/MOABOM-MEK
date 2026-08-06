@@ -1,0 +1,22 @@
+{
+    "identifier": "moabom-smart-chat",
+    "vendor": "moabom",
+    "name": {
+        "ko": "AI 스마트챗",
+        "en": "AI Smart Chat"
+    },
+    "version": "0.8.7",
+    "license": "MIT",
+    "description": {
+        "ko": "AI 스마트챗 — 메모리·폴더·공유·토큰 과금까지 포함",
+        "en": "AI Smart Chat — memory, folders, share links, token billing"
+    },
+    "g7_version": ">=7.0.0-beta.1,<8.0.0",
+    "dependencies": {
+        "modules": {
+            "moabom-apps": ">=0.1.0",
+            "moabom-credit": ">=0.2.0"
+        },
+        "plugins": {}
+    }
+}

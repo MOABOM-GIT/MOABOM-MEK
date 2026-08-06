@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type StoredGeneratedApp } from '../../api/moabomAppsApi';
 import { loadVisibleGeneratedAppSession, invalidateVisibleGeneratedAppSession } from './generatedAppVisibleSessionCache';
+import { peekGeneratedAppOpenSeed } from './generatedAppOpenSeed';
 import { pickGeneratedAppDisplayTitle } from './resolveGeneratedAppDisplayTitle';
 import { useMoabomShellT } from 'moabom-shell-i18n';
 import AppLoadingSpinner from '../../components/composite/AppLoadingSpinner';
@@ -20,6 +21,7 @@ import {
 import {
   isWebsiteLinkAppType,
   isWebsiteLinkNewWindowLaunch,
+  normalizeWebsiteUrl,
 } from '../ai-generator/websiteLinkApp';
 import { useGeneratedAppToolbarDrag } from './useGeneratedAppToolbarDrag';
 import { GeneratedAppVersionHistoryPanel } from './versionHistory/GeneratedAppVersionHistoryPanel';
@@ -35,7 +37,9 @@ const HEARTBEAT_WATCH_INTERVAL_MS = 2000;
 const HEARTBEAT_FROZEN_THRESHOLD_MS = 6000;
 // 첫 멈춤은 조용히 자동 재시작하고, 재시작 후에도 다시 멈추면 사용자에게 수동 재시작을 노출한다.
 const MAX_AUTO_RELOAD = 1;
-// iframe HTML·주입 스크립트·앱 JS 부트 대기 — 초과 시 빈 화면 고착 방지.
+// iframe onLoad 직후 pong/probe 전에도 오버레이를 일찍 내려 체감 지연을 줄인다.
+const FRAME_READY_SOFT_MS = 180;
+// pong·probe 미수신 시 절대 폴백 — 초과 시 빈 화면 고착 방지.
 const FRAME_READY_FALLBACK_MS = 8_000;
 
 export interface GeneratedAppViewerProps {
@@ -79,6 +83,7 @@ export function GeneratedAppViewer({
   const lastPongRef = useRef(0);
   const autoReloadCountRef = useRef(0);
   const frameReadyFallbackRef = useRef<number | null>(null);
+  const frameReadySoftRef = useRef<number | null>(null);
   const externalWindowRef = useRef<Window | null>(null);
   const {
     toolbarStyle,
@@ -89,12 +94,20 @@ export function GeneratedAppViewer({
     shouldSuppressOwnerClick,
   } = useGeneratedAppToolbarDrag(containerRef, toolbarRef);
 
+  const clearFrameReadySoft = useCallback(() => {
+    if (frameReadySoftRef.current != null) {
+      window.clearTimeout(frameReadySoftRef.current);
+      frameReadySoftRef.current = null;
+    }
+  }, []);
+
   const clearFrameReadyFallback = useCallback(() => {
     if (frameReadyFallbackRef.current != null) {
       window.clearTimeout(frameReadyFallbackRef.current);
       frameReadyFallbackRef.current = null;
     }
-  }, []);
+    clearFrameReadySoft();
+  }, [clearFrameReadySoft]);
 
   const markFrameReady = useCallback(() => {
     setIsFrameReady(prev => {
@@ -144,9 +157,42 @@ export function GeneratedAppViewer({
     setFrameUrl(null);
     setTitle('');
 
+    // 카탈로그 seed 로 website_link iframe 을 API 완료 전에 시작한다.
+    const openSeed = peekGeneratedAppOpenSeed(serverId);
+    if (openSeed?.title?.trim()) {
+      setTitle(openSeed.title.trim());
+    }
+    if (
+      isWebsiteLinkAppType(openSeed?.appType)
+      && typeof openSeed?.websiteUrl === 'string'
+      && openSeed.websiteUrl.trim()
+    ) {
+      const isNewWindow = isWebsiteLinkNewWindowLaunch({
+        launch_mode: openSeed.launchMode,
+      });
+      if (isNewWindow) {
+        setIsFrameReady(true);
+        setIsLoading(false);
+      } else {
+        const seededUrl = normalizeWebsiteUrl(openSeed.websiteUrl);
+        if (seededUrl) {
+          setFrameUrl(seededUrl);
+          setIsLoading(false);
+        }
+      }
+    } else if (
+      !isWebsiteLinkAppType(openSeed?.appType)
+      && typeof openSeed?.previewUrl === 'string'
+      && openSeed.previewUrl.trim()
+    ) {
+      // 공개 standard AI 앱: 토큰 없는 프리뷰 URL 로 show 완료 전 iframe 병렬 시작.
+      // show 는 타이틀·권한·메타를 채우며 동일 URL 로 재확정(멱등).
+      setFrameUrl(openSeed.previewUrl.trim());
+    }
+
     void (async () => {
       try {
-        const loaded = await loadVisibleGeneratedAppSession(serverId, authStateKey);
+        const loaded = await loadVisibleGeneratedAppSession(serverId, authStateKey, { includeHtml: false });
         if (cancelled) {
           return;
         }
@@ -157,7 +203,8 @@ export function GeneratedAppViewer({
         ) || t('moa_apps_ai.untitled_app');
         setTitle(resolvedTitle);
         onResolvedTitle?.(resolvedTitle);
-        setFrameUrl(resolveGeneratedAppFrameUrl(loaded));
+        const nextFrameUrl = resolveGeneratedAppFrameUrl(loaded);
+        setFrameUrl(nextFrameUrl);
         if (
           isWebsiteLinkAppType(loaded.app_type)
           && isWebsiteLinkNewWindowLaunch(loaded.metadata as Record<string, unknown> | undefined)
@@ -323,10 +370,20 @@ export function GeneratedAppViewer({
       markFrameReady();
       return;
     }
-    // AI/Standard/Hosted 프리뷰 — 주입 스크립트 생존 신호(backdrop-tone·pong)까지 오버레이 유지.
+    // AI/Standard/Hosted 프리뷰 — pong/probe 가 오면 즉시 ready. 없어도 soft 후 오버레이 해제.
     postHeartbeatPing();
     window.setTimeout(requestBackdropProbe, 140);
-  }, [isWebsiteLinkApp, markFrameReady, postHeartbeatPing, requestBackdropProbe]);
+    clearFrameReadySoft();
+    frameReadySoftRef.current = window.setTimeout(() => {
+      markFrameReady();
+    }, FRAME_READY_SOFT_MS);
+  }, [
+    clearFrameReadySoft,
+    isWebsiteLinkApp,
+    markFrameReady,
+    postHeartbeatPing,
+    requestBackdropProbe,
+  ]);
 
   const restartFrame = useCallback(() => {
     autoReloadCountRef.current = 0;

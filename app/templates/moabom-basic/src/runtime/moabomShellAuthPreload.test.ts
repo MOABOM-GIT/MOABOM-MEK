@@ -153,6 +153,43 @@ describe('ensureMoabomShellAuthPreloaded', () => {
     expect(removeToken).not.toHaveBeenCalled();
   });
 
+  it('preloadAuth 가 이미 /api/auth/user 를 치면 probe 를 생략한다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(401));
+    const removeToken = vi.fn();
+    const preloadAuth = vi.fn(async () => {
+      await fetch(MOABOM_SHELL_AUTH_USER_ENDPOINT, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer tok',
+        },
+      });
+      return false;
+    });
+    vi.stubGlobal('localStorage', {
+      getItem: () => 'tok',
+      removeItem: vi.fn(),
+    });
+    (window as { G7Core?: unknown }).G7Core = {
+      api: { getToken: () => 'tok', removeToken },
+      AuthManager: {
+        getInstance: () => ({
+          isAuthenticated: () => false,
+          getUser: () => null,
+          preloadAuth,
+          checkAuth: vi.fn(),
+        }),
+      },
+    };
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await ensureMoabomShellAuthPreloaded();
+
+    expect(result).toBe('unauthorized');
+    expect(removeToken).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('ready 캐시가 있으면 두 번째 ensure 는 preloadAuth 를 다시 치지 않는다', async () => {
     const preloadAuth = vi.fn().mockResolvedValue(true);
     vi.stubGlobal('localStorage', {

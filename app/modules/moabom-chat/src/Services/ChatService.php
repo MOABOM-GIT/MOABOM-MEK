@@ -6,6 +6,7 @@ use App\Contracts\Extension\CacheInterface;
 use App\Extension\HookManager;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
 use Modules\Moabom\Chat\Contracts\ChatRepositoryInterface;
 use Modules\Moabom\Chat\Enums\ChatConversationType;
 use Modules\Moabom\Chat\Models\ChatConversation;
@@ -193,7 +194,7 @@ final class ChatService
         HookManager::broadcast(
             $this->conversationChannelName($conversation),
             'message.created',
-            [
+            $this->eventEnvelope('chat.message', (int) $message->id, (string) $message->uuid) + [
                 'message' => $this->serializeMessage($message),
                 'conversation_uuid' => $conversation->uuid,
                 'last_message_at' => $conversation->last_message_at?->toIso8601String(),
@@ -252,7 +253,7 @@ final class ChatService
         HookManager::broadcast(
             "core.user.notifications.{$viewer->uuid}",
             'chat.inbox.updated',
-            [
+            $this->eventEnvelope('chat.inbox', null, (string) Str::uuid()) + [
                 'conversation_uuid' => $conversation->uuid,
                 'reason' => 'member.left.self',
                 'removed' => true,
@@ -323,8 +324,14 @@ final class ChatService
         HookManager::broadcast(
             $this->conversationChannelName($conversation),
             'message.deleted',
-            $payload,
+            $this->eventEnvelope('chat.message', (int) $message->id, (string) Str::uuid()) + $payload,
         );
+        $conversation = $conversation->refresh()->load([
+            'members.user',
+            'membersIncludingTrashed.user',
+            'latestMessage.sender',
+        ]);
+        $this->broadcastInboxStateToActiveMembers($conversation, 'message.deleted');
 
         return $payload;
     }
@@ -369,7 +376,19 @@ final class ChatService
         HookManager::broadcast(
             $this->conversationChannelName($conversation),
             'conversation.read',
-            $payload,
+            $this->eventEnvelope('chat.read', (int) ($member?->last_read_message_id ?? 0), (string) Str::uuid()) + $payload,
+        );
+        HookManager::broadcast(
+            "core.user.notifications.{$viewer->uuid}",
+            'chat.inbox.updated',
+            $this->eventEnvelope('chat.inbox', (int) ($member?->last_read_message_id ?? 0), (string) Str::uuid()) + [
+                'conversation_uuid' => $conversation->uuid,
+                'conversation' => $this->serializeConversation(
+                    $conversation->refresh()->load(['members.user', 'membersIncludingTrashed.user', 'latestMessage.sender']),
+                    $viewer,
+                ),
+                'reason' => 'conversation.read',
+            ],
         );
 
         return $payload;
@@ -444,11 +463,18 @@ final class ChatService
             HookManager::broadcast(
                 "core.user.notifications.{$recipient->uuid}",
                 'chat.inbox.updated',
-                [
+                $this->eventEnvelope(
+                    'chat.inbox',
+                    (int) $message->id,
+                    "chat:message:{$message->uuid}:{$recipient->uuid}",
+                ) + [
                     'conversation_uuid' => $conversation->uuid,
                     'message' => $serializedMessage,
                     'conversation' => $this->serializeConversation($conversation, $recipient),
                     'last_message_at' => $lastMessageAt,
+                    'message_uuid' => $message->uuid,
+                    'notification_expected' => ! $this->isMemberMuted($member)
+                        && ! $this->isFocusedOnConversation($recipient, $conversation->uuid),
                 ],
             );
         }
@@ -465,7 +491,7 @@ final class ChatService
             HookManager::broadcast(
                 "core.user.notifications.{$recipient->uuid}",
                 'chat.inbox.updated',
-                [
+                $this->eventEnvelope('chat.inbox', null, (string) Str::uuid()) + [
                     'conversation_uuid' => $conversation->uuid,
                     'conversation' => $this->serializeConversation($conversation, $recipient),
                     'reason' => $reason,
@@ -647,7 +673,7 @@ final class ChatService
         HookManager::broadcast(
             $this->conversationChannelName($conversation),
             'conversation.member_left',
-            [
+            $this->eventEnvelope('chat.member', null, (string) Str::uuid()) + [
                 'conversation_uuid' => $conversation->uuid,
                 'user_uuid' => $whoLeft->uuid,
             ],
@@ -747,6 +773,21 @@ final class ChatService
     private function focusCache(): CacheInterface
     {
         return $this->cache->withStore('database');
+    }
+
+    /**
+     * @return array{event_id: string, domain: string, revision: int, occurred_at: string}
+     */
+    private function eventEnvelope(string $domain, ?int $revision = null, ?string $eventId = null): array
+    {
+        $occurredAt = now();
+
+        return [
+            'event_id' => $eventId ?: (string) Str::uuid(),
+            'domain' => $domain,
+            'revision' => $revision ?? (int) $occurredAt->format('Uv'),
+            'occurred_at' => $occurredAt->toIso8601String(),
+        ];
     }
 
     private function tenantId(): string

@@ -1,0 +1,15 @@
+{
+    "name": "modules/moabom-smart-chat",
+    "description": "Moabom AI Smart Chat module for Gnuboard7",
+    "type": "library",
+    "version": "0.8.6",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Moabom\\Smart\\Chat\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

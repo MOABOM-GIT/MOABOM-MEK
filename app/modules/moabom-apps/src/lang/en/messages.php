@@ -6,6 +6,10 @@ return [
             'generate_success' => 'Generated AI app HTML.',
             'stream_started' => 'Started streaming AI app HTML.',
             'continue_default_prompt' => 'Continue and complete the remaining HTML from where it was cut off.',
+            'credit' => [
+                'spend_description' => 'AI App Builder usage',
+                'insufficient' => 'Insufficient credits.',
+            ],
             'session_fetch_success' => 'Loaded the AI generation session.',
             'session_not_found' => 'AI generation session not found.',
             'session_resume_available' => 'A session is available to resume.',
@@ -81,6 +85,10 @@ return [
         'community' => [
             'summary_success' => 'Loaded app community summary.',
             'list_success' => 'Loaded app community posts.',
+            'my_reviews_success' => 'Loaded your app reviews.',
+            'my_review_label' => 'App review',
+            'rating_meta' => 'Rating: :rating',
+            'unknown_app' => 'Unknown app',
             'show_success' => 'Loaded the app community post.',
             'create_success' => 'Posted your review.',
             'update_success' => 'Updated your review.',

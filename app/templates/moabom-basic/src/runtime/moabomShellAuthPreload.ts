@@ -6,7 +6,11 @@
  * TemplateApp preloadAuth 와의 합류는 `installMoabomShellAuthSingleFlight` (preloadAuth 단일 비행).
  */
 
-import { clearShellAccessToken, getShellAccessToken } from '../api/moabomShellAccess';
+import {
+  clearShellAccessToken,
+  getShellAccessScopeKey,
+  getShellAccessToken,
+} from '../api/moabomShellAccess';
 import { installMoabomShellAuthSingleFlight } from './moabomShellAuthSingleFlight';
 
 interface AuthManagerSnapshot {
@@ -19,6 +23,10 @@ export type ShellAuthPreloadResult = 'ready' | 'guest' | 'unauthorized' | 'trans
 
 /** ApiClient baseURL(`/api`) + AuthManager userEndpoint 와 동일 */
 const USER_AUTH_ENDPOINT = '/api/auth/user';
+/** Cloud Run upstream 504(15s) 전에 클라이언트에서 끊는다 */
+const AUTH_PRELOAD_TIMEOUT_MS = 8_000;
+/** preloadAuth 내부 fetch 캡처 재사용 허용 창 */
+const CAPTURED_STATUS_TTL_MS = 2_000;
 
 const CACHEABLE_RESULTS: ReadonlySet<ShellAuthPreloadResult> = new Set([
   'ready',
@@ -34,15 +42,97 @@ function getAuthManager(): AuthManagerSnapshot | null {
   return manager ?? null;
 }
 
-let authPreloadPromise: Promise<ShellAuthPreloadResult> | null = null;
-let authPreloadCached: ShellAuthPreloadResult | null = null;
+let authPreloadPromise: {
+  scopeKey: string;
+  promise: Promise<ShellAuthPreloadResult>;
+} | null = null;
+let authPreloadCached: {
+  scopeKey: string;
+  result: ShellAuthPreloadResult;
+} | null = null;
+let lastCapturedAuthUser: {
+  scopeKey: string;
+  status: number | null;
+  at: number;
+} | null = null;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
+function isAuthUserUrl(raw: string): boolean {
+  try {
+    const path = new URL(raw, window.location.origin).pathname;
+    return path === USER_AUTH_ENDPOINT || path === '/auth/user';
+  } catch {
+    return raw.includes(USER_AUTH_ENDPOINT) || raw.endsWith('/auth/user');
+  }
+}
+
+function rememberAuthUserResponse(response: Response, scopeKey = getShellAccessScopeKey()): void {
+  const contentType = response.headers.get('content-type') ?? '';
+  lastCapturedAuthUser = {
+    scopeKey,
+    status: contentType.includes('application/json') ? response.status : null,
+    at: Date.now(),
+  };
+}
+
+/**
+ * preloadAuth(checkAuth) 가 이미 친 /api/auth/user 응답 상태를 캡처한다.
+ * 실패 후 동일 RTT probe 를 한 번 더 치지 않기 위함.
+ */
+async function withAuthUserStatusCapture<T>(run: () => Promise<T>): Promise<T> {
+  if (typeof window === 'undefined' || typeof window.fetch !== 'function') {
+    return run();
+  }
+
+  const originalFetch = window.fetch.bind(window);
+  const scopeKey = getShellAccessScopeKey();
+  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const response = await originalFetch(input, init);
+    try {
+      const raw = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+      if (isAuthUserUrl(raw)) {
+        rememberAuthUserResponse(response, scopeKey);
+      }
+    } catch {
+      // ignore capture errors
+    }
+    return response;
+  }) as typeof window.fetch;
+
+  try {
+    return await run();
+  } finally {
+    window.fetch = originalFetch;
+  }
+}
 
 /**
  * Bearer 로 /api/auth/user 를 한 번 더 찔러 HTTP 상태를 확인한다.
  * AuthManager.preloadAuth 는 실패 사유를 구분하지 않으므로 AuthBoot 계약용.
  * SPA HTML(`/auth/user`) 200 을 API 성공으로 오인하지 않도록 JSON content-type 필수.
  */
-async function probeAuthUserHttpStatus(token: string): Promise<number | null> {
+async function probeAuthUserHttpStatus(token: string, scopeKey: string): Promise<number | null> {
+  const ctrl = new AbortController();
+  const timeoutId = window.setTimeout(() => ctrl.abort(), AUTH_PRELOAD_TIMEOUT_MS);
   try {
     const response = await fetch(USER_AUTH_ENDPOINT, {
       method: 'GET',
@@ -51,31 +141,44 @@ async function probeAuthUserHttpStatus(token: string): Promise<number | null> {
         Authorization: `Bearer ${token}`,
       },
       credentials: 'same-origin',
+      signal: ctrl.signal,
     });
-    const contentType = response.headers.get('content-type') ?? '';
-    if (!contentType.includes('application/json')) {
-      return null;
-    }
-    return response.status;
+    rememberAuthUserResponse(response, scopeKey);
+    return lastCapturedAuthUser?.scopeKey === scopeKey
+      ? lastCapturedAuthUser.status
+      : null;
   } catch {
     return null;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
+function readCapturedAuthUserStatus(scopeKey: string): number | null | undefined {
+  if (!lastCapturedAuthUser || lastCapturedAuthUser.scopeKey !== scopeKey) {
+    return undefined;
+  }
+  if (Date.now() - lastCapturedAuthUser.at > CAPTURED_STATUS_TTL_MS) {
+    return undefined;
+  }
+  return lastCapturedAuthUser.status;
+}
+
 function readCachedResult(): ShellAuthPreloadResult | null {
-  if (!authPreloadCached) {
+  const scopeKey = getShellAccessScopeKey();
+  if (!authPreloadCached || authPreloadCached.scopeKey !== scopeKey) {
     return null;
   }
 
-  if (authPreloadCached === 'ready') {
+  if (authPreloadCached.result === 'ready') {
     return getShellAccessToken() ? 'ready' : null;
   }
 
-  if (authPreloadCached === 'guest') {
+  if (authPreloadCached.result === 'guest') {
     return getShellAccessToken() ? null : 'guest';
   }
 
-  if (authPreloadCached === 'unauthorized') {
+  if (authPreloadCached.result === 'unauthorized') {
     return 'unauthorized';
   }
 
@@ -88,8 +191,9 @@ function readCachedResult(): ShellAuthPreloadResult | null {
  * ready/guest/unauthorized 는 세션 내 캐시 — transient 만 재시도 허용.
  */
 export async function ensureMoabomShellAuthPreloaded(): Promise<ShellAuthPreloadResult> {
+  const scopeKey = getShellAccessScopeKey();
   if (!getShellAccessToken()) {
-    authPreloadCached = 'guest';
+    authPreloadCached = { scopeKey, result: 'guest' };
     return 'guest';
   }
 
@@ -98,11 +202,11 @@ export async function ensureMoabomShellAuthPreloaded(): Promise<ShellAuthPreload
     return cached;
   }
 
-  if (authPreloadPromise) {
-    return authPreloadPromise;
+  if (authPreloadPromise?.scopeKey === scopeKey) {
+    return authPreloadPromise.promise;
   }
 
-  authPreloadPromise = (async (): Promise<ShellAuthPreloadResult> => {
+  const promise = (async (): Promise<ShellAuthPreloadResult> => {
     const authManager = getAuthManager();
     if (!authManager) {
       return 'transient';
@@ -112,7 +216,11 @@ export async function ensureMoabomShellAuthPreloaded(): Promise<ShellAuthPreload
       return 'ready';
     }
 
-    const ok = await authManager.preloadAuth('user');
+    const ok = await withAuthUserStatusCapture(() => withTimeout(
+      authManager.preloadAuth('user'),
+      AUTH_PRELOAD_TIMEOUT_MS,
+      false,
+    ));
     if (ok) {
       return 'ready';
     }
@@ -122,8 +230,11 @@ export async function ensureMoabomShellAuthPreloaded(): Promise<ShellAuthPreload
       return 'unauthorized';
     }
 
-    const status = await probeAuthUserHttpStatus(token);
-    if (status === 401) {
+    const captured = readCapturedAuthUserStatus(scopeKey);
+    const status = captured !== undefined
+      ? captured
+      : await probeAuthUserHttpStatus(token, scopeKey);
+    if (status === 401 && scopeKey === getShellAccessScopeKey()) {
       clearShellAccessToken();
       return 'unauthorized';
     }
@@ -131,22 +242,32 @@ export async function ensureMoabomShellAuthPreloaded(): Promise<ShellAuthPreload
     // 네트워크 오류(null)·비JSON·5xx 등 — 토큰 유지
     return 'transient';
   })();
+  const entry = { scopeKey, promise };
+  authPreloadPromise = entry;
 
   try {
-    const result = await authPreloadPromise;
-    if (CACHEABLE_RESULTS.has(result)) {
-      authPreloadCached = result;
+    const result = await promise;
+    if (scopeKey === getShellAccessScopeKey() && CACHEABLE_RESULTS.has(result)) {
+      authPreloadCached = { scopeKey, result };
     }
     return result;
   } finally {
-    authPreloadPromise = null;
+    if (authPreloadPromise === entry) {
+      authPreloadPromise = null;
+    }
   }
+}
+
+/** 인증 계정 경계 전환 — 이전 토큰의 캐시·single-flight·HTTP 상태 캡처를 폐기한다. */
+export function invalidateMoabomShellAuthPreload(): void {
+  authPreloadPromise = null;
+  authPreloadCached = null;
+  lastCapturedAuthUser = null;
 }
 
 /** Vitest 격리 */
 export function resetMoabomShellAuthPreloadForTest(): void {
-  authPreloadPromise = null;
-  authPreloadCached = null;
+  invalidateMoabomShellAuthPreload();
 }
 
 /** 테스트·디버그용 probe URL SSOT */

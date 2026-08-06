@@ -111,6 +111,14 @@ describe('routeRequest — example smoke table', () => {
     expect(d.strategy).toBe('cache-first');
   });
 
+  it('shell-boot → stale-while-revalidate (SW StaleWhileRevalidate SSOT)', () => {
+    const d = routeRequest({
+      url: 'https://mek360.com/api/modules/moabom-system/public/shell-boot',
+      ...base(),
+    });
+    expect(d.strategy).toBe('stale-while-revalidate');
+  });
+
   it('Req 5.5 — pwa/version → bypass', () => {
     const d = routeRequest({
       url: 'https://mek360.com/api/plugins/moabom-pwa/version',

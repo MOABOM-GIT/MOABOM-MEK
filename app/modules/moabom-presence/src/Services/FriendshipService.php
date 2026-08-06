@@ -4,6 +4,7 @@ namespace Modules\Moabom\Presence\Services;
 
 use App\Extension\HookManager;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Modules\Moabom\Presence\Contracts\FriendshipRepositoryInterface;
 use Modules\Moabom\Presence\Contracts\PresenceUserPreferencesRepositoryInterface;
 use Modules\Moabom\Presence\Enums\FriendshipStatus;
@@ -93,6 +94,7 @@ final class FriendshipService
         $friendship = $this->friendships->createRequest($requester->id, $addressee->id);
         $this->revisionService->bump('friendship_requested');
         HookManager::doAction('moabom-presence.friendship.after_request', $friendship, $requester, $addressee);
+        $this->broadcastFriendshipState([$requester, $addressee], 'friendship_requested');
 
         return $friendship;
     }
@@ -115,6 +117,7 @@ final class FriendshipService
         if ($deleted > 0) {
             $this->revisionService->bump('friendship_removed');
             HookManager::doAction('moabom-presence.friendship.after_remove', $viewer, $other);
+            $this->broadcastFriendshipState([$viewer, $other], 'friendship_removed');
         }
 
         return $deleted;
@@ -124,7 +127,31 @@ final class FriendshipService
     {
         $this->revisionService->bump('friendship_accepted');
         HookManager::doAction('moabom-presence.friendship.after_accept', $friendship, $requester, $addressee);
+        $this->broadcastFriendshipState([$requester, $addressee], 'friendship_accepted');
 
         return $friendship;
+    }
+
+    /**
+     * @param  list<User>  $users
+     */
+    private function broadcastFriendshipState(array $users, string $reason): void
+    {
+        $revision = $this->revisionService->current();
+        foreach (collect($users)->unique('id') as $user) {
+            $occurredAt = now();
+            HookManager::broadcast(
+                "core.user.notifications.{$user->uuid}",
+                'presence.friends.updated',
+                [
+                    'event_id' => (string) Str::uuid(),
+                    'domain' => 'presence.friends',
+                    'revision' => $revision,
+                    'occurred_at' => $occurredAt->toIso8601String(),
+                    'reason' => $reason,
+                    'friends' => $this->listFriends($user),
+                ],
+            );
+        }
     }
 }

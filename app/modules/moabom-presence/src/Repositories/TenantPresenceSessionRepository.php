@@ -22,6 +22,10 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
         'is_authenticated',
         'client_form_factor',
         'client_ip_masked',
+        'ws_reachable_until',
+        'presence_online_until',
+        'ws_state',
+        'visibility_state',
         'last_seen_at',
     ];
 
@@ -157,6 +161,61 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
             ->delete();
     }
 
+    public function purgeGuestShadowsForMaskedIp(string $maskedIp, string $exceptVisitorId): array
+    {
+        $empty = ['visitor_ids' => [], 'session_keys' => []];
+
+        if (! $this->tenantSchema->isTenantSessionsReady()
+            || ! $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'client_ip_masked')) {
+            return $empty;
+        }
+
+        $trimmedMask = trim($maskedIp);
+        if ($trimmedMask === '') {
+            return $empty;
+        }
+
+        $except = trim($exceptVisitorId);
+        $query = TenantPresenceSession::query()
+            ->whereNull('user_id')
+            ->where('client_ip_masked', $trimmedMask);
+
+        if ($except !== ''
+            && $this->tenantSchema->hasColumn(PresenceTenantSchema::TABLE_TENANT_SESSIONS, 'visitor_id')) {
+            $query->where(function ($inner) use ($except): void {
+                $inner->whereNull('visitor_id')
+                    ->orWhere('visitor_id', '!=', $except);
+            });
+        }
+
+        $rows = $query->get(['visitor_id', 'session_key']);
+        if ($rows->isEmpty()) {
+            return $empty;
+        }
+
+        $visitorIds = $rows
+            ->pluck('visitor_id')
+            ->map(static fn ($id) => is_string($id) ? trim($id) : '')
+            ->filter(static fn (string $id): bool => $id !== '')
+            ->unique()
+            ->values()
+            ->all();
+        $sessionKeys = $rows
+            ->pluck('session_key')
+            ->map(static fn ($key) => is_string($key) ? trim($key) : '')
+            ->filter(static fn (string $key): bool => $key !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $query->delete();
+
+        return [
+            'visitor_ids' => $visitorIds,
+            'session_keys' => $sessionKeys,
+        ];
+    }
+
     public function pruneStale(\DateTimeInterface $before): int
     {
         if (! $this->tenantSchema->isTenantSessionsReady()) {
@@ -188,7 +247,14 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
         // 목록(TenantOnlineUsersService)과 동일 dedupe — raw row count 이중 집계 방지
         $sessions = $this->connectVisibleQuery($since)
             ->orderByDesc('last_seen_at')
-            ->get();
+            // summary는 렌더링 필드·user relation이 필요 없다. identity 최소 열만 전송한다.
+            ->get([
+                's.user_id',
+                's.visitor_id',
+                's.session_key',
+                's.client_ip_masked',
+                's.last_seen_at',
+            ]);
 
         return PresenceConnectListNormalizer::dedupe($sessions, PHP_INT_MAX)->count();
     }
@@ -203,6 +269,45 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
             ->where('user_id', $userId)
             ->where('last_seen_at', '>=', $since)
             ->exists();
+    }
+
+    public function supportsReachabilityLease(): bool
+    {
+        return $this->tenantSchema->hasColumn(
+            PresenceTenantSchema::TABLE_TENANT_SESSIONS,
+            'ws_reachable_until',
+        );
+    }
+
+    public function hasReachableSessionForUser(int $userId, \DateTimeInterface $at): bool
+    {
+        if (! $this->isHeartbeatWritable() || ! $this->supportsReachabilityLease()) {
+            return false;
+        }
+
+        return TenantPresenceSession::query()
+            ->where('user_id', $userId)
+            ->where('ws_state', 'connected')
+            ->where('ws_reachable_until', '>=', $at)
+            ->exists();
+    }
+
+    public function acknowledgeReachabilityForUser(
+        int $userId,
+        \DateTimeInterface $activeSince,
+        \DateTimeInterface $reachableUntil,
+    ): bool {
+        if (! $this->isHeartbeatWritable() || ! $this->supportsReachabilityLease()) {
+            return false;
+        }
+
+        return TenantPresenceSession::query()
+            ->where('user_id', $userId)
+            ->where('last_seen_at', '>=', $activeSince)
+            ->update([
+                'ws_state' => 'connected',
+                'ws_reachable_until' => $reachableUntil,
+            ]) > 0;
     }
 
     public function findActiveSessionForUser(int $userId, \DateTimeInterface $since): ?TenantPresenceSession
@@ -239,6 +344,33 @@ class TenantPresenceSessionRepository implements TenantPresenceSessionRepository
 
         return TenantPresenceSession::query()
             ->with('user')
+            ->where('last_seen_at', '>=', $since)
+            ->orderByDesc('last_seen_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function listActiveForUserIds(
+        \DateTimeInterface $since,
+        array $userIds,
+        int $limit = 100,
+    ): Collection
+    {
+        if (! $this->tenantSchema->isTenantSessionsReady()) {
+            return collect();
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_map(static fn ($id): int => (int) $id, $userIds),
+            static fn (int $id): bool => $id > 0,
+        )));
+        if ($ids === []) {
+            return collect();
+        }
+
+        return TenantPresenceSession::query()
+            ->with('user')
+            ->whereIn('user_id', $ids)
             ->where('last_seen_at', '>=', $since)
             ->orderByDesc('last_seen_at')
             ->limit($limit)

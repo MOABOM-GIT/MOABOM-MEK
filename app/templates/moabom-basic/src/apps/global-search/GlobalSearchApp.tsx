@@ -5,8 +5,8 @@ import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Input } from '../../components/basic/Input';
 import { Span } from '../../components/basic/Span';
+import { LibrarySection } from '../../components/composite/mypage/Moa_MyPageLibraryBlocks';
 import type { App } from '../../data/Moa_apps';
-import { resolveAppStrings } from '../../i18n/resolveAppStrings';
 import { useShellWindowAuthStateKey } from '../../shell/ShellWindowAuthContext';
 import { formatBoardShellPath, formatShellPath, pushShellPath } from '../../utils/moabomShellRoutes';
 import { AppWindowHeader } from '../_shared/AppWindowHeader';
@@ -22,7 +22,8 @@ import {
 
 const EMPTY_RESULTS: GlobalSearchResults = {
   systemApps: [],
-  generatedApps: [],
+  myApps: [],
+  publicApps: [],
   boardPosts: [],
 };
 
@@ -92,23 +93,11 @@ export function GlobalSearchApp() {
 
   const hasSubmitted = submittedQuery.length > 0;
   const showResults = hasSubmitted && hasSearchQuery(submittedQuery);
-  const totalCount = results.systemApps.length + results.generatedApps.length + results.boardPosts.length;
-
-  const renderAppResult = (app: App, onOpen: (app: App) => void) => {
-    const { name } = resolveAppStrings(app, language);
-
-    return (
-      <SearchResultRow key={app.id} onClick={() => onOpen(app)}>
-        <Span className="moa-global-search-result__icon" aria-hidden>
-          <Icon name={app.icon} size="sm" />
-        </Span>
-        <Span className="moa-global-search-result__label">
-          <HighlightText text={name} query={submittedQuery} />
-        </Span>
-        <Icon name="chevron-right" size="sm" className="moa-global-search-result__arrow" />
-      </SearchResultRow>
-    );
-  };
+  const totalCount = results.systemApps.length
+    + results.myApps.length
+    + results.publicApps.length
+    + results.boardPosts.length;
+  const appInfoFallback = t('moa_mypage.library.app_info_fallback');
 
   return (
     <Div className={`${APP_WINDOW_BODY_CLASS} moa-global-search-app`}>
@@ -186,20 +175,36 @@ export function GlobalSearchApp() {
                 ? t('moa_apps_search.searching')
                 : t('moa_apps_search.result_count', { count: totalCount, query: submittedQuery })}
             </p>
-            <SearchSection
-              title={t('moa_apps_search.section_system_apps')}
-              emptyLabel={t('moa_apps_search.empty_system_apps')}
-              hasItems={results.systemApps.length > 0}
-            >
-              {results.systemApps.map(app => renderAppResult(app, openSystemApp))}
-            </SearchSection>
-            <SearchSection
-              title={t('moa_apps_search.section_generated_apps')}
-              emptyLabel={t('moa_apps_search.empty_generated_apps')}
-              hasItems={results.generatedApps.length > 0}
-            >
-              {results.generatedApps.map(app => renderAppResult(app, openGeneratedApp))}
-            </SearchSection>
+            {results.systemApps.length > 0 ? (
+              <LibrarySection
+                title={t('moa_apps_search.section_system_apps')}
+                emptyText={t('moa_apps_search.empty_system_apps')}
+                apps={results.systemApps}
+                locale={language}
+                appInfoFallback={appInfoFallback}
+                onOpenApp={openSystemApp}
+              />
+            ) : null}
+            {results.myApps.length > 0 ? (
+              <LibrarySection
+                title={t('moa_apps_search.section_generated_apps')}
+                emptyText={t('moa_apps_search.empty_generated_apps')}
+                apps={results.myApps}
+                locale={language}
+                appInfoFallback={appInfoFallback}
+                onOpenApp={openGeneratedApp}
+              />
+            ) : null}
+            {results.publicApps.length > 0 ? (
+              <LibrarySection
+                title={t('moa_apps_search.section_public_apps')}
+                emptyText={t('moa_apps_search.empty_public_apps')}
+                apps={results.publicApps}
+                locale={language}
+                appInfoFallback={appInfoFallback}
+                onOpenApp={openGeneratedApp}
+              />
+            ) : null}
             <SearchSection
               title={t('moa_apps_search.section_boards')}
               emptyLabel={t('moa_apps_search.empty_boards')}

@@ -12,6 +12,7 @@ use Modules\Moabom\Presence\Services\PresenceRevisionService;
 use Modules\Moabom\Presence\Services\PresenceSummaryService;
 use Modules\Moabom\Presence\Services\PresenceUserPreferencesService;
 use Modules\Moabom\Presence\Services\TenantOnlineUsersService;
+use Modules\Moabom\Presence\Support\PresenceClientIpMasker;
 
 final class PresencePublicController extends PublicBaseController
 {
@@ -21,6 +22,7 @@ final class PresencePublicController extends PublicBaseController
         private TenantOnlineUsersService $onlineUsersService,
         private PresenceUserPreferencesService $preferencesService,
         private PresenceRevisionService $revisionService,
+        private PresenceClientIpMasker $clientIpMasker,
     ) {
         parent::__construct();
     }
@@ -41,13 +43,16 @@ final class PresencePublicController extends PublicBaseController
         $this->logApiUsage('moabom-presence.public.online');
 
         $viewer = auth('sanctum')->user();
+        $viewerMaskedIp = $viewer instanceof User
+            ? $this->clientIpMasker->maskFromRequest(request())
+            : null;
 
         return ResponseHelper::moduleSuccess(
             'moabom-presence',
             'messages.online_success',
             [
                 'revision' => $this->revisionService->current(),
-                'users' => $this->onlineUsersService->listOnlineUsers($viewer),
+                'users' => $this->onlineUsersService->listOnlineUsers($viewer, 50, $viewerMaskedIp),
             ],
         );
     }
@@ -62,6 +67,8 @@ final class PresencePublicController extends PublicBaseController
             $request->validated('status_text'),
             $request->validated('client_form_factor'),
             $request->validated('touch'),
+            $request->validated('ws_state'),
+            $request->validated('visibility_state'),
         );
 
         return ResponseHelper::moduleSuccess(

@@ -50,4 +50,22 @@ class MoabomPublicApiCacheKeysTest extends ModuleTestCase
         $this->assertStringContainsString($token, $key);
         $this->assertStringStartsWith('moabom.public.app_blade_shell:3:', $key);
     }
+
+    public function test_shell_boot_shared_object_path_is_scoped(): void
+    {
+        config(['moabom-system.saas.enabled' => false]);
+
+        $path = MoabomPublicApiCacheKeys::shellBootSharedObject('moabom-basic', 'shell');
+
+        $this->assertSame('moabom/public-boot-cache/single/moabom-basic/shell.json', $path);
+    }
+
+    public function test_shell_boot_shared_object_path_sanitizes_segments(): void
+    {
+        config(['moabom-system.saas.enabled' => false]);
+
+        $path = MoabomPublicApiCacheKeys::shellBootSharedObject('moabom/../basic', 'shell space');
+
+        $this->assertSame('moabom/public-boot-cache/single/moabom_.._basic/shell_space.json', $path);
+    }
 }

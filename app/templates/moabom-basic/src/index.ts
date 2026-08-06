@@ -18,6 +18,7 @@ import { startMoabomShellBootPipeline } from './runtime/moabomShellBootPipeline'
 import { installMoabomPwaExtensionResyncConsume } from './runtime/pwa/moabomPwaExtensionResync';
 import { bootstrapMoabomShellAuthConfig } from './runtime/moabomShellAuth';
 import { installMoabomShellAuthSingleFlight } from './runtime/moabomShellAuthSingleFlight';
+import { installMoabomUserShellStateFetch } from './runtime/moabomUserShellState';
 import { installMoabomWebSocketAuthSync } from './runtime/moabomWebSocketAuthSync';
 import { registerSirsoftEcommerceLayoutPrefetch } from './runtime/sirsoftEcommerceLayoutPrefetch';
 import { schedulePrefetchRecentMoabomShellAppChunks } from './runtime/moabomShellAppChunkPrefetch';
@@ -26,6 +27,7 @@ import { schedulePrefetchRecentMoabomShellAppChunks } from './runtime/moabomShel
 import * as MoabomShellI18n from './i18n/moabomShellI18nSingleton';
 import * as MoabomShellOverlay from './i18n/moabomShellOverlaySingleton';
 import * as MoabomCreateAppEdit from './apps/ai-generator/moabomCreateAppEditSession';
+import * as MoabomCreateAppPrompt from './apps/ai-generator/moabomCreateAppPromptSession';
 import * as MoabomAiGenerationActivity from './apps/ai-generator/aiGenerationActivity';
 if (typeof window !== 'undefined') {
   (window as unknown as { __MoabomShellI18n?: typeof MoabomShellI18n }).__MoabomShellI18n = MoabomShellI18n;
@@ -33,6 +35,8 @@ if (typeof window !== 'undefined') {
     MoabomShellOverlay;
   (window as unknown as { __MoabomCreateAppEdit?: typeof MoabomCreateAppEdit }).__MoabomCreateAppEdit =
     MoabomCreateAppEdit;
+  (window as unknown as { __MoabomCreateAppPrompt?: typeof MoabomCreateAppPrompt }).__MoabomCreateAppPrompt =
+    MoabomCreateAppPrompt;
   (window as unknown as { __MoabomAiGenerationActivity?: typeof MoabomAiGenerationActivity }).__MoabomAiGenerationActivity =
     MoabomAiGenerationActivity;
 }
@@ -172,6 +176,7 @@ if (typeof window !== 'undefined') {
     installMoabomTemplateLangFetchDedupe();
     bootstrapMoabomShellAuthConfig();
     installMoabomShellAuthSingleFlight();
+    installMoabomUserShellStateFetch();
     installMoabomWebSocketAuthSync();
     installMoabomShellBootFetch();
     installMoabomShellCriticalFetch();

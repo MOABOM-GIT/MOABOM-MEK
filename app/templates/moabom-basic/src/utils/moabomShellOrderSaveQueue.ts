@@ -4,6 +4,7 @@ import {
   loadMainUnpinnedGeneratedIds,
   sanitizeMainUnpinnedGeneratedIds,
 } from '../shell/moaShellMainAppUnpinned';
+import { getShellAccessScopeKey } from '../api/moabomShellAccess';
 
 const systemApi = createShellModuleApi('moabom-system');
 
@@ -17,6 +18,7 @@ interface PendingShellHome extends ShellHomePersistInput {
   order: string[];
   customized: boolean;
   unpinnedGeneratedIds: string[];
+  accessScopeKey: string;
 }
 
 /** PUT 성공 직후 서버 read-after-write 지연을 흡수하는 유예(ms) */
@@ -27,6 +29,7 @@ let pendingShellHome: PendingShellHome | null = null;
 let lastResolveAt = 0;
 /** 로컬 메인 order/unpinned 가 서버에 아직 확정 반영되지 않음 — pull 이 덮어쓰지 못하게 함 */
 let shellHomeDirty = false;
+let shellHomeAccessScopeKey = 'guest';
 
 export function isSavingShellOrder(): boolean {
   return inflight !== null;
@@ -37,6 +40,9 @@ export function isSavingShellOrder(): boolean {
  * focus/visibility pull 이 미반영 pin 을 롤백하지 않도록 SSOT 로 사용한다.
  */
 export function isShellHomeDirty(): boolean {
+  if (shellHomeAccessScopeKey !== getShellAccessScopeKey()) {
+    return false;
+  }
   if (shellHomeDirty || inflight !== null) {
     return true;
   }
@@ -48,6 +54,9 @@ export function isShellHomeDirty(): boolean {
 
 /** @deprecated `isShellHomeDirty` 사용 — 동일 의미로 유지 */
 export function isRecentlySavedShellOrder(windowMs = SHELL_HOME_ACK_GRACE_MS): boolean {
+  if (shellHomeAccessScopeKey !== getShellAccessScopeKey()) {
+    return false;
+  }
   if (shellHomeDirty || inflight !== null) {
     return true;
   }
@@ -58,6 +67,7 @@ export function isRecentlySavedShellOrder(windowMs = SHELL_HOME_ACK_GRACE_MS): b
 }
 
 export function markShellHomeDirty(): void {
+  shellHomeAccessScopeKey = getShellAccessScopeKey();
   shellHomeDirty = true;
 }
 
@@ -68,6 +78,7 @@ function normalizeShellHomePayload(input: ShellHomePersistInput): PendingShellHo
     unpinnedGeneratedIds: sanitizeMainUnpinnedGeneratedIds(
       input.unpinnedGeneratedIds ?? [...loadMainUnpinnedGeneratedIds()],
     ),
+    accessScopeKey: getShellAccessScopeKey(),
   };
 }
 
@@ -75,6 +86,9 @@ async function drainQueue(): Promise<void> {
   while (pendingShellHome !== null) {
     const next = pendingShellHome;
     pendingShellHome = null;
+    if (next.accessScopeKey !== getShellAccessScopeKey()) {
+      continue;
+    }
 
     let saved = false;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -121,6 +135,7 @@ export function queueSaveShellHomeSettings(
   }
 
   shellHomeDirty = true;
+  shellHomeAccessScopeKey = getShellAccessScopeKey();
   pendingShellHome = normalizeShellHomePayload(input);
 
   if (inflight) {
@@ -152,6 +167,7 @@ export function persistShellHomeSettings(
     void queueSaveShellHomeSettings(normalized, true);
   } else {
     shellHomeDirty = false;
+    shellHomeAccessScopeKey = 'guest';
   }
 }
 
@@ -171,4 +187,5 @@ export function __resetMoabomShellOrderSaveQueueForTest(): void {
   pendingShellHome = null;
   lastResolveAt = 0;
   shellHomeDirty = false;
+  shellHomeAccessScopeKey = 'guest';
 }

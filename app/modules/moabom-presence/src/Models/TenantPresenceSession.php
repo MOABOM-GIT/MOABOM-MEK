@@ -20,6 +20,10 @@ class TenantPresenceSession extends Model
         'is_authenticated',
         'client_form_factor',
         'client_ip_masked',
+        'ws_reachable_until',
+        'presence_online_until',
+        'ws_state',
+        'visibility_state',
         'last_seen_at',
     ];
 
@@ -27,6 +31,8 @@ class TenantPresenceSession extends Model
     {
         return [
             'is_authenticated' => 'boolean',
+            'ws_reachable_until' => 'datetime',
+            'presence_online_until' => 'datetime',
             'last_seen_at' => 'datetime',
         ];
     }

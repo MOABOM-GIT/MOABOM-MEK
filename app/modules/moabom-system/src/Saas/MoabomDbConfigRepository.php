@@ -46,6 +46,9 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
 
     private const CACHE_KEY_PREFIX = 'g7_json_settings_category:';
 
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $allMemo = null;
+
     public function __construct(
         private readonly JsonConfigRepository $fallback,
         private readonly TenantContext $tenantContext,
@@ -65,12 +68,45 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
 
     public function all(): array
     {
-        $out = [];
-        foreach ($this->getCategories() as $category) {
-            $out[$category] = $this->getCategory($category);
+        if ($this->allMemo !== null) {
+            return $this->allMemo;
         }
 
-        return $out;
+        $categories = $this->getCategories();
+        $defaults = $this->getDefaults();
+        $rows = ModuleSetting::query()
+            ->where('module', self::MODULE_KEY)
+            ->whereIn('category', $categories)
+            ->get(['category', 'payload'])
+            ->keyBy('category');
+
+        $out = [];
+        foreach ($categories as $category) {
+            $row = $rows->get($category);
+            if ($row === null) {
+                // 최초 전환 중 누락 row만 기존 GCS lazy hydrate 경로로 보완한다.
+                $out[$category] = $this->getCategory($category);
+
+                continue;
+            }
+
+            $categoryDefaults = is_array($defaults[$category] ?? null)
+                ? $defaults[$category]
+                : [];
+            $payload = is_array($row->payload) ? $row->payload : [];
+            unset($payload['_meta']);
+            $out[$category] = $this->normalizeCategory(
+                $category,
+                array_merge($categoryDefaults, $payload),
+            );
+        }
+
+        return $this->allMemo = $out;
+    }
+
+    public function resetMemo(): void
+    {
+        $this->allMemo = null;
     }
 
     public function getCategory(string $category): array
@@ -261,6 +297,7 @@ final class MoabomDbConfigRepository implements ConfigRepositoryInterface
         }
 
         $settings = $this->normalizeCategory($category, $settings);
+        $this->allMemo = null;
 
         $payload = [
             '_meta' => [

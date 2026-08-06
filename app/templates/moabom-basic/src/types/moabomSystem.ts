@@ -27,7 +27,9 @@ export interface MoabomSystemOptions {
   sound: boolean;
   animation: boolean;
   haptic: boolean;
+  notification_center: boolean;
   toast: boolean;
+  push: boolean;
   weather: boolean;
 }
 

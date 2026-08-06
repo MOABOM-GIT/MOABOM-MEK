@@ -85,6 +85,13 @@ class Plugin extends AbstractPlugin
             // 채널 목록 (JSON 배열 문자열)
             'channels' => json_encode([
                 [
+                    'key'       => 'notification_subscription',
+                    'label'     => ['ko' => '마케팅 알림 수신', 'en' => 'Marketing Notifications'],
+                    'page_slug' => '',
+                    'enabled'   => true,
+                    'is_system' => true,
+                ],
+                [
                     'key'       => 'email_subscription',
                     'label'     => ['ko' => '광고성 이메일 수신', 'en' => 'Email Marketing'],
                     'page_slug' => '',

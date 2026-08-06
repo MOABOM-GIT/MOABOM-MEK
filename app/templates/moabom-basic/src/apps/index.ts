@@ -21,13 +21,13 @@ const metadataModules = import.meta.glob<Record<string, unknown>>('./*/metadata.
  * import.meta.glob(shellRegister) 는 메인 번들에 셸 앱 UI 전체가 끌려 들어가 예산을 초과한다.
  */
 const SHELL_REGISTERED_APP_IDS = [
+  'ai-smart-chat',
   'as-request',
   'consulting',
   'cpap-mask',
   'cpap-rental',
   'cpap-return',
   'global-search',
-  'mysum-integration',
   'refurb-request',
   'rental-dashboard',
   'settlement',

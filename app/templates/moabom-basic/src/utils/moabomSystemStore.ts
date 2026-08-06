@@ -75,7 +75,9 @@ export const DEFAULT_MOABOM_SYSTEM: MoabomSystemState = {
       sound: true,
       animation: true,
       haptic: true,
+      notification_center: true,
       toast: true,
+      push: true,
       weather: false,
     },
   },
@@ -151,7 +153,11 @@ function normalizeOptions(value: unknown, fallback: MoabomSystemOptions): Moabom
     sound: typeof source.sound === 'boolean' ? source.sound : fallback.sound,
     animation: typeof source.animation === 'boolean' ? source.animation : fallback.animation,
     haptic: typeof source.haptic === 'boolean' ? source.haptic : fallback.haptic,
+    notification_center: typeof source.notification_center === 'boolean'
+      ? source.notification_center
+      : fallback.notification_center,
     toast: typeof source.toast === 'boolean' ? source.toast : fallback.toast,
+    push: typeof source.push === 'boolean' ? source.push : fallback.push,
     weather: typeof source.weather === 'boolean' ? source.weather : fallback.weather,
   };
 }

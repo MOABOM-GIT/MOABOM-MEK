@@ -54,6 +54,29 @@ final class GeneratedAppsConnection
     }
 
     /**
+     * SaaS platform plane 쿼리를 현재 tenant로 제한합니다.
+     *
+     * TenantContext가 해석되지 않은 요청은 동일 user PK가 다른 tenant의 앱을
+     * 노출하지 않도록 fail-closed 처리합니다.
+     *
+     * @param  Builder<GeneratedApp>  $query
+     * @return Builder<GeneratedApp>
+     */
+    public static function scopeToCurrentTenant(Builder $query): Builder
+    {
+        if (! self::usesPlatformStore()) {
+            return $query;
+        }
+
+        $slug = GeneratedAppPreviewRouting::tenantScopeKey();
+        if ($slug === 'unknown') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('tenant_slug', $slug);
+    }
+
+    /**
      * @return Builder<GeneratedAppRow>
      */
     public static function rows(): Builder

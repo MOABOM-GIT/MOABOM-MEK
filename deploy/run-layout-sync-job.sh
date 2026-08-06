@@ -53,13 +53,6 @@ bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
 # (환경설정>언어팩 목록 비어있음·admin_settings 구형 레이아웃 잔존 → Job 실패로 드러냄)
 # 동기화 단계는 위에서 이미 수행 → 여기서는 검증 전용(--skip-*)으로 비용 없이 확인만 한다.
 echo "[run-layout-sync-job] tenant-reconcile (verify-only — 언어팩 목록·admin_settings 정합성)"
-moabom_run_artisan_job moabom-tenant-reconcile-verify "${TIMEOUT}" \
-  moabom:saas:tenant-reconcile \
-  --template="${TEMPLATE}" \
-  --skip-template-layouts \
-  --skip-module-layouts \
-  --skip-menus \
-  --skip-language-packs \
-  --no-interaction
+bash "${ROOT}/deploy/run-tenant-layout-verify-job.sh" "${TEMPLATE}"
 
 echo "[run-layout-sync-job] done — 로그에서 'admin_settings layout OK' / 'language-packs total=' 확인"

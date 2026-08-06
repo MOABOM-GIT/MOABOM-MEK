@@ -18,10 +18,10 @@ export function buildCssPath(el: Element): string {
       parts.unshift(part);
       break;
     }
-    const parent = node.parentElement;
+    const parent: Element | null = node.parentElement;
     if (parent) {
       const siblings = Array.from(parent.children).filter(
-        (child) => child.tagName === node!.tagName,
+        (child: Element) => child.tagName === node!.tagName,
       );
       if (siblings.length > 1) {
         const index = siblings.indexOf(node) + 1;

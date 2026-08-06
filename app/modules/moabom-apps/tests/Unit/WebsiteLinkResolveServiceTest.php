@@ -121,6 +121,23 @@ HTML, 200),
         $this->assertSame('#005eb8', $resolved['theme_color']);
     }
 
+    public function test_resolve_fetches_document_body_only_once(): void
+    {
+        Http::fake([
+            'https://example.com' => Http::response(<<<'HTML'
+<!DOCTYPE html><html><head>
+<meta name="theme-color" content="#112233"/>
+<link rel="icon" href="https://example.com/icon.png"/>
+</head><body></body></html>
+HTML, 200),
+        ]);
+
+        $service = $this->makeService();
+        $service->resolve('https://example.com');
+
+        Http::assertSentCount(1);
+    }
+
     public function test_resolve_picks_icon_when_head_has_many_non_icon_links(): void
     {
         Http::fake([

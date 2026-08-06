@@ -126,6 +126,7 @@ export const HomePageInner: React.FC<HomePageProps> = ({ initialWindow }) => {
       activeTab={shell.activeTab}
       modeIdx={shell.modeIdx}
       mainApps={catalog.mainApps}
+      mainAppsLoading={catalog.mainAppsLoading}
       appsById={catalog.appsById}
       favoriteApps={catalog.favoriteApps}
       favoriteIdsRef={catalog.favoriteIdsRef}

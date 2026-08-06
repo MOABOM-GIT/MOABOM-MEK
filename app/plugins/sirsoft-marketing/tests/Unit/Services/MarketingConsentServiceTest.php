@@ -325,9 +325,10 @@ class MarketingConsentServiceTest extends PluginTestCase
     {
         $channels = $this->service->getDefaultSystemChannels();
 
-        $this->assertCount(1, $channels);
-        $email = $channels[0];
+        $this->assertCount(2, $channels);
+        $email = collect($channels)->firstWhere('key', 'email_subscription');
 
+        $this->assertNotNull($email);
         $this->assertSame('email_subscription', $email['key']);
         $this->assertSame('sirsoft-marketing::channels.email_subscription.label', $email['label_key']);
         $this->assertTrue($email['is_system']);
@@ -337,8 +338,9 @@ class MarketingConsentServiceTest extends PluginTestCase
     {
         // label 은 lang 파일에서 해석된 ko/en 값으로 자동 채워져 plugin_settings 저장 시 fallback 보장
         $channels = $this->service->getDefaultSystemChannels();
-        $email = $channels[0];
+        $email = collect($channels)->firstWhere('key', 'email_subscription');
 
+        $this->assertNotNull($email);
         $this->assertIsArray($email['label']);
         $this->assertArrayHasKey('ko', $email['label']);
         $this->assertArrayHasKey('en', $email['label']);

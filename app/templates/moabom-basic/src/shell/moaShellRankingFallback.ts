@@ -6,6 +6,7 @@ import type { ShellAppRankingItem } from './moaShellRankingTypes';
 const FALLBACK_EXCLUDED_APP_IDS = new Set([
   'mypage',
   'create-app',
+  'ai-smart-chat',
   'login',
   'register',
   'forgot-password',

@@ -67,7 +67,9 @@ export function triggerGeneratedAppDownload(
   if (typeof document === 'undefined' || bytes.length <= 0) {
     return false;
   }
-  const blob = new Blob([bytes], { type: mimeType });
+  const blobBuffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(blobBuffer).set(bytes);
+  const blob = new Blob([blobBuffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

@@ -13,7 +13,10 @@ import { extractChatConversationUuidFromUrl, extractChatSenderUuidFromUrl } from
 import { isMoabomShellActiveChatWithUser } from '../runtime/moabomShellActiveChat';
 import { registerShellNotificationHandler } from './ShellRealtimeStore';
 import { isShellChatConversationMuted } from './moabomShellChatInboxCache';
-import { bumpShellUnreadBadgeFromRealtime } from './moabomShellUnreadBadge';
+import {
+  consumeShellUnreadBadgeProvisional,
+  dispatchShellUnreadSynced,
+} from './moabomShellUnreadBadge';
 
 type NotificationCacheListener = (items: ShellNotificationItem[]) => void;
 
@@ -44,12 +47,13 @@ function notifyCacheListeners(): void {
   cacheListeners.forEach(listener => listener(cachedItems));
 }
 
-function prependCachedItem(item: ShellNotificationItem): void {
+function prependCachedItem(item: ShellNotificationItem): boolean {
   if (cachedItems.some(row => row.id === item.id)) {
-    return;
+    return false;
   }
   cachedItems = [item, ...cachedItems];
   notifyCacheListeners();
+  return true;
 }
 
 function shouldSuppressChatNotificationToast(payload: ShellNotificationReceivedPayload): boolean {
@@ -70,21 +74,52 @@ function shouldSuppressChatNotificationToast(payload: ShellNotificationReceivedP
 }
 
 function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): void {
+  const changedIds = new Set([
+    ...(payload.changed_id ? [payload.changed_id] : []),
+    ...(payload.changed_ids ?? []),
+  ]);
+  if (payload.all_deleted) {
+    cachedItems = [];
+    notifyCacheListeners();
+  } else if (payload.deleted_id) {
+    cachedItems = cachedItems.filter(item => item.id !== payload.deleted_id);
+    notifyCacheListeners();
+  } else if (payload.all_read || changedIds.size > 0) {
+    const readAt = new Date().toISOString();
+    cachedItems = cachedItems.map(item => (
+      payload.all_read || changedIds.has(item.id)
+        ? { ...item, read_at: item.read_at ?? readAt }
+        : item
+    ));
+    notifyCacheListeners();
+  }
+
   const incoming = payloadToItem(payload);
+  let inserted = false;
   if (incoming) {
-    prependCachedItem(incoming);
+    inserted = prependCachedItem(incoming);
+  }
+
+  if (payload.authoritative && typeof payload.unread_count === 'number') {
+    dispatchShellUnreadSynced(payload.unread_count);
+  }
+
+  // 앞선 notification.received가 이미 항목·토스트를 처리했다면 state는 count 정합만 담당합니다.
+  if (payload.authoritative && incoming && !inserted) {
+    return;
   }
 
   const notificationType = payload.type?.trim() ?? '';
+  const messageUuid = typeof payload.data?.message_uuid === 'string'
+    ? payload.data.message_uuid
+    : '';
+  if (notificationType === 'chat_message' && messageUuid !== '') {
+    consumeShellUnreadBadgeProvisional(messageUuid);
+  }
   const senderUuid = extractChatSenderUuidFromUrl(payload.url);
   const suppressActiveChat = notificationType === 'chat_message'
     && Boolean(senderUuid)
     && isMoabomShellActiveChatWithUser(senderUuid!);
-
-  // 배지: 활성 대화 억제만 제외 — mute 는 토스트만 막고 배지는 REST 대체로 반영
-  if (!suppressActiveChat) {
-    bumpShellUnreadBadgeFromRealtime();
-  }
 
   if (shouldSuppressChatNotificationToast(payload)) {
     return;
@@ -111,6 +146,12 @@ function handleRealtimeNotification(payload: ShellNotificationReceivedPayload): 
 
   if (notificationType === 'friend_accepted') {
     notifyMoabomPresenceFriendsChanged();
+  }
+
+  // 백그라운드 탭은 Browser Notification/FCM 경로가 담당합니다.
+  // 숨겨진 in-app toast를 쌓아 복귀 시 중복 노출하지 않습니다.
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+    return;
   }
 
   const message = payload.subject?.trim() || moabomT('moa_shell.right.new_notification_received');

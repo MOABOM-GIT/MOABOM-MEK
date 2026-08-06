@@ -34,7 +34,7 @@ function getAuthManager(): {
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSyncedAuth: boolean | null = null;
 let pendingConnectedUnsub: (() => void) | null = null;
-let pendingConnectedTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingConnectedTimeout: number | null = null;
 
 function dispatchAuthSyncedEvent(): void {
   refreshMoabomWebSocketConnectionWatch();

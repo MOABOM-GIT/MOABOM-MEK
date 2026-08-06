@@ -1,7 +1,7 @@
 import React from 'react';
 import { useMoaUserProfileSocialActions } from '../../hooks/useMoaUserProfileSocialActions';
 import { useMoabomShellT } from '../../i18n/MoabomUiI18nProvider';
-import { Button } from '../basic/Button';
+import { Button, type ButtonProps } from '../basic/Button';
 import { Span } from '../basic/Span';
 
 export interface MoaUserProfileActionsProps {
@@ -36,12 +36,12 @@ export const Moa_UserProfileActions: React.FC<MoaUserProfileActionsProps> = ({
     <Span className="inline-flex flex-wrap gap-2 rounded-2xl">
       <Button
         type="button"
-        variant={friendButtonVariant}
+        variant={friendButtonVariant as ButtonProps['variant']}
         size="xs"
         className="rounded-xl"
         disabled={friendButtonDisabled}
         onClick={handleFriend}
-        aria-pressed={friendButtonVariant === 'danger'}
+        aria-pressed={friendButtonVariant === 'primary'}
       >
         {friendButtonLabel}
       </Button>

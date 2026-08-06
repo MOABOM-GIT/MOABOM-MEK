@@ -19,16 +19,6 @@ class SocialAccountRepository implements SocialAccountRepositoryInterface
     }
 
     /**
-     * 사용자와 제공자로 SNS 계정을 조회합니다.
-     */
-    public function findByUserAndProvider(User $user, string $provider): ?SocialAccount
-    {
-        return SocialAccount::where('user_id', $user->id)
-            ->where('provider', $provider)
-            ->first();
-    }
-
-    /**
      * SNS 계정을 생성하거나 갱신합니다.
      *
      * @param  array<string, mixed>  $data

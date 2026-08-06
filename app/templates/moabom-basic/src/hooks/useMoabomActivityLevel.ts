@@ -4,8 +4,11 @@ import {
   resolveActivityLevelProgress,
   type ActivityLevelProgress,
 } from '../shell/moaActivityLevel';
+import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
+import { getShellAccessScopeKey } from '../api/moabomShellAccess';
 
 type ActivityLevelCache = {
+  scopeKey: string;
   progress: ActivityLevelProgress;
   fetchedAt: number;
 };
@@ -14,7 +17,10 @@ type ActivityLevelCache = {
 type ActivityLevelListener = (progress: ActivityLevelProgress | null) => void;
 
 let cache: ActivityLevelCache | null = null;
-let inflight: Promise<ActivityLevelProgress | null> | null = null;
+let inflight: {
+  scopeKey: string;
+  promise: Promise<ActivityLevelProgress | null>;
+} | null = null;
 
 const LISTENERS = new Set<ActivityLevelListener>();
 const CACHE_TTL_MS = 60_000;
@@ -34,20 +40,32 @@ export function invalidateMoabomActivityLevelCache(): void {
   });
 }
 
+/** 인증 계정 경계 전환 — 기존 요청 완료도 새 계정 캐시에 쓰지 못하게 한다. */
+export function clearMoabomActivityLevelCache(): void {
+  cache = null;
+  inflight = null;
+  notifyListeners(null);
+}
+
 async function loadActivityLevel(force = false): Promise<ActivityLevelProgress | null> {
-  if (!force && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
+  const scopeKey = getShellAccessScopeKey();
+  if (
+    !force
+    && cache?.scopeKey === scopeKey
+    && Date.now() - cache.fetchedAt < CACHE_TTL_MS
+  ) {
     return cache.progress;
   }
   // force여도 진행 중이면 합류 — 리스너 수만큼 병렬 fetch 금지
-  if (inflight) {
-    return inflight;
+  if (inflight?.scopeKey === scopeKey) {
+    return inflight.promise;
   }
 
-  inflight = (async () => {
+  const promise = (async () => {
     // limit=0: 원장 집계 생략 — 셸 부트 시 upstream timeout 완화
     const result = await fetchUserCreditsApi({ limit: 0, offset: 0 });
     if (!result.ok || !result.data) {
-      return cache?.progress ?? null;
+      return cache?.scopeKey === scopeKey ? cache.progress : null;
     }
 
     const rankingPoints = Number(result.data.ranking_points ?? result.data.level?.points ?? 0);
@@ -63,14 +81,21 @@ async function loadActivityLevel(force = false): Promise<ActivityLevelProgress |
         }
       : resolveActivityLevelProgress(rankingPoints);
 
-    cache = { progress, fetchedAt: Date.now() };
+    if (getShellAccessScopeKey() === scopeKey) {
+      cache = { scopeKey, progress, fetchedAt: Date.now() };
+    }
     return progress;
   })();
+  const entry = { scopeKey, promise };
+  inflight = entry;
 
   try {
-    return await inflight;
+    const progress = await promise;
+    return getShellAccessScopeKey() === scopeKey ? progress : null;
   } finally {
-    inflight = null;
+    if (inflight === entry) {
+      inflight = null;
+    }
   }
 }
 
@@ -82,7 +107,9 @@ export function useMoabomActivityLevel(enabled: boolean): {
   loading: boolean;
   refresh: () => Promise<void>;
 } {
-  const [level, setLevel] = useState<ActivityLevelProgress | null>(() => cache?.progress ?? null);
+  const [level, setLevel] = useState<ActivityLevelProgress | null>(() => (
+    cache?.scopeKey === getShellAccessScopeKey() ? cache.progress : null
+  ));
   const [loading, setLoading] = useState(false);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
@@ -116,14 +143,17 @@ export function useMoabomActivityLevel(enabled: boolean): {
 
     LISTENERS.add(onPush);
 
-    if (cache?.progress) {
+    if (cache?.scopeKey === getShellAccessScopeKey()) {
       setLevel(cache.progress);
     }
 
-    void loadActivityLevel(false).then((progress) => {
-      if (enabledRef.current) {
-        setLevel(progress);
-      }
+    // credits fan-out 을 홈 secondary 에서 빼기 — tertiary-idle 이후만
+    const cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
+      void loadActivityLevel(false).then((progress) => {
+        if (enabledRef.current) {
+          setLevel(progress);
+        }
+      });
     });
 
     // 외부에서 credit-changed만 dispatch 하는 경로 호환 — invalidate 단일 진입
@@ -133,6 +163,7 @@ export function useMoabomActivityLevel(enabled: boolean): {
     window.addEventListener('moabom:credit-changed', onCreditChanged);
 
     return () => {
+      cancelBoot();
       LISTENERS.delete(onPush);
       window.removeEventListener('moabom:credit-changed', onCreditChanged);
     };

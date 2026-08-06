@@ -158,6 +158,11 @@ final class PresenceHeartbeatServiceTest extends TestCase
                 return 0;
             }
 
+            public function purgeGuestShadowsForMaskedIp(string $maskedIp, string $exceptVisitorId): array
+            {
+                return ['visitor_ids' => [], 'session_keys' => []];
+            }
+
             public function deleteOtherSessionsForUser(int $userId, string $visitorId): int
             {
                 return 0;
@@ -180,6 +185,24 @@ final class PresenceHeartbeatServiceTest extends TestCase
 
             public function hasActiveSessionForUser(int $userId, \DateTimeInterface $since): bool
             {
+                return false;
+            }
+
+            public function supportsReachabilityLease(): bool
+            {
+                return false;
+            }
+
+            public function hasReachableSessionForUser(int $userId, \DateTimeInterface $at): bool
+            {
+                return false;
+            }
+
+            public function acknowledgeReachabilityForUser(
+                int $userId,
+                \DateTimeInterface $activeSince,
+                \DateTimeInterface $reachableUntil,
+            ): bool {
                 return false;
             }
 

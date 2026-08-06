@@ -87,6 +87,8 @@ describe('previewInspectorBridge', () => {
     expect(PREVIEW_INSPECTOR_BRIDGE_JS).toContain('backdrop-probe');
     expect(PREVIEW_INSPECTOR_BRIDGE_JS).toContain('backdrop-tone');
     expect(PREVIEW_INSPECTOR_BRIDGE_JS).toContain('elementFromPoint');
+    expect(PREVIEW_INSPECTOR_BRIDGE_JS).toContain('backgroundImage');
+    expect(PREVIEW_INSPECTOR_BRIDGE_JS).toContain('avgFromBackgroundImage');
     const injected = injectPreviewInspectorBridge('<html><body></body></html>');
     expect(injected).toContain('backdrop-probe');
   });

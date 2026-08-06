@@ -42,6 +42,8 @@ else
   echo "==> layout DB sync skipped (manifest unchanged)"
   echo "==> template:cache-clear"
   IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-template-cache-clear-job.sh"
+  echo "==> tenant DB layout/UI binding verify"
+  IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/run-tenant-layout-verify-job.sh"
 fi
 
 echo "==> serving cache bust"

@@ -1,13 +1,12 @@
 import type { App } from '../../data/Moa_apps';
-import { createAppShellMetadata } from '../ai-generator/metadata';
-import { appendNewShellBootApps } from '../shellBootApps';
 import { APPS } from '../../data/Moa_apps';
+import { appendNewShellBootApps } from '../shellBootApps';
 import {
   isGeneratedLibraryAppId,
   mapStoredGeneratedAppToLibraryApp,
 } from '../generatedAppLibrary';
 import { loadMoabomGeneratedAppLibrary } from '../../runtime/moabomGeneratedAppLibraryLoad';
-import { dedupeAppsById } from '../../shell/moaShellAppLists';
+import { dedupeAppsById, SYSTEM_TOOL_APP_METADATA } from '../../shell/moaShellAppLists';
 import { requestShellJson } from '../../api/moabomShellHttp';
 import { hasShellAccessToken } from '../../api/moabomShellAccess';
 
@@ -24,7 +23,8 @@ export interface BoardSearchResult {
 
 export interface GlobalSearchResults {
   systemApps: App[];
-  generatedApps: App[];
+  myApps: App[];
+  publicApps: App[];
   boardPosts: BoardSearchResult[];
 }
 
@@ -45,16 +45,19 @@ function appMatchesQuery(app: App, query: string): boolean {
 }
 
 function buildSystemCatalog(): App[] {
-  return appendNewShellBootApps([createAppShellMetadata, ...APPS]);
+  return appendNewShellBootApps([...SYSTEM_TOOL_APP_METADATA, ...APPS]);
 }
 
-async function buildGeneratedCatalog(): Promise<App[]> {
+async function buildGeneratedCatalog(): Promise<{ owned: App[]; shared: App[] }> {
   const isLoggedIn = hasShellAccessToken();
   const library = await loadMoabomGeneratedAppLibrary(isLoggedIn);
   const owned = library.owned.map(mapStoredGeneratedAppToLibraryApp);
   const shared = library.shared.map(mapStoredGeneratedAppToLibraryApp);
 
-  return dedupeAppsById([...owned, ...shared]);
+  return {
+    owned: dedupeAppsById(owned),
+    shared: dedupeAppsById(shared),
+  };
 }
 
 interface SearchPostsApiItem {
@@ -103,7 +106,7 @@ async function fetchBoardPosts(query: string): Promise<BoardSearchResult[]> {
 export async function runGlobalSearch(query: string): Promise<GlobalSearchResults> {
   const normalized = normalizeQuery(query);
   if (normalized.length < MIN_QUERY_LENGTH) {
-    return { systemApps: [], generatedApps: [], boardPosts: [] };
+    return { systemApps: [], myApps: [], publicApps: [], boardPosts: [] };
   }
 
   const [generatedCatalog, boardPosts] = await Promise.all([
@@ -121,11 +124,16 @@ export async function runGlobalSearch(query: string): Promise<GlobalSearchResult
     return appMatchesQuery(app, normalized);
   });
 
-  const generatedApps = generatedCatalog.filter(app => appMatchesQuery(app, normalized));
+  const ownedIds = new Set(generatedCatalog.owned.map(app => app.id));
+  const myApps = generatedCatalog.owned.filter(app => appMatchesQuery(app, normalized));
+  const publicApps = generatedCatalog.shared
+    .filter(app => !ownedIds.has(app.id))
+    .filter(app => appMatchesQuery(app, normalized));
 
   return {
     systemApps: systemCatalog,
-    generatedApps,
+    myApps,
+    publicApps,
     boardPosts,
   };
 }

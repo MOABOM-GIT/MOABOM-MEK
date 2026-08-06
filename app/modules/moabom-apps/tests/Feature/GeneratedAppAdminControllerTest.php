@@ -192,6 +192,62 @@ class GeneratedAppAdminControllerTest extends ModuleTestCase
             ->assertJsonPath('data.items.0.title', '모산 앱');
     }
 
+    public function test_admin_preview_url_includes_token_for_private_html_paste(): void
+    {
+        $owner = User::factory()->create();
+
+        $app = GeneratedAppsConnection::apps()->create([
+            'tenant_slug' => 'mosan',
+            'user_id' => $owner->id,
+            'title' => '직접입력 앱',
+            'app_type' => 'html_paste',
+            'tier' => 'standard',
+            'html' => '<!DOCTYPE html><html><body><h1>paste</h1></body></html>',
+            'visibility' => GeneratedAppVisibility::Private->value,
+            'is_shared' => false,
+            'metadata' => ['owner_nickname' => '붙여넣기'],
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->withHeader('Host', 'mek360.com')
+            ->getJson(self::ENDPOINT.'?q='.urlencode('직접입력'))
+            ->assertOk();
+
+        $previewUrl = (string) $response->json('data.items.0.preview_url');
+        $this->assertStringContainsString('/g/'.$app->id, $previewUrl);
+        $this->assertStringContainsString('preview_token=', $previewUrl);
+    }
+
+    public function test_admin_preview_url_for_website_link_uses_external_url(): void
+    {
+        $owner = User::factory()->create();
+
+        GeneratedAppsConnection::apps()->create([
+            'tenant_slug' => 'mosan',
+            'user_id' => $owner->id,
+            'title' => '웹사이트 연결 앱',
+            'app_type' => 'website_link',
+            'tier' => 'standard',
+            'html' => '<!DOCTYPE html><html><body data-moabom-website-link="1"></body></html>',
+            'visibility' => GeneratedAppVisibility::Private->value,
+            'is_shared' => false,
+            'metadata' => [
+                'owner_nickname' => '링크',
+                'website_url' => 'https://www.example.com',
+            ],
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->withHeader('Host', 'mek360.com')
+            ->getJson(self::ENDPOINT.'?q='.urlencode('웹사이트 연결'))
+            ->assertOk();
+
+        $this->assertSame(
+            'https://www.example.com',
+            $response->json('data.items.0.preview_url'),
+        );
+    }
+
     /**
      * @return array{mosan: \Modules\Moabom\Apps\Models\GeneratedApp, freshent: \Modules\Moabom\Apps\Models\GeneratedApp}
      */

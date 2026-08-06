@@ -28,6 +28,7 @@ use Modules\Moabom\Apps\Repositories\AppCommunityPostRepository;
 use Modules\Moabom\Apps\Repositories\GeneratedAppRepository;
 use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Services\CreateAppCreditGate;
 use Modules\Moabom\Apps\Services\AppCommunityNotificationDataService;
 use Modules\Moabom\Apps\Services\GeneratedAppHostingService;
 use Modules\Moabom\Apps\Services\WebsiteLinkIconStorageService;
@@ -35,6 +36,8 @@ use Modules\Moabom\Apps\Support\GeneratedAppHostParser;
 use Modules\Moabom\Apps\Support\GeneratedAppsConnection;
 use Modules\Moabom\Apps\Support\GeneratedAppPreviewRouting;
 use Modules\Moabom\Apps\Support\ShellRankingGeneratedAppScope;
+use Modules\Moabom\System\Support\MoabomPublicApiCache;
+use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 
 class AppsServiceProvider extends BaseModuleServiceProvider
 {
@@ -70,6 +73,7 @@ class AppsServiceProvider extends BaseModuleServiceProvider
 
         $this->app->singleton(AppRegistryInterface::class, AppRegistry::class);
         $this->app->singleton(AiStreamConcurrencyService::class);
+        $this->app->singleton(CreateAppCreditGate::class);
 
         $this->commands([
             MakeAppCommand::class,
@@ -88,23 +92,28 @@ class AppsServiceProvider extends BaseModuleServiceProvider
         $this->registerShellRankingScopeHooks();
         $this->registerAppCommunityNotificationHooks();
         $this->registerAppSeo();
+        $this->registerSmartChatDataResources();
 
         HookManager::addFilter(
             'moabom.shell_boot.apps',
             function ($apps, $template = 'moabom-basic') {
                 $apps = is_array($apps) ? $apps : [];
-
-                return array_merge(
-                    $apps,
-                    app(AppRegistryInterface::class)->forShell((string) $template),
+                $template = (string) $template;
+                /** @var list<array<string, mixed>> $registryApps */
+                $registryApps = MoabomPublicApiCache::remember(
+                    MoabomPublicApiCacheKeys::shellAppsRegistry($template),
+                    fn (): array => app(AppRegistryInterface::class)->forShell($template),
                 );
+
+                return array_merge($apps, $registryApps);
             },
         );
 
         HookManager::addFilter(
             'moabom.user_settings.response_data',
-            function (array $data, $user): array {
-                if (! is_object($user) || ! isset($user->id)) {
+            function (array $data, $user, string $scope = 'full'): array {
+                // critical shell-state는 설정 first paint 전용. 라이브러리는 전용 단일 API가 소유한다.
+                if ($scope === 'critical' || ! is_object($user) || ! isset($user->id)) {
                     return $data;
                 }
 
@@ -114,12 +123,11 @@ class AppsServiceProvider extends BaseModuleServiceProvider
                 return $data;
             },
             10,
-            2,
+            3,
         );
 
         Route::bind('hostedApp', static function (string $value): GeneratedApp {
-            $app = GeneratedAppsConnection::apps()->whereKey((int) $value)->first()
-                ?? GeneratedApp::query()->whereKey((int) $value)->first();
+            $app = GeneratedAppsConnection::apps()->whereKey((int) $value)->first();
             if ($app === null) {
                 abort(404);
             }
@@ -199,6 +207,79 @@ class AppsServiceProvider extends BaseModuleServiceProvider
             },
             20,
             1,
+        );
+    }
+
+    /**
+     * 스마트챗 범용 데이터 카탈로그(`moabom.smart_chat.data_resources`)에
+     * 앱 도메인 리소스를 등록한다 — 스키마 소유권은 이 모듈에 있다.
+     * columns 는 노출 allowlist, query 는 권한 스코프가 강제된 base Builder 를 반환해야 한다.
+     */
+    private function registerSmartChatDataResources(): void
+    {
+        HookManager::addFilter(
+            'moabom.smart_chat.data_resources',
+            static function ($resources): array {
+                $resources = is_array($resources) ? $resources : [];
+
+                // 데이터 plane SSOT: SaaS 활성 시 생성앱은 platform DB(moabom_platform).
+                // GeneratedApp::query() 직접 호출은 빈 테넌트 잔재 테이블을 읽는다 —
+                // 반드시 GeneratedAppsConnection 접근자를 사용한다.
+                $resources[] = [
+                    'name' => 'apps',
+                    'description' => 'Public AI-generated apps with community rating/review counters.',
+                    'columns' => [
+                        'id', 'title', 'app_type',
+                        'community_rating_avg', 'community_rating_count', 'community_post_count',
+                        'created_at',
+                    ],
+                    'query' => static function ($user) {
+                        unset($user);
+                        $q = GeneratedAppsConnection::apps();
+                        \Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy::applyPublishedCatalogScope($q);
+
+                        return $q->getQuery();
+                    },
+                ];
+
+                $resources[] = [
+                    'name' => 'my_apps',
+                    'description' => "The current user's own generated apps (any visibility).",
+                    'columns' => [
+                        'id', 'title', 'app_type', 'visibility', 'version',
+                        'community_rating_avg', 'community_rating_count', 'community_post_count',
+                        'created_at', 'updated_at',
+                    ],
+                    'query' => static function ($user) {
+                        $query = GeneratedAppsConnection::apps()
+                            ->where('user_id', (int) $user->id);
+
+                        return GeneratedAppsConnection::scopeToCurrentTenant($query)->getQuery();
+                    },
+                ];
+
+                $resources[] = [
+                    'name' => 'app_reviews',
+                    'description' => 'Published community reviews/talk on public apps (post_type: review|talk, rating 1-5).',
+                    'columns' => [
+                        'id', 'generated_app_id', 'post_type', 'rating', 'title',
+                        'comments_count', 'created_at',
+                    ],
+                    'query' => static function ($user) {
+                        unset($user);
+                        $apps = GeneratedAppsConnection::apps()->select('id');
+                        \Modules\Moabom\Apps\Support\GeneratedAppPublishPolicy::applyPublishedCatalogScope($apps);
+
+                        return GeneratedAppsConnection::communityPosts()
+                            ->where('status', 'published')
+                            ->whereIn('generated_app_id', $apps->getQuery())
+                            ->getQuery()
+                            ->whereNull('deleted_at');
+                    },
+                ];
+
+                return $resources;
+            },
         );
     }
 

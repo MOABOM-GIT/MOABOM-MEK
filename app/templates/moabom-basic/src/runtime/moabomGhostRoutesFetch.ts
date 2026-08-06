@@ -11,6 +11,10 @@ import {
 } from '../shell/moaShellEssentialRoutes';
 import { pathNeedsLegacyG7RouterPath } from '../utils/moabomLegacyMypagePaths';
 import { ensureMoabomShellBootLoaded, getMoabomShellBootData } from './moabomShellBoot';
+import {
+    getMoabomNativeFetch,
+    registerMoabomFetchHandler,
+} from './moabomFetchInterceptor';
 
 const SHELL_ROUTES_API = '/api/modules/moabom-system/public/template-routes-shell';
 
@@ -217,6 +221,64 @@ function patchRouterNavigateForGhostMerge(): void {
     });
 }
 
+async function handleGhostRoutesRequest(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    orig: typeof fetch,
+): Promise<Response> {
+    const url =
+        typeof input === 'string'
+            ? input
+            : input instanceof Request
+              ? input.url
+              : String(input);
+
+    if (shouldUseShellRoutesSnapshotFetch() && !window.__moabomRoutesFullMerged) {
+        const v = routesCacheVersionFromUrl(url);
+        window.__moabomShellRoutesFetchMeta = { usedGhost: true, cacheVersionQuery: v };
+
+        // shell-boot 에 이미 shell_routes 있으면 네트워크 생략
+        const bootRoutes = getMoabomShellBootData()?.shell_routes;
+        if (bootRoutes && Array.isArray(bootRoutes.routes)) {
+            return withEssentialShellRoutes(new Response(JSON.stringify({
+                success: true,
+                data: bootRoutes,
+            }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+            }));
+        }
+
+        // boot 미완료면 짧은 await 후 재시도 — 실패 시 Ghost API
+        try {
+            const boot = await ensureMoabomShellBootLoaded(orig);
+            const routes = boot?.shell_routes;
+            if (routes && Array.isArray(routes.routes)) {
+                return withEssentialShellRoutes(new Response(JSON.stringify({
+                    success: true,
+                    data: routes,
+                }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                }));
+            }
+        } catch {
+            /* fall through */
+        }
+
+        const ghost = new URL(SHELL_ROUTES_API, window.location.origin);
+        ghost.searchParams.set('template', 'moabom-basic');
+        ghost.searchParams.set('scope', 'shell');
+
+        return withEssentialShellRoutes(await orig(ghost.toString(), {
+            ...init,
+            credentials: init?.credentials ?? 'same-origin',
+        }));
+    }
+
+    return withEssentialShellRoutes(await orig(input, init));
+}
+
 export function installMoabomGhostRoutesFetch(): void {
     if (typeof window === 'undefined') {
         return;
@@ -225,70 +287,24 @@ export function installMoabomGhostRoutesFetch(): void {
         return;
     }
     window.__moabomGhostFetchInstalled = true;
-    const orig = window.fetch.bind(window);
-    window.__moabomGhostFetchOriginal = orig;
+    // 전체 routes.json 병합(ensureMoabomFullTemplateRoutesMerged)은 인터셉터를 우회하는
+    // 네이티브 fetch 로 실제 full routes 를 받아야 한다.
+    window.__moabomGhostFetchOriginal = getMoabomNativeFetch();
 
-    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    registerMoabomFetchHandler((ctx) => {
         const url =
-            typeof input === 'string'
-                ? input
-                : input instanceof Request
-                  ? input.url
-                  : String(input);
+            typeof ctx.input === 'string'
+                ? ctx.input
+                : ctx.input instanceof Request
+                  ? ctx.input.url
+                  : String(ctx.input);
 
-        if (
-            isMoabomBasicRoutesUrl(url) &&
-            shouldUseShellRoutesSnapshotFetch() &&
-            !window.__moabomRoutesFullMerged
-        ) {
-            const v = routesCacheVersionFromUrl(url);
-            window.__moabomShellRoutesFetchMeta = { usedGhost: true, cacheVersionQuery: v };
-
-            // shell-boot 에 이미 shell_routes 있으면 네트워크 생략
-            const bootRoutes = getMoabomShellBootData()?.shell_routes;
-            if (bootRoutes && Array.isArray(bootRoutes.routes)) {
-                return withEssentialShellRoutes(new Response(JSON.stringify({
-                    success: true,
-                    data: bootRoutes,
-                }), {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                }));
-            }
-
-            // boot 미완료면 짧은 await 후 재시도 — 실패 시 Ghost API
-            try {
-                const boot = await ensureMoabomShellBootLoaded(orig);
-                const routes = boot?.shell_routes;
-                if (routes && Array.isArray(routes.routes)) {
-                    return withEssentialShellRoutes(new Response(JSON.stringify({
-                        success: true,
-                        data: routes,
-                    }), {
-                        status: 200,
-                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                    }));
-                }
-            } catch {
-                /* fall through */
-            }
-
-            const ghost = new URL(SHELL_ROUTES_API, window.location.origin);
-            ghost.searchParams.set('template', 'moabom-basic');
-            ghost.searchParams.set('scope', 'shell');
-
-            return withEssentialShellRoutes(await orig(ghost.toString(), {
-                ...init,
-                credentials: init?.credentials ?? 'same-origin',
-            }));
+        if (!isMoabomBasicRoutesUrl(url)) {
+            return null;
         }
 
-        if (isMoabomBasicRoutesUrl(url)) {
-            return withEssentialShellRoutes(await orig(input, init));
-        }
-
-        return orig(input, init);
-    }) as typeof fetch;
+        return handleGhostRoutesRequest(ctx.input, ctx.init, ctx.native);
+    });
 
     patchRouterNavigateForGhostMerge();
 }

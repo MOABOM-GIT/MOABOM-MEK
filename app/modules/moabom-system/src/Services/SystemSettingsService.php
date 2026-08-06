@@ -309,6 +309,16 @@ class SystemSettingsService implements SystemSettingsServiceInterface
 
         $merged = array_replace_recursive($defaults, $stored);
 
+        if ($category === 'preferences') {
+            $defaultOptions = $defaults['system_options'] ?? null;
+            $storedOptions = $stored['system_options'] ?? null;
+            if (is_array($defaultOptions) && is_array($storedOptions)) {
+                $merged['system_options'] = $this->mergeSystemOptionsById($defaultOptions, $storedOptions);
+            }
+
+            return $merged;
+        }
+
         if ($category !== 'appearance') {
             return $merged;
         }
@@ -319,6 +329,45 @@ class SystemSettingsService implements SystemSettingsServiceInterface
 
         if (array_key_exists('home_background_items', $stored)) {
             $merged['home_background_items'] = $stored['home_background_items'];
+        }
+
+        return $merged;
+    }
+
+    /**
+     * 숫자 인덱스가 달라진 구 설정을 현재 기본값과 옵션 id 기준으로 병합합니다.
+     *
+     * @param  array<int, mixed>  $defaults
+     * @param  array<int, mixed>  $stored
+     * @return array<int, mixed>
+     */
+    private function mergeSystemOptionsById(array $defaults, array $stored): array
+    {
+        $storedById = [];
+        foreach ($stored as $row) {
+            if (is_array($row) && is_string($row['id'] ?? null) && $row['id'] !== '') {
+                $storedById[$row['id']] = $row;
+            }
+        }
+
+        $merged = [];
+        $defaultIds = [];
+        foreach ($defaults as $row) {
+            if (! is_array($row) || ! is_string($row['id'] ?? null) || $row['id'] === '') {
+                continue;
+            }
+
+            $id = $row['id'];
+            $defaultIds[$id] = true;
+            $merged[] = isset($storedById[$id])
+                ? array_replace($row, $storedById[$id])
+                : $row;
+        }
+
+        foreach ($storedById as $id => $row) {
+            if (! isset($defaultIds[$id])) {
+                $merged[] = $row;
+            }
         }
 
         return $merged;

@@ -20,6 +20,11 @@ vi.mock('./moabomShellAuthPreload', () => ({
 
 vi.mock('./moabomGeneratedAppLibraryLoad', () => ({
   awaitMoabomGeneratedAppLibraryPrefetch: vi.fn().mockResolvedValue(undefined),
+  prefetchMoabomGeneratedAppLibrary: vi.fn(),
+}));
+
+vi.mock('./moabomUserShellState', () => ({
+  prefetchMoabomUserShellState: vi.fn().mockResolvedValue(null),
 }));
 
 describe('moabomShellBootPipeline', () => {

@@ -103,6 +103,30 @@ class AppCommunityPostRepository implements AppCommunityPostRepositoryInterface
     }
 
     /**
+     * @return array{items: Collection<int, AppCommunityPost>, total: int}
+     */
+    public function listPublishedReviewsForUser(int $userId, int $limit = 10, int $offset = 0): array
+    {
+        $limit = max(1, min(50, $limit));
+        $offset = max(0, $offset);
+        $query = AppCommunityTenantScope::applyAuthorTenant(
+            $this->baseQuery()
+                ->with(['generatedApp'])
+                ->where('user_id', $userId)
+                ->where('post_type', AppCommunityPostType::Review->value)
+                ->where('status', AppCommunityPostStatus::Published->value)
+                ->whereNull('deleted_at'),
+        );
+
+        $total = (clone $query)->count();
+        $items = $total > 0
+            ? $query->latest('created_at')->offset($offset)->limit($limit)->get()
+            : new Collection;
+
+        return ['items' => $items, 'total' => $total];
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return array{items: Collection<int, AppCommunityPost>, total: int, diagnostics: array<string, mixed>}
      */

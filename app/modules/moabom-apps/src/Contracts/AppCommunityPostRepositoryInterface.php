@@ -38,6 +38,11 @@ interface AppCommunityPostRepositoryInterface
     public function findPublishedForApp(int $generatedAppId, int $postId): ?AppCommunityPost;
 
     /**
+     * @return array{items: Collection<int, AppCommunityPost>, total: int}
+     */
+    public function listPublishedReviewsForUser(int $userId, int $limit = 10, int $offset = 0): array;
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return array{items: Collection<int, AppCommunityPost>, total: int, diagnostics: array<string, mixed>}
      */

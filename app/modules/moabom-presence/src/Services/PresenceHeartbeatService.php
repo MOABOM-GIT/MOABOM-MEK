@@ -17,10 +17,12 @@ use Modules\Moabom\Presence\Models\TenantPresenceSession;
 
 final class PresenceHeartbeatService
 {
-  /** 브라우저 탭 스로틀·연속 heartbeat 누락 여유 (interval × 4) */
+    /** 브라우저 탭 스로틀·백그라운드 전환 grace */
     public const ACTIVE_TTL_SECONDS = 240;
 
-    public const HEARTBEAT_INTERVAL_SECONDS = 60;
+    public const HEARTBEAT_INTERVAL_SECONDS = 120;
+
+    public const WS_REACHABILITY_TTL_SECONDS = 180;
 
     public function __construct(
         private BotDetector $botDetector,
@@ -57,6 +59,8 @@ final class PresenceHeartbeatService
         ?string $clientStatusText = null,
         ?string $clientFormFactor = null,
         ?string $touch = null,
+        ?string $wsState = null,
+        ?string $visibilityState = null,
     ): array {
         if ($this->botDetector->isBot($request)) {
             return ['accepted' => false, 'reason' => 'bot'];
@@ -67,7 +71,15 @@ final class PresenceHeartbeatService
         }
 
         try {
-            return $this->persistHeartbeat($request, $user, $clientStatusText, $clientFormFactor, $touch);
+            return $this->persistHeartbeat(
+                $request,
+                $user,
+                $clientStatusText,
+                $clientFormFactor,
+                $touch,
+                $wsState,
+                $visibilityState,
+            );
         } catch (\Throwable $exception) {
             Log::warning('moabom_presence_heartbeat_failed', [
                 'tenant_slug' => $this->channelNames->tenantSlug(),
@@ -101,6 +113,8 @@ final class PresenceHeartbeatService
         ?string $clientStatusText,
         ?string $clientFormFactor,
         ?string $touch,
+        ?string $wsState,
+        ?string $visibilityState,
     ): array {
         $visitorId = $this->sessionKeyResolver->resolveVisitorId($request);
         $sessionKey = $this->sessionKeyResolver->resolveSessionKeyFromVisitorId($visitorId);
@@ -117,6 +131,10 @@ final class PresenceHeartbeatService
                 'status_text' => null,
                 'client_form_factor' => $clientFormFactor,
                 'client_ip_masked' => $this->clientIpMasker->maskFromRequest($request),
+                'ws_state' => 'disconnected',
+                'ws_reachable_until' => $now,
+                'presence_online_until' => $now,
+                'visibility_state' => $visibilityState,
                 'last_seen_at' => $now,
             ]);
         }
@@ -146,7 +164,7 @@ final class PresenceHeartbeatService
         $statusText = $this->presentation->resolveSubtitle($user, $preferences, $liveStatusText);
         $clientIpMasked = $user === null ? $this->clientIpMasker->maskFromRequest($request) : null;
 
-        $session = $this->tenantSessions->upsertHeartbeat([
+        $heartbeatAttributes = [
             'visitor_id' => $visitorId,
             'session_key' => $sessionKey,
             'user_id' => $user?->id,
@@ -156,8 +174,22 @@ final class PresenceHeartbeatService
             'is_authenticated' => $user !== null,
             'client_form_factor' => $clientFormFactor,
             'client_ip_masked' => $clientIpMasked,
+            'presence_online_until' => $now->copy()->addSeconds(self::ACTIVE_TTL_SECONDS),
             'last_seen_at' => $now,
-        ]);
+        ];
+        if ($wsState !== null) {
+            $heartbeatAttributes['ws_state'] = $wsState;
+            // transport connected만으로 FCM을 생략하지 않습니다. private 채널 challenge ACK가
+            // ws_reachable_until을 갱신하며, disconnect는 기존 lease를 즉시 만료시킵니다.
+            if ($wsState === 'disconnected') {
+                $heartbeatAttributes['ws_reachable_until'] = $now;
+            }
+        }
+        if ($visibilityState !== null) {
+            $heartbeatAttributes['visibility_state'] = $visibilityState;
+        }
+
+        $session = $this->tenantSessions->upsertHeartbeat($heartbeatAttributes);
 
         $session->loadMissing('user');
 
@@ -171,20 +203,29 @@ final class PresenceHeartbeatService
             'last_seen_at' => $now,
         ]);
 
-        $this->promotionService->reconcileAfterHeartbeat(
+        $shadowsCleaned = $this->promotionService->reconcileAfterHeartbeat(
             $request,
             $user,
             $visitorId,
             $sessionKey,
             $tenantSlug,
+            $touch,
         );
 
         $tenantPruned = $this->maybePruneStaleSessions($now);
 
         $revisionReason = $tenantPruned
             ? 'prune'
-            : $this->promotionService->resolveRevisionReason($touch);
-        $revision = $this->shouldBumpTenantRevision($session, $touch, $releasedAuthenticatedSession, $tenantPruned)
+            : ($shadowsCleaned > 0
+                ? 'shadow_purge'
+                : $this->promotionService->resolveRevisionReason($touch));
+        $revision = $this->shouldBumpTenantRevision(
+            $session,
+            $touch,
+            $releasedAuthenticatedSession,
+            $tenantPruned,
+            $shadowsCleaned > 0,
+        )
             ? $this->revisionService->bump($revisionReason)
             : $this->revisionService->current();
 
@@ -195,6 +236,8 @@ final class PresenceHeartbeatService
             'mirror_ok' => $mirrorOk,
             'revision' => $revision,
             'tenant_channel' => $this->channelNames->tenantOnlineChannel(),
+            'ws_reachable_until' => $session->ws_reachable_until?->toIso8601String(),
+            'presence_online_until' => $session->presence_online_until?->toIso8601String(),
         ];
 
         if ($user && $preferences) {
@@ -212,8 +255,9 @@ final class PresenceHeartbeatService
         ?string $touch,
         bool $releasedAuthenticatedSession,
         bool $tenantPruned,
+        bool $shadowsCleaned = false,
     ): bool {
-        if ($touch === 'login' || $touch === 'logout' || $releasedAuthenticatedSession || $tenantPruned) {
+        if ($touch === 'login' || $touch === 'logout' || $releasedAuthenticatedSession || $tenantPruned || $shadowsCleaned) {
             return true;
         }
 

@@ -221,6 +221,12 @@ describe('채널 서브 탭 transition_overlay_target 가드 (이슈 #245, engin
             }
         });
     }
+
+    it('미등록 신규 채널은 서버 계약과 같이 기본 ON이며 첫 클릭으로 OFF 엔트리를 추가한다', () => {
+        const serialized = JSON.stringify(channelTabCases[0]?.partial);
+        expect(serialized).toContain('?.is_active ?? true');
+        expect(serialized).toContain("{id: ch.id, is_active: false");
+    });
 });
 
 describe('admin_settings 탭 콘텐츠 영역 spinner (이슈 #245)', () => {

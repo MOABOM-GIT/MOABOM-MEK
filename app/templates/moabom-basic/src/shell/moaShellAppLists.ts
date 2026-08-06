@@ -1,5 +1,6 @@
 import type { WindowState } from '../components/composite/Moa_CenterPanel';
 import { createAppShellMetadata } from '../apps/ai-generator/metadata';
+import { smartChatShellMetadata } from '../apps/ai-smart-chat/metadata';
 import { appendNewShellBootApps } from '../apps/shellBootApps';
 import { APPS, type App } from '../data/Moa_apps';
 import {
@@ -27,8 +28,14 @@ export function dedupeAppsById(apps: App[]): App[] {
   return result;
 }
 
+/** 시스템 도구 앱 — 메인 그리드 선두 (마이앱 제외) */
+export const SYSTEM_TOOL_APP_METADATA: App[] = [
+  createAppShellMetadata,
+  smartChatShellMetadata,
+];
+
 function allGridApps(extraApps: App[] = []): App[] {
-  const apps = appendNewShellBootApps([createAppShellMetadata, ...APPS]);
+  const apps = appendNewShellBootApps([...SYSTEM_TOOL_APP_METADATA, ...APPS]);
   const seen = new Set(apps.map(app => app.id));
   for (const app of extraApps) {
     if (!seen.has(app.id)) {
@@ -112,10 +119,8 @@ export function buildFavoriteApps(favoriteIds: string[], extraApps: App[] = []):
 }
 
 export function buildMyApps(createdApps: App[] = []): App[] {
-  return [
-    createAppShellMetadata,
-    ...createdApps.filter(app => app.id !== createAppShellMetadata.id),
-  ];
+  const systemIds = new Set(SYSTEM_TOOL_APP_METADATA.map(app => app.id));
+  return createdApps.filter(app => !systemIds.has(app.id));
 }
 
 export function buildRecentApps(recentIds: string[], extraApps: App[] = []): App[] {
@@ -132,6 +137,8 @@ export function buildRecentApps(recentIds: string[], extraApps: App[] = []): App
 }
 
 export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowState[] {
+  const systemToolById = new Map(SYSTEM_TOOL_APP_METADATA.map(app => [app.id, app]));
+
   return items
     .filter(item => item.id && item.appId)
     .slice(0, MAX_TASKBAR_ITEMS)
@@ -140,21 +147,19 @@ export function normalizeTaskbarItems(items: Partial<WindowState>[]): WindowStat
       if (appId === LEGACY_AI_GENERATOR_APP_ID) {
         appId = createAppShellMetadata.id;
       }
-      const useCreateMeta = appId === createAppShellMetadata.id;
+      const systemTool = systemToolById.get(appId);
       const usePointTitleGradient = appId === 'mypage';
       const title = typeof item.title === 'string' && item.title.trim()
         ? item.title
-        : (useCreateMeta ? createAppShellMetadata.name : appId);
-      const icon = useCreateMeta
-        ? createAppShellMetadata.icon
-        : (typeof item.icon === 'string' && item.icon ? item.icon : 'cube');
-      const gradient = useCreateMeta
-        ? createAppShellMetadata.gradient
-        : usePointTitleGradient
+        : (systemTool?.name ?? appId);
+      const icon = systemTool?.icon
+        ?? (typeof item.icon === 'string' && item.icon ? item.icon : 'cube');
+      const gradient = systemTool?.gradient
+        ?? (usePointTitleGradient
           ? MOA_SHELL_POINT_TITLE_GRADIENT
           : (typeof item.gradient === 'string' && item.gradient
             ? item.gradient
-            : MOA_SHELL_POINT_TITLE_GRADIENT);
+            : MOA_SHELL_POINT_TITLE_GRADIENT));
       return {
         id: String(item.id),
         appId,

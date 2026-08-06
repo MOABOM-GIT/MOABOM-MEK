@@ -9,6 +9,7 @@ import {
   getMoabomShellBootData,
   type MoabomShellBootData,
 } from './moabomShellBoot';
+import { registerMoabomFetchHandler, resetMoabomFetchInterceptorForTest } from './moabomFetchInterceptor';
 
 export type MoabomShellCriticalPayload = {
   template?: string;
@@ -155,42 +156,32 @@ export function installMoabomShellCriticalFetch(): void {
     window.__MOABOM_SHELL_CRITICAL__ = inline;
   }
 
-  const nativeFetch = window.fetch.bind(window);
-
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    let url: URL;
-    try {
-      const href =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
-      url = new URL(href, window.location.href);
-    } catch {
-      return nativeFetch(input, init);
+  registerMoabomFetchHandler((ctx) => {
+    if (!ctx.url) {
+      return null;
     }
-
-    const wantsConfig = isConfigUrl(url.pathname);
-    const wantsHome = isHomeLayoutUrl(url.pathname);
+    const wantsConfig = isConfigUrl(ctx.url.pathname);
+    const wantsHome = isHomeLayoutUrl(ctx.url.pathname);
     if (!wantsConfig && !wantsHome) {
-      return nativeFetch(input, init);
+      return null;
     }
 
-    return resolveCriticalAsync(nativeFetch).then(critical => {
+    // critical 미해결(config/home 부재) 시 null 반환 → 인터셉터가 네이티브로 위임.
+    return resolveCriticalAsync(ctx.native).then(critical => {
       if (!critical) {
-        return nativeFetch(input, init);
+        return null;
       }
       if (wantsConfig) {
-        return configApiResponse(critical) ?? nativeFetch(input, init);
+        return configApiResponse(critical);
       }
-      return homeApiResponse(critical) ?? nativeFetch(input, init);
+      return homeApiResponse(critical);
     });
-  };
+  });
 }
 
 /** Vitest */
 export function resetMoabomShellCriticalFetchForTest(): void {
   criticalFetchInstalled = false;
   seededFromBoot = false;
+  resetMoabomFetchInterceptorForTest();
 }

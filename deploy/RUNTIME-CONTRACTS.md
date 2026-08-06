@@ -21,8 +21,10 @@
 |------|------|
 | SSOT | DB heartbeat + `visitor_id` 1행 (Reverb는 revision 신호만) |
 | 승격 | `touch=login` 은 Sanctum user 필수. guest shadow purge는 인증 후 |
+| 정리 | 인증 heartbeat 마다 동일 visitor_id·동일 마스크 IP guest shadow 삭제 (주기 폴링/채널 추가 금지) |
+| 목록 | 인증 조회자는 요청 마스크 IP 와 같은 guest 행을 숨김 (본인 shadow — 전역 캐시 없음) |
 | 집계 | summary `tenant_active` = 목록과 동일 `PresenceConnectListNormalizer::dedupe` |
-| 클라 | login/logout heartbeat 후 `refreshConnectList: true` |
+| 클라 | login/logout heartbeat 후 `refreshConnectList: true` (+ login 시 summary 재조회) |
 
 모듈: `app/modules/moabom-presence`.
 

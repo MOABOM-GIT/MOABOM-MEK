@@ -131,8 +131,10 @@ export interface GeneratedAppCommunityStats {
   post_count: number;
 }
 
-export interface StoredGeneratedApp extends StoreGeneratedAppPayload, GeneratedAppPreviewFields {
+export interface StoredGeneratedApp extends Omit<StoreGeneratedAppPayload, 'html'>, GeneratedAppPreviewFields {
   id: number;
+  /** 편집·리믹스 show(`include_html=1`)에만 포함. 실행용 메타 show에는 없음. */
+  html?: string;
   owner?: GeneratedAppOwner;
   permissions?: GeneratedAppPermissions;
   community?: GeneratedAppCommunityStats;
@@ -282,21 +284,31 @@ export async function fetchGeneratedAppLibrary(): Promise<{
   };
 }
 
-export async function fetchGeneratedApp(id: number): Promise<StoredGeneratedApp> {
-  return requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}`);
+export async function fetchGeneratedApp(
+  id: number,
+  options?: { includeHtml?: boolean },
+): Promise<StoredGeneratedApp> {
+  const includeHtml = options?.includeHtml !== false;
+  const qs = includeHtml ? '' : '?include_html=0';
+  return requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}${qs}`);
 }
 
-export async function fetchVisibleGeneratedApp(id: number): Promise<StoredGeneratedApp> {
+export async function fetchVisibleGeneratedApp(
+  id: number,
+  options?: { includeHtml?: boolean },
+): Promise<StoredGeneratedApp> {
+  const includeHtml = options?.includeHtml !== false;
+  const qs = includeHtml ? '' : '?include_html=0';
   if (hasShellAccessToken()) {
     try {
-      return await requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}`);
+      return await requestMoabomAppsApi<StoredGeneratedApp>(`apps/generated/${id}${qs}`);
     } catch (error) {
       if (!(error instanceof MoabomShellAuthRequiredError)) {
         throw error;
       }
     }
   }
-  return requestOptionalMoabomAppsApi<StoredGeneratedApp>(`apps/generated/shared/${id}`);
+  return requestOptionalMoabomAppsApi<StoredGeneratedApp>(`apps/generated/shared/${id}${qs}`);
 }
 
 export async function updateGeneratedApp(id: number, payload: StoreGeneratedAppPayload): Promise<StoredGeneratedApp> {

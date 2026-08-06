@@ -10,6 +10,7 @@ import { getSocialProviderLabel, useMyPageAccountTab } from './mypage/tabs/useMy
 import { useMyPageActivityTab } from './mypage/tabs/useMyPageActivityTab';
 import { useMyPageCreditTab } from './mypage/tabs/useMyPageCreditTab';
 import { useMyPageLibraryTab } from './mypage/tabs/useMyPageLibraryTab';
+import { useMyPageNotificationPreferences } from './mypage/tabs/useMyPageNotificationPreferences';
 import { useMyPageProfileTab } from './mypage/tabs/useMyPageProfileTab';
 import { useMyPagePresenceSettings } from './mypage/tabs/useMyPagePresenceSettings';
 import { useMyPageShellState } from './mypage/useMyPageShellState';
@@ -52,12 +53,18 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     onActiveTabChange,
   });
 
+  const authSocialProviderLabel = getSocialProviderLabel(currentUser?.social_provider, t);
+  const account = useMyPageAccountTab({
+    t,
+    socialProviderLabel: authSocialProviderLabel,
+  });
+
   const profile = useMyPageProfileTab({
     activeTab,
     currentUser,
-    shellLanguage,
     t,
     avatarInputRef,
+    accountInfoUnlocked: account.accountInfoVerified,
     onProfileUpdated,
   });
 
@@ -71,7 +78,6 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
   const credit = useMyPageCreditTab({
     activeTab,
     currentUser,
-    shellLanguage,
     t,
   });
 
@@ -83,10 +89,15 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     createdAppsLoading,
   });
 
+  const notificationPreferences = useMyPageNotificationPreferences({
+    activeTab,
+    isLoggedIn,
+    t,
+  });
+
   const activity = useMyPageActivityTab({
     activeTab,
     currentUser,
-    shellLanguage,
     t,
     onOpenBoard,
   });
@@ -95,11 +106,6 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
     currentUser?.social_provider ?? profile.profileSocialProvider,
     t,
   );
-
-  const account = useMyPageAccountTab({
-    t,
-    socialProviderLabel,
-  });
 
   const tabs = useMemo(
     () => buildMyPageSidebarTabs(t, menusFromDefaults),
@@ -126,6 +132,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
             systemDefaults={systemDefaults}
             systemState={systemState}
             onSystemStateChange={handleSystemStateChange}
+            notificationPreferences={notificationPreferences}
             onOpenApp={onOpenApp}
             favoriteApps={favoriteApps}
             recentApps={recentApps}
@@ -173,6 +180,7 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
               creditHasMore: credit.creditHasMore,
               creditError: credit.creditError,
               attendanceLoading: credit.attendanceLoading,
+              attendanceChecked: credit.attendanceChecked,
               attendanceMessage: credit.attendanceMessage,
               onAttendanceCheck: () => void credit.handleAttendanceCheck(),
               onLoadMoreCredits: () => void credit.loadMoreCredits(),
@@ -194,6 +202,14 @@ export const MyPageWindowContent: React.FC<MyPageWindowContentProps> = ({
             }}
             account={{
               socialProviderLabel,
+              accountInfoPassword: account.accountInfoPassword,
+              setAccountInfoPassword: account.setAccountInfoPassword,
+              accountInfoVerified: account.accountInfoVerified,
+              setAccountInfoVerified: account.setAccountInfoVerified,
+              accountInfoSubmitting: account.accountInfoSubmitting,
+              accountInfoMessage: account.accountInfoMessage,
+              setAccountInfoMessage: account.setAccountInfoMessage,
+              onVerifyAccountInfoPassword: () => void account.handleVerifyAccountInfoPassword(),
               securityPanel: account.securityPanel,
               setSecurityPanel: account.setSecurityPanel,
               securityCurrentPassword: account.securityCurrentPassword,

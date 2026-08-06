@@ -4,6 +4,7 @@ import {
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
+import { setMoabomShellRealtimeDemand } from '../runtime/moabomShellRealtimeDemand';
 import {
   useMoabomPresenceFriends,
   useMoabomPresenceOnline,
@@ -19,7 +20,8 @@ interface UseMoabomPresenceOptions {
 const TAB_POLL_MS = 30_000;
 
 /**
- * 탭별 목록 갱신 — tertiary-idle 이후 탭 활성화 시 1회 fetch, WS 끊김 시 30초 폴링.
+ * 탭별 목록 갱신 — WS 끊김 시에만 30초 폴링.
+ * 탭 진입은 Provider active-surface effect, 같은 탭 재클릭은 RightPanel이 담당한다.
  */
 function useTabListPolling(
   active: boolean,
@@ -33,6 +35,7 @@ function useTabListPolling(
     let timer: ReturnType<typeof setInterval> | undefined;
     let unsubscribeWs: (() => void) | undefined;
     let cancelBoot: (() => void) | undefined;
+    let polledWhileDisconnected = false;
 
     const syncPolling = () => {
       if (timer !== undefined) {
@@ -40,19 +43,20 @@ function useTabListPolling(
         timer = undefined;
       }
       if (!isMoabomWebSocketConnected()) {
+        polledWhileDisconnected = false;
         timer = setInterval(() => {
+          polledWhileDisconnected = true;
           void refresh();
         }, TAB_POLL_MS);
       }
     };
 
     cancelBoot = whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
-      void refresh();
       syncPolling();
       unsubscribeWs = subscribeMoabomWebSocketConnectionChange(() => {
-        const wasPolling = timer !== undefined;
+        const needsCatchUp = polledWhileDisconnected && isMoabomWebSocketConnected();
         syncPolling();
-        if (wasPolling && isMoabomWebSocketConnected()) {
+        if (needsCatchUp) {
           void refresh();
         }
       });
@@ -73,7 +77,7 @@ export function useMoabomPresence({
   connectTabActive,
   friendTabActive,
 }: UseMoabomPresenceOptions) {
-  const { setPresenceSurfaceActive } = useMoabomPresenceSurfaceActive();
+  const { setPresenceSurface } = useMoabomPresenceSurfaceActive();
   const { summary } = useMoabomPresenceSummary();
   const {
     onlineUsers,
@@ -90,14 +94,21 @@ export function useMoabomPresence({
     removeFriend,
   } = useMoabomPresenceFriends();
 
-  const surfaceActive = connectTabActive || friendTabActive;
+  const presenceSurface = connectTabActive
+    ? 'connect'
+    : friendTabActive
+      ? 'friend'
+      : null;
 
   useEffect(() => {
-    setPresenceSurfaceActive(surfaceActive);
+    // 활성 탭 ID까지 전달해 숨겨진 목록을 함께 조회하지 않는다.
+    setPresenceSurface(presenceSurface);
+    setMoabomShellRealtimeDemand({ presence: presenceSurface !== null });
     return () => {
-      setPresenceSurfaceActive(false);
+      setPresenceSurface(null);
+      setMoabomShellRealtimeDemand({ presence: false });
     };
-  }, [setPresenceSurfaceActive, surfaceActive]);
+  }, [presenceSurface, setPresenceSurface]);
 
   useTabListPolling(connectTabActive, refreshOnline);
   useTabListPolling(friendTabActive, refreshFriends);

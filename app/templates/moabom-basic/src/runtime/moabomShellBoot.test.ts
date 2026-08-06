@@ -20,7 +20,9 @@ const BOOT_PAYLOAD = {
                     sound: true,
                     animation: true,
                     haptic: true,
+                    notification_center: true,
                     toast: true,
+                    push: true,
                     weather: false,
                 },
             },
@@ -72,7 +74,11 @@ describe('ensureMoabomShellBootLoaded', () => {
         };
         const fetchMock = vi.fn();
 
-        window.__MoabomShellBoot = { data: sharedPayload as Awaited<ReturnType<typeof ensureMoabomShellBootLoaded>> };
+        window.__MoabomShellBoot = {
+            data: sharedPayload as Awaited<ReturnType<typeof ensureMoabomShellBootLoaded>>,
+            promise: null,
+            generation: 0,
+        };
 
         expect(getMoabomShellBootData()?.site?.site_name).toBe('상쾌한이비인후과');
         const loaded = await ensureMoabomShellBootLoaded(fetchMock);

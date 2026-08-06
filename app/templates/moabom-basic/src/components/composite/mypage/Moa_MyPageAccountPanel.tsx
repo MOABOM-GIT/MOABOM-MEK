@@ -23,6 +23,14 @@ export interface Moa_MyPageAccountPanelProps {
   profileErr: (field: string) => string;
   profileSaveSubmitting: boolean;
   socialProviderLabel: string | null;
+  accountInfoPassword: string;
+  setAccountInfoPassword: (value: string) => void;
+  accountInfoVerified: boolean;
+  setAccountInfoVerified: (value: boolean) => void;
+  accountInfoSubmitting: boolean;
+  accountInfoMessage: { type: 'error'; text: string } | null;
+  setAccountInfoMessage: (message: { type: 'error'; text: string } | null) => void;
+  onVerifyAccountInfoPassword: () => void;
   securityPanel: 'none' | 'password' | 'withdraw';
   setSecurityPanel: (panel: 'none' | 'password' | 'withdraw') => void;
   securityCurrentPassword: string;
@@ -58,6 +66,14 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
   profileErr,
   profileSaveSubmitting,
   socialProviderLabel,
+  accountInfoPassword,
+  setAccountInfoPassword,
+  accountInfoVerified,
+  setAccountInfoVerified,
+  accountInfoSubmitting,
+  accountInfoMessage,
+  setAccountInfoMessage,
+  onVerifyAccountInfoPassword,
   securityPanel,
   setSecurityPanel,
   securityCurrentPassword,
@@ -85,16 +101,54 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
         <Div className="text-sm text-secondary mt-1">{t('moa_mypage.account.section_basic_desc')}</Div>
       </Div>
 
-      {profileBanner && (
-        <Div className="rounded-xl px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200">
-          {profileBanner.text}
+      {!accountInfoVerified ? (
+        <Div className={`${GROUP_PANEL} p-4 ${APP_STACK_CLASS}`}>
+          <Div className="text-sm text-secondary">{t('moa_mypage.account.basic_locked_desc')}</Div>
+          <Div>
+            <Span className={`block ${MY_PAGE_BLOCK_TITLE_CLASS}`}>{t('moa_mypage.account.current_password')}</Span>
+            <Input
+              type="password"
+              value={accountInfoPassword}
+              onChange={(e) => {
+                setAccountInfoPassword(e.target.value);
+                setAccountInfoVerified(false);
+                setAccountInfoMessage(null);
+              }}
+              className={INPUT_SURFACE}
+              placeholder={t('moa_mypage.account.current_password_placeholder')}
+              autoComplete="current-password"
+              disabled={accountInfoSubmitting}
+            />
+          </Div>
+          {accountInfoMessage ? (
+            <Div className="text-xs text-red-500">{accountInfoMessage.text}</Div>
+          ) : null}
+          <Div className="flex justify-end">
+            <Button
+              variant={ACTION_BUTTON_VARIANT}
+              size="medium"
+              type="button"
+              disabled={accountInfoSubmitting || !accountInfoPassword}
+              onClick={() => void onVerifyAccountInfoPassword()}
+            >
+              {accountInfoSubmitting
+                ? t('moa_mypage.account.verifying')
+                : t('moa_mypage.account.verify_and_show')}
+            </Button>
+          </Div>
         </Div>
-      )}
-
-      {profileLoading ? (
-        <AppLoadingSpinner label={t('moa_mypage.account.loading')} />
       ) : (
         <>
+          {profileBanner && (
+            <Div className="rounded-xl px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200">
+              {profileBanner.text}
+            </Div>
+          )}
+
+          {profileLoading ? (
+            <AppLoadingSpinner label={t('moa_mypage.account.loading')} />
+          ) : (
+            <>
           <Div>
             <Span className={`block ${MY_PAGE_BLOCK_TITLE_CLASS}`}>{t('moa_mypage.account.name')}</Span>
             <Input
@@ -155,6 +209,8 @@ export const Moa_MyPageAccountPanel: React.FC<Moa_MyPageAccountPanelProps> = ({
               {profileSaveSubmitting ? t('moa_mypage.profile.saving') : t('moa_mypage.account.save_account')}
             </Button>
           </Div>
+            </>
+          )}
         </>
       )}
     </Div>

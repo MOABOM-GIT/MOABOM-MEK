@@ -22,6 +22,8 @@ final class PresenceHeartbeatRequest extends FormRequest
             'status_text' => ['nullable', 'string', 'max:255'],
             'client_form_factor' => ['nullable', 'string', Rule::in(array_column(PresenceClientFormFactor::cases(), 'value'))],
             'touch' => ['nullable', 'string', Rule::in(['login', 'logout', 'touch'])],
+            'ws_state' => ['nullable', 'string', Rule::in(['connected', 'disconnected'])],
+            'visibility_state' => ['nullable', 'string', Rule::in(['visible', 'hidden'])],
         ];
     }
 }

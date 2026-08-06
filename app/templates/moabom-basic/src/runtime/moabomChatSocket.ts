@@ -12,10 +12,16 @@ type G7WebSocketApi = {
 };
 
 export type ChatMessageCreatedPayload = {
+  event_id?: string;
+  domain?: string;
+  revision?: number;
+  occurred_at?: string;
   message?: ChatMessage;
   conversation?: ChatConversation;
   conversation_uuid?: string;
   last_message_at?: string | null;
+  message_uuid?: string;
+  notification_expected?: boolean;
 };
 
 export type ChatReadPayload = {

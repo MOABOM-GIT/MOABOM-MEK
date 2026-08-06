@@ -8,6 +8,11 @@ import { MOABOM_SHELL_AUTH_EXPIRED_EVENT } from '../../i18n/moabomShellEvents';
 import { installShellAuthStateKeyBridge, syncShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import { publishShellLayoutContext } from '../../shell/ShellContextBridge';
 import { buildMoaCurrentUser, type AuthUserLike, type MoaCurrentUser } from '../../shell/moaShellTypes';
+import { prefetchMoabomUserShellState } from '../../runtime/moabomUserShellState';
+import {
+  installMoabomShellAccountScopeBoundary,
+  syncMoabomShellAccountScope,
+} from '../../runtime/moabomShellAccountScope';
 
 interface UseMoabomShellAuthOptions {
   nameFallback: string;
@@ -44,7 +49,10 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
 
   const applyAuthState = useCallback(
     (authenticated: boolean, user: AuthUserLike | null | undefined) => {
+      // React surface가 새 계정을 그리기 전에 이전 계정 module cache부터 원자적으로 폐기한다.
+      syncMoabomShellAccountScope();
       if (authenticated && user) {
+        void prefetchMoabomUserShellState();
         setIsLoggedIn(true);
         const nextUser = buildMoaCurrentUser(user, nameFallback);
         setCurrentUser(nextUser);
@@ -70,6 +78,7 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
 
   useEffect(() => {
     bootstrapMoabomShellAuthConfig();
+    const teardownAccountScopeBoundary = installMoabomShellAccountScopeBoundary();
     const teardownAuthBridge = installShellAuthStateKeyBridge();
 
     const authManager = getAuthManager();
@@ -89,6 +98,7 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
       return () => {
         cancelled = true;
         window.removeEventListener(MOABOM_SHELL_AUTH_EXPIRED_EVENT, onShellAuthExpired);
+        teardownAccountScopeBoundary();
         teardownAuthBridge();
       };
     }
@@ -144,6 +154,7 @@ export function useMoabomShellAuth({ nameFallback }: UseMoabomShellAuthOptions) 
     return () => {
       cancelled = true;
       window.removeEventListener(MOABOM_SHELL_AUTH_EXPIRED_EVENT, onShellAuthExpired);
+      teardownAccountScopeBoundary();
       teardownAuthBridge();
     };
   }, [applyAuthState]);

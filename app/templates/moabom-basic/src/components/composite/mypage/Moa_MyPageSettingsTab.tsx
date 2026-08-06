@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../i18n/moabomT';
 import { Button, type ButtonProps } from '../../basic/Button';
 import { Div } from '../../basic/Div';
@@ -17,6 +17,7 @@ import { GROUP_PANEL, MY_PAGE_BLOCK_TITLE_CLASS } from './myPageStyles';
 import AppLoadingSpinner from '../AppLoadingSpinner';
 import { useWeatherStatusLabel } from '../../../runtime/weather/useWeatherStatusLabel';
 import { prefetchWeatherEffectChunk } from '../../../runtime/weather/weatherEffectChunkPrefetch';
+import { registerMoabomFcmDeviceToken } from '../../../runtime/moabomFcmClient';
 
 interface MyPageSettingsTabProps {
   t: MoabomTranslateFn;
@@ -37,12 +38,20 @@ interface MyPageSettingsTabProps {
    */
   pointColorToBackgroundId?: Readonly<Record<string, string>>;
   systemOptions: MoabomSystemOptionConfig[];
+  marketingConsent: {
+    marketingEnabled: boolean;
+    marketingAvailable: boolean;
+    marketingLoading: boolean;
+    marketingSaving: boolean;
+    setMarketingConsent: (enabled: boolean) => Promise<void>;
+  };
   onChange: (next: MoabomSystemState) => void;
 }
 
 const OPTION_BUTTON_BASE = 'w-full';
 
 const FONT_SIZE_LEVELS: readonly MoabomFontSizeLevel[] = [1, 2, 3, 4, 5];
+type PushPermissionState = NotificationPermission | 'unsupported';
 
 const POINT_SELECTED_CHECK_CLASSES =
   'pointer-events-none absolute left-1/2 top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2 text-base text-white drop-shadow-[0_1px_2px_rgb(0_0_0/55%)]';
@@ -96,6 +105,13 @@ function canonicalHex(hex: string): string {
   return hex.trim().toLowerCase();
 }
 
+function readPushPermission(): PushPermissionState {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'unsupported';
+  }
+  return Notification.permission;
+}
+
 export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
   t,
   systemState,
@@ -105,6 +121,7 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
   backgroundImageIds,
   pointColorToBackgroundId,
   systemOptions,
+  marketingConsent,
   onChange,
 }) => {
   const updateState = (patch: Partial<MoabomSystemState>) => {
@@ -175,13 +192,89 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
    *   토글이 숨겨진 상태에서도 해당 값은 그대로 보존된다.
    */
   const hapticSupported = useMemo(() => isHapticSupportedEnvironment(), []);
-  const visibleSystemOptions = useMemo(
-    () => systemOptions.filter(option => option.id !== 'haptic' || hapticSupported),
-    [systemOptions, hapticSupported],
-  );
+  const visibleSystemOptions = useMemo(() => {
+    const seen = new Set<string>();
+
+    return systemOptions.filter((option) => {
+      if (seen.has(option.id)) return false;
+      seen.add(option.id);
+
+      return option.id !== 'notification_center'
+        && option.id !== 'toast'
+        && option.id !== 'push'
+        && (option.id !== 'haptic' || hapticSupported);
+    });
+  }, [systemOptions, hapticSupported]);
+  const notificationCenterOption = systemOptions.find(option => option.id === 'notification_center');
+  const toastOption = systemOptions.find(option => option.id === 'toast');
+  const pushOption = systemOptions.find(option => option.id === 'push');
+  const notificationCenterActive = notificationCenterOption?.user_editable === false
+    ? (
+      notificationCenterOption.on_by_default
+      ?? notificationCenterOption.default
+      ?? systemState.preferences.systemOptions.notification_center
+    )
+    : systemState.preferences.systemOptions.notification_center;
+  const toastActive = toastOption?.user_editable === false
+    ? (toastOption.on_by_default ?? toastOption.default ?? systemState.preferences.systemOptions.toast)
+    : systemState.preferences.systemOptions.toast;
+  const pushActive = pushOption?.user_editable === false
+    ? (pushOption.on_by_default ?? pushOption.default ?? systemState.preferences.systemOptions.push)
+    : systemState.preferences.systemOptions.push;
+  const [pushPermission, setPushPermission] = useState<PushPermissionState>(readPushPermission);
+
+  const setSystemOption = (id: keyof MoabomSystemOptions, active: boolean) => {
+    updateState({
+      preferences: {
+        ...systemState.preferences,
+        systemOptions: {
+          ...systemState.preferences.systemOptions,
+          [id]: active,
+        },
+      },
+    });
+  };
+
+  const handlePushToggle = async () => {
+    const rawActive = systemState.preferences.systemOptions.push;
+    if (rawActive && pushPermission !== 'default') {
+      setSystemOption('push', false);
+      return;
+    }
+    if (pushPermission === 'unsupported' || pushPermission === 'denied') {
+      return;
+    }
+
+    let permission = pushPermission;
+    if (permission === 'default') {
+      try {
+        permission = await Notification.requestPermission();
+      } catch {
+        permission = Notification.permission;
+      }
+      setPushPermission(permission);
+    }
+
+    const enabled = permission === 'granted';
+    setSystemOption('push', enabled);
+    if (enabled) {
+      void registerMoabomFcmDeviceToken({ userInitiated: true });
+    }
+  };
 
   useEffect(() => {
     prefetchWeatherEffectChunk();
+  }, []);
+
+  useEffect(() => {
+    const syncPermission = () => setPushPermission(readPushPermission());
+    window.addEventListener('focus', syncPermission);
+    document.addEventListener('visibilitychange', syncPermission);
+
+    return () => {
+      window.removeEventListener('focus', syncPermission);
+      document.removeEventListener('visibilitychange', syncPermission);
+    };
   }, []);
 
   /*
@@ -410,6 +503,60 @@ export const MyPageSettingsTab: React.FC<MyPageSettingsTabProps> = ({
               />
             );
           })}
+        </Div>
+      </SettingSection>
+
+      <SettingSection title={t('moa_mypage.settings_ui.section_notifications')}>
+        <Div className="grid grid-cols-1 gap-2">
+          <ToggleRow
+            label={t('moa_mypage.notifications.center_label')}
+            active={notificationCenterActive}
+            disabled={notificationCenterOption?.user_editable === false}
+            onClick={() => setSystemOption(
+              'notification_center',
+              !systemState.preferences.systemOptions.notification_center,
+            )}
+          />
+          <ToggleRow
+            label={toastOption?.label || t('moa_mypage.system_options.toast')}
+            active={toastActive}
+            disabled={toastOption?.user_editable === false}
+            onClick={() => setSystemOption(
+              'toast',
+              !systemState.preferences.systemOptions.toast,
+            )}
+          />
+          <ToggleRow
+            label={(
+              <Span>
+                {pushOption?.label || t('moa_mypage.system_options.push')}
+                {' ('}
+                {t(`moa_mypage.notifications.push_status.${pushPermission}`)}
+                {')'}
+              </Span>
+            )}
+            active={pushActive}
+            disabled={
+              pushOption?.user_editable === false
+              || (
+                !systemState.preferences.systemOptions.push
+                && (pushPermission === 'unsupported' || pushPermission === 'denied')
+              )
+            }
+            onClick={() => {
+              void handlePushToggle();
+            }}
+          />
+          {(marketingConsent.marketingAvailable || marketingConsent.marketingLoading) ? (
+            <ToggleRow
+              label={t('moa_mypage.notifications.marketing_label')}
+              active={marketingConsent.marketingEnabled}
+              disabled={marketingConsent.marketingLoading || marketingConsent.marketingSaving}
+              onClick={() => {
+                void marketingConsent.setMarketingConsent(!marketingConsent.marketingEnabled);
+              }}
+            />
+          ) : null}
         </Div>
       </SettingSection>
     </Div>

@@ -214,6 +214,22 @@ class Module extends AbstractModule
             \Modules\Moabom\System\Listeners\SaasSettingsRuntimeRestoreListener::class,
             \Modules\Moabom\System\Listeners\SiteLogoAttachmentListener::class,
             \Modules\Moabom\System\Listeners\DeclarativeMenuOrderGuardListener::class,
+            \Modules\Moabom\System\Listeners\NotificationRealtimeStateListener::class,
+            \Modules\Moabom\System\Listeners\NotificationPolicyListener::class,
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    public function getSchedules(): array
+    {
+        return [
+            [
+                'command' => 'moabom:notification-cleanup',
+                'schedule' => 'daily',
+                'description' => '알림 보관기간·사용자당 최대 건수 정리',
+            ],
         ];
     }
 

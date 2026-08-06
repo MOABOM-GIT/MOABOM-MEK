@@ -10,9 +10,18 @@ use Illuminate\Support\Facades\DB;
  */
 final class PlatformRuntimeConfigurator
 {
+    private readonly string $connectionName;
+
+    /** @var array<string, mixed>|null */
+    private readonly ?array $platformConnectionConfig;
+
     public function __construct(
         private readonly PlatformFilesystemSnapshot $filesystemSnapshot,
-    ) {}
+    ) {
+        $this->connectionName = (string) config('database.default', 'mysql');
+        $config = Config::get("database.connections.{$this->connectionName}");
+        $this->platformConnectionConfig = is_array($config) ? $config : null;
+    }
 
     public function applyPlatform(): void
     {
@@ -22,16 +31,14 @@ final class PlatformRuntimeConfigurator
 
     private function applyPlatformDatabase(): void
     {
-        $connection = (string) config('database.default', 'mysql');
-        $config = Config::get("database.connections.{$connection}");
-
-        if (! is_array($config)) {
+        $connection = $this->connectionName;
+        $config = $this->platformConnectionConfig;
+        if ($config === null) {
             return;
         }
 
         $platformDb = SaasMysqlPdoFactory::platformWriteDatabase();
-        $connection = (string) config('database.default', 'mysql');
-        $readDb = (string) config("database.connections.{$connection}.read.database", $platformDb);
+        $readDb = (string) ($config['read']['database'] ?? $platformDb);
 
         if (isset($config['write']) && is_array($config['write'])) {
             $config['write']['database'] = $platformDb;
@@ -45,8 +52,19 @@ final class PlatformRuntimeConfigurator
             $config['database'] = $platformDb;
         }
 
+        $current = Config::get("database.connections.{$connection}");
+        if ($current === $config) {
+            return;
+        }
+
+        $manager = DB::getFacadeRoot();
+        $connectionAlreadyResolved = is_object($manager)
+            && method_exists($manager, 'getConnections')
+            && array_key_exists($connection, $manager->getConnections());
+
         Config::set("database.connections.{$connection}", $config);
-        DB::purge($connection);
-        DB::reconnect($connection);
+        if ($connectionAlreadyResolved) {
+            DB::purge($connection);
+        }
     }
 }

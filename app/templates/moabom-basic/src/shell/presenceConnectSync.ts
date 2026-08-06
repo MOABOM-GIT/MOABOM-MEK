@@ -1,6 +1,7 @@
 import type { PresenceOnlineUser } from '../api/moabomPresenceApi';
 
 const SESSION_KEY_STORAGE = 'moabom_presence_last_session_key';
+const SELF_GUEST_IP_STORAGE = 'moabom_presence_self_guest_ip';
 
 export function rememberPresenceSessionKey(sessionKey: string | undefined | null): void {
   if (!sessionKey || typeof window === 'undefined') {
@@ -22,6 +23,56 @@ export function getRememberedPresenceSessionKey(): string | null {
   } catch {
     return null;
   }
+}
+
+/** 로그인 전 guest 행의 마스크 IP — 승격 후 동일 IP shadow 클라 방어용 */
+export function rememberSelfGuestIp(ip: string | null | undefined): void {
+  const trimmed = ip?.trim() ?? '';
+  if (!trimmed || typeof window === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.setItem(SELF_GUEST_IP_STORAGE, trimmed);
+  } catch {
+    // ignore
+  }
+}
+
+export function getRememberedSelfGuestIp(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    return sessionStorage.getItem(SELF_GUEST_IP_STORAGE);
+  } catch {
+    return null;
+  }
+}
+
+export function clearRememberedSelfGuestIp(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.removeItem(SELF_GUEST_IP_STORAGE);
+  } catch {
+    // ignore
+  }
+}
+
+/** 목록에 내 visitor_id guest 가 있으면 마스크 IP 를 기억한다. */
+export function rememberSelfGuestIpFromConnectList(
+  users: PresenceOnlineUser[],
+  visitorId: string | null | undefined,
+): void {
+  const trimmed = visitorId?.trim() ?? '';
+  if (!trimmed) {
+    return;
+  }
+  const mine = users.find(
+    user => !user.user_uuid && (user.visitor_id?.trim() ?? '') === trimmed,
+  );
+  rememberSelfGuestIp(mine?.client_ip_masked);
 }
 
 export function shouldRefreshConnectListAfterHeartbeat(result: {
@@ -67,6 +118,7 @@ function promoteViewerToConnectListTop(
 export function normalizePresenceConnectList(
   users: PresenceOnlineUser[],
   viewerUuid?: string | null,
+  viewerMaskedIp?: string | null,
 ): PresenceOnlineUser[] {
   const guests = new Map<string, PresenceOnlineUser>();
   const authenticated = new Map<string, PresenceOnlineUser>();
@@ -91,6 +143,9 @@ export function normalizePresenceConnectList(
       .filter(sessionKey => sessionKey !== ''),
   );
 
+  const hideIp = (viewerMaskedIp ?? getRememberedSelfGuestIp())?.trim() ?? '';
+  const viewerIsAuthenticated = (viewerUuid?.trim() ?? '') !== '';
+
   for (const user of users) {
     if (user.user_uuid) {
       continue;
@@ -104,6 +159,13 @@ export function normalizePresenceConnectList(
     const guestSessionKey = user.session_key?.trim() ?? '';
     if (guestSessionKey !== '' && authenticatedSessionKeys.has(guestSessionKey)) {
       continue;
+    }
+
+    if (viewerIsAuthenticated && hideIp !== '') {
+      const guestIp = user.client_ip_masked?.trim() ?? '';
+      if (guestIp !== '' && guestIp === hideIp) {
+        continue;
+      }
     }
 
     const guestKey = guestVisitorId || user.session_key;
@@ -120,7 +182,8 @@ export function normalizePresenceConnectList(
 }
 
 /**
- * 로그인 직후 — 내 visitor_id guest 행 제거 후 member 1행으로 승격(낙관적).
+ * 로그인 직후 — 내 visitor_id·동일 마스크 IP guest 행 제거 후 member 1행으로 승격(낙관적).
+ * 서버 touch=login purge + refreshConnectList 가 SSOT, 여기는 즉시 UI만.
  */
 export function optimisticPromoteSelfInConnectList(
   users: PresenceOnlineUser[],
@@ -129,21 +192,32 @@ export function optimisticPromoteSelfInConnectList(
 ): PresenceOnlineUser[] {
   const trimmedVisitorId = visitorId.trim();
   const selfUuid = selfRow.user_uuid?.trim() ?? '';
+  const myGuestIp = users
+    .find(user => !user.user_uuid && (user.visitor_id?.trim() ?? '') === trimmedVisitorId)
+    ?.client_ip_masked
+    ?.trim() ?? '';
+  if (myGuestIp) {
+    rememberSelfGuestIp(myGuestIp);
+  }
 
   const withoutShadows = users.filter(user => {
     if (selfUuid !== '' && user.user_uuid === selfUuid) {
       return false;
     }
-    if (!user.user_uuid && trimmedVisitorId !== '') {
+    if (!user.user_uuid) {
       const guestVisitorId = user.visitor_id?.trim() ?? '';
-      if (guestVisitorId === trimmedVisitorId) {
+      if (trimmedVisitorId !== '' && guestVisitorId === trimmedVisitorId) {
+        return false;
+      }
+      const guestIp = user.client_ip_masked?.trim() ?? '';
+      if (myGuestIp !== '' && guestIp === myGuestIp) {
         return false;
       }
     }
     return true;
   });
 
-  return normalizePresenceConnectList([selfRow, ...withoutShadows], selfUuid);
+  return normalizePresenceConnectList([selfRow, ...withoutShadows], selfUuid, myGuestIp || null);
 }
 
 /**

@@ -5,6 +5,7 @@ namespace Modules\Moabom\Apps\Tests\Unit;
 use Illuminate\Support\Facades\Validator;
 use Modules\Moabom\Apps\Http\Requests\GenerateAiAppRequest;
 use Modules\Moabom\Apps\Http\Requests\StoreGeneratedAppRequest;
+use Modules\Moabom\Apps\Http\Requests\StreamAiAppRequest;
 use Modules\Moabom\Apps\Tests\ModuleTestCase;
 
 class AiAppRequestsTest extends ModuleTestCase
@@ -20,7 +21,7 @@ class AiAppRequestsTest extends ModuleTestCase
         $this->assertTrue($passes);
     }
 
-    public function test_generate_ai_app_request_rejects_gemini_flash(): void
+    public function test_generate_ai_app_request_rejects_chat_only_gemini_flash(): void
     {
         $passes = Validator::make([
             'prompt' => '수면 리포트 앱을 만들어줘',
@@ -29,6 +30,19 @@ class AiAppRequestsTest extends ModuleTestCase
         ], (new GenerateAiAppRequest)->rules())->passes();
 
         $this->assertFalse($passes);
+    }
+
+    public function test_generate_ai_app_request_accepts_coding_models(): void
+    {
+        foreach (['claude-sonnet', 'claude-haiku', 'gpt-code', 'gpt-code-mini', 'gemini-code', 'gemini-code-lite'] as $modelId) {
+            $passes = Validator::make([
+                'prompt' => '수면 리포트 앱을 만들어줘',
+                'app_type' => 'dataviz',
+                'model_id' => $modelId,
+            ], (new GenerateAiAppRequest)->rules())->passes();
+
+            $this->assertTrue($passes, "expected coding model {$modelId} to pass");
+        }
     }
 
     public function test_store_generated_app_request_requires_complete_html(): void
@@ -85,6 +99,31 @@ class AiAppRequestsTest extends ModuleTestCase
             'app_type' => 'html_paste',
             'model_id' => 'claude-sonnet',
         ], (new GenerateAiAppRequest)->rules())->passes();
+
+        $this->assertFalse($passes);
+    }
+
+    public function test_stream_ai_app_request_accepts_html_paste_for_patch(): void
+    {
+        $passes = Validator::make([
+            'prompt' => '선택한 버튼 색을 파란색으로 바꿔줘',
+            'app_type' => 'html_paste',
+            'model_id' => 'claude-sonnet',
+            'generation_mode' => 'patch',
+            'current_html' => '<!DOCTYPE html><html><head></head><body><button>ok</button></body></html>',
+        ], (new StreamAiAppRequest)->rules())->passes();
+
+        $this->assertTrue($passes);
+    }
+
+    public function test_stream_ai_app_request_rejects_website_link_type(): void
+    {
+        $passes = Validator::make([
+            'prompt' => '외부 사이트는 패치 불가',
+            'app_type' => 'website_link',
+            'model_id' => 'claude-sonnet',
+            'generation_mode' => 'patch',
+        ], (new StreamAiAppRequest)->rules())->passes();
 
         $this->assertFalse($passes);
     }

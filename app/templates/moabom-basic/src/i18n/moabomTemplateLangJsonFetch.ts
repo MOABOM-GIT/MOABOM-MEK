@@ -5,6 +5,8 @@
  * (1) 전역 fetch dedupe, (2) 엔진 캐시 재사용(loadTranslations 반환값) 을 제공한다.
  */
 
+import { registerMoabomFetchHandler, resetMoabomFetchInterceptorForTest } from '../runtime/moabomFetchInterceptor';
+
 export const MOABOM_TEMPLATE_LANG_ID = 'moabom-basic';
 
 const LANG_PATH_RE = /^\/api\/templates\/moabom-basic\/lang\/([a-z]{2})\.json$/;
@@ -133,6 +135,7 @@ export async function resolveMoabomTemplateLangDictionary(
 }
 
 let dedupeInstalled = false;
+const langInflight = new Map<string, Promise<Response>>();
 
 /**
  * template-engine.min.js 의 loadTranslations fetch 와 오버레이 fetch 를
@@ -145,26 +148,14 @@ export function installMoabomTemplateLangFetchDedupe(): void {
   }
   dedupeInstalled = true;
 
-  const nativeFetch = window.fetch.bind(window);
-  const langInflight = new Map<string, Promise<Response>>();
-
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    let url: URL;
-    try {
-      const href =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
-      url = new URL(href, window.location.href);
-    } catch {
-      return nativeFetch(input, init);
+  registerMoabomFetchHandler((ctx) => {
+    if (!ctx.url) {
+      return null;
     }
 
-    const match = url.pathname.match(LANG_PATH_RE);
+    const match = ctx.url.pathname.match(LANG_PATH_RE);
     if (!match) {
-      return nativeFetch(input, init);
+      return null;
     }
 
     const locale = match[1];
@@ -174,17 +165,19 @@ export function installMoabomTemplateLangFetchDedupe(): void {
     }
 
     const normalized = buildMoabomTemplateLangUrl(locale);
-    const promise = nativeFetch(normalized, init).finally(() => {
+    const promise = ctx.native(normalized, ctx.init).finally(() => {
       if (langInflight.get(locale) === promise) {
         langInflight.delete(locale);
       }
     });
     langInflight.set(locale, promise);
     return promise;
-  };
+  });
 }
 
 /** Vitest: fetch 패치 복원 */
 export function resetMoabomTemplateLangFetchDedupeForTest(): void {
   dedupeInstalled = false;
+  langInflight.clear();
+  resetMoabomFetchInterceptorForTest();
 }

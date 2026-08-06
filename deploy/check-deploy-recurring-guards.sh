@@ -63,6 +63,15 @@ grep -q 'arg.*== "\*"' "${CRJ}" \
   || fail "RF-12: cloud-run-artisan-job.sh 에 * 인자 거부 없음"
 ok "RF-12: cloud-run-artisan-job * 거부"
 
+# RF-12: tenant-repair 도 slug 생략 (Cloud Run Job 에 * 전달 금지)
+if grep -qE "tenant-repair ['\"]?\\*" "${BUILD_DEPLOY}" "${DEFERRED}" \
+  "${ROOT}/deploy/saas-tenant-extension-sync.sh" 2>/dev/null; then
+  fail "RF-12: tenant-repair '*' — slug 생략 필요 (RF-32 insert-only Job)"
+fi
+grep -q '{slug\?' "${ROOT}/app/modules/moabom-system/src/Console/Commands/SaasTenantRepairCommand.php" \
+  || fail "RF-12: tenant-repair slug optional 아님"
+ok "RF-12: tenant-repair slug 생략 (RF-32)"
+
 [[ -x "${ROOT}/deploy/run-layout-sync-job.sh" ]] \
   || fail "RF-13: run-layout-sync-job.sh 없음 또는 실행 불가"
 grep -q 'moabom:saas:sync-module-layouts' "${ROOT}/deploy/run-layout-sync-job.sh" \
@@ -139,35 +148,48 @@ grep -q '\*\*/dist' "${ROOT}/.dockerignore" \
   || fail "RF-20: .dockerignore 에 **/dist 제외 없음 (로컬 stale dist 이미지 입력 위험)"
 ok "RF-20: 로컬 dist 업로드/이미지 입력 제외"
 
-# RF-21: RUN_MIGRATIONS=false 운영에서도 새 모듈 컬럼 마이그레이션 누락 방지
+# RF-21 / RF-32: RUN_MIGRATIONS=false 운영에서도 schema plane(core/module/plugin) + tenant fan-out
 grep -q 'RUN_MIGRATIONS: "false"' "${ROOT}/deploy/production.env.yaml" \
   && {
-    grep -q 'Post-deploy allowlist module migrations\|Post-deploy module migrations skipped' "${BUILD_DEPLOY}" \
-      || fail "RF-21: build-and-deploy.sh 에 post-deploy migration 단계 없음"
-    grep -q 'POST_DEPLOY_MIGRATION_MODULES="${MOABOM_DEPLOY_MIGRATION_MODULES:-auto}"' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration 기본값이 auto(변경 모듈만) 가 아님"
-    grep -q 'moabom_post_deploy_migration_module_allowed\|moabom_post_deploy_auto_migration_modules' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration allowlist/auto 감지 없음"
-    grep -q 'moabom_run_artisan_job "moabom-${module_id}-migrate"' "${BUILD_DEPLOY}" \
-      || fail "RF-21: build-and-deploy.sh 가 모듈별 migrate Job 을 실행하지 않음"
-    grep -q 'moabom:saas:tenants:migrate' "${BUILD_DEPLOY}" \
-      || fail "RF-21: build-and-deploy.sh 가 active tenant 모듈 마이그레이션을 실행하지 않음"
-    grep -q 'moabom_post_deploy_migration_module_allowed' "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" \
-      || fail "RF-21/RF-31: post-deploy migration allow helper 없음"
-    grep -q 'sirsoft-board' "${ROOT}/deploy/lib/post-deploy-migration-hash.sh" \
-      || fail "RF-31: post-deploy extra modules 에 sirsoft-board 없음"
-    grep -q 'wildcard/path 금지' "${BUILD_DEPLOY}" \
-      || fail "RF-21: post-deploy migration allowlist wildcard/path 금지 없음"
-    python3 - "${BUILD_DEPLOY}" <<'PY' || fail "RF-21: module migrations 가 run_smoke 보다 뒤에 있음"
+    grep -q 'Post-deploy schema-sync\|Post-deploy schema planes skipped\|moabom:saas:schema-sync' "${BUILD_DEPLOY}" \
+      || fail "RF-32: build-and-deploy.sh 에 schema-sync post-deploy 단계 없음"
+    grep -q 'saas-migration-planes.sh' "${BUILD_DEPLOY}" \
+      || fail "RF-32: build-and-deploy.sh 가 saas-migration-planes.sh 미사용"
+    [[ -f "${ROOT}/deploy/lib/saas-migration-planes.sh" ]] \
+      || fail "RF-32: deploy/lib/saas-migration-planes.sh 없음"
+    grep -q 'moabom_saas_list_changed_planes' "${ROOT}/deploy/lib/saas-migration-planes.sh" \
+      || fail "RF-32: plane 목록 함수 없음"
+    grep -q 'moabom:saas:schema-sync' "${BUILD_DEPLOY}" \
+      || fail "RF-32: build-and-deploy.sh 가 moabom:saas:schema-sync Job 을 실행하지 않음"
+    grep -q 'insert-only' "${BUILD_DEPLOY}" \
+      || fail "RF-32: post-deploy tenant extension availability(insert-only) 없음"
+    grep -q 'copyCatalog\|baselineExistingCreates' "${ROOT}/app/modules/moabom-system/src/Saas/SaasTenantMigrationBaseliner.php" \
+      || fail "RF-32: SaasTenantMigrationBaseliner 없음"
+    grep -q 'copyCatalog' "${ROOT}/app/modules/moabom-system/src/Saas/TenantDatabaseBootstrapper.php" \
+      || fail "RF-32: provision migrations catalog 복사 없음"
+    grep -q 'sirsoft-gdpr' "${ROOT}/app/modules/moabom-system/database/saas/packages/hospital-default.json" \
+      || fail "RF-32: hospital-default 에 sirsoft-gdpr 없음"
+    grep -q 'sirsoft-verification_kginicis' "${ROOT}/app/modules/moabom-system/database/saas/packages/hospital-default.json" \
+      || fail "RF-32: hospital-default 에 sirsoft-verification_kginicis 없음"
+    grep -q 'sirsoft-pay_kginicis' "${ROOT}/app/modules/moabom-system/database/saas/packages/hospital-default.json" \
+      || fail "RF-32: hospital-default 에 sirsoft-pay_kginicis 없음"
+    grep -q 'moabom:saas:sync-package-extensions' "${BUILD_DEPLOY}" \
+      || fail "RF-32: build-and-deploy 에 sync-package-extensions 없음 (플랫폼 install → tenant 가용성)"
+    grep -q 'namespace Modules\\Moabom\\Global\\Search;' \
+      "${ROOT}/app/modules/moabom-global-search/module.php" \
+      || fail "RF-32: moabom-global-search 네임스페이스가 G7 directoryToNamespace 와 불일치"
+    grep -q 'moabom-global-search' "${ROOT}/app/modules/moabom-global-search/composer.json" \
+      || fail "RF-32: moabom-global-search composer.json 없음"
+    python3 - "${BUILD_DEPLOY}" <<'PY' || fail "RF-32: schema-sync 가 run_smoke 보다 뒤에 있음"
 import sys
 text = open(sys.argv[1], encoding="utf-8").read()
-module = text.find("Post-deploy allowlist module migrations")
-if module == -1:
-    module = text.find("Post-deploy module migrations skipped")
-smoke_after_module = text.find("run_smoke", module if module != -1 else 0)
-raise SystemExit(0 if module != -1 and smoke_after_module != -1 and module < smoke_after_module else 1)
+sync = text.find("Post-deploy schema-sync")
+if sync == -1:
+    sync = text.find("Post-deploy schema planes skipped")
+smoke = text.find("run_smoke", sync if sync != -1 else 0)
+raise SystemExit(0 if sync != -1 and smoke != -1 and sync < smoke else 1)
 PY
-    ok "RF-21: RUN_MIGRATIONS=false active module migrations 배포 게이트"
+    ok "RF-21/RF-32: schema-sync plane + tenant availability 배포 게이트"
   }
 
 # RF-22: Cloud Run Billing — Request-based (--cpu-throttling) 고정
@@ -252,6 +274,17 @@ grep -q "grep -q 'auto_fetch'" "${ROOT}/deploy/Dockerfile" \
 grep -q 'v7-9b' "${ROOT}/deploy/check-before-cloud-build.sh" \
   || fail "RF-29: check-before-cloud-build.sh [v7-9b] 게이트 없음"
 ok "RF-29: 코어 build:core hard-fail + DataGate 게이트"
+
+# RF-33~34: Reverb signed publish + Cloud Tasks 실제 dequeue 게이트
+grep -q 'authenticated publish' "${ROOT}/deploy/check-realtime-vm-health.sh" \
+  || fail "RF-33: Reverb authenticated publish health check 누락"
+[[ -x "${ROOT}/deploy/realtime-vm/sync-reverb-secret.sh" ]] \
+  || fail "RF-33: Reverb secret 원자 동기화 스크립트 없음"
+[[ -x "${ROOT}/deploy/smoke-realtime-notifications.sh" ]] \
+  || fail "RF-34: realtime notification 운영 스모크 없음"
+grep -q "app('queue.worker')" "${APP}/modules/moabom-system/src/Http/Controllers/InternalQueueTaskController.php" \
+  || fail "RF-34: queue.worker binding 해석 누락"
+ok "RF-33/RF-34: Reverb publish + Cloud Tasks dequeue fail-closed"
 
 if [[ "${FAIL}" -ne 0 ]]; then
   echo "== check-deploy-recurring-guards FAILED — deploy/DEPLOY-RECURRING-FAILURES.md =="

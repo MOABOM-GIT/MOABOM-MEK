@@ -601,8 +601,14 @@ PROMPT;
      */
     public function serializeForLibraryList(GeneratedApp $app, ?int $viewerUserId = null): array
     {
-        $payload = $this->serialize($app, includeHtml: false, viewerUserId: $viewerUserId);
-        unset($payload['preview_url']);
+        $payload = $this->serialize($app, includeHtml: false, viewerUserId: $viewerUserId, includePreviewUrl: false);
+
+        // 토큰 없는 공개 standard 앱만 preview_url 포함 — 프론트가 show 완료 전 iframe 병렬 시작.
+        // hosted/비공개는 뷰어별 토큰이 필요해 목록·캐시에 싣지 않는다.
+        $tokenFreePreviewUrl = $this->previewService->buildPreviewUrlIfTokenFree($app);
+        if (is_string($tokenFreePreviewUrl) && $tokenFreePreviewUrl !== '') {
+            $payload['preview_url'] = $tokenFreePreviewUrl;
+        }
 
         return $payload;
     }
@@ -610,8 +616,12 @@ PROMPT;
     /**
      * @return array<string, mixed>
      */
-    public function serialize(GeneratedApp $app, bool $includeHtml = true, ?int $viewerUserId = null): array
-    {
+    public function serialize(
+        GeneratedApp $app,
+        bool $includeHtml = true,
+        ?int $viewerUserId = null,
+        bool $includePreviewUrl = true,
+    ): array {
         $ownerName = trim($this->ownerResolver->nickname($app));
         if ($ownerName === '') {
             $ownerName = __('moabom-apps::messages.apps.generated.owner_unknown');
@@ -629,7 +639,6 @@ PROMPT;
             'app_type' => $app->app_type,
             'tier' => $app->tier ?? AppTier::Standard->value,
             'hosted_subdomain' => $app->hosted_subdomain,
-            'preview_url' => $this->previewService->buildPreviewUrl($app, $viewerUserId),
             'model_id' => $app->model_id,
             'prompt' => $app->prompt,
             'visibility' => $visibility->value,
@@ -660,6 +669,10 @@ PROMPT;
             ],
             'created_at' => $app->created_at?->toISOString(),
         ];
+
+        if ($includePreviewUrl) {
+            $payload['preview_url'] = $this->previewService->buildPreviewUrl($app, $viewerUserId);
+        }
 
         if ($includeHtml) {
             $payload['html'] = $app->html;
@@ -894,7 +907,7 @@ PROMPT;
     private function resolveModel(string $modelId): array
     {
         $models = config('moabom-apps.ai.models', []);
-        $fallback = $models['claude-sonnet'] ?? ['provider' => 'anthropic', 'model' => 'claude-sonnet-4-20250514'];
+        $fallback = $models['claude-sonnet'] ?? ['provider' => 'anthropic', 'model' => 'claude-sonnet-4-6'];
 
         return $models[$modelId] ?? $fallback;
     }

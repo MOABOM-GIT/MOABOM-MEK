@@ -20,6 +20,7 @@ const SKIPPED_APP_IDS = new Set([
   'forgot-password',
   'reset-password',
   'create-app',
+  'ai-smart-chat',
 ]);
 
 type PendingUsage = {

@@ -6,6 +6,10 @@ return [
             'generate_success' => 'AI 앱 HTML을 생성했습니다.',
             'stream_started' => 'AI 앱 HTML 생성을 시작했습니다.',
             'continue_default_prompt' => '중단된 부분부터 이어서 나머지 HTML 코드를 완성해주세요.',
+            'credit' => [
+                'spend_description' => 'AI 앱 만들기 사용',
+                'insufficient' => '크레딧이 부족합니다.',
+            ],
             'session_fetch_success' => 'AI 생성 세션을 조회했습니다.',
             'session_not_found' => 'AI 생성 세션을 찾을 수 없습니다.',
             'session_resume_available' => '이어서 생성할 수 있는 세션이 있습니다.',
@@ -81,6 +85,10 @@ return [
         'community' => [
             'summary_success' => '앱 리뷰 요약을 조회했습니다.',
             'list_success' => '앱 리뷰 목록을 조회했습니다.',
+            'my_reviews_success' => '내 앱 리뷰 목록을 조회했습니다.',
+            'my_review_label' => '앱 리뷰',
+            'rating_meta' => '평점 :rating점',
+            'unknown_app' => '알 수 없는 앱',
             'show_success' => '앱 리뷰 글을 조회했습니다.',
             'create_success' => '리뷰를 등록했습니다.',
             'update_success' => '리뷰를 수정했습니다.',

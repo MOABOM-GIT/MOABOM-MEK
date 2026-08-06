@@ -50,7 +50,6 @@ import {
   isMoabomWebSocketConnected,
   subscribeMoabomWebSocketConnectionChange,
 } from '../runtime/moabomWebSocketConnection';
-import { requestShellChatCatchUpSync, requestShellChatInboxSync } from '../runtime/moabomShellChatSyncService';
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
 import type { ChatMessageCreatedPayload, ChatMemberLeftPayload, ChatReadPayload, ChatTypingPayload } from '../runtime/moabomChatSocket';
 import {
@@ -182,6 +181,29 @@ export function useMoabomChat(
   const [typingPeerUuids, setTypingPeerUuids] = useState<string[]>([]);
   const typingClearTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const lastTypingSignalRef = useRef(0);
+  const pendingReadRef = useRef<{ conversationUuid: string; messageId: number } | null>(null);
+  const readFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleConversationRead = useCallback((conversationUuid: string, messageId: number) => {
+    const pending = pendingReadRef.current;
+    pendingReadRef.current = {
+      conversationUuid,
+      messageId: pending?.conversationUuid === conversationUuid
+        ? Math.max(pending.messageId, messageId)
+        : messageId,
+    };
+    if (readFlushTimerRef.current !== null) {
+      return;
+    }
+    readFlushTimerRef.current = setTimeout(() => {
+      readFlushTimerRef.current = null;
+      const next = pendingReadRef.current;
+      pendingReadRef.current = null;
+      if (next) {
+        void markChatConversationRead(next.conversationUuid, next.messageId);
+      }
+    }, 1_500);
+  }, []);
 
   const applyMemberLeftUpdate = useCallback((
     conversationUuid: string,
@@ -196,7 +218,7 @@ export function useMoabomChat(
         }
         const source = activeConversationRef.current?.uuid === conversationUuid
           ? activeConversationRef.current
-          : conversations.find(item => item.uuid === conversationUuid);
+          : null;
         if (!source) {
           return null;
         }
@@ -207,15 +229,10 @@ export function useMoabomChat(
       return;
     }
 
-    setConversations(prev => {
-      const next = upsertConversation(prev, updated);
-      setShellChatInboxCache(next);
-      return next;
-    });
     setActiveConversation(prev => (
       prev?.uuid === conversationUuid ? updated : prev
     ));
-  }, [conversations]);
+  }, []);
 
   const applyIncomingChatMessage = useCallback((payload: ChatMessageCreatedPayload & { removed?: boolean; reason?: string }) => {
     const conversationUuid = payload.conversation_uuid
@@ -232,11 +249,6 @@ export function useMoabomChat(
         setMessages([]);
         clearMoabomShellActiveChat();
       }
-      setConversations(prev => {
-        const next = prev.filter(item => item.uuid !== conversationUuid);
-        setShellChatInboxCache(next);
-        return next;
-      });
       return;
     }
 
@@ -260,35 +272,17 @@ export function useMoabomChat(
 
     if (incomingMessage && isActiveConversation) {
       setMessages(prev => appendMessage(prev, incomingMessage));
-      void markChatConversationRead(conversationUuid, incomingMessage.id);
+      scheduleConversationRead(conversationUuid, incomingMessage.id);
     }
 
     if (payload.conversation) {
       const conversation = payload.conversation as ChatConversation;
-      setConversations(prev => {
-        const next = upsertConversation(prev, conversation);
-        setShellChatInboxCache(next);
-        return next;
-      });
       setActiveConversation(prev => (
         prev?.uuid === conversation.uuid ? conversation : prev
       ));
       return;
     }
-
-    if (incomingMessage) {
-      setConversations(prev => prev.map(item => (
-        item.uuid === conversationUuid
-          ? {
-            ...item,
-            latest_message: incomingMessage,
-            last_message_at: payload.last_message_at ?? incomingMessage.created_at ?? item.last_message_at,
-            unread_count: isActiveConversation ? 0 : item.unread_count + 1,
-          }
-          : item
-      )));
-    }
-  }, [applyMemberLeftUpdate]);
+  }, [applyMemberLeftUpdate, scheduleConversationRead]);
 
   const handleMemberLeft = useCallback((payload: ChatMemberLeftPayload) => {
     const conversationUuid = payload.conversation_uuid?.trim();
@@ -681,8 +675,9 @@ export function useMoabomChat(
     if (cached.length > 0) {
       setConversations(cached);
     }
-    requestShellChatCatchUpSync();
-    void loadConversations(undefined, { silent: cached.length > 0 });
+    if (cached.length === 0 || !isMoabomWebSocketConnected()) {
+      void loadConversations(undefined, { silent: cached.length > 0 });
+    }
     void loadBlocks();
   }, [loadBlocks, loadConversations]);
 
@@ -697,9 +692,14 @@ export function useMoabomChat(
 
   useEffect(() => {
     const refreshOnFocus = () => {
-      void loadBlocks();
-      requestShellChatInboxSync();
-      void refreshActiveMessagesSilent();
+      if (isMoabomWebSocketConnected()) {
+        return;
+      }
+      void Promise.all([
+        loadBlocks(),
+        loadConversations(undefined, { silent: true }),
+        refreshActiveMessagesSilent(),
+      ]);
     };
     const onFocus = () => {
       refreshOnFocus();
@@ -715,7 +715,19 @@ export function useMoabomChat(
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [loadBlocks, refreshActiveMessagesSilent]);
+  }, [loadBlocks, loadConversations, refreshActiveMessagesSilent]);
+
+  useEffect(() => () => {
+    if (readFlushTimerRef.current !== null) {
+      clearTimeout(readFlushTimerRef.current);
+      readFlushTimerRef.current = null;
+    }
+    const pending = pendingReadRef.current;
+    pendingReadRef.current = null;
+    if (pending) {
+      void markChatConversationRead(pending.conversationUuid, pending.messageId);
+    }
+  }, []);
 
   useEffect(() => {
     const onWsAuthSynced = () => {

@@ -37,6 +37,29 @@ describe('generatedAppLibrary', () => {
     expect(app.source).toBe('user-created');
   });
 
+  it('carries token-free preview_url into metadata for AI apps (parallel iframe start)', () => {
+    const app = mapStoredGeneratedAppToLibraryApp({
+      id: 5,
+      title: '공개 앱',
+      app_type: 'general',
+      preview_url: 'https://apps.mek360.com/g/5',
+    });
+
+    expect(app.metadata?.previewUrl).toBe('https://apps.mek360.com/g/5');
+  });
+
+  it('omits previewUrl for website link apps (uses websiteUrl seed instead)', () => {
+    const app = mapStoredGeneratedAppToLibraryApp({
+      id: 6,
+      title: '네이버',
+      app_type: 'website_link',
+      preview_url: 'https://www.naver.com',
+      metadata: { website_url: 'https://www.naver.com' },
+    });
+
+    expect(app.metadata?.previewUrl).toBeUndefined();
+  });
+
   it('uses stable system-style gradient for the same generated app', () => {
     const first = mapStoredGeneratedAppToLibraryApp({
       id: 3,

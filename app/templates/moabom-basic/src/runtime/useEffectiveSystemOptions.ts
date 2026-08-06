@@ -30,7 +30,9 @@ function shallowEqual(a: EffectiveSystemOptions, b: EffectiveSystemOptions): boo
     a.sound === b.sound &&
     a.animation === b.animation &&
     a.haptic === b.haptic &&
+    a.notification_center === b.notification_center &&
     a.toast === b.toast &&
+    a.push === b.push &&
     a.weather === b.weather
   );
 }

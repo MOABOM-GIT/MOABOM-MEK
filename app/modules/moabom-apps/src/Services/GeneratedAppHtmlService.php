@@ -21,6 +21,9 @@ class GeneratedAppHtmlService
         ."connect-src https:; "
         ."base-uri 'none'; form-action 'self' https:;";
 
+    /** @var array<string, string> bridge JS 프로세스 캐시 (요청마다 file_get_contents 방지) */
+    private static array $bridgeScriptCache = [];
+
     public function harden(string $html, ?GeneratedAppDataScope $runtimeScope = null, bool $injectHostedDataApiBridge = false): string
     {
         if ($html === '') {
@@ -77,85 +80,13 @@ class GeneratedAppHtmlService
     }
 
     /**
-     * iframe 내부 배경 휘도 프로브.
+     * iframe 내부 배경 휘도 프로브(solid + gradient).
      *
-     * 부모(셸)가 보낸 지점(buttons 좌표)을 받아 elementFromPoint 로 해당 위치의
-     * 실효 배경색을 합성·휘도 계산하고, 'light'|'dark' 톤을 postMessage 로 회신한다.
-     * 로드 직후 기본(좌하단) 지점도 1회 선제 회신해 부모가 늦게 붙어도 동작한다.
+     * @see resources/js/generated-app-backdrop-probe.js
      */
     private function backdropProbeScript(): string
     {
-        $js = <<<'JS'
-(function(){
-  if (window.__moabomBackdropProbe) { return; }
-  window.__moabomBackdropProbe = true;
-  function parseRgb(s){
-    var m = /rgba?\(([^)]+)\)/i.exec(s || '');
-    if (!m) { return null; }
-    var p = m[1].split(',').map(function(x){ return parseFloat(x); });
-    var a = p.length > 3 ? p[3] : 1;
-    return { r: p[0] || 0, g: p[1] || 0, b: p[2] || 0, a: isNaN(a) ? 1 : a };
-  }
-  function compositeOnWhite(c){
-    var a = Math.max(0, Math.min(1, c.a));
-    return { r: c.r * a + 255 * (1 - a), g: c.g * a + 255 * (1 - a), b: c.b * a + 255 * (1 - a) };
-  }
-  function bgAt(x, y){
-    var el = document.elementFromPoint(x, y);
-    while (el && el !== document.documentElement) {
-      var c = parseRgb(getComputedStyle(el).backgroundColor);
-      if (c && c.a > 0) { return compositeOnWhite(c); }
-      el = el.parentElement;
-    }
-    var base = parseRgb(getComputedStyle(document.body).backgroundColor)
-      || parseRgb(getComputedStyle(document.documentElement).backgroundColor);
-    if (base && base.a > 0) { return compositeOnWhite(base); }
-    return { r: 255, g: 255, b: 255 };
-  }
-  function luminance(c){
-    function ch(v){ v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-    return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
-  }
-  function measure(points){
-    var pts = (points && points.length) ? points : [{ x: 28, y: window.innerHeight - 28 }];
-    var sum = 0, n = 0;
-    for (var i = 0; i < pts.length; i++) {
-      var x = Math.max(0, Math.min(window.innerWidth - 1, pts[i].x));
-      var y = Math.max(0, Math.min(window.innerHeight - 1, pts[i].y));
-      sum += luminance(bgAt(x, y)); n++;
-    }
-    var L = n ? sum / n : 1;
-    return { tone: L < 0.5 ? 'dark' : 'light', luminance: L };
-  }
-  function reply(id, points){
-    try {
-      var res = measure(points);
-      parent.postMessage({ source: 'moabom-app', type: 'backdrop-tone', id: id, tone: res.tone, luminance: res.luminance }, '*');
-    } catch (e) {}
-  }
-  window.addEventListener('message', function(ev){
-    var d = ev.data;
-    if (!d || d.source !== 'moabom-shell') { return; }
-    // 부모(셸) 워치독의 생존 확인 ping 에 즉시 회신한다.
-    // 앱 메인 스레드가 무한 루프로 막히면 이 회신이 끊기고, 부모는 별도 이벤트 루프에서
-    // 응답 없음을 감지해 해당 iframe 만 재시작한다.
-    if (d.type === 'heartbeat-ping') {
-      try { parent.postMessage({ source: 'moabom-app', type: 'heartbeat-pong', id: d.id }, '*'); } catch (e) {}
-      return;
-    }
-    if (d.type !== 'backdrop-probe') { return; }
-    reply(d.id, d.points);
-  });
-  function initial(){ reply('initial', null); }
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(initial, 80);
-  } else {
-    window.addEventListener('DOMContentLoaded', function(){ setTimeout(initial, 80); });
-  }
-})();
-JS;
-
-        return '<script id="moabom-app-backdrop-probe">'.$js.'</script>';
+        return $this->cachedBridgeScript('generated-app-backdrop-probe.js', 'moabom-app-backdrop-probe');
     }
 
     /**
@@ -165,17 +96,7 @@ JS;
      */
     private function downloadBridgeScript(): string
     {
-        $path = dirname(__DIR__, 2).'/resources/js/generated-app-download-bridge.js';
-        if (! is_readable($path)) {
-            return '';
-        }
-
-        $js = (string) file_get_contents($path);
-        if ($js === '') {
-            return '';
-        }
-
-        return '<script id="moabom-app-download-bridge">'.$js.'</script>';
+        return $this->cachedBridgeScript('generated-app-download-bridge.js', 'moabom-app-download-bridge');
     }
 
     /**
@@ -185,17 +106,7 @@ JS;
      */
     private function dataApiBridgeScript(): string
     {
-        $path = dirname(__DIR__, 2).'/resources/js/generated-app-data-api-bridge.js';
-        if (! is_readable($path)) {
-            return '';
-        }
-
-        $js = (string) file_get_contents($path);
-        if ($js === '') {
-            return '';
-        }
-
-        return '<script id="moabom-app-data-api-bridge">'.$js.'</script>';
+        return $this->cachedBridgeScript('generated-app-data-api-bridge.js', 'moabom-app-data-api-bridge');
     }
 
     /**
@@ -205,17 +116,7 @@ JS;
      */
     private function hostedStorageBridgeScript(): string
     {
-        $path = dirname(__DIR__, 2).'/resources/js/generated-app-hosted-storage.js';
-        if (! is_readable($path)) {
-            return '';
-        }
-
-        $js = (string) file_get_contents($path);
-        if ($js === '') {
-            return '';
-        }
-
-        return '<script id="moabom-app-hosted-storage">'.$js.'</script>';
+        return $this->cachedBridgeScript('generated-app-hosted-storage.js', 'moabom-app-hosted-storage');
     }
 
     /**
@@ -225,17 +126,27 @@ JS;
      */
     private function shellNativeBridgeScript(): string
     {
-        $path = dirname(__DIR__, 2).'/resources/js/generated-app-shell-native-bridge.js';
+        return $this->cachedBridgeScript('generated-app-shell-native-bridge.js', 'moabom-app-shell-native-bridge');
+    }
+
+    private function cachedBridgeScript(string $filename, string $scriptId): string
+    {
+        if (array_key_exists($filename, self::$bridgeScriptCache)) {
+            return self::$bridgeScriptCache[$filename];
+        }
+
+        $path = dirname(__DIR__, 2).'/resources/js/'.$filename;
         if (! is_readable($path)) {
+            self::$bridgeScriptCache[$filename] = '';
+
             return '';
         }
 
         $js = (string) file_get_contents($path);
-        if ($js === '') {
-            return '';
-        }
+        $script = $js === '' ? '' : '<script id="'.$scriptId.'">'.$js.'</script>';
+        self::$bridgeScriptCache[$filename] = $script;
 
-        return '<script id="moabom-app-shell-native-bridge">'.$js.'</script>';
+        return $script;
     }
 
     private function injectAfterHeadOpen(string $html, string $injection): string

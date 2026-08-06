@@ -1,8 +1,8 @@
 {
     "name": "plugins/moabom-fcm",
-    "description": "Moabom FCM plugin for Gnuboard7 (Firebase HTTP v1 push skeleton)",
+    "description": "Moabom FCM plugin for Gnuboard7 (Firebase HTTP v1 device push)",
     "type": "library",
-    "version": "0.1.0",
+    "version": "0.2.4",
     "license": "MIT",
     "authors": [
         {

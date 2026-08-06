@@ -5,6 +5,7 @@ export const MOABOM_SHELL_UNREAD_SYNCED_EVENT = 'moabom-shell-unread-synced';
 type UnreadSyncedDetail = { count: number };
 
 let estimatedUnreadCount = 0;
+const provisionalNotificationKeys = new Set<string>();
 
 export function getEstimatedShellUnreadCount(): number {
   return estimatedUnreadCount;
@@ -28,6 +29,34 @@ export function bumpShellUnreadBadgeFromRealtime(): void {
   dispatchShellUnreadSynced(estimatedUnreadCount + 1);
 }
 
-export function resetShellUnreadBadgeForTest(): void {
+export function bumpShellUnreadBadgeProvisional(key: string): void {
+  const normalized = key.trim();
+  if (!normalized || provisionalNotificationKeys.has(normalized)) {
+    return;
+  }
+  provisionalNotificationKeys.add(normalized);
+  bumpShellUnreadBadgeFromRealtime();
+}
+
+export function consumeShellUnreadBadgeProvisional(key: string): boolean {
+  const normalized = key.trim();
+  if (!normalized || !provisionalNotificationKeys.has(normalized)) {
+    return false;
+  }
+  provisionalNotificationKeys.delete(normalized);
+  return true;
+}
+
+/** 인증 계정 경계 전환 — 이전 사용자의 배지·임시 notification 키를 즉시 폐기한다. */
+export function clearShellUnreadBadge(): void {
+  provisionalNotificationKeys.clear();
+  if (typeof window !== 'undefined') {
+    dispatchShellUnreadSynced(0);
+    return;
+  }
   estimatedUnreadCount = 0;
+}
+
+export function resetShellUnreadBadgeForTest(): void {
+  clearShellUnreadBadge();
 }

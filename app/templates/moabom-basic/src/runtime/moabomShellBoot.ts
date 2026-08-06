@@ -9,6 +9,7 @@ import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../i18n/moabomShellEvents';
 import { mergeMoabomShellEssentialRoutes } from '../shell/moaShellEssentialRoutes';
 import { setMoabomLocaleCatalog, type MoabomLocaleCatalog } from '../utils/moabomLocaleCatalog';
 import { setShellBootApps, type ShellAppManifest } from '../apps/shellBootApps';
+import { registerMoabomFetchHandler, resetMoabomFetchInterceptorForTest } from './moabomFetchInterceptor';
 
 const SHELL_BOOT_API = '/api/modules/moabom-system/public/shell-boot';
 const FRONTEND_DEFAULTS_PATH = '/api/modules/moabom-system/public/frontend-defaults';
@@ -63,6 +64,8 @@ type ShellBootApiResponse = {
 
 type MoabomShellBootShared = {
     data: MoabomShellBootData | null;
+    promise: Promise<MoabomShellBootData | null> | null;
+    generation: number;
 };
 
 declare global {
@@ -80,7 +83,13 @@ function sharedShellBoot(): MoabomShellBootShared | null {
         return null;
     }
 
-    window.__MoabomShellBoot = window.__MoabomShellBoot ?? { data: null };
+    window.__MoabomShellBoot = window.__MoabomShellBoot ?? {
+        data: null,
+        promise: null,
+        generation: 0,
+    };
+    window.__MoabomShellBoot.promise ??= null;
+    window.__MoabomShellBoot.generation ??= 0;
 
     return window.__MoabomShellBoot;
 }
@@ -204,6 +213,11 @@ function normalizeShellBootPayload(raw: Partial<MoabomShellBootData> | undefined
 export function invalidateMoabomShellBootCache(): void {
     writeShellBootData(null);
     shellBootLoadPromise = null;
+    const shared = sharedShellBoot();
+    if (shared) {
+        shared.promise = null;
+        shared.generation += 1;
+    }
 }
 
 /** Vitest: 메모리 캐시 초기화 */
@@ -230,8 +244,13 @@ export async function ensureMoabomShellBootLoaded(
     if (shellBootLoadPromise) {
         return shellBootLoadPromise;
     }
+    const shared = sharedShellBoot();
+    if (shared?.promise) {
+        return shared.promise;
+    }
 
-    shellBootLoadPromise = (async () => {
+    const generation = shared?.generation ?? 0;
+    const loadPromise = (async () => {
         try {
             const response = await fetchShellBootWithColdStartRetry(fetchImpl);
             const payload = (await response.json()) as ShellBootApiResponse;
@@ -262,11 +281,20 @@ export async function ensureMoabomShellBootLoaded(
             return null;
         }
     })();
+    shellBootLoadPromise = loadPromise;
+    if (shared) {
+        shared.promise = loadPromise;
+    }
 
     try {
-        return await shellBootLoadPromise;
+        return await loadPromise;
     } finally {
-        shellBootLoadPromise = null;
+        if (shellBootLoadPromise === loadPromise) {
+            shellBootLoadPromise = null;
+        }
+        if (shared?.promise === loadPromise && shared.generation === generation) {
+            shared.promise = null;
+        }
     }
 }
 
@@ -346,37 +374,19 @@ export function installMoabomShellBootFetch(): void {
     }
     shellBootFetchInstalled = true;
 
-    const nativeFetch = window.fetch.bind(window);
-
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-        let url: URL;
-        try {
-            const href =
-                typeof input === 'string'
-                    ? input
-                    : input instanceof URL
-                      ? input.href
-                      : input.url;
-            url = new URL(href, window.location.href);
-        } catch {
-            return nativeFetch(input, init);
+    registerMoabomFetchHandler((ctx) => {
+        if (!ctx.url || isShellBootUrl(ctx.url.pathname)) {
+            return null;
         }
 
-        if (isShellBootUrl(url.pathname)) {
-            return nativeFetch(input, init);
-        }
-
-        return resolveBootBackedResponse(url.pathname, nativeFetch).then(bootBacked => {
-            if (bootBacked) {
-                return bootBacked;
-            }
-
-            return nativeFetch(input, init);
-        });
-    };
+        // frontend-defaults · template-routes-shell · social-providers 를 shell-boot 응답으로 대체.
+        // 미해당 경로는 resolveBootBackedResponse 가 null 을 반환 → 인터셉터가 네이티브로 위임.
+        return resolveBootBackedResponse(ctx.url.pathname, ctx.native);
+    });
 }
 
 /** Vitest: fetch 패치 플래그 복원 */
 export function resetMoabomShellBootFetchForTest(): void {
     shellBootFetchInstalled = false;
+    resetMoabomFetchInterceptorForTest();
 }

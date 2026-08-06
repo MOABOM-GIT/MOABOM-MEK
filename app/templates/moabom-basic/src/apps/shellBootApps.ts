@@ -6,6 +6,14 @@
  * 신규 앱 = 모듈 + app.json + 템플릿 청크 (셸 코드 무수정).
  */
 import type { App } from '../data/Moa_apps';
+import { createAppShellMetadata } from './ai-generator/metadata';
+import { smartChatShellMetadata } from './ai-smart-chat/metadata';
+
+/** 셸이 SYSTEM_TOOL 로 직접 넣는 앱 — 부트 매니페스트 중복 제외 */
+const SYSTEM_TOOL_BOOT_EXCLUDE_IDS = new Set([
+  createAppShellMetadata.id,
+  smartChatShellMetadata.id,
+]);
 
 export interface ShellAppManifestFrontend {
   template?: string | null;
@@ -74,11 +82,11 @@ export function shellBootAppToGrid(manifest: ShellAppManifest): App {
 
 /**
  * 기존 그리드 목록에 없는(id 기준) 부트 앱만 끝에 추가한다.
- * `create-app` 은 셸 기본 앱으로 직접 주입되므로 부트 매니페스트에서는 중복 제외한다.
+ * 시스템 도구(create-app · ai-smart-chat)는 셸 SYSTEM_TOOL 로 넣으므로 부트에서 제외한다.
  */
 export function appendNewShellBootApps(
   base: App[],
-  excludeIds: ReadonlySet<string> = new Set(['create-app']),
+  excludeIds: ReadonlySet<string> = SYSTEM_TOOL_BOOT_EXCLUDE_IDS,
 ): App[] {
   const present = new Set(base.map(a => a.id));
   const additions = bootApps

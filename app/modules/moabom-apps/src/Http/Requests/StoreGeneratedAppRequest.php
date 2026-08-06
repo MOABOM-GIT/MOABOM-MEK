@@ -24,7 +24,7 @@ class StoreGeneratedAppRequest extends FormRequest
             'title' => ['required', 'string', 'max:120'],
             'app_type' => ['required', Rule::in(AppType::values())],
             'tier' => ['sometimes', Rule::in(AppTier::values())],
-            'model_id' => ['nullable', Rule::in(['claude-sonnet', 'gpt-chat-latest', 'gpt-4o', 'gemini-flash-lite'])],
+            'model_id' => ['nullable', 'string', 'max:60'],
             'prompt' => ['nullable', 'string', 'max:8000'],
             'html' => ['required', 'string', 'min:20', 'max:524288', new GeneratedAppHtmlSecurityRule],
             'is_shared' => ['sometimes', 'boolean'],

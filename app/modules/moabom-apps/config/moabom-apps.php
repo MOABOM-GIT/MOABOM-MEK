@@ -7,6 +7,11 @@
  * 은 분리 이전(moabom-system)에 사용되던 값을 그대로 유지해 Cloud Run 운영 변수
  * 를 변경하지 않아도 되도록 한다(F1 호환).
  *
+ * 모델 정책 (2026-07):
+ * - 스마트챗: 대화(chat) 특화 · 3사 × 상위/하위 = 6
+ * - AI 앱 만들기: 코딩(HTML 생성) 특화 · 3사 × 상위/하위 = 6
+ * - Codex/Pro 계열은 chat/completions 미지원 또는 무거워 제외
+ *
  * 참조: moabom-system 의 config/moabom-system.php `ai` 섹션에서 이관.
  */
 
@@ -16,28 +21,79 @@ return [
         'anthropic_api_key' => env('MOABOM_ANTHROPIC_API_KEY'),
         'openai_api_key' => env('MOABOM_OPENAI_API_KEY'),
         'google_api_key' => env('MOABOM_GOOGLE_AI_API_KEY'),
+        /*
+         * UI model_id → upstream. 스마트챗·앱만들기가 같은 레지스트리를 resolve.
+         * 제품별 노출 목록은 create_app_allowed_model_ids / smart-chat allowed_model_ids.
+         */
         'models' => [
-            'gemini-flash-lite' => [
-                'provider' => 'google',
-                'model' => env('MOABOM_GOOGLE_AI_MODEL_LITE', 'gemini-3.1-flash-lite'),
-            ],
+            // Claude — 대화·코딩 공용 (Sonnet=상위 경량, Haiku=하위 초경량)
             'claude-sonnet' => [
                 'provider' => 'anthropic',
                 'model' => env('MOABOM_ANTHROPIC_MODEL', 'claude-sonnet-4-6'),
+                'label' => 'Claude Sonnet 4.6',
             ],
+            'claude-haiku' => [
+                'provider' => 'anthropic',
+                'model' => env('MOABOM_ANTHROPIC_MODEL_HAIKU', 'claude-haiku-4-5'),
+                'label' => 'Claude Haiku 4.5',
+            ],
+
+            // ChatGPT — 스마트챗(대화)
             'gpt-chat-latest' => [
                 'provider' => 'openai',
-                'model' => env('MOABOM_OPENAI_MODEL_CHAT', 'gpt-5.1-chat-latest'),
+                'model' => env('MOABOM_OPENAI_MODEL_CHAT', 'gpt-5.3-chat-latest'),
+                'label' => 'GPT-5.3 Chat',
             ],
-            'gpt-4o' => [
+            'gpt-chat-mini' => [
                 'provider' => 'openai',
-                'model' => env('MOABOM_OPENAI_MODEL', 'gpt-5.1-chat-latest'),
+                'model' => env('MOABOM_OPENAI_MODEL_CHAT_MINI', 'gpt-5.4-mini'),
+                'label' => 'GPT-5.4 Mini',
             ],
-            // Gemini 3.5 Flash는 생성 중 토큰/스트림 중단 빈도가 높아 운영 선택지에서 제외한다.
-            // 'gemini-flash' => [
-            //     'provider' => 'google',
-            //     'model' => env('MOABOM_GOOGLE_AI_MODEL', 'gemini-3.5-flash'),
-            // ],
+
+            // ChatGPT — AI 앱 만들기(코딩). Codex는 Responses API 전용 → chat/completions 가능 모델 사용
+            'gpt-code' => [
+                'provider' => 'openai',
+                'model' => env('MOABOM_OPENAI_MODEL_CODE', 'gpt-5.4'),
+                'label' => 'GPT-5.4',
+            ],
+            'gpt-code-mini' => [
+                'provider' => 'openai',
+                'model' => env('MOABOM_OPENAI_MODEL_CODE_MINI', 'gpt-5.4-mini'),
+                'label' => 'GPT-5.4 Mini',
+            ],
+
+            // Gemini — 스마트챗(대화)
+            'gemini-flash' => [
+                'provider' => 'google',
+                'model' => env('MOABOM_GOOGLE_AI_MODEL', 'gemini-3.6-flash'),
+                'label' => 'Gemini 3.6 Flash',
+            ],
+            'gemini-flash-lite' => [
+                'provider' => 'google',
+                'model' => env('MOABOM_GOOGLE_AI_MODEL_LITE', 'gemini-3.5-flash-lite'),
+                'label' => 'Gemini 3.5 Flash-Lite',
+            ],
+
+            // Gemini — AI 앱 만들기(코딩). 3.5 Flash 장기 스트림 불안정 → 3.6 / 3.5-lite
+            'gemini-code' => [
+                'provider' => 'google',
+                'model' => env('MOABOM_GOOGLE_AI_MODEL_CODE', 'gemini-3.6-flash'),
+                'label' => 'Gemini 3.6 Flash',
+            ],
+            'gemini-code-lite' => [
+                'provider' => 'google',
+                'model' => env('MOABOM_GOOGLE_AI_MODEL_CODE_LITE', 'gemini-3.5-flash-lite'),
+                'label' => 'Gemini 3.5 Flash-Lite',
+            ],
+        ],
+        /** AI 앱 만들기 UI·요청 allowlist (코딩 특화 6) */
+        'create_app_allowed_model_ids' => [
+            'claude-sonnet',
+            'claude-haiku',
+            'gpt-code',
+            'gpt-code-mini',
+            'gemini-code',
+            'gemini-code-lite',
         ],
         'timeout' => env('MOABOM_AI_TIMEOUT', 45),
         'stream_timeout' => env('MOABOM_AI_STREAM_TIMEOUT', 120),

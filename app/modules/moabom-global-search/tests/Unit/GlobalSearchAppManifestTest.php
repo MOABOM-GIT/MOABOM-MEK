@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\Moabom\GlobalSearch\Tests\Unit;
+namespace Modules\Moabom\Global\Search\Tests\Unit;
 
 use Modules\Moabom\Apps\Apps\AppManifest;
 use PHPUnit\Framework\TestCase;

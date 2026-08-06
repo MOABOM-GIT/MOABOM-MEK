@@ -36,55 +36,20 @@
   width: 1em;
 }
 
-/* moabom-admin_basic 템플릿 커스텀 스타일 */
+/* ========================================
+ * BASE STYLES - G7 sirsoft-admin_basic 동등
+ * ======================================== */
+
+@layer base {
+  body {
+    font-size: 0.875rem; /* 14px - text-sm */
+    line-height: 1.5;
+    @apply text-gray-900;
+    @apply dark:text-gray-100;
+  }
+}
 
 /*
- * 필요한 경우 아래에 커스텀 스타일을 추가하세요.
- * Tailwind의 유틸리티 클래스를 우선적으로 사용하는 것을 권장합니다.
+ * sidebar-scrollbar 는 G7 semantic SSOT (g7-semantic.css) 에 정의됨.
+ * 여기서 중복 정의하지 않는다.
  */
-
-/* 사이드바 스크롤바 스타일 - 호버 시에만 표시 */
-.sidebar-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s ease;
-}
-
-.sidebar-scrollbar:hover {
-  scrollbar-color: rgb(209 213 219) transparent;
-}
-
-.dark .sidebar-scrollbar:hover {
-  scrollbar-color: rgb(75 85 99) transparent;
-}
-
-/* WebKit 브라우저 (Chrome, Safari, Edge) */
-.sidebar-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
-  transition: background 0.3s ease;
-}
-
-.sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgb(209 213 219);
-}
-
-.dark .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgb(75 85 99);
-}
-
-.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgb(156 163 175);
-}
-
-.dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgb(107 114 128);
-}

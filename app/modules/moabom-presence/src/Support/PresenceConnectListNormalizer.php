@@ -8,6 +8,7 @@ use Modules\Moabom\Presence\Models\TenantPresenceSession;
 /**
  * 접속자 목록 — 인증 사용자는 user_id, guest 는 visitor_id(없으면 session_key) 기준 1행.
  * 승격된 visitor_id 는 guest 목록에서 제외.
+ * viewerMaskedIp 가 있으면 동일 마스크 IP guest 도 제외(조회자 본인 잔여 shadow — 공유망 전역 삭제 아님).
  */
 final class PresenceConnectListNormalizer
 {
@@ -15,8 +16,11 @@ final class PresenceConnectListNormalizer
      * @param  Collection<int, TenantPresenceSession>  $sessions
      * @return Collection<int, TenantPresenceSession>
      */
-    public static function dedupe(Collection $sessions, int $limit): Collection
-    {
+    public static function dedupe(
+        Collection $sessions,
+        int $limit,
+        ?string $viewerMaskedIp = null,
+    ): Collection {
         $authenticated = $sessions
             ->filter(fn (TenantPresenceSession $session): bool => $session->user_id !== null)
             ->sortByDesc(fn (TenantPresenceSession $session) => $session->last_seen_at)
@@ -36,9 +40,15 @@ final class PresenceConnectListNormalizer
             ->unique()
             ->values();
 
+        $hideIp = is_string($viewerMaskedIp) ? trim($viewerMaskedIp) : '';
+
         $guests = $sessions
             ->filter(fn (TenantPresenceSession $session): bool => $session->user_id === null)
-            ->filter(function (TenantPresenceSession $session) use ($authenticatedSessionKeys, $authenticatedVisitorIds): bool {
+            ->filter(function (TenantPresenceSession $session) use (
+                $authenticatedSessionKeys,
+                $authenticatedVisitorIds,
+                $hideIp,
+            ): bool {
                 $visitorId = is_string($session->visitor_id) ? trim($session->visitor_id) : '';
                 if ($visitorId !== '' && $authenticatedVisitorIds->contains($visitorId)) {
                     return false;
@@ -47,6 +57,13 @@ final class PresenceConnectListNormalizer
                 $sessionKey = is_string($session->session_key) ? trim($session->session_key) : '';
                 if ($sessionKey !== '' && $authenticatedSessionKeys->contains($sessionKey)) {
                     return false;
+                }
+
+                if ($hideIp !== '') {
+                    $guestIp = is_string($session->client_ip_masked) ? trim($session->client_ip_masked) : '';
+                    if ($guestIp !== '' && $guestIp === $hideIp) {
+                        return false;
+                    }
                 }
 
                 return true;

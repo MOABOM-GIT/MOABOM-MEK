@@ -4,6 +4,18 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.4] - 2026-08-06
+
+### Added
+
+- 게시글 답변과 댓글 답글을 앱 종료 상태에서도 받을 수 있도록 FCM 알림을 추가했습니다.
+
+## [1.0.3] - 2026-07-12
+
+### Added
+
+- 알림 정의에 `fcm` 채널·템플릿 동기화 — 관리자 알림설정에서 푸시 토글·템플릿 편집 가능 (moabom-fcm)
+
 ## [1.0.2] - 2026-07-10
 
 ### Fixed

@@ -15,7 +15,6 @@ import {
 import { removeGeneratedAppFromLibraryCache } from '../../apps/generatedAppLibraryCache';
 import { subscribeGeneratedAppSaved } from '../../apps/generatedAppEvents';
 import { deleteGeneratedApp, fetchVisibleGeneratedApp, updateGeneratedAppShare } from '../../api/moabomAppsApi';
-import { createAppShellMetadata } from '../../apps/ai-generator/metadata';
 import {
   generatedAppLibraryId,
   isGeneratedLibraryAppId,
@@ -30,6 +29,7 @@ import {
   buildMyApps,
   buildRecentApps,
   dedupeAppsById,
+  SYSTEM_TOOL_APP_METADATA,
 } from '../../shell/moaShellAppLists';
 import {
   loadInitialMainOrderSnapshot,
@@ -40,6 +40,7 @@ import {
   resolveMainAppsFromOrder,
   loadLocalMainAppOrder,
   hasLocalMainAppOrderCustomized,
+  setActiveMainAppOrderScopeKey,
   type MainAppOrderSnapshot,
 } from '../../shell/moaShellAppOrder';
 import {
@@ -64,6 +65,7 @@ import type { MoabomTranslateFn } from '../../i18n/moabomT';
 import { MOABOM_SHELL_BOOT_LOADED_EVENT } from '../../i18n/moabomShellEvents';
 import { getMoabomShellBootData } from '../../runtime/moabomShellBoot';
 import { awaitMoabomBootPhaseAtLeast } from '../../runtime/moabomShellBootPipeline';
+import { hasShellAccessToken } from '../../api/moabomShellAccess';
 
 export interface UseMoaHomeAppCatalogOptions {
   isLoggedIn: boolean;
@@ -87,6 +89,9 @@ export function useMoaHomeAppCatalog({
   const initialOrderSnapshot = loadInitialMainOrderSnapshot();
   const orderRef = useRef<string[]>(initialOrderSnapshot.order);
   const orderCustomizedRef = useRef<boolean>(initialOrderSnapshot.customized);
+  const [mainLayoutScopeKey, setMainLayoutScopeKey] = useState<string | null>(
+    () => hasShellAccessToken() ? null : 'guest',
+  );
   const [libraryHydration, setLibraryHydration] = useState<GeneratedLibraryHydration>('idle');
   const [mainApps, setMainApps] = useState<App[]>(() => resolveMainAppsFromOrder(
     orderRef.current,
@@ -132,7 +137,9 @@ export function useMoaHomeAppCatalog({
     APPS.forEach(a => { m.set(a.id, a); });
     mainApps.forEach(a => { m.set(a.id, a); });
     libraryGeneratedApps.forEach(a => { m.set(a.id, a); });
-    m.set(createAppShellMetadata.id, createAppShellMetadata);
+    for (const tool of SYSTEM_TOOL_APP_METADATA) {
+      m.set(tool.id, tool);
+    }
     return m;
   }, [libraryGeneratedApps, mainApps]);
 
@@ -193,17 +200,11 @@ export function useMoaHomeAppCatalog({
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  useEffect(() => {
-    setActiveMainUnpinnedScopeKey(resolveMainUnpinnedScopeKey(
-      isLoggedIn,
-      currentUser?.memberKey,
-    ));
-  }, [isLoggedIn, currentUser?.memberKey]);
-
   const applyMainAppOrderSnapshot = useCallback((
     snapshot: MainAppOrderSnapshot,
     ownedApps: App[] = createdAppsRef.current,
     catalogApps: App[] = sharedGeneratedAppsRef.current,
+    scopeKey?: string,
   ) => {
     const library = dedupeAppsById([...ownedApps, ...catalogApps, ...libraryGeneratedAppsRef.current]);
     let nextOrder = snapshot.order;
@@ -230,7 +231,29 @@ export function useMoaHomeAppCatalog({
     );
     mainAppsRef.current = next;
     setMainApps(next);
+    if (scopeKey) {
+      setMainLayoutScopeKey(scopeKey);
+    }
   }, [isLoggedInRef]);
+
+  useEffect(() => {
+    if (isLoggedIn && !currentUser?.memberKey) {
+      return;
+    }
+
+    const scopeKey = resolveMainUnpinnedScopeKey(isLoggedIn, currentUser?.memberKey);
+    setActiveMainUnpinnedScopeKey(scopeKey);
+    setActiveMainAppOrderScopeKey(scopeKey);
+
+    if (!isLoggedIn) {
+      applyMainAppOrderSnapshot(
+        loadInitialMainOrderSnapshot(scopeKey),
+        undefined,
+        undefined,
+        scopeKey,
+      );
+    }
+  }, [applyMainAppOrderSnapshot, isLoggedIn, currentUser?.memberKey]);
 
   const pullShellServerSnapshot = useCallback(async () => {
     const loggedIn = isLoggedInRef.current;
@@ -238,6 +261,7 @@ export function useMoaHomeAppCatalog({
     if (loggedIn && !user?.memberKey) return null;
     return pullMoabomServerState({
       isLoggedIn: loggedIn,
+      memberKey: user?.memberKey,
       coreUserLanguage: user?.language ?? undefined,
       preserveShellPanelOpen: true,
     });
@@ -276,10 +300,20 @@ export function useMoaHomeAppCatalog({
     void (async () => {
       await awaitMoabomBootPhaseAtLeast('shell-critical');
       const pulled = await pullShellServerSnapshot();
-      if (cancelled || !pulled) return;
+      if (cancelled) return;
+      const scopeKey = resolveGeneratedLibraryScopeKey(isLoggedIn, currentUser?.memberKey);
+      if (!pulled) {
+        applyMainAppOrderSnapshot(
+          loadInitialMainOrderSnapshot(scopeKey),
+          undefined,
+          undefined,
+          scopeKey,
+        );
+        return;
+      }
       setSystemState(pulled.state);
       setSystemDefaults(pulled.defaults);
-      applyMainAppOrderSnapshot(pulled.mainAppOrder);
+      applyMainAppOrderSnapshot(pulled.mainAppOrder, undefined, undefined, scopeKey);
     })();
 
     return () => {
@@ -293,7 +327,11 @@ export function useMoaHomeAppCatalog({
       if (pulled) {
         setSystemState(pulled.state);
         setSystemDefaults(pulled.defaults);
-        applyMainAppOrderSnapshot(pulled.mainAppOrder);
+        const scopeKey = resolveGeneratedLibraryScopeKey(
+          isLoggedInRef.current,
+          currentUserRef.current?.memberKey,
+        );
+        applyMainAppOrderSnapshot(pulled.mainAppOrder, undefined, undefined, scopeKey);
       }
     },
     {
@@ -304,16 +342,24 @@ export function useMoaHomeAppCatalog({
   );
 
   useEffect(() => {
-    const syncOrderFromStorage = () => {
-      const order = loadLocalMainAppOrder();
-      const customized = hasLocalMainAppOrderCustomized();
+    const syncOrderFromStorage = (event: Event) => {
+      const scopeKey = resolveGeneratedLibraryScopeKey(
+        isLoggedInRef.current,
+        currentUserRef.current?.memberKey,
+      );
+      const eventScope = (event as CustomEvent<{ scopeKey?: string }>).detail?.scopeKey;
+      if (eventScope && eventScope !== scopeKey) {
+        return;
+      }
+      const order = loadLocalMainAppOrder(scopeKey);
+      const customized = hasLocalMainAppOrderCustomized(scopeKey);
       if (
         order.join('\0') === orderRef.current.join('\0')
         && customized === orderCustomizedRef.current
       ) {
         return;
       }
-      applyMainAppOrderSnapshot({ order, customized });
+      applyMainAppOrderSnapshot({ order, customized }, undefined, undefined, scopeKey);
     };
 
     window.addEventListener(MOABOM_SHELL_ORDER_CHANGED_EVENT, syncOrderFromStorage);
@@ -423,14 +469,17 @@ export function useMoaHomeAppCatalog({
     if (libraryScopeRef.current !== scopeKey) {
       libraryScopeRef.current = scopeKey;
       invalidateMoabomGeneratedAppLibraryCache();
+      createdAppsRef.current = [];
+      sharedGeneratedAppsRef.current = [];
+      libraryGeneratedAppsRef.current = [];
+      setCreatedApps([]);
+      setSharedGeneratedApps([]);
     }
     let cancelled = false;
 
+    setLibraryHydration('loading');
     if (!isLoggedIn) {
-      setLibraryHydration('loading');
       applyValidatedLibrary([], [], { persistPrunedOrder: false });
-    } else {
-      setLibraryHydration(prev => (prev === 'ready' ? prev : 'loading'));
     }
 
     void (async () => {
@@ -463,7 +512,7 @@ export function useMoaHomeAppCatalog({
                 return null;
               }
               try {
-                return await fetchVisibleGeneratedApp(serverId);
+                return await fetchVisibleGeneratedApp(serverId, { includeHtml: false });
               } catch {
                 return null;
               }
@@ -637,9 +686,19 @@ export function useMoaHomeAppCatalog({
     commitMainAppOrder(orderIdsFromApps(reordered), true);
   }, [commitMainAppOrder]);
 
+  const desiredMainLayoutScopeKey = isLoggedIn
+    ? currentUser?.memberKey
+      ? resolveGeneratedLibraryScopeKey(true, currentUser.memberKey)
+      : null
+    : 'guest';
+  const mainAppsReady = desiredMainLayoutScopeKey !== null
+    && mainLayoutScopeKey === desiredMainLayoutScopeKey
+    && (!isLoggedIn || libraryHydration === 'ready' || libraryHydration === 'error');
+
   return {
-    mainApps,
+    mainApps: mainAppsReady ? mainApps : [],
     mainAppsRef,
+    mainAppsLoading: !mainAppsReady,
     libraryHydration,
     favoriteApps,
     favoriteIdsRef,

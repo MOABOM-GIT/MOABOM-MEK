@@ -65,6 +65,9 @@ Route::prefix('users/{user:uuid}')->middleware(['optional.sanctum', 'throttle:60
 });
 
 Route::prefix('apps')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('community/reviews', [AppCommunityController::class, 'mine'])
+        ->name('apps.community.reviews.mine');
+
     Route::post('ai/generate', [AiAppController::class, 'generate'])
         ->middleware('throttle:20,1')
         ->name('apps.ai.generate');

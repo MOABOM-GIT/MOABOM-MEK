@@ -21,7 +21,13 @@ import Toast, { type ToastItem } from '../../components/composite/Toast';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import type { App } from '../../data/Moa_apps';
-import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator/metadata';
+import {
+  brandedAppIconClassName,
+  brandedTitleBarVariant,
+  brandedTitleGradientClassName,
+  getBrandedShellCssVars,
+  isBrandedShellAppId,
+} from '../../apps/brandedShellChrome';
 import { resolveAppStrings } from '../../i18n/resolveAppStrings';
 import type { MoabomTranslateFn } from '../../i18n/moabomT';
 import { moabomBackgroundImageCssValue } from '../../utils/moBackgroundAssets';
@@ -93,6 +99,7 @@ export interface Moa_HomeShellViewProps {
   activeTab: 'basic' | 'user';
   modeIdx: number;
   mainApps: App[];
+  mainAppsLoading: boolean;
   appsById: Map<string, App>;
   favoriteApps: App[];
   favoriteIdsRef: React.MutableRefObject<string[]>;
@@ -187,7 +194,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
   const isUserProfileWin = isMoaShellUserProfileAppId(win.appId);
   const isErrorWin = isMoaShellErrorAppId(win.appId);
   const isAppCommunityWin = isMoaShellAppCommunityAppId(win.appId);
-  const isCreateAppShellWin = win.appId === createAppShellMetadata.id;
+  const isBrandedShellWin = isBrandedShellAppId(win.appId);
   const canToggleFavorite = !(
     isAuthWin
     || isLegalPageWin
@@ -195,11 +202,11 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
     || isUserProfileWin
     || isErrorWin
     || isAppCommunityWin
-    || isCreateAppShellWin
+    || isBrandedShellWin
   );
   const titleBarExtraStyle = useMemo(
-    () => (isCreateAppShellWin ? getCreateAppShellCssVars() : undefined),
-    [isCreateAppShellWin],
+    () => getBrandedShellCssVars(win.appId),
+    [win.appId],
   );
   const handleClose = useCallback(() => onCloseWindow(win), [onCloseWindow, win]);
   const handleMinimize = useCallback(() => onMinimizeWindow(win.id), [onMinimizeWindow, win.id]);
@@ -229,7 +236,7 @@ const ShellWindowFrame: React.FC<ShellWindowFrameProps> = React.memo(({
       onMaximize={handleMaximize}
       onFocus={handleFocus}
       isForeground={isForeground}
-      titleBarVariant={isCreateAppShellWin ? 'create-app' : 'default'}
+      titleBarVariant={brandedTitleBarVariant(win.appId)}
       titleBarExtraStyle={titleBarExtraStyle}
       onToggleFavorite={canToggleFavorite ? handleToggleFavorite : undefined}
       compact={compactWindow}
@@ -334,6 +341,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
     activeTab,
     modeIdx,
     mainApps,
+    mainAppsLoading,
     appsById,
     favoriteApps,
     favoriteIdsRef,
@@ -567,35 +575,38 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
               return next;
             });
           }}
-          modeIdx={modeIdx} onModeChange={handleModeChange} filteredApps={mainApps} onOpenApp={openApp}
+          modeIdx={modeIdx} onModeChange={handleModeChange} filteredApps={mainApps}
+          appsLoading={mainAppsLoading} onOpenApp={openApp}
           minimizedWindows={taskbarItems} onFocusWindow={restoreTaskbarWindow}
           editMode={editMode} onEnterEditMode={handleEnterEditMode} onExitEditMode={handleCenterPanelExitEditMode}
           onDeleteApp={handleDeleteApp} compactControls={compactControls}
           appsById={appsById} authWindowAppIds={AUTH_WINDOW_APP_IDS} />
 
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} style={{ zIndex: 200 }}>
           {activeApp ? (
             <Div className="flex flex-col items-center gap-2 pointer-events-none" style={{ opacity: 0.85 }}>
               <Div
                 className={`w-[72px] h-[72px] rounded-2xl flex items-center justify-center shadow-2xl ${
-                  activeApp.id === createAppShellMetadata.id ? 'create-app-icon' : ''
+                  brandedAppIconClassName(activeApp.id)
                 }`}
                 style={
-                  activeApp.id === createAppShellMetadata.id
-                    ? getCreateAppShellCssVars()
+                  isBrandedShellAppId(activeApp.id)
+                    ? getBrandedShellCssVars(activeApp.id)
                     : { background: activeApp.gradient }
                 }
               >
                 <Icon
                   name={activeApp.icon}
                   className={`text-white text-2xl drop-shadow ${
-                    activeApp.id === createAppShellMetadata.id ? 'relative z-[1]' : ''
+                    isBrandedShellAppId(activeApp.id) ? 'relative z-[1]' : ''
                   }`}
                 />
               </Div>
               <Div
                 className={`text-xs font-bold text-center truncate w-[80px] ${
-                  activeApp.id === createAppShellMetadata.id ? 'create-app-title-gradient' : 'text-secondary'
+                  isBrandedShellAppId(activeApp.id)
+                    ? brandedTitleGradientClassName(activeApp.id) || 'create-app-title-gradient'
+                    : 'text-secondary'
                 }`}
               >
                 {resolveAppStrings(activeApp, language).name}
@@ -621,6 +632,7 @@ export const Moa_HomeShellView: React.FC<Moa_HomeShellViewProps> = (props) => {
 
       <MoabomPresenceProvider isLoggedIn={isLoggedIn}>
         <RightPanel width={overlayPanelWidth} rightOffset={rightOffset} isLoggedIn={isLoggedIn} currentUser={currentUser} onOpenMyPage={openMyPage}
+          notificationCenterEnabled={effectiveSystemOptions.notification_center !== false}
           onOpenAuth={openAuthWindow}
           onOpenShellSurface={openShellSurface}
           isOverlay={isRightOverlay} overlayFlushEdges={overlayFlushEdges} onClose={() => {

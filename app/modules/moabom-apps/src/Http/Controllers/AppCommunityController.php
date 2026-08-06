@@ -63,6 +63,23 @@ final class AppCommunityController extends PublicBaseController
         );
     }
 
+    public function mine(Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUser();
+        if ($user === null) {
+            return $this->unauthorized('auth.unauthenticated');
+        }
+
+        $limit = max(1, min(50, (int) $request->query('limit', 10)));
+        $offset = max(0, (int) $request->query('offset', 0));
+
+        return ResponseHelper::moduleSuccess(
+            'moabom-apps',
+            'messages.apps.community.my_reviews_success',
+            $this->communityService->listReviewsForUser((int) $user->id, $limit, $offset),
+        );
+    }
+
     public function store(StoreAppCommunityPostRequest $request, int $id): JsonResponse
     {
         $user = $this->getCurrentUser();

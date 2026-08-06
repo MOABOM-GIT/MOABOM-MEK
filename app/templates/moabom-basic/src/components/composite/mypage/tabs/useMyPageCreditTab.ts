@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
-import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
 import { invalidateMoabomActivityLevelCache } from '../../../../hooks/useMoabomActivityLevel';
 import { checkAttendanceApi, fetchUserCreditsApi } from '../myPageApi';
 import type { CreditOverview, MyPageTab, MyPageUser } from '../myPageTypes';
@@ -11,14 +10,12 @@ const CREDIT_TRANSACTION_PAGE_SIZE = 8;
 interface UseMyPageCreditTabOptions {
   activeTab: MyPageTab;
   currentUser: MyPageUser | null;
-  shellLanguage: MoabomSystemLanguage;
   t: MoabomTranslateFn;
 }
 
 export function useMyPageCreditTab({
   activeTab,
   currentUser,
-  shellLanguage,
   t,
 }: UseMyPageCreditTabOptions) {
   const [creditOverview, setCreditOverview] = useState<CreditOverview | null>(null);
@@ -27,12 +24,19 @@ export function useMyPageCreditTab({
   const [creditError, setCreditError] = useState('');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceMessage, setAttendanceMessage] = useState('');
+  const loadedMemberKeyRef = useRef<string | null>(null);
+
+  const memberKey = currentUser?.memberKey ?? (currentUser ? 'authenticated' : '');
 
   useEffect(() => {
-    if (activeTab !== 'credit' || !currentUser) return;
+    if (activeTab !== 'credit' || !memberKey) return;
 
     let cancelled = false;
-    setCreditLoading(true);
+    const hasCurrentData = loadedMemberKeyRef.current === memberKey;
+    if (!hasCurrentData) {
+      setCreditOverview(null);
+      setCreditLoading(true);
+    }
     setCreditError('');
 
     void (async () => {
@@ -48,6 +52,7 @@ export function useMyPageCreditTab({
           return;
         }
 
+        loadedMemberKeyRef.current = memberKey;
         setCreditOverview(result.data);
       } catch {
         if (!cancelled) {
@@ -63,7 +68,28 @@ export function useMyPageCreditTab({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, currentUser, shellLanguage, t]);
+  }, [activeTab, memberKey]);
+
+  useEffect(() => {
+    const attendance = creditOverview?.attendance;
+    if (!attendance?.checked_today || !attendance.next_available_at) return;
+
+    const delay = Math.max(0, new Date(attendance.next_available_at).getTime() - Date.now());
+    const timer = window.setTimeout(() => {
+      setCreditOverview(prev => prev?.attendance
+        ? {
+          ...prev,
+          attendance: {
+            ...prev.attendance,
+            checked_today: false,
+          },
+        }
+        : prev);
+      setAttendanceMessage('');
+    }, Math.min(delay, 2_147_483_647));
+
+    return () => window.clearTimeout(timer);
+  }, [creditOverview?.attendance?.checked_today, creditOverview?.attendance?.next_available_at]);
 
   const loadMoreCredits = useCallback(async () => {
     if (!creditOverview?.pagination?.has_more || creditLoadingMore || creditLoading) {
@@ -116,6 +142,7 @@ export function useMyPageCreditTab({
       }
 
       if (result.data?.overview) {
+        loadedMemberKeyRef.current = memberKey;
         setCreditOverview(result.data.overview);
         // ActivityLevel SSOT — invalidate 단일 진입 (credit-changed 이중 트리거 금지)
         invalidateMoabomActivityLevelCache();
@@ -132,6 +159,7 @@ export function useMyPageCreditTab({
   const userPoint = currentUser?.point ?? 0;
   const creditBalance = creditOverview?.balance ?? userPoint;
   const creditHasMore = Boolean(creditOverview?.pagination?.has_more);
+  const attendanceChecked = Boolean(creditOverview?.attendance?.checked_today);
 
   return {
     creditOverview,
@@ -140,6 +168,7 @@ export function useMyPageCreditTab({
     creditHasMore,
     creditError,
     attendanceLoading,
+    attendanceChecked,
     attendanceMessage,
     creditBalance,
     handleAttendanceCheck,

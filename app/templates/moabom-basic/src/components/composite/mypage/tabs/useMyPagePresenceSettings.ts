@@ -274,8 +274,10 @@ export function useMyPagePresenceSettings({
   }, [
     activeTab,
     isLoggedIn,
-    presenceSettingsContext,
-    presenceSettingsContext?.presenceSettings,
+    presenceSettingsContext?.presenceSettings?.availability,
+    presenceSettingsContext?.presenceSettings?.subtitle_mode,
+    presenceSettingsContext?.presenceSettings?.show_avatar_in_connect_list,
+    presenceSettingsContext?.presenceSettings?.accept_chat_requests,
     presenceSettingsContext?.presenceSettingsHydrated,
     presenceSettingsContext?.presenceSettingsLoading,
     t,

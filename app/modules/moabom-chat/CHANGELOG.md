@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.6] - 2026-08-05
+
+### Changed
+
+- 장애 복구 realtime-state가 chat 도메인을 요청한 경우에만 대화 목록을 집계합니다.
+
+## [0.2.5] - 2026-07-12
+
+### Added
+
+- `chat_message` 알림에 `fcm` 채널·템플릿 — 오프라인 디바이스 OS 푸시 (moabom-fcm)
+- mute/focus 시 `fcm`도 `database`와 동일하게 억제
+
 ## [0.2.4] - 2026-06-30
 
 ### Changed

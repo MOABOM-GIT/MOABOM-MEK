@@ -46,12 +46,13 @@ class WebsiteLinkIconExtractionService
     /**
      * resolve API용 — HTML 파싱만 수행하고 후보 URL을 반환합니다 (바이너리 GET 없음).
      *
+     * @param  string|null  $documentBody  이미 조회한 HTML(있으면 document GET 생략)
      * @return array{icon_url: ?string, icon_from_title: bool}
      */
-    public function probeIconCandidate(string $websiteUrl): array
+    public function probeIconCandidate(string $websiteUrl, ?string $documentBody = null): array
     {
         $url = $this->urlGuard->normalizeUrl($websiteUrl);
-        $body = $this->urlGuard->fetchDocumentBody($url);
+        $body = $documentBody ?? $this->urlGuard->fetchDocumentBody($url);
         $candidates = $this->collectCandidateUrls($body, $url);
 
         if ($candidates === []) {

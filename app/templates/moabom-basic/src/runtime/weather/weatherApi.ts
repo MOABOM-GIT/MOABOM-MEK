@@ -8,6 +8,9 @@ import type { Weather_Location, Weather_Snapshot } from './types';
  */
 const WEATHER_API_BASE = '/api/plugins/moabom-weather/weather';
 
+/** Cloud Run upstream 504(15s) 전에 클라이언트에서 끊는다 */
+export const WEATHER_FETCH_TIMEOUT_MS = 8_000;
+
 export type WeatherLang = 'ko' | 'en' | 'ja' | 'zh';
 
 export interface FetchWeatherSnapshotOptions {
@@ -56,14 +59,31 @@ export async function fetchWeatherSnapshot(
   if (options.etag) headers['If-None-Match'] = options.etag;
   if (options.ifModifiedSince) headers['If-Modified-Since'] = options.ifModifiedSince;
 
+  const timeoutCtrl = new AbortController();
+  const timeoutId = setTimeout(() => timeoutCtrl.abort(), WEATHER_FETCH_TIMEOUT_MS);
+  let removeCallerAbort: (() => void) | undefined;
+  if (options.signal) {
+    if (options.signal.aborted) {
+      timeoutCtrl.abort();
+    } else {
+      const onCallerAbort = () => timeoutCtrl.abort();
+      options.signal.addEventListener('abort', onCallerAbort, { once: true });
+      removeCallerAbort = () => options.signal?.removeEventListener('abort', onCallerAbort);
+    }
+  }
+  const signal = timeoutCtrl.signal;
+
   let response: Response;
   try {
-    response = await fetch(url, { method: 'GET', headers, signal: options.signal, credentials: 'same-origin' });
+    response = await fetch(url, { method: 'GET', headers, signal, credentials: 'same-origin' });
   } catch (err) {
-    if (isAbortError(err, options.signal)) {
+    if (isAbortError(err, signal) || isAbortError(err, options.signal)) {
       return { kind: 'error', reason: 'aborted' };
     }
     return { kind: 'error', reason: 'network' };
+  } finally {
+    clearTimeout(timeoutId);
+    removeCallerAbort?.();
   }
 
   const etag = response.headers.get('etag');

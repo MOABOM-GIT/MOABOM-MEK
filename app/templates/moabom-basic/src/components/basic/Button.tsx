@@ -18,7 +18,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   | 'warning-outline'
   | 'taskbar'
   /** 글래스 필(유색·그라데이션 카드 위 CTA, `moa-btn-neutral`) */
-  | 'neutral';
+  | 'neutral'
+  /** 아이콘·보조 액션 — `neutral` 과 동일 표면 */
+  | 'ghost';
   size?: 'xxs' | 'xxsDuo' | 'xs' | 'sm' | 'medium' | 'md' | 'large' | 'lg' | 'xl';
 }
 
@@ -36,6 +38,7 @@ const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
   'warning-outline': 'moa-btn-warning-outline',
   taskbar: 'moa-btn-taskbar',
   neutral: 'moa-btn-neutral',
+  ghost: 'moa-btn-neutral',
 };
 
 const SIZE_CLASSES: Record<NonNullable<ButtonProps['size']>, string> = {
@@ -61,7 +64,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   ...props
 }, ref) => {
   const baseClasses = variant
-    ? `moa-btn ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]}`
+    ? `moa-btn ${VARIANT_CLASSES[variant] ?? VARIANT_CLASSES.neutral} ${SIZE_CLASSES[size] ?? SIZE_CLASSES.md}`
     : 'inline-flex items-center justify-center';
 
   // G7Core.style.mergeClasses를 사용하여 충돌하는 Tailwind 클래스 병합

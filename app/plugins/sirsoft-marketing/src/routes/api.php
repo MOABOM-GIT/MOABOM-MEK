@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Plugins\Sirsoft\Marketing\Http\Controllers\MarketingAdminController;
+use Plugins\Sirsoft\Marketing\Http\Controllers\MarketingNotificationConsentController;
 use Plugins\Sirsoft\Marketing\Http\Controllers\MarketingSettingsController;
 
 /*
@@ -11,6 +12,13 @@ use Plugins\Sirsoft\Marketing\Http\Controllers\MarketingSettingsController;
 
 Route::get('/settings', [MarketingSettingsController::class, 'settings'])
     ->name('settings');
+
+Route::prefix('user')->name('user.')->middleware('throttle:30,1')->group(function () {
+    Route::get('/notification-consent', [MarketingNotificationConsentController::class, 'show'])
+        ->name('notification-consent.show');
+    Route::put('/notification-consent', [MarketingNotificationConsentController::class, 'update'])
+        ->name('notification-consent.update');
+});
 
 /*
  * 마케팅 플러그인 관리자 API 라우트

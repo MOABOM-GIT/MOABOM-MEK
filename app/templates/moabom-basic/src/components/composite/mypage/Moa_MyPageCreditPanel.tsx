@@ -19,6 +19,7 @@ export interface Moa_MyPageCreditPanelProps {
   creditHasMore?: boolean;
   creditError: string;
   attendanceLoading: boolean;
+  attendanceChecked: boolean;
   attendanceMessage: string;
   onAttendanceCheck: () => void;
   onLoadMoreCredits?: () => void;
@@ -33,6 +34,7 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
   creditHasMore = false,
   creditError,
   attendanceLoading,
+  attendanceChecked,
   attendanceMessage,
   onAttendanceCheck,
   onLoadMoreCredits,
@@ -55,7 +57,7 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
         type="button"
         variant="neutral"
         size="large"
-        disabled={attendanceLoading || creditLoading}
+        disabled={attendanceLoading || creditLoading || attendanceChecked}
         onClick={() => void onAttendanceCheck()}
         className="w-full justify-center gap-2 shadow-md disabled:opacity-60"
       >
@@ -65,7 +67,11 @@ export const Moa_MyPageCreditPanel: React.FC<Moa_MyPageCreditPanelProps> = ({
           <Icon name="calendar-alt" className="text-base" aria-hidden />
         )}
         <Span>
-          {attendanceLoading ? t('moa_mypage.credit.attendance_loading') : t('moa_mypage.credit.attendance')}
+          {attendanceLoading
+            ? t('moa_mypage.credit.attendance_loading')
+            : attendanceChecked
+              ? t('moa_mypage.credit.attendance_complete')
+              : t('moa_mypage.credit.attendance')}
         </Span>
       </Button>
       {attendanceMessage ? (

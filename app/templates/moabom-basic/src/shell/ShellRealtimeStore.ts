@@ -10,11 +10,14 @@ export type PresenceRevisionPayload = {
   tenant_slug: string;
   revision: number;
   reason?: string;
+  event_id?: string;
+  occurred_at?: string;
 };
 
 export type { ShellNotificationReceivedPayload, PresenceRefetchTargets };
 
 const DEBOUNCE_MS = 300;
+const MAX_SEEN_EVENT_KEYS = 512;
 
 type InvalidateHandler = (targets: PresenceRefetchTargets) => void;
 type SummaryOnlyHandler = () => void;
@@ -30,6 +33,24 @@ const invalidateHandlers = new Set<InvalidateHandler>();
 const platformSummaryHandlers = new Set<SummaryOnlyHandler>();
 let notificationHandlers = new Set<NotificationHandler>();
 const chatInboxHandlers = new Set<ChatInboxHandler>();
+const seenEventKeys = new Set<string>();
+
+function acceptEvent(key: string | null): boolean {
+  if (!key) {
+    return true;
+  }
+  if (seenEventKeys.has(key)) {
+    return false;
+  }
+  seenEventKeys.add(key);
+  if (seenEventKeys.size > MAX_SEEN_EVENT_KEYS) {
+    const oldest = seenEventKeys.values().next().value;
+    if (typeof oldest === 'string') {
+      seenEventKeys.delete(oldest);
+    }
+  }
+  return true;
+}
 
 export function registerShellPresenceInvalidate(handler: InvalidateHandler): () => void {
   invalidateHandlers.add(handler);
@@ -103,6 +124,9 @@ export function handleShellPresenceRevisionEvent(raw: unknown): void {
   if (typeof payload.revision !== 'number' || !Number.isFinite(payload.revision)) {
     return;
   }
+  if (!acceptEvent(payload.event_id ? `presence:${payload.event_id}` : null)) {
+    return;
+  }
 
   if (payload.tenant_slug === 'platform') {
     if (payload.revision <= lastKnownPlatformRevision) {
@@ -141,10 +165,19 @@ export function registerShellChatInboxHandler(handler: ChatInboxHandler | null):
 }
 
 export function dispatchShellNotificationReceived(payload: ShellNotificationReceivedPayload): void {
+  const eventId = payload.event_id?.trim() || payload.id?.trim() || null;
+  const eventKind = payload.authoritative ? 'state' : 'item';
+  if (!acceptEvent(eventId ? `notification:${eventKind}:${eventId}` : null)) {
+    return;
+  }
   notificationHandlers.forEach(handler => handler(payload));
 }
 
 export function dispatchShellChatInboxUpdated(payload: ChatMessageCreatedPayload): void {
+  const eventId = payload.event_id?.trim();
+  if (!acceptEvent(eventId ? `chat:${eventId}` : null)) {
+    return;
+  }
   chatInboxHandlers.forEach(handler => handler(payload));
 }
 
@@ -174,4 +207,5 @@ export function resetShellRealtimeStoreForTest(): void {
   platformSummaryHandlers.clear();
   notificationHandlers.clear();
   chatInboxHandlers.clear();
+  seenEventKeys.clear();
 }

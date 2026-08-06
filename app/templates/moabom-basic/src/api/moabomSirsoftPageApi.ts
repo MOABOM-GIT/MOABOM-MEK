@@ -31,20 +31,39 @@ function legalPageApiPath(pageSlug: string): string {
   return `/api/modules/sirsoft-page/pages/${encodeURIComponent(pageSlug)}`;
 }
 
-/** 약관·개인정보 — moabom-system(tenant + platform DB fallback). 그 외 slug 는 sirsoft-page. */
-export async function fetchPublishedSirsoftPage(slug: string): Promise<PublishedSirsoftPagePayload> {
-  const path = legalPageApiPath(slug);
+async function requestPublishedPage(
+  path: string,
+): Promise<{ data: PublishedSirsoftPagePayload | null; message?: string }> {
   const response = await fetch(path, {
     method: 'GET',
     headers: { Accept: 'application/json' },
     credentials: 'same-origin',
   });
-
   const payload = (await response.json()) as ApiEnvelope<PublishedSirsoftPagePayload>;
 
-  if (!response.ok || !payload.success || !payload.data) {
-    throw new Error(payload.message || '페이지를 불러오지 못했습니다.');
+  return {
+    data: response.ok && payload.success && payload.data ? payload.data : null,
+    message: payload.message,
+  };
+}
+
+/** 약관·개인정보 — moabom-system(tenant + platform DB fallback). 그 외 slug 는 sirsoft-page. */
+export async function fetchPublishedSirsoftPage(slug: string): Promise<PublishedSirsoftPagePayload> {
+  const primary = await requestPublishedPage(legalPageApiPath(slug));
+  if (primary.data) {
+    return primary.data;
   }
 
-  return payload.data;
+  // tenant legal reader가 아직 동기화되지 않은 환경에서도 실제 발행 페이지를 표시합니다.
+  if (slug === 'terms' || slug === 'privacy') {
+    const fallback = await requestPublishedPage(
+      `/api/modules/sirsoft-page/pages/${encodeURIComponent(slug)}`,
+    );
+    if (fallback.data) {
+      return fallback.data;
+    }
+    throw new Error(fallback.message || primary.message || '페이지를 불러오지 못했습니다.');
+  }
+
+  throw new Error(primary.message || '페이지를 불러오지 못했습니다.');
 }

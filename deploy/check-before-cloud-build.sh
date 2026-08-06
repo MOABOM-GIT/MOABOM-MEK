@@ -94,6 +94,8 @@ CLOUD_BUILD_ASSET_PATHS=(
   'plugins/sirsoft-ckeditor5'
   'plugins/sirsoft-daum_postcode'
   'plugins/sirsoft-tosspayments'
+  'plugins/sirsoft-pay_kginicis'
+  'plugins/sirsoft-verification_kginicis'
   'plugins/moabom-auth-hardening'
 )
 for asset_path in "${CLOUD_BUILD_ASSET_PATHS[@]}"; do
@@ -102,7 +104,7 @@ for asset_path in "${CLOUD_BUILD_ASSET_PATHS[@]}"; do
   grep -qE "COPY --from=assets .*${asset_path}/dist ./${asset_path}/dist" "${DOCKERFILE}" 2>/dev/null \
     || fail "Dockerfile 에 ${asset_path} dist COPY 누락 — moduleAssets/pluginAssets 가 런타임에서 404"
 done
-ok "Dockerfile 이 assets 선언 확장 dist 를 모두 빌드·복사 (템플릿 2·모듈 1·플러그인 4)"
+ok "Dockerfile 이 assets 선언 확장 dist 를 모두 빌드·복사 (템플릿 2·모듈 1·플러그인 6)"
 
 echo "==> [v7-4b] Dockerfile 에 _bundled COPY 금지 (활성 폴더 SSOT)"
 if grep -nE '^COPY[[:space:]].*_bundled' "${DOCKERFILE}" 2>/dev/null; then
@@ -196,11 +198,31 @@ grep -qE 'lang/\(\?<locale>\[a-z\]\[a-z\]\)' "${ROOT}/deploy/nginx-cloudrun.conf
 grep -qE 'lang/\(\?<locale>\[a-z\]\{2\}\)' "${ROOT}/deploy/nginx-cloudrun.conf" \
   && fail "nginx lang locale 에 {2} 잔존 — pcre emerg"
 grep -q 'moabom:warm-template-lang-static' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
-  || fail "cloudrun-entrypoint.sh moabom:warm-template-lang-static 누락"
+  && fail "cloudrun-entrypoint.sh 에 template lang runtime warm 잔존"
 grep -q 'ext-static/modules.bundle.js' "${ROOT}/deploy/nginx-cloudrun.conf" \
   || fail "nginx-cloudrun.conf modules.bundle.js 정적 경로 누락"
 grep -q 'ext-bundles:warm-static' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
-  || fail "cloudrun-entrypoint.sh ext-bundles:warm-static 누락"
+  && fail "cloudrun-entrypoint.sh 에 extension bundle runtime warm 잔존"
+grep -q 'fastcgi_cache_path /tmp/moabom-boot-cache' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx bundle/lang PHP fallback microcache 누락"
+grep -q 'fastcgi_cache_key "\$scheme|\$host|\$request_uri"' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx boot microcache key는 scheme+tenant host+version URL 이어야 함"
+grep -q 'fastcgi_cache_bypass \$moabom_boot_cache_bypass' "${ROOT}/deploy/nginx-cloudrun.conf" \
+  || fail "nginx boot microcache allowlist bypass 누락"
+grep -q '^FORCE_EXTENSION_AUTOLOAD: "false"$' "${ENV}" \
+  || fail "운영 extension autoload는 Cloud Build 이미지 산출물이어야 함"
+grep -q 'test -s bootstrap/cache/autoload-extensions.php' "${DOCKERFILE}" \
+  || fail "Dockerfile extension autoload fail-closed 검증 누락"
+grep -q 'generate-extension-autoload.php /app' "${DOCKERFILE}" \
+  || fail "Dockerfile DB-free extension autoload generator 누락"
+grep -q 'php artisan extension:update-autoload' "${DOCKERFILE}" \
+  && fail "Dockerfile 이미지 빌드에서 DB 의존 extension:update-autoload 실행 금지"
+grep -q 'php artisan config:cache\|php artisan view:cache\|php artisan migrate' "${ROOT}/deploy/cloudrun-entrypoint.sh" \
+  && fail "cloudrun-entrypoint.sh 에 반복 Artisan boot 작업 잔존"
+grep -q 'httpGet.path=${MOABOM_CLOUD_RUN_STARTUP_PROBE_PATH}' "${ROOT}/deploy/lib/cloud-run-service-flags.sh" \
+  || fail "Cloud Run startup probe가 HTTP readiness 경로를 사용하지 않음"
+grep -q 'httpGet.path=/healthz' "${ROOT}/deploy/lib/cloud-run-service-flags.sh" \
+  || fail "Cloud Run liveness /healthz 누락"
 grep -q -- '--timeout=60' "${ROOT}/deploy/supervisord.conf" \
   || fail "queue-worker timeout 가드 누락"
 grep -q -- '--max-jobs=500' "${ROOT}/deploy/supervisord.conf" \

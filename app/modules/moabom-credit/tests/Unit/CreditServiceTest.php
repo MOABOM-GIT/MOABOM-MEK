@@ -91,6 +91,8 @@ class CreditServiceTest extends ModuleTestCase
         $this->assertSame(500, $overview['summary']['total_earned']);
         $this->assertSame(200, $overview['summary']['total_used']);
         $this->assertCount(2, $overview['transactions']);
+        $this->assertFalse($overview['attendance']['checked_today']);
+        $this->assertNotEmpty($overview['attendance']['next_available_at']);
     }
 
     public function test_check_attendance_rewards_credit_once_per_day(): void
@@ -101,6 +103,7 @@ class CreditServiceTest extends ModuleTestCase
 
         $this->assertSame(10, $result['attendance']['reward_amount']);
         $this->assertSame(10, $result['overview']['balance']);
+        $this->assertTrue($result['overview']['attendance']['checked_today']);
         $this->assertDatabaseHas('moabom_credit_attendances', [
             'user_id' => $user->id,
             'reward_amount' => 10,

@@ -98,6 +98,41 @@ class GeneratedAppRepositoryTenantScopeTest extends ModuleTestCase
         $this->assertSame((int) $app->id, (int) $items->first()->id);
     }
 
+    public function test_direct_platform_query_uses_shared_current_tenant_scope(): void
+    {
+        $owner = User::factory()->create();
+        $tenant = new TenantRecord(
+            id: 3,
+            slug: 'freshent',
+            host: 'freshent.mek360.com',
+            dbDatabase: 'hospital_freshent',
+            gcsPrefix: 'tenants/freshent',
+            packageId: 'hospital-default',
+            status: 'active',
+            appUrl: 'https://freshent.mek360.com',
+        );
+        app(TenantContext::class)->setTenant($tenant, $tenant->host);
+
+        foreach (['freshent', 'mosan'] as $slug) {
+            GeneratedAppsConnection::apps()->create([
+                'tenant_slug' => $slug,
+                'user_id' => $owner->id,
+                'title' => $slug,
+                'app_type' => 'general',
+                'tier' => 'standard',
+                'html' => '<!DOCTYPE html><html><body>'.$slug.'</body></html>',
+                'visibility' => GeneratedAppVisibility::Private->value,
+                'is_shared' => false,
+            ]);
+        }
+
+        $query = GeneratedAppsConnection::apps()->where('user_id', $owner->id);
+        $items = GeneratedAppsConnection::scopeToCurrentTenant($query)->get();
+
+        $this->assertCount(1, $items);
+        $this->assertSame('freshent', $items->first()->tenant_slug);
+    }
+
     private function ensurePlatformTable(): void
     {
         if (Schema::connection('moabom_platform')->hasTable('moabom_system_generated_apps')) {

@@ -40,8 +40,9 @@ final class PublicShellBootController extends Controller
 
         try {
             /** @var array<string, mixed> $payload */
-            $payload = MoabomPublicApiCache::remember(
+            $payload = MoabomPublicApiCache::rememberShared(
                 MoabomPublicApiCacheKeys::shellBoot($identifier, $scope, $revision),
+                MoabomPublicApiCacheKeys::shellBootSharedObject($identifier, $scope),
                 function () use (
                     $identifier,
                     $defaultsReader,
@@ -60,7 +61,7 @@ final class PublicShellBootController extends Controller
                         throw new HttpResponseException($routesPayload);
                     }
 
-                    $critical = $criticalSnapshot->build($identifier);
+                    $critical = $criticalSnapshot->buildConfigHomeOnly($identifier);
 
                     return [
                         'defaults' => $defaultsReader->frontendDefaults(),
@@ -78,12 +79,8 @@ final class PublicShellBootController extends Controller
                             [],
                             $identifier,
                         )),
-                        'critical' => [
-                            'template' => $critical['template'],
-                            'cache_version' => $critical['cache_version'],
-                            'config' => $critical['config'],
-                            'home' => $critical['home'],
-                        ],
+                        // routes 는 shell_routes 키 SSOT — critical 에서 재계산하지 않는다.
+                        'critical' => $critical,
                     ];
                 },
             );
@@ -98,11 +95,23 @@ final class PublicShellBootController extends Controller
 
         $payload['shell_rankings'] = $usageIngestGuard->bootPayload();
 
-        return ResponseHelper::moduleSuccess(
+        $ttl = MoabomPublicApiCache::ttlSeconds();
+        $response = ResponseHelper::moduleSuccess(
             'moabom-system',
             'messages.public_shell_boot.fetch_success',
             $payload,
         );
+
+        // SW StaleWhileRevalidate가 no-store·private 응답은 캐시하지 못하므로 public 캐시를 허용한다.
+        // 공개 부트 스냅샷은 TTL 동안 public 캐시 허용 (revision 키로 무효화).
+        if ($ttl > 0) {
+            $response->headers->set(
+                'Cache-Control',
+                sprintf('public, max-age=%d, s-maxage=%d', $ttl, $ttl),
+            );
+        }
+
+        return $response;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Modules\Moabom\Apps\Http\Controllers;
 use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Api\Base\AuthBaseController;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Moabom\Apps\Exceptions\AiStreamCancelledException;
 use Modules\Moabom\Apps\Http\Requests\GenerateAiAppRequest;
@@ -16,6 +17,7 @@ use Modules\Moabom\Apps\Services\AiAppService;
 use Modules\Moabom\Apps\Services\AiAppStreamService;
 use Modules\Moabom\Apps\Services\AiGenerationSessionService;
 use Modules\Moabom\Apps\Services\AiStreamConcurrencyService;
+use Modules\Moabom\Apps\Services\CreateAppCreditGate;
 use Modules\Moabom\Apps\Services\MoabomShellHomeAppOrderPruner;
 use Modules\Moabom\Apps\Support\AiStreamGateResult;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -27,6 +29,7 @@ class AiAppController extends AuthBaseController
         private readonly AiAppStreamService $aiAppStreamService,
         private readonly AiGenerationSessionService $sessionService,
         private readonly AiStreamConcurrencyService $concurrency,
+        private readonly CreateAppCreditGate $createAppCreditGate,
     ) {
         parent::__construct();
     }
@@ -99,8 +102,20 @@ class AiAppController extends AuthBaseController
             return $response->header('Retry-After', (string) $gate->retryAfterSeconds);
         }
 
-        $leaseToken = (string) $gate->leaseToken;
         $continue = (bool) ($validated['continue'] ?? false);
+        if (! $continue) {
+            try {
+                $this->createAppCreditGate->preflight($user);
+            } catch (\InvalidArgumentException $e) {
+                return ResponseHelper::moduleError(
+                    'moabom-apps',
+                    'messages.apps.ai.credit.insufficient',
+                    422,
+                );
+            }
+        }
+
+        $leaseToken = (string) $gate->leaseToken;
         $sessionId = isset($validated['session_id']) ? (int) $validated['session_id'] : null;
 
         if ($continue) {
@@ -120,6 +135,8 @@ class AiAppController extends AuthBaseController
         }
 
         $userId = $user->id;
+        $creditGate = $this->createAppCreditGate;
+        $shouldSettleCredit = ! $continue;
         $buffer = $continue
             ? ((string) ($session->partial_raw ?? '') ?: (string) ($validated['current_html'] ?? ''))
             : '';
@@ -128,7 +145,7 @@ class AiAppController extends AuthBaseController
         $sessionService = $this->sessionService;
         $concurrency = $this->concurrency;
 
-        return response()->stream(function () use ($validated, $userId, $session, &$buffer, &$lastPersistAt, $streamService, $sessionService, $concurrency, $leaseToken): void {
+        return response()->stream(function () use ($validated, $userId, $user, $session, &$buffer, &$lastPersistAt, $streamService, $sessionService, $concurrency, $leaseToken, $creditGate, $shouldSettleCredit): void {
             $released = false;
             $releaseLease = static function () use ($concurrency, $leaseToken, &$released): void {
                 if ($released || $leaseToken === '') {
@@ -174,6 +191,16 @@ class AiAppController extends AuthBaseController
             try {
                 $emit('session', ['session_id' => $session->id]);
                 $streamService->stream($userId, $validated, $emit, $session);
+                if ($shouldSettleCredit) {
+                    try {
+                        $creditGate->settle($user, (string) $session->id, [
+                            'model_id' => $validated['model_id'] ?? null,
+                            'app_type' => $validated['app_type'] ?? null,
+                        ]);
+                    } catch (\Throwable) {
+                        // settle 실패해도 생성 결과는 유지
+                    }
+                }
             } catch (AiStreamCancelledException) {
                 // 클라이언트가 cancel API로 이미 지운 경우는 스킵.
                 // 네트워크 끊김 등 abort만 온 경우 partial을 pause 해 이어하기를 살린다.
@@ -256,9 +283,12 @@ class AiAppController extends AuthBaseController
     }
 
     /**
-     * 생성 앱 단건을 조회합니다 (HTML 포함).
+     * 생성 앱 단건을 조회합니다.
+     *
+     * `include_html=0` 이면 메타·preview_url 만 반환(실행/권한용).
+     * 기본·`include_html=1` 은 HTML 포함(편집·리믹스용). iframe 본문은 preview_url.
      */
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $user = $this->getCurrentUser();
         if (! $user) {
@@ -274,10 +304,12 @@ class AiAppController extends AuthBaseController
             );
         }
 
+        $includeHtml = $request->boolean('include_html', true);
+
         return ResponseHelper::moduleSuccess(
             'moabom-apps',
             'messages.apps.generated.show_success',
-            $this->aiAppService->serialize($app, viewerUserId: $user->id)
+            $this->aiAppService->serialize($app, includeHtml: $includeHtml, viewerUserId: $user->id)
         );
     }
 

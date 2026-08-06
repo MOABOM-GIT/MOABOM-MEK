@@ -12,6 +12,7 @@ import { useMoabomShellT } from '../i18n/MoabomUiI18nProvider';
 import { pushConfirmToast } from '../runtime/moabomActionToasts';
 import { setMoabomShellPendingChatNavigation } from '../runtime/moabomShellPendingChatNavigation';
 import { pushInfoToast, pushWarningToast } from '../runtime/moaShellToasts';
+import { isMoabomWebSocketConnected } from '../runtime/moabomWebSocketConnection';
 import {
   isFriendshipAlreadyExistsError,
   resolveChatEligibilityToastKey,
@@ -22,8 +23,7 @@ import {
   notifyMoabomShellChatBlockChanged,
   subscribeMoabomShellChatBlockChanged,
 } from '../shell/moabomShellChatBlockSync';
-import { notifyMoabomPresenceFriendsChanged, subscribeMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
-import { registerShellPresenceInvalidate } from '../shell/ShellRealtimeStore';
+import { notifyMoabomPresenceFriendsChanged } from '../shell/moabomPresenceFriendsSync';
 import { getShellAuthUserUuid } from '../utils/presenceSettingsSync';
 import { useMoabomPresenceFriendsOptional, useMoabomPresenceOnlineOptional } from './MoabomPresenceProvider';
 
@@ -111,7 +111,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
   }, []);
 
   const refreshFriendState = useCallback(async () => {
-    if (!onlinePresence || !friendsPresence) {
+    if (!onlinePresence || !friendsPresence || isMoabomWebSocketConnected()) {
       return;
     }
     await Promise.all([
@@ -119,40 +119,6 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
       friendsPresence.refreshFriends(),
     ]);
   }, [friendsPresence, onlinePresence]);
-
-  useEffect(() => {
-    if (!userUuid) {
-      return undefined;
-    }
-
-    const refresh = (targets: { online?: boolean; friends?: boolean }) => {
-      const tasks: Promise<void>[] = [];
-      if (targets.online !== false && onlinePresence) {
-        tasks.push(onlinePresence.refreshOnline());
-      }
-      if (targets.friends !== false && friendsPresence) {
-        tasks.push(friendsPresence.refreshFriends());
-      }
-      if (tasks.length > 0) {
-        void Promise.all(tasks);
-      }
-    };
-
-    const unsubscribeFriends = subscribeMoabomPresenceFriendsChanged(() => {
-      refresh({ online: true, friends: true });
-    });
-    const unsubscribePresence = registerShellPresenceInvalidate(targets => {
-      refresh({
-        online: targets.online,
-        friends: targets.friends,
-      });
-    });
-
-    return () => {
-      unsubscribeFriends();
-      unsubscribePresence();
-    };
-  }, [friendsPresence, onlinePresence, userUuid]);
 
   const removeFriendship = useCallback(async (uuid: string) => {
     setBusyFriend(true);
@@ -215,12 +181,9 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
     setBusyFriend(true);
     try {
       await profileSocialRequestFriend(uuid);
+      setFriendState('pending');
       notifyMoabomPresenceFriendsChanged();
-      if (onlinePresence && friendsPresence) {
-        await refreshFriendState();
-      } else {
-        setFriendState('pending');
-      }
+      await refreshFriendState();
     } catch (error) {
       if (isFriendshipAlreadyExistsError(error)) {
         setFriendState('pending');
@@ -291,7 +254,7 @@ export function useMoaUserProfileSocialActions(userUuid?: string, displayName?: 
   }, [friendState, t]);
 
   const friendButtonDisabled = busy;
-  const friendButtonVariant = friendState === 'accepted' ? 'danger' : 'primary-outline';
+  const friendButtonVariant = friendState === 'accepted' ? 'primary' : 'primary-outline';
 
   return {
     isSelf,

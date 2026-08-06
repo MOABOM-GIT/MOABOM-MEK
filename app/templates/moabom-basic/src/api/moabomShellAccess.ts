@@ -12,6 +12,8 @@ type G7ApiTokenBridge = {
 };
 
 const TOKEN_STORAGE_KEY = 'auth_token';
+let observedScopeToken: string | null | undefined;
+let accessScopeGeneration = 0;
 
 function getG7ApiBridge(): G7ApiTokenBridge | null {
   return (window as { G7Core?: { api?: G7ApiTokenBridge } }).G7Core?.api ?? null;
@@ -42,15 +44,28 @@ export function hasShellAccessToken(): boolean {
   return !!getShellAccessToken();
 }
 
+/**
+ * 현재 탭의 인증 캐시 스코프. 토큰 원문을 캐시 키에 노출하지 않고,
+ * 계정·토큰 전환마다 세대만 증가시킨다.
+ */
+export function getShellAccessScopeKey(): string {
+  const token = getShellAccessToken();
+  if (token !== observedScopeToken) {
+    observedScopeToken = token;
+    accessScopeGeneration += 1;
+  }
+  return token ? `auth:${accessScopeGeneration}` : 'guest';
+}
+
 export function setShellAccessToken(token: string): void {
   const api = getG7ApiBridge();
   if (typeof api?.setToken === 'function') {
     api.setToken(token);
-    return;
-  }
-
-  if (typeof window !== 'undefined') {
+  } else if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('moabom:auth-token-changed'));
   }
 }
 
@@ -58,10 +73,10 @@ export function clearShellAccessToken(): void {
   const api = getG7ApiBridge();
   if (typeof api?.removeToken === 'function') {
     api.removeToken();
-    return;
-  }
-
-  if (typeof window !== 'undefined') {
+  } else if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('moabom:auth-token-changed'));
   }
 }

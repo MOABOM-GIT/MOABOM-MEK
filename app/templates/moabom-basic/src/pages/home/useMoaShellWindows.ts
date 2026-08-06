@@ -31,7 +31,10 @@ import {
   parseGeneratedLibraryServerId,
   tryOpenWebsiteLinkExternalWindow,
 } from '../../apps/generatedAppLibrary';
+import { setGeneratedAppOpenSeed } from '../../apps/generated/generatedAppOpenSeed';
+import { loadVisibleGeneratedAppSession } from '../../apps/generated/generatedAppVisibleSessionCache';
 import { pickGeneratedAppDisplayTitle } from '../../apps/generated/resolveGeneratedAppDisplayTitle';
+import { useShellAuthStateKey } from '../../shell/moaShellAuthStateKey';
 import {
   SHELL_PROFILE_SURFACE_APP_ID,
   isMoaShellUserProfileAppId,
@@ -248,10 +251,16 @@ export function useMoaShellWindows({
   setCurrentUser: _setCurrentUser,
 }: UseMoaShellWindowsOptions) {
   void _setCurrentUser;
+  const authStateKey = useShellAuthStateKey();
+  const initialTaskbarScopeKey = authStateKey || 'guest';
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1000);
+  const [taskbarScopeKey, setTaskbarScopeKey] = useState(initialTaskbarScopeKey);
   const [taskbarItems, setTaskbarItems] = useState<WindowState[]>(() => (
-    normalizeTaskbarItems(loadJson<Partial<WindowState>[]>(STORAGE_KEY_TASKBAR_ICONS, []))
+    normalizeTaskbarItems(loadJson<Partial<WindowState>[]>(
+      `${STORAGE_KEY_TASKBAR_ICONS}:${initialTaskbarScopeKey}`,
+      [],
+    ))
   ));
 
   const windowsRef = useRef<WindowState[]>([]);
@@ -266,6 +275,15 @@ export function useMoaShellWindows({
   useEffect(() => {
     windowsRef.current = windows;
   }, [windows]);
+
+  useEffect(() => {
+    try {
+      // 계정 비스코프 legacy 스냅샷은 다시 읽지 않으며 최초 마운트에서 영구 제거한다.
+      localStorage.removeItem(STORAGE_KEY_TASKBAR_ICONS);
+    } catch {
+      // storage 차단 환경은 메모리 상태만 사용한다.
+    }
+  }, []);
 
   useEffect(() => {
     taskbarItemsRef.current = taskbarItems;
@@ -286,8 +304,24 @@ export function useMoaShellWindows({
       appCommunityTitle: w.appCommunityTitle,
       appCommunityCanWrite: w.appCommunityCanWrite,
     }));
-    saveJson(STORAGE_KEY_TASKBAR_ICONS, taskbarIcons);
-  }, [taskbarItems]);
+    saveJson(`${STORAGE_KEY_TASKBAR_ICONS}:${taskbarScopeKey}`, taskbarIcons);
+  }, [taskbarItems, taskbarScopeKey]);
+
+  useEffect(() => {
+    const nextScopeKey = authStateKey || 'guest';
+    if (nextScopeKey === taskbarScopeKey) {
+      return;
+    }
+
+    // 열린 React surface와 최소화 항목을 같은 커밋에서 새 계정 경계로 교체한다.
+    commitWindows(() => []);
+    setNextZIndex(1000);
+    setTaskbarScopeKey(nextScopeKey);
+    setTaskbarItems(normalizeTaskbarItems(loadJson<Partial<WindowState>[]>(
+      `${STORAGE_KEY_TASKBAR_ICONS}:${nextScopeKey}`,
+      [],
+    )));
+  }, [authStateKey, commitWindows, taskbarScopeKey]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -755,6 +789,24 @@ export function useMoaShellWindows({
       warmMoabomShellAppChunk(app.id);
     }
 
+    const generatedServerId = parseGeneratedLibraryServerId(app.id);
+    if (generatedServerId != null) {
+      const meta = app.metadata ?? {};
+      setGeneratedAppOpenSeed(generatedServerId, {
+        appType: typeof meta.appType === 'string' ? meta.appType : undefined,
+        websiteUrl: typeof meta.websiteUrl === 'string' ? meta.websiteUrl : undefined,
+        title: app.name,
+        visibility: typeof meta.visibility === 'string' ? meta.visibility : undefined,
+        tier: typeof meta.tier === 'string' ? meta.tier : undefined,
+        launchMode: typeof meta.launchMode === 'string' ? meta.launchMode : undefined,
+        previewUrl: typeof meta.previewUrl === 'string' ? meta.previewUrl : undefined,
+      });
+      // show API 를 창 마운트 전에 워밍 — Viewer 워터폴 축소
+      void loadVisibleGeneratedAppSession(generatedServerId, authStateKey, { includeHtml: false }).catch(() => {
+        // 오픈 경로는 Viewer 가 재시도·에러 표시
+      });
+    }
+
     const existing = windowsRef.current.find(w => w.appId === app.id);
     const minimized = taskbarItemsRef.current.find(w => w.appId === app.id);
     if (!existing && minimized) {
@@ -804,7 +856,7 @@ export function useMoaShellWindows({
     if (!sync.skipUrl) {
       pushShellPath(formatShellPath({ kind: 'app', appId: app.id }));
     }
-  }, [commitWindows, editMode, language, nextZIndex, openCreateAppShell, openMyPage, recordRecentApp, restoreTaskbarWindow, t]);
+  }, [authStateKey, commitWindows, editMode, language, nextZIndex, openCreateAppShell, openMyPage, recordRecentApp, restoreTaskbarWindow, t]);
 
   const openAppById = useCallback((appId: string, sync: ShellUrlSync = {}) => {
     if (editMode) return;
@@ -881,8 +933,6 @@ export function useMoaShellWindows({
 
       const existing = windowsRef.current.find(w => w.appId === appId);
       const minimized = taskbarItemsRef.current.find(w => w.appId === appId);
-      const zIndex = allocateShellZIndex(windowsRef.current, taskbarItemsRef.current, nextZIndex);
-
       if (!existing && minimized) {
         restoreTaskbarWindow(minimized.id);
         commitWindows(prev => prev.map(w => (w.appId === appId
@@ -1047,7 +1097,7 @@ export function useMoaShellWindows({
     (
       serverId: number,
       options: { title?: string; canWrite?: boolean } = {},
-      sync: ShellUrlSync = {},
+      _sync: ShellUrlSync = {},
     ) => {
       if (editMode) return;
 
@@ -1590,10 +1640,14 @@ export function useMoaShellWindows({
     }
   }, [openAppCommunityWindow, openBoardWindow, openMyPage, openUserProfileWindow]);
 
+  const currentTaskbarScopeKey = authStateKey || 'guest';
+  const accountSurfaceReady = taskbarScopeKey === currentTaskbarScopeKey
+    && (!isLoggedIn || authStateKey !== '');
+
   return {
-    windows,
+    windows: accountSurfaceReady ? windows : [],
     windowsRef,
-    taskbarItems,
+    taskbarItems: accountSurfaceReady ? taskbarItems : [],
     taskbarItemsRef,
     setWindows,
     setTaskbarItems,

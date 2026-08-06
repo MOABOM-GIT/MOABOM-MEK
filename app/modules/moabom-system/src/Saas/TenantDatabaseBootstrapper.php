@@ -24,6 +24,9 @@ final class TenantDatabaseBootstrapper
 
         $this->cloner->createDatabaseIfNotExists($targetDb);
         $tables = $this->cloner->cloneSchemaOnly($schemaSourceDb, $targetDb);
+        // schema-only clone 은 migrations row 가 비어 create_* 재실행 사고를 낸다 — 카탈로그 동기화 (RF-32).
+        $baseliner = app(SaasTenantMigrationBaseliner::class);
+        $baseliner->copyCatalog($schemaSourceDb, $targetDb);
         $this->packageDatabaseSeeder->seed($schemaSourceDb, $targetDb, $package);
 
         return [

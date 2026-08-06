@@ -189,7 +189,7 @@ class GeneratedAppPreviewController extends Controller
             200,
             array_merge(
                 ['Content-Type' => 'text/html; charset=UTF-8'],
-                $this->previewService->previewResponseHeaders(),
+                $this->previewService->previewResponseHeaders($app, $previewToken),
             ),
         );
     }

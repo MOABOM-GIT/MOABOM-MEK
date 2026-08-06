@@ -9,11 +9,6 @@
 const hardenedInputs = new WeakSet<HTMLInputElement>();
 
 /**
- * @deprecated DOM 마커 대신 WeakSet 을 사용합니다. 테스트 호환용으로만 유지합니다.
- */
-export const HARDENED_MARKER = 'data-moa-auth-hardened';
-
-/**
  * username 추정에 사용할 name 힌트 패턴
  *
  * login input 은 보통 name 이 email / username / login / userid 를 포함합니다.

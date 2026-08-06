@@ -1,6 +1,6 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { CacheFirst, NetworkFirst } from 'workbox-strategies';
+import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
 const __VERSION__ = '{{VERSION}}';
@@ -264,11 +264,15 @@ registerRoute(
     !request.headers.has('Authorization') &&
     url.pathname === '/api/modules/moabom-system/public/shell-boot'
   ),
-  new CacheFirst({
+  // StaleWhileRevalidate: 재방문 시 캐시를 즉시 반환하고 백그라운드에서 재검증한다.
+  // NetworkFirst+0.4s 는 재방문에도 최대 0.4s origin RTT 를 기다렸으나, 부트 임계 경로는
+  // stale 로 즉시 진행하는 편이 체감 지연이 낮다(콜드 최초 방문만 네트워크 대기).
+  // 서버 revision 변경분은 다음 네비게이션에서 백그라운드 재검증으로 반영된다.
+  new StaleWhileRevalidate({
     cacheName: SHELL_BOOT_CACHE,
     plugins: [
       createCacheGuardPlugin(),
-      new ExpirationPlugin({ maxEntries: 2, maxAgeSeconds: 60 }),
+      new ExpirationPlugin({ maxEntries: 2, maxAgeSeconds: 300 }),
     ],
   }),
 );
@@ -316,4 +320,109 @@ self.addEventListener('message', (event) => {
       void run;
     }
   }
+});
+
+/**
+ * FCM / Web Push — 앱·PWA 종료 후에도 OS 알림.
+ * Firebase messaging SW 없이도 HTTP v1 notification+data 페이로드를 표시한다.
+ */
+async function postFcmPushToOpenClients(message) {
+  const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of allClients) {
+    try {
+      if (new URL(client.url).origin === self.location.origin) {
+        client.postMessage(message);
+      }
+    } catch {
+      // 닫히는 중인 client 는 건너뜀
+    }
+  }
+}
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    try {
+      const text = event.data ? event.data.text() : '';
+      payload = text ? { data: { body: text } } : {};
+    } catch {
+      payload = {};
+    }
+  }
+
+  const notification = payload.notification && typeof payload.notification === 'object'
+    ? payload.notification
+    : {};
+  const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+  const title = String(notification.title || data.title || 'Moabom');
+  const body = String(notification.body || data.body || '');
+  const clickUrl = String(data.click_url || data.clickUrl || '/');
+  const tag = data.tag || data.notification_type || undefined;
+  const notificationType = typeof data.notification_type === 'string'
+    ? data.notification_type
+    : '';
+  const notificationData = {
+    click_url: clickUrl,
+    notification_type: notificationType,
+    subject: title,
+    body,
+    data,
+  };
+
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, {
+        body: body || undefined,
+        tag: typeof tag === 'string' && tag !== '' ? tag : undefined,
+        data: notificationData,
+      }),
+      postFcmPushToOpenClients({
+        type: 'MOABOM_FCM_PUSH_RECEIVED',
+        ...notificationData,
+      }),
+    ]),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const rawData = event.notification?.data;
+  const notificationData = rawData && typeof rawData === 'object' ? rawData : {};
+  const message = {
+    type: 'MOABOM_FCM_NOTIFICATION_CLICK',
+    click_url: typeof notificationData.click_url === 'string' ? notificationData.click_url : '/',
+    notification_type: typeof notificationData.notification_type === 'string'
+      ? notificationData.notification_type
+      : '',
+    data: notificationData.data && typeof notificationData.data === 'object'
+      ? notificationData.data
+      : {},
+  };
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of allClients) {
+        try {
+          if (new URL(client.url).origin !== self.location.origin) {
+            continue;
+          }
+        } catch {
+          continue;
+        }
+        if ('focus' in client) {
+          await client.focus();
+          client.postMessage(message);
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        const landingUrl = new URL('/', self.location.origin);
+        landingUrl.searchParams.set('moabom_notification_click', JSON.stringify(message));
+        await self.clients.openWindow(landingUrl.href);
+      }
+    })(),
+  );
 });

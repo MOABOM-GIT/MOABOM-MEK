@@ -12,6 +12,8 @@ import { ensureMoabomShellBootLoaded, getMoabomShellBootData } from '../runtime/
 import { seedMoabomGeneratedAppLibrary } from '../runtime/moabomGeneratedAppLibraryLoad';
 import type { MoabomGeneratedAppLibraryPayload } from '../runtime/moabomGeneratedAppLibraryLoad';
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
+import { invalidateMoabomUserShellState } from '../runtime/moabomUserShellState';
+import { getShellAccessScopeKey } from './moabomShellAccess';
 
 interface ApiSystemSettingsResponse {
   success?: boolean;
@@ -36,8 +38,12 @@ const FRONTEND_DEFAULTS_MEMORY_TTL_MS = 60_000;
 const USER_SYSTEM_SETTINGS_MEMORY_TTL_MS = 30_000;
 let publicFrontendDefaultsPromise: Promise<PublicFrontendDefaultsResult> | null = null;
 let publicFrontendDefaultsCache: { value: PublicFrontendDefaultsResult; expiresAt: number } | null = null;
-let userSystemSettingsPromise: Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> | null = null;
+let userSystemSettingsPromise: {
+  scopeKey: string;
+  promise: Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>>;
+} | null = null;
 let userSystemSettingsCache: {
+  scopeKey: string;
   value: MoabomApiResult<ApiSystemSettingsResponse['data']>;
   expiresAt: number;
 } | null = null;
@@ -75,6 +81,8 @@ async function shellResult<T>(invoke: () => Promise<T>): Promise<MoabomApiResult
 
 export function invalidateMoabomSystemSettingsCache(): void {
   userSystemSettingsCache = null;
+  userSystemSettingsPromise = null;
+  invalidateMoabomUserShellState();
 }
 
 function applyUserSettingsResponseSideEffects(
@@ -113,33 +121,46 @@ function publicDefaultsFromShellBoot(): PublicFrontendDefaultsResult | null {
 
 export async function fetchMoabomSystemSettings(): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
   const now = Date.now();
-  if (userSystemSettingsCache && userSystemSettingsCache.expiresAt > now) {
+  const scopeKey = getShellAccessScopeKey();
+  if (
+    userSystemSettingsCache
+    && userSystemSettingsCache.scopeKey === scopeKey
+    && userSystemSettingsCache.expiresAt > now
+  ) {
     applyUserSettingsResponseSideEffects(userSystemSettingsCache.value.data);
     return userSystemSettingsCache.value;
   }
 
-  if (userSystemSettingsPromise) {
-    return userSystemSettingsPromise;
+  if (userSystemSettingsPromise?.scopeKey === scopeKey) {
+    return userSystemSettingsPromise.promise;
   }
 
-  userSystemSettingsPromise = (async () => {
+  const promise = (async () => {
     const result = await shellResult(() =>
       systemModuleApi<ApiSystemSettingsResponse['data']>('user/settings'),
     );
+    if (scopeKey !== getShellAccessScopeKey()) {
+      return result;
+    }
     applyUserSettingsResponseSideEffects(result.data);
     if (result.ok) {
       userSystemSettingsCache = {
+        scopeKey,
         value: result,
         expiresAt: Date.now() + USER_SYSTEM_SETTINGS_MEMORY_TTL_MS,
       };
     }
     return result;
   })();
+  const entry = { scopeKey, promise };
+  userSystemSettingsPromise = entry;
 
   try {
-    return await userSystemSettingsPromise;
+    return await promise;
   } finally {
-    userSystemSettingsPromise = null;
+    if (userSystemSettingsPromise === entry) {
+      userSystemSettingsPromise = null;
+    }
   }
 }
 
@@ -223,7 +244,7 @@ export async function loadMoabomSettingsPayloadForMerge(isLoggedIn: boolean): Pr
   generated_app_library?: MoabomGeneratedAppLibraryPayload;
 } | null> {
   return runMoabomShellRealtimeTask(
-    isLoggedIn ? 'system:settings-merge:auth' : 'system:settings-merge:guest',
+    isLoggedIn ? `system:settings-merge:${getShellAccessScopeKey()}` : 'system:settings-merge:guest',
     async () => {
       if (isLoggedIn) {
         const r = await fetchMoabomSystemSettings();
@@ -273,6 +294,7 @@ export async function updateCoreUserLanguage(language: string): Promise<{ ok: bo
 export async function saveMoabomSystemSettings(
   settings: MoabomSystemState,
 ): Promise<MoabomApiResult<ApiSystemSettingsResponse['data']>> {
+  const scopeKey = getShellAccessScopeKey();
   const result = await shellResult(() =>
     systemModuleApi<ApiSystemSettingsResponse['data']>('user/settings', {
       method: 'PUT',
@@ -282,13 +304,16 @@ export async function saveMoabomSystemSettings(
   if (result.data?.locale_catalog) {
     setMoabomLocaleCatalog(result.data.locale_catalog);
   }
-  if (result.ok) {
-    userSystemSettingsCache = {
-      value: result,
-      expiresAt: Date.now() + USER_SYSTEM_SETTINGS_MEMORY_TTL_MS,
-    };
-  } else {
-    invalidateMoabomSystemSettingsCache();
+  if (scopeKey === getShellAccessScopeKey()) {
+    if (result.ok) {
+      userSystemSettingsCache = {
+        scopeKey,
+        value: result,
+        expiresAt: Date.now() + USER_SYSTEM_SETTINGS_MEMORY_TTL_MS,
+      };
+    } else {
+      invalidateMoabomSystemSettingsCache();
+    }
   }
   return result;
 }

@@ -6,6 +6,7 @@ namespace Modules\Moabom\Apps\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
+use App\Extension\ExtensionManager;
 
 /**
  * 앱 SDK 스캐폴드 (Phase 4) — `php artisan moabom:make-app {name}`.
@@ -41,9 +42,11 @@ final class MakeAppCommand extends Command
         }
 
         $moduleId = "moabom-{$name}";
+        // G7: identifier 하이픈마다 네임스페이스 세그먼트 (global-search → Moabom\Global\Search)
+        $phpNsSuffix = ExtensionManager::directoryToNamespace($moduleId);
+        $namespace = 'Modules\\'.$phpNsSuffix;
         $studly = Str::studly($name);
         $camel = Str::camel($name);
-        $namespace = "Modules\\Moabom\\{$studly}";
         $base = base_path("modules/{$moduleId}");
 
         if (is_dir($base) && ! $this->option('force')) {
@@ -318,7 +321,8 @@ final class MakeAppCommand extends Command
 
         $anchorPsr4 = "    'psr4' => [\n";
         if (strpos($content, "modules/{$moduleId}/src/") === false && strpos($content, $anchorPsr4) !== false) {
-            $psr4Line = '        "Modules\\\\Moabom\\\\'.$studly.'\\\\" => "modules/'.$moduleId.'/src/",'."\n";
+            $psr4Key = str_replace('\\', '\\\\', $namespace).'\\\\';
+            $psr4Line = '        "'.$psr4Key.'" => "modules/'.$moduleId.'/src/",'."\n";
             $content = str_replace($anchorPsr4, $anchorPsr4.$psr4Line, $content);
             $changed = true;
         }

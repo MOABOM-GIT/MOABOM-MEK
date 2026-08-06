@@ -45,12 +45,6 @@ class SocialAuthTenantRuntimeSwitcher
         throw new SocialAuthException(__('moabom-social-auth::messages.invalid_tenant_host'));
     }
 
-    /** @deprecated bootstrapOriginByHost 사용 */
-    public function bootstrapTenantByHost(Request $request, string $tenantHost): void
-    {
-        $this->bootstrapOriginByHost($request, $tenantHost);
-    }
-
     private function hostParser(): TenantHostParser
     {
         return new TenantHostParser(

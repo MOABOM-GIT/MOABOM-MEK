@@ -121,6 +121,17 @@ run_smoke() {
     bash "${ROOT}/deploy/smoke-after-deploy.sh" "${url}"
 }
 
+sync_queue_plane() {
+  if ! grep -qE '^MOABOM_QUEUE_PLANE_MODE: "?active"?$' "${ENV_FILE}" 2>/dev/null; then
+    echo "==> Queue plane sync skipped (inactive)"
+    return 0
+  fi
+
+  echo "==> Cloud Run queue plane sync (${TAG})"
+  bash "${ROOT}/deploy/deploy-cloud-tasks-queue-service.sh"
+  bash "${ROOT}/deploy/check-runtime-plane-image-parity.sh"
+}
+
 post_deploy_migration_modules() {
   local raw="${POST_DEPLOY_MIGRATION_MODULES//[[:space:]]/}"
   [[ -n "${raw}" ]] || return 0
@@ -187,7 +198,8 @@ moabom_assert_secrets_ready() {
     "${SECRET_SOCIAL_NAVER}" \
     "${SECRET_SOCIAL_KAKAO}" \
     "${SECRET_SOCIAL_GOOGLE}" \
-    "${SECRET_REVERB_APP_SECRET}"
+    "${SECRET_REVERB_APP_SECRET}" \
+    "${SECRET_MOABOM_FCM_SERVICE_ACCOUNT_JSON}"
   do
     if ! gcloud secrets describe "${secret_name}" --project="${PROJECT}" >/dev/null 2>&1; then
       echo "ERROR: Secret Manager '${secret_name}' 없음 — bash deploy/secret-manager-bootstrap.sh 한 번 실행 필요"
@@ -204,14 +216,18 @@ if [[ "${ENV_ONLY}" -eq 1 ]]; then
   echo "==> env-only deploy (빌드 생략): ${IMAGE}"
   preflight_gcloud
   moabom_assert_secrets_ready
+  bash "${ROOT}/deploy/check-realtime-vm-health.sh"
   moabom_gcloud_run_deploy_service "${IMAGE}"
   wait_for_ready_revision
+  sync_queue_plane
   run_smoke "" "light"
   exit 0
 fi
 
 moabom_assert_secrets_ready
 preflight_gcloud
+echo "==> Realtime VM publish preflight"
+bash "${ROOT}/deploy/check-realtime-vm-health.sh"
 
 if [[ "${SKIP_CHECK}" -eq 0 ]]; then
   IMAGE_TAG="${TAG}" bash "${ROOT}/deploy/check-before-cloud-build.sh"
@@ -229,6 +245,9 @@ if [[ "${ASYNC}" -eq 1 ]]; then
   echo "    비동기 제출됨. 완료 후:"
   echo "    gcloud builds list --ongoing --project=${PROJECT}"
   echo "    (권장) IMAGE_TAG=${TAG} bash deploy/build-and-deploy.sh — 수동 gcloud deploy 시 deploy/lib/cloud-run-service-flags.sh 플래그 준수"
+  if grep -qE '^MOABOM_QUEUE_PLANE_MODE: "?active"?$' "${ENV_FILE}" 2>/dev/null; then
+    echo "    queue parity: bash deploy/deploy-cloud-tasks-queue-service.sh && bash deploy/check-runtime-plane-image-parity.sh"
+  fi
   echo "    smoke: MOABOM_STRICT_SMOKE=${STRICT_SMOKE} bash deploy/smoke-after-deploy.sh https://mek360.com"
   if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null \
     && grep -qE '^MOABOM_SYNC_TEMPLATE_LAYOUTS: "true"' "${ENV_FILE}" 2>/dev/null; then
@@ -257,46 +276,87 @@ echo "==> ${URL}"
 if grep -qE '^RUN_MIGRATIONS: "false"' "${ENV_FILE}" 2>/dev/null; then
   # shellcheck source=lib/post-deploy-migration-hash.sh
   source "${ROOT}/deploy/lib/post-deploy-migration-hash.sh"
-  mapfile -t _migrate_modules < <(post_deploy_migration_modules)
-  if [[ "${#_migrate_modules[@]}" -eq 0 ]]; then
-    echo "==> Post-deploy module migrations skipped (auto: no migration file changes)"
+  # shellcheck source=lib/saas-migration-planes.sh
+  source "${ROOT}/deploy/lib/saas-migration-planes.sh"
+  # shellcheck source=lib/cloud-run-artisan-job.sh
+  source "${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
+
+  mapfile -t _changed_planes < <(moabom_saas_list_changed_planes)
+  if [[ "${#_changed_planes[@]}" -eq 0 ]]; then
+    echo "==> Post-deploy schema planes skipped (auto: no migration file changes)"
   else
-    echo "==> Post-deploy allowlist module migrations (RUN_MIGRATIONS=false safety)"
-    echo "    modules=${_migrate_modules[*]}"
-    # shellcheck source=lib/cloud-run-artisan-job.sh
-    source "${ROOT}/deploy/lib/cloud-run-artisan-job.sh"
-    for module_id in "${_migrate_modules[@]}"; do
-      moabom_run_artisan_job "moabom-${module_id}-migrate" 900s \
-        migrate \
-        --force \
-        --no-interaction \
-        --path="modules/${module_id}/database/migrations"
-      if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
-        moabom_run_artisan_job "moabom-${module_id}-tenant-migrate" 900s \
-          moabom:saas:tenants:migrate \
-          --force \
-          --path="modules/${module_id}/database/migrations"
-      fi
-      moabom_post_deploy_record_module_migration "${module_id}"
+    echo "==> Post-deploy schema-sync (RF-32 core/module/plugin → platform + tenants)"
+    echo "    planes=${#_changed_planes[@]}"
+    for line in "${_changed_planes[@]}"; do
+      echo "    - ${line}"
+    done
+    # fail-closed: 한 plane/tenant 라도 실패 시 배포 중단 · 해시 미기록
+    plane_args=()
+    for line in "${_changed_planes[@]}"; do
+      key="${line%%|*}"
+      plane_args+=(--plane="${key}")
     done
     if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
-      echo "==> Post-deploy generated-apps platform schema (changed only)"
-      if moabom_post_deploy_platform_migration_changed moabom-apps app/modules/moabom-apps/database/migrations/platform; then
-        moabom_run_artisan_job moabom-apps-platform-migrate 900s \
-          moabom:apps:platform-migrate --force --no-interaction
-        moabom_post_deploy_record_platform_migration moabom-apps app/modules/moabom-apps/database/migrations/platform
-      else
-        echo "    skip moabom-apps platform-migrate (unchanged)"
-      fi
-      if moabom_post_deploy_platform_migration_changed moabom-presence app/modules/moabom-presence/database/migrations/platform; then
-        moabom_run_artisan_job moabom-presence-platform-migrate 900s \
-          moabom:presence:platform-migrate --force --no-interaction
-        moabom_post_deploy_record_platform_migration moabom-presence app/modules/moabom-presence/database/migrations/platform
-      else
-        echo "    skip moabom-presence platform-migrate (unchanged)"
-      fi
+      moabom_run_artisan_job moabom-saas-schema-sync 1800s \
+        moabom:saas:schema-sync \
+        --force \
+        "${plane_args[@]}"
+    else
+      for line in "${_changed_planes[@]}"; do
+        path="${line#*|}"
+        key="${line%%|*}"
+        safe_key="${key//:/_}"
+        moabom_run_artisan_job "moabom-plane-migrate-${safe_key}" 900s \
+          migrate --force --no-interaction --path="${path}"
+      done
+    fi
+    printf '%s\n' "${_changed_planes[@]}" | moabom_saas_record_planes_from_list
+  fi
+
+  if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
+    echo "==> Post-deploy generated-apps platform schema (changed only)"
+    if moabom_post_deploy_platform_migration_changed moabom-apps app/modules/moabom-apps/database/migrations/platform; then
+      moabom_run_artisan_job moabom-apps-platform-migrate 900s \
+        moabom:apps:platform-migrate --force --no-interaction
+      moabom_post_deploy_record_platform_migration moabom-apps app/modules/moabom-apps/database/migrations/platform
+    else
+      echo "    skip moabom-apps platform-migrate (unchanged)"
+    fi
+    if moabom_post_deploy_platform_migration_changed moabom-presence app/modules/moabom-presence/database/migrations/platform; then
+      moabom_run_artisan_job moabom-presence-platform-migrate 900s \
+        moabom:presence:platform-migrate --force --no-interaction
+      moabom_post_deploy_record_platform_migration moabom-presence app/modules/moabom-presence/database/migrations/platform
+    else
+      echo "    skip moabom-presence platform-migrate (unchanged)"
+    fi
+
+    echo "==> Post-deploy platform social-auth master seed"
+    moabom_run_artisan_job moabom-social-auth-seed 600s \
+      moabom:social-auth:seed-platform-master --no-interaction
+
+    if grep -qE '^MOABOM_SYNC_TENANT_EXTENSIONS: "true"' "${ENV_FILE}" 2>/dev/null; then
+      echo "==> Post-deploy platform package extensions (install for tenant availability)"
+      moabom_run_artisan_job moabom-sync-package-extensions 900s \
+        moabom:saas:sync-package-extensions --declarations --no-interaction
+      echo "==> Post-deploy tenant extension availability (insert-only)"
+      moabom_run_artisan_job moabom-tenant-extension-availability 900s \
+        moabom:saas:tenant-repair \
+        --apply \
+        --package=hospital-default \
+        --insert-only \
+        --skip-menus \
+        --skip-menu-rows \
+        --skip-templates \
+        --skip-legal-pages \
+        --no-interaction
     fi
   fi
+fi
+
+sync_queue_plane
+if grep -qE '^MOABOM_QUEUE_PLANE_MODE: "?active"?$' "${ENV_FILE}" 2>/dev/null; then
+  echo "==> Realtime notification end-to-end smoke"
+  bash "${ROOT}/deploy/smoke-realtime-notifications.sh"
 fi
 
 if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
@@ -328,6 +388,11 @@ if [[ "${SKIP_LAYOUT_SYNC}" -eq 0 ]] \
   else
     echo "==> Post-deploy Phase E skipped (unchanged)"
   fi
+fi
+
+if grep -qE '^MOABOM_SAAS_ENABLED: "true"' "${ENV_FILE}" 2>/dev/null; then
+  echo "==> Post-deploy smart-chat platform data smoke"
+  bash "${ROOT}/deploy/smoke-smart-chat-tools.sh"
 fi
 
 echo "==> deploy complete: ${IMAGE}"

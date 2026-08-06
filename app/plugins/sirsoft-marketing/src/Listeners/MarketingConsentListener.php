@@ -111,6 +111,11 @@ class MarketingConsentListener implements HookListenerInterface
                 'priority' => 10,
                 'type' => 'filter',
             ],
+            'moabom.notification.delivery_decision' => [
+                'method' => 'filterMarketingNotificationDelivery',
+                'priority' => 20,
+                'type' => 'filter',
+            ],
         ];
     }
 
@@ -338,6 +343,39 @@ class MarketingConsentListener implements HookListenerInterface
         }
 
         return $data;
+    }
+
+    /**
+     * 마케팅으로 명시된 알림은 사용자의 마케팅 알림 동의가 있을 때만 발송합니다.
+     *
+     * @param  array{allowed: bool, reason: string|null}  $decision
+     * @param  array<string, mixed>  $context
+     * @return array{allowed: bool, reason: string|null}
+     */
+    public function filterMarketingNotificationDelivery(array $decision, array $context): array
+    {
+        if (! ($decision['allowed'] ?? true)) {
+            return $decision;
+        }
+
+        $type = (string) ($context['notification_type'] ?? '');
+        $data = is_array($context['data'] ?? null) ? $context['data'] : [];
+        $isMarketing = ($data['notification_category'] ?? null) === 'marketing'
+            || str_starts_with($type, 'marketing_');
+        $user = $context['notifiable'] ?? null;
+
+        if (! $isMarketing || ! $user instanceof User) {
+            return $decision;
+        }
+
+        if (! $this->service->isConsented((int) $user->id, 'notification_subscription')) {
+            return [
+                'allowed' => false,
+                'reason' => 'marketing_notification_consent_required',
+            ];
+        }
+
+        return $decision;
     }
 
     /**

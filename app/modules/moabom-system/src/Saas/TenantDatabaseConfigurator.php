@@ -64,9 +64,20 @@ final class TenantDatabaseConfigurator
             return;
         }
 
-        Config::set("database.connections.{$connection}", $this->withDatabaseName($config, $database));
-        DB::purge($connection);
-        DB::reconnect($connection);
+        $next = $this->withDatabaseName($config, $database);
+        if ($next === $config) {
+            return;
+        }
+
+        $manager = DB::getFacadeRoot();
+        $connectionAlreadyResolved = is_object($manager)
+            && method_exists($manager, 'getConnections')
+            && array_key_exists($connection, $manager->getConnections());
+
+        Config::set("database.connections.{$connection}", $next);
+        if ($connectionAlreadyResolved) {
+            DB::purge($connection);
+        }
     }
 
     /**
@@ -95,8 +106,19 @@ final class TenantDatabaseConfigurator
      */
     private function restoreConnectionConfig(string $connection, array $config): void
     {
+        $current = $this->snapshotConnectionConfig($connection);
+        if ($current === $config) {
+            return;
+        }
+
+        $manager = DB::getFacadeRoot();
+        $connectionAlreadyResolved = is_object($manager)
+            && method_exists($manager, 'getConnections')
+            && array_key_exists($connection, $manager->getConnections());
+
         Config::set("database.connections.{$connection}", $config);
-        DB::purge($connection);
-        DB::reconnect($connection);
+        if ($connectionAlreadyResolved) {
+            DB::purge($connection);
+        }
     }
 }

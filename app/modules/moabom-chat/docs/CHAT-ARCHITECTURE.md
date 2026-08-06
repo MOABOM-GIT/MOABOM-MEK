@@ -2,7 +2,7 @@
 
 목표: **웹 DM 체감** — 보내기 즉시 반영, 수신 1~3초, 앱 켜둔 동안 토스트·목록 동기화, 끊김 후 수 초 내 복구.
 
-카카오/인스타 **네이티브 앱급**(앱 완전 종료 후 푸시)은 FCM 연동 시 Phase 4+.
+카카오/인스타 **네이티브 앱급**(앱 완전 종료 후 푸시)은 `moabom-fcm` (Firebase HTTP v1) + presence 오프라인 게이트.
 
 ---
 
@@ -24,7 +24,7 @@
 | R12 | 메시지 삭제 | 3 | ✅ soft delete + `message.deleted` |
 | R13 | 대화 mute | 3 | ✅ `muted_until` (미지정 시 10년·사실상 무기한) |
 | R14 | 탭 백그라운드 OS 알림 | 4 | ✅ Web Notification API |
-| R15 | 앱 종료 FCM | 4+ | ⏳ 향후 |
+| R15 | 앱 종료 FCM | 4+ | ✅ `moabom-fcm` + presence 오프라인 게이트 (설정·토큰 필요) |
 | R16 | Reverb 멀티 인스턴스 | 2 | ✅ VM `realtime.mek360.com` + Redis scaling |
 | R17 | Cloud Run Billing Request-based | 2 | ✅ SSOT 고정 (`--cpu-throttling`) |
 | R18 | 브로드캐스트 즉시 전송 | 2 | ✅ `ShouldBroadcastNow` (큐 우회) |
@@ -38,7 +38,8 @@ Transport
   moabomWebSocketConnection      — deferred Pusher bind
   moabomShellRealtimeCoordinator — notification + inbox WS
   moabomShellChatSyncService     — REST catch-up (WS-down / focus / 패널 진입만)
-  moabomShellChatBackgroundNotify — 탭 hidden 시 OS 알림
+  moabomShellChatBackgroundNotify — 탭 hidden 시 OS 알림 (앱 생존)
+  moabomFcmClient + moabom-fcm   — 앱 종료 시 FCM (presence 오프라인만)
 
 Store
   moabomShellChatInboxCache
@@ -102,6 +103,15 @@ Backend (moabom-chat)
 - Laravel publish: `REVERB_SERVER_HOST=realtime.mek360.com:443` → VM nginx → Reverb
 - 브로드캐스트: `ShouldBroadcastNow` — DB 큐 경유 없이 즉시 Reverb HTTP publish
 - 스모크: `deploy/smoke-after-deploy.sh` Reverb probe + `deploy/check-realtime-vm-health.sh`
+
+### FCM (앱 종료 푸시, R15)
+
+| 항목 | 내용 |
+|------|------|
+| 플러그인 | `moabom-fcm` — GenericNotification `fcm` 채널 |
+| 게이트 | presence `last_seen` TTL 내 온라인 → FCM skip (`notification_logs` skipped) |
+| 실시간 | Reverb + Web Notification (탭 백그라운드) 유지 |
+| 운영 | `MOABOM_FCM_*` + Secret Manager `MOABOM_FCM_SERVICE_ACCOUNT_JSON` — `deploy/docs/moabom-fcm.md` |
 
 ### Request-based 와 실시간 채팅
 

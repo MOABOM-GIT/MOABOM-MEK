@@ -32,13 +32,14 @@ describe('shellBootApps (앱 SDK 런타임)', () => {
     expect(shellBootChunkFileFor('missing')).toBeUndefined();
   });
 
-  it('기존 그리드에 없는 신규 앱만 추가하고 create-app 은 제외한다(중복 방지)', () => {
+  it('기존 그리드에 없는 신규 앱만 추가하고 시스템 도구는 제외한다(중복 방지)', () => {
     const base: App[] = [
       { id: 'cpap-mask', name: '마스크', description: '', icon: 'x', gradient: 'g', category: 'basic', source: 'system' },
     ];
     setShellBootApps([
       { id: 'cpap-mask', name: '마스크(매니페스트)', frontend: { chunk: 'a.js' } },
       { id: 'create-app', name: 'AI', frontend: { chunk: 'b.js' } },
+      { id: 'ai-smart-chat', name: '스마트챗', frontend: { chunk: 's.js' } },
       { id: 'consulting', name: '컨설팅', description: '상담', icon: 'comment', gradient: 'grad', category: 'user', frontend: { chunk: 'c.js' } },
     ]);
 
@@ -48,6 +49,7 @@ describe('shellBootApps (앱 SDK 런타임)', () => {
     expect(ids).toContain('cpap-mask');
     expect(ids).toContain('consulting');
     expect(ids).not.toContain('create-app');
+    expect(ids).not.toContain('ai-smart-chat');
     // 기존 cpap-mask 는 그대로(매니페스트가 덮어쓰지 않음)
     expect(merged.find(a => a.id === 'cpap-mask')?.name).toBe('마스크');
     // 신규 consulting 은 매니페스트 메타로 변환

@@ -83,7 +83,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
         $this->scopeTenant($query);
         $this->eagerUser($query);
 
-        return $query->first() ?? $this->findLegacyTenantRow($id, static fn ($q) => $q->where('user_id', $userId));
+        return $query->first();
     }
 
     /**
@@ -108,9 +108,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
             return $app;
         }
 
-        return $this->findLegacyTenantRow($id, static fn ($q) => $q->where(function ($inner) use ($userId): void {
-            $inner->where('user_id', $userId)->orWhere('is_shared', true);
-        }));
+        return null;
     }
 
     public function findPublished(int $id): ?GeneratedApp
@@ -120,9 +118,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
         GeneratedAppPublishPolicy::applyPublishedCatalogScope($query);
         $this->eagerUser($query);
 
-        $app = $query->first();
-
-        return $app ?? $this->findLegacyTenantRow($id, static fn ($q) => $q->where('is_shared', true));
+        return $query->first();
     }
 
     public function findById(int $id): ?GeneratedApp
@@ -130,9 +126,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
         $query = GeneratedAppsConnection::apps()->whereKey($id);
         $this->eagerUser($query);
 
-        $app = $query->first();
-
-        return $app ?? $this->findLegacyTenantRow($id);
+        return $query->first();
     }
 
     /**
@@ -167,19 +161,7 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
      */
     private function scopeTenant($query): void
     {
-        if (! GeneratedAppsConnection::usesPlatformStore()) {
-            return;
-        }
-
-        $slug = GeneratedAppPreviewRouting::tenantScopeKey();
-        if ($slug === 'unknown') {
-            // TenantContext 미해석 시 cross-tenant user_id 충돌 방지 — fail-closed
-            $query->whereRaw('1 = 0');
-
-            return;
-        }
-
-        $query->where('tenant_slug', $slug);
+        GeneratedAppsConnection::scopeToCurrentTenant($query);
     }
 
     /**
@@ -217,22 +199,5 @@ class GeneratedAppRepository implements GeneratedAppRepositoryInterface
         if (! GeneratedAppsConnection::usesPlatformStore()) {
             $query->with('user');
         }
-    }
-
-    /**
-     * @param  callable(Builder<GeneratedApp>): void|null  $constraint
-     */
-    private function findLegacyTenantRow(int $id, ?callable $constraint = null): ?GeneratedApp
-    {
-        if (! GeneratedAppsConnection::usesPlatformStore()) {
-            return null;
-        }
-
-        $query = GeneratedApp::query()->with('user')->whereKey($id);
-        if ($constraint !== null) {
-            $constraint($query);
-        }
-
-        return $query->first();
     }
 }

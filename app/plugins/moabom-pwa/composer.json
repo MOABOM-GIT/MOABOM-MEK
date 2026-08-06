@@ -2,7 +2,7 @@
     "name": "plugins/moabom-pwa",
     "description": "Moabom PWA endpoints plugin for Gnuboard7 (manifest, service worker, version)",
     "type": "library",
-    "version": "0.1.3",
+    "version": "0.1.6",
     "license": "MIT",
     "authors": [
         {

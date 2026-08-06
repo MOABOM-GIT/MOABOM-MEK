@@ -1,0 +1,25 @@
+{
+    "id": "ai-smart-chat",
+    "module": "moabom-smart-chat",
+    "name": {
+        "ko": "AI 스마트챗",
+        "en": "AI Smart Chat"
+    },
+    "description": {
+        "ko": "AI와 대화하기",
+        "en": "Chat with AI"
+    },
+    "icon": "comments",
+    "gradient": "linear-gradient(135deg,#14b8a6,#0ea5e9)",
+    "category": "basic",
+    "source": "system",
+    "frontend": {
+        "template": "moabom-basic",
+        "chunk": "moabom-shell-ai-smart-chat.iife.js",
+        "global": "ai-smart-chat"
+    },
+    "api_prefix": "api/modules/moabom-smart-chat",
+    "permissions": [],
+    "tenant_scoped": true,
+    "order": 2
+}

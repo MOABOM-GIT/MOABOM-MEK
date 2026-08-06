@@ -1,0 +1,8 @@
+[Unit]
+Description=Moabom realtime plane health recovery
+After=docker.service nginx.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/moabom-realtime/watchdog.sh

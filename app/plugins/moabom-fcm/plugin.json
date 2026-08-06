@@ -5,11 +5,11 @@
         "ko": "Moabom FCM",
         "en": "Moabom FCM"
     },
-    "version": "0.1.0",
+    "version": "0.2.4",
     "license": "MIT",
     "description": {
-        "ko": "Firebase Cloud Messaging HTTP v1 푸시 골격. 채팅·알림 연동 전 계약·클라이언트·상태 훅만 제공한다.",
-        "en": "Firebase Cloud Messaging HTTP v1 push skeleton. Provides contract, clients, and status hooks before chat/notification wiring."
+        "ko": "Firebase Cloud Messaging HTTP v1 디바이스 푸시. PWA·향후 네이티브용 토큰 API와 GenericNotification fcm 시스템 알림 채널을 제공한다.",
+        "en": "Firebase Cloud Messaging HTTP v1 device push. Provides token APIs for PWA and future native clients plus a GenericNotification FCM system-notification channel."
     },
     "g7_version": ">=7.0.0-beta.1,<8.0.0",
     "dependencies": {

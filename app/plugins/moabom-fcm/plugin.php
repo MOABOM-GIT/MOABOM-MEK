@@ -3,11 +3,13 @@
 namespace Plugins\Moabom\Fcm;
 
 use App\Extension\AbstractPlugin;
+use Plugins\Moabom\Fcm\Listeners\FcmNotificationChannelListener;
 
 /**
- * Moabom FCM 플러그인 — HTTP v1 푸시 계약·클라이언트 골격.
+ * Moabom FCM — Firebase Cloud Messaging HTTP v1 디바이스 푸시.
  *
- * 채팅·알림 모듈은 `moabom.fcm.send` 액션 또는 FcmPushService 바인딩으로 후속 연동한다.
+ * GenericNotification `fcm` 채널·디바이스 토큰 API·PWA 연동을 제공한다.
+ * 실시간(Reverb) 토스트와 독립적으로 사용자가 선택한 OS 시스템 알림을 전달한다.
  */
 class Plugin extends AbstractPlugin
 {
@@ -16,7 +18,17 @@ class Plugin extends AbstractPlugin
         return [
             'author' => 'Moabom',
             'license' => 'MIT',
-            'keywords' => ['fcm', 'firebase', 'push', 'notification'],
+            'keywords' => ['fcm', 'firebase', 'push', 'notification', 'pwa'],
+        ];
+    }
+
+    /**
+     * @return array<int, class-string>
+     */
+    public function getHookListeners(): array
+    {
+        return [
+            FcmNotificationChannelListener::class,
         ];
     }
 }

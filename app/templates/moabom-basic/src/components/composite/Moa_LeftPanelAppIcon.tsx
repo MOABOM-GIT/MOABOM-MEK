@@ -1,13 +1,17 @@
 import React, { useCallback, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Div } from '../basic/Div';
 import { Span } from '../basic/Span';
 import { Button } from '../basic/Button';
 import { useLongPress } from '../../hooks/Moa_useLongPress';
 import type { App } from '../../data/Moa_apps';
 import { useResolvedAppStrings } from '../../i18n/useResolvedAppStrings';
-import { createAppShellMetadata, getCreateAppShellCssVars } from '../../apps/ai-generator';
+import {
+  brandedAppIconClassName,
+  brandedTitleGradientClassName,
+  getBrandedShellCssVars,
+  isBrandedShellAppId,
+} from '../../apps/brandedShellChrome';
 import { isGeneratedLibraryAppId } from '../../apps/generatedAppLibrary';
 import { Moa_GeneratedAppIconShell } from './Moa_GeneratedAppIconShell';
 
@@ -59,13 +63,12 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
 }) => {
   const clickBlockedRef = useRef(false);
   const { name: displayName } = useResolvedAppStrings(app);
-  const isCreateApp = app.id === createAppShellMetadata.id;
+  const isBrandedApp = isBrandedShellAppId(app.id);
   const isGeneratedApp = isGeneratedLibraryAppId(app.id);
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
     isDragging,
   } = useDraggable({ id: `left-${app.id}`, disabled: !editMode || tapToAdd });
 
@@ -107,9 +110,9 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
       draggable={false}
       style={{
         cursor: editMode ? 'copy' : 'pointer',
-        transform: transform ? CSS.Translate.toString(transform) : undefined,
-        opacity: isDragging ? 0.5 : 1,
-        ...(isCreateApp ? getCreateAppShellCssVars() : {}),
+        /* 패널 overflow 클리핑 회피 — 이동은 DragOverlay 만 담당 */
+        opacity: isDragging ? 0 : 1,
+        ...(isBrandedApp ? getBrandedShellCssVars(app.id) : {}),
       }}
       {...attributes}
       {...dndHandlers}
@@ -125,15 +128,15 @@ export const LeftPanelAppIcon: React.FC<LeftPanelAppIconProps> = ({
       >
         <Moa_GeneratedAppIconShell
           app={app}
-          isCreateApp={isCreateApp}
+          isCreateApp={isBrandedApp}
           showUserBadge={isGeneratedApp}
           badgeSize="sm"
-          iconClassName={`${isCreateApp ? 'create-app-icon create-app-icon--compact' : ''} ${iconSize} shadow-lg`}
-          symbolClassName={`text-white ${iconTextSize} ${isCreateApp ? 'relative z-[1]' : ''}`}
+          iconClassName={`${brandedAppIconClassName(app.id)}${isBrandedApp ? ' create-app-icon--compact' : ''} ${iconSize} shadow-lg`}
+          symbolClassName={`text-white ${iconTextSize} ${isBrandedApp ? 'relative z-[1]' : ''}`}
         />
         {showName && (
           <Span
-            className={`moa-app-icon-label ${isCreateApp ? 'create-app-title-gradient' : 'text-primary'} moa-left-panel-app-title font-bold leading-tight`}
+            className={`moa-app-icon-label ${isBrandedApp ? brandedTitleGradientClassName(app.id) || 'create-app-title-gradient' : 'text-primary'} moa-left-panel-app-title font-bold leading-tight`}
             title={displayName}
           >
             {displayName}

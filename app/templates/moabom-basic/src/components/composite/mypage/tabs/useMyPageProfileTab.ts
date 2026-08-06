@@ -1,6 +1,5 @@
-import { useEffect, useState, type ChangeEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react';
 import type { MoabomTranslateFn } from '../../../../i18n/moabomT';
-import type { MoabomSystemLanguage } from '../../../../types/moabomSystem';
 import {
   cropAvatarToSquare,
   fetchUserProfileApi,
@@ -13,18 +12,18 @@ import { flattenFieldErrors, showCoreToast } from '../myPageUtils';
 interface UseMyPageProfileTabOptions {
   activeTab: MyPageTab;
   currentUser: MyPageUser | null;
-  shellLanguage: MoabomSystemLanguage;
   t: MoabomTranslateFn;
   avatarInputRef: RefObject<HTMLInputElement | null>;
+  accountInfoUnlocked?: boolean;
   onProfileUpdated?: (user?: AuthManagerUserSnapshot | null) => void;
 }
 
 export function useMyPageProfileTab({
   activeTab,
   currentUser,
-  shellLanguage,
   t,
   avatarInputRef,
+  accountInfoUnlocked = false,
   onProfileUpdated,
 }: UseMyPageProfileTabOptions) {
   const [nickname, setNickname] = useState(currentUser?.name ?? '');
@@ -39,9 +38,17 @@ export function useMyPageProfileTab({
   const [profileBanner, setProfileBanner] = useState<{ text: string } | null>(null);
   const [profileFieldErrors, setProfileFieldErrors] = useState<Record<string, string>>({});
   const [profileSocialProvider, setProfileSocialProvider] = useState<string | null>(null);
+  const loadedMemberKeyRef = useRef<string | null>(null);
+  const currentUserNameRef = useRef(currentUser?.name ?? '');
+  currentUserNameRef.current = currentUser?.name ?? '';
+
+  const memberKey = currentUser?.memberKey ?? (currentUser ? 'authenticated' : '');
 
   useEffect(() => {
-    if ((activeTab !== 'profile' && activeTab !== 'account') || !currentUser) return;
+    const canLoadForActiveTab = activeTab === 'profile'
+      || (activeTab === 'account' && accountInfoUnlocked);
+    if (!canLoadForActiveTab || !memberKey) return;
+    if (loadedMemberKeyRef.current === memberKey) return;
 
     let cancelled = false;
     setProfileLoading(true);
@@ -49,31 +56,41 @@ export function useMyPageProfileTab({
     setProfileFieldErrors({});
 
     void (async () => {
-      const result = await fetchUserProfileApi();
-      if (cancelled) return;
-      setProfileLoading(false);
-      if (!result.ok) {
-        setProfileBanner({
-          text: result.kind === 'unauthorized'
-            ? t('moa_mypage.msg.profile_load_failed')
-            : t('moa_mypage.msg.profile_transient_error'),
-        });
-        return;
+      try {
+        const result = await fetchUserProfileApi();
+        if (cancelled) return;
+        if (!result.ok) {
+          setProfileBanner({
+            text: result.kind === 'unauthorized'
+              ? t('moa_mypage.msg.profile_load_failed')
+              : t('moa_mypage.msg.profile_transient_error'),
+          });
+          return;
+        }
+        const data = result.data;
+        setProfileName(String(data.name ?? ''));
+        setNickname(String(data.nickname ?? data.name ?? currentUserNameRef.current));
+        setProfileEmail(String(data.email ?? ''));
+        setProfileMobile(String(data.mobile ?? ''));
+        setAvatarUrl(String(data.avatar ?? ''));
+        setBio(String(data.bio ?? ''));
+        setProfileSocialProvider(data.social_provider ?? null);
+        loadedMemberKeyRef.current = memberKey;
+      } catch {
+        if (!cancelled) {
+          setProfileBanner({ text: t('moa_mypage.msg.profile_transient_error') });
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
       }
-      const data = result.data;
-      setProfileName(String(data.name ?? ''));
-      setNickname(String(data.nickname ?? data.name ?? currentUser.name ?? ''));
-      setProfileEmail(String(data.email ?? ''));
-      setProfileMobile(String(data.mobile ?? ''));
-      setAvatarUrl(String(data.avatar ?? ''));
-      setBio(String(data.bio ?? ''));
-      setProfileSocialProvider(data.social_provider ?? null);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [activeTab, currentUser, shellLanguage, t]);
+  }, [accountInfoUnlocked, activeTab, memberKey]);
 
   const profileErr = (field: string) => profileFieldErrors[field] ?? '';
 

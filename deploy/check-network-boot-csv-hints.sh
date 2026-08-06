@@ -18,6 +18,9 @@ if [[ -z "${CSV}" || ! -f "${CSV}" ]]; then
   echo "  - config.json / home.json memory-patched or fast"
   echo "  - unread-count / settings at most once on boot"
   echo "  - HTML document wait short on revisit (SW NetworkFirst 0.4s → stale HTML paint)"
+  echo "  - shell-boot revisit: SW StaleWhileRevalidate cache response (no origin RTT wait)"
+  echo "  - weather/auth must not sit at 15s 504 (client timeout ~8s)"
+  echo "  - DO NOT disable login notification/inbox WS for perf (product contract)"
   exit 1
 fi
 
@@ -48,6 +51,7 @@ def parse_duration(cell: str):
     return val / 1000.0 if unit == "ms" else val
 
 rows = []
+statuses = []
 with open(path, newline="", encoding="utf-8-sig") as f:
     for row in csv.reader(f):
         if not row:
@@ -55,12 +59,13 @@ with open(path, newline="", encoding="utf-8-sig") as f:
         name = (row[0] or "").strip()
         if not name or name.startswith("요청") or name.startswith("완료") or name.startswith("DOM") or name.startswith("로드"):
             continue
-        # Duration is typically the last column in Chrome CSV exports
+        status = (row[1] or "").strip() if len(row) > 1 else ""
         dur = parse_duration(row[-1]) if row else None
         rows.append((name, dur))
+        statuses.append((name, status, dur))
 
 counts = Counter(n for n, _ in rows)
-interesting = ("unread-count", "settings", "summary", "online", "library", "heartbeat", "config.json", "shell-boot")
+interesting = ("unread-count", "settings", "summary", "online", "library", "heartbeat", "config.json", "shell-boot", "credits", "weather", "auth")
 
 print("-- duplicate interesting names --")
 shown = False
@@ -71,6 +76,16 @@ for n, c in sorted(counts.items(), key=lambda x: -x[1]):
         print(f"  {c}x  {n}")
         shown = True
 if not shown:
+    print("  (none)")
+
+print("-- gateway timeouts (504 / >=14s) --")
+bad = [
+    (n, st, d) for n, st, d in statuses
+    if st == "504" or (d is not None and d >= 14.0)
+]
+for n, st, d in bad[:20]:
+    print(f"  status={st or '?'}  {d}s  {n}")
+if not bad:
     print("  (none)")
 
 print("-- slow rows (>=0.8s) top 25 --")

@@ -81,7 +81,7 @@ class Module extends AbstractModule
                     'ko' => '다른 사용자가 친구 요청을 내면 수신자에게 발송',
                     'en' => 'Sent when another user sends a friend request',
                 ],
-                'channels' => ['database'],
+                'channels' => ['database', 'fcm'],
                 'hooks' => ['moabom-presence.friendship.after_request'],
                 'variables' => [
                     ['key' => 'name', 'description' => '수신자 이름'],
@@ -93,6 +93,19 @@ class Module extends AbstractModule
                 'templates' => [
                     [
                         'channel' => 'database',
+                        'recipients' => [['type' => 'related_user', 'relation' => 'addressee']],
+                        'click_url' => '/users/{requester_uuid}',
+                        'subject' => [
+                            'ko' => '친구 요청',
+                            'en' => 'Friend request',
+                        ],
+                        'body' => [
+                            'ko' => '{requester_name}님이 친구 요청을 보냈습니다.',
+                            'en' => '{requester_name} sent you a friend request.',
+                        ],
+                    ],
+                    [
+                        'channel' => 'fcm',
                         'recipients' => [['type' => 'related_user', 'relation' => 'addressee']],
                         'click_url' => '/users/{requester_uuid}',
                         'subject' => [
@@ -117,7 +130,7 @@ class Module extends AbstractModule
                     'ko' => '내 친구 요청이 수락되면 요청자에게 발송',
                     'en' => 'Sent to the requester when a friend request is accepted',
                 ],
-                'channels' => ['database'],
+                'channels' => ['database', 'fcm'],
                 'hooks' => ['moabom-presence.friendship.after_accept'],
                 'variables' => [
                     ['key' => 'name', 'description' => '수신자 이름'],
@@ -129,6 +142,19 @@ class Module extends AbstractModule
                 'templates' => [
                     [
                         'channel' => 'database',
+                        'recipients' => [['type' => 'trigger_user']],
+                        'click_url' => '/users/{accepter_uuid}',
+                        'subject' => [
+                            'ko' => '친구 수락',
+                            'en' => 'Friend request accepted',
+                        ],
+                        'body' => [
+                            'ko' => '{accepter_name}님이 친구 요청을 수락했습니다.',
+                            'en' => '{accepter_name} accepted your friend request.',
+                        ],
+                    ],
+                    [
+                        'channel' => 'fcm',
                         'recipients' => [['type' => 'trigger_user']],
                         'click_url' => '/users/{accepter_uuid}',
                         'subject' => [

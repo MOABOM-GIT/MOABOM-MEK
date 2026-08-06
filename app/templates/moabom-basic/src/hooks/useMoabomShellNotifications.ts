@@ -25,11 +25,12 @@ import {
 import { MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE } from '../layout/moabomShellPanelLayout';
 import {
   MOABOM_SHELL_UNREAD_SYNCED_EVENT,
-  requestShellChatCatchUpSync,
 } from '../runtime/moabomShellChatSyncService';
 import { syncEstimatedShellUnreadCount } from '../shell/moabomShellUnreadBadge';
 import { whenMoabomBootPhaseAtLeast } from '../runtime/moabomShellBootPipeline';
 import { runMoabomShellRealtimeTask } from '../runtime/moabomShellRealtimeRequestCoalescer';
+import { getShellAccessScopeKey } from '../api/moabomShellAccess';
+import { useShellAuthStateKey } from '../shell/moaShellAuthStateKey';
 
 interface UseMoabomShellNotificationsOptions {
   isLoggedIn: boolean;
@@ -42,13 +43,17 @@ export function useMoabomShellNotifications({
   isLoggedIn,
   alarmTabActive,
 }: UseMoabomShellNotificationsOptions) {
+  const authStateKey = useShellAuthStateKey();
+  const accessScopeKey = getShellAccessScopeKey();
   const [items, setItems] = useState<ShellNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => isLoggedIn && alarmTabActive);
+  const [hydratedScopeKey, setHydratedScopeKey] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const pageRef = useRef(1);
+  const requestGenerationRef = useRef(0);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!isLoggedIn) {
@@ -57,31 +62,44 @@ export function useMoabomShellNotifications({
       return;
     }
     const count = await runMoabomShellRealtimeTask(
-      'notifications:unread-count',
+      `notifications:unread-count:${accessScopeKey}`,
       () => fetchShellUnreadCount(),
       { minIntervalMs: 750 },
     );
+    if (getShellAccessScopeKey() !== accessScopeKey) {
+      return;
+    }
     setUnreadCount(count);
     syncEstimatedShellUnreadCount(count);
-  }, [isLoggedIn]);
+  }, [accessScopeKey, isLoggedIn]);
 
   const loadPage = useCallback(async (page: number, append: boolean) => {
+    const requestScopeKey = getShellAccessScopeKey();
+    const requestGeneration = ++requestGenerationRef.current;
     if (!isLoggedIn) {
       setItems([]);
       setHasMore(false);
       setShellNotificationCache([]);
+      setHydratedScopeKey(null);
       return;
     }
 
     setLoading(true);
     try {
       const result = await fetchShellNotifications(page, MOABOM_SHELL_NOTIFICATION_PANEL_PAGE_SIZE);
+      if (
+        requestGeneration !== requestGenerationRef.current
+        || requestScopeKey !== getShellAccessScopeKey()
+      ) {
+        return;
+      }
       if (!result.ok || !result.page) {
         if (!append) {
           setItems([]);
           setShellNotificationCache([]);
           setHasMore(false);
         }
+        setHydratedScopeKey(requestScopeKey);
         return;
       }
 
@@ -94,9 +112,15 @@ export function useMoabomShellNotifications({
         }
         return nextItems;
       });
+      setHydratedScopeKey(requestScopeKey);
       // unread 는 로그인 1회 + WS/bridge 경로만 — list 로드마다 중복 refresh 금지
     } finally {
-      setLoading(false);
+      if (
+        requestGeneration === requestGenerationRef.current
+        && requestScopeKey === getShellAccessScopeKey()
+      ) {
+        setLoading(false);
+      }
     }
   }, [isLoggedIn]);
 
@@ -191,6 +215,15 @@ export function useMoabomShellNotifications({
   }, []);
 
   useEffect(() => {
+    requestGenerationRef.current += 1;
+    setItems([]);
+    setHasMore(false);
+    setHydratedScopeKey(null);
+    pageRef.current = 1;
+    setLoading(false);
+  }, [authStateKey, isLoggedIn]);
+
+  useEffect(() => {
     if (!isLoggedIn) {
       setItems([]);
       setUnreadCount(0);
@@ -210,9 +243,8 @@ export function useMoabomShellNotifications({
     }
     return registerShellNotificationCacheListener(cached => {
       setItems(cached);
-      void refreshUnreadCount();
     });
-  }, [isLoggedIn, refreshUnreadCount]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -230,20 +262,23 @@ export function useMoabomShellNotifications({
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!isLoggedIn || !alarmTabActive) {
+    if (
+      !isLoggedIn
+      || !alarmTabActive
+      || hydratedScopeKey === accessScopeKey
+    ) {
       return;
     }
 
-    return whenMoabomBootPhaseAtLeast('tertiary-idle', () => {
-      requestShellChatCatchUpSync();
-      void reloadList();
-    });
-  }, [alarmTabActive, isLoggedIn, reloadList]);
+    void reloadList();
+  }, [accessScopeKey, alarmTabActive, hydratedScopeKey, isLoggedIn, reloadList]);
+
+  const scopeReady = hydratedScopeKey === accessScopeKey;
 
   return {
-    items,
+    items: scopeReady ? items : [],
     unreadCount,
-    loading,
+    loading: loading || (isLoggedIn && alarmTabActive && !scopeReady),
     markingAll,
     deletingAll,
     hasMore,

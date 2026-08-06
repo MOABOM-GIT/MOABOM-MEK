@@ -145,12 +145,21 @@ class GeneratedAppAdminService
             'is_fork' => $app->parent_app_id !== null,
             'created_at' => $app->created_at?->toIso8601String(),
             'updated_at' => $app->updated_at?->toIso8601String(),
-            'preview_url' => $this->previewService->buildPreviewUrl($app),
+            // 비공개 html_paste·AI 앱도 admin 미리보기가 가능하도록 viewer 토큰을 붙인다.
+            // website_link 는 PreviewService 가 metadata.website_url 로 분기한다.
+            'preview_url' => $this->previewService->buildPreviewUrl($app, $this->viewerUserId()),
             'community_rating_avg' => $app->community_rating_avg !== null
                 ? (float) $app->community_rating_avg
                 : null,
             'community_rating_count' => (int) ($app->community_rating_count ?? 0),
             'community_post_count' => (int) ($app->community_post_count ?? 0),
         ];
+    }
+
+    private function viewerUserId(): ?int
+    {
+        $id = auth()->id();
+
+        return is_numeric($id) && (int) $id > 0 ? (int) $id : null;
     }
 }

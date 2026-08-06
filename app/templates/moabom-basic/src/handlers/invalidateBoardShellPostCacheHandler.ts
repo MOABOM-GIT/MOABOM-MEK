@@ -17,7 +17,7 @@ export async function invalidateBoardShellPostCacheHandler(
 
   const rawPostId = action.params?.postId;
   if (rawPostId != null && String(rawPostId).trim() !== '') {
-    invalidateBoardPayloadCacheForPost(slug, rawPostId);
+    invalidateBoardPayloadCacheForPost(slug, String(rawPostId));
   }
 
   if (isTruthy(action.params?.invalidateIndex)) {

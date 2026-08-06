@@ -42,7 +42,7 @@ export function useAppCommunity({
   authStateKey = '',
   onAuthRequired,
 }: UseAppCommunityOptions) {
-  const initialCache = useRef(readAppCommunitySessionCache(appId));
+  const initialCache = useRef(readAppCommunitySessionCache(appId, authStateKey));
   const [summary, setSummary] = useState<AppCommunitySummary | null>(initialCache.current?.summary ?? null);
   const [posts, setPosts] = useState<AppCommunityPost[]>(initialCache.current?.posts?.items ?? []);
   const [postsMeta, setPostsMeta] = useState<AppCommunityListResponse['meta'] | null>(
@@ -56,6 +56,7 @@ export function useAppCommunity({
   const [error, setError] = useState('');
   const pageRef = useRef(initialCache.current?.posts?.meta?.current_page ?? 1);
   const revisionRef = useRef(0);
+  const requestGenerationRef = useRef(0);
 
   const applyListResponse = useCallback((
     list: AppCommunityListResponse,
@@ -67,12 +68,13 @@ export function useAppCommunity({
       ? [...(options.previousItems ?? []), ...list.items]
       : list.items;
     setPosts(nextItems);
-    writeAppCommunitySessionCache(appId, {
+    writeAppCommunitySessionCache(appId, authStateKey, {
       posts: { items: nextItems, meta: list.meta },
     });
-  }, [appId]);
+  }, [appId, authStateKey]);
 
   const reload = useCallback(async (options?: { silent?: boolean }) => {
+    const requestGeneration = ++requestGenerationRef.current;
     if (!options?.silent) {
       setIsLoading(true);
     }
@@ -82,23 +84,29 @@ export function useAppCommunity({
         fetchAppCommunitySummary(appId),
         fetchAppCommunityPosts(appId, 1, APP_COMMUNITY_POSTS_PAGE_SIZE),
       ]);
+      if (requestGeneration !== requestGenerationRef.current) {
+        return;
+      }
       setSummary(nextSummary);
       applyListResponse(list, { append: false });
-      writeAppCommunitySessionCache(appId, { summary: nextSummary });
+      writeAppCommunitySessionCache(appId, authStateKey, { summary: nextSummary });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load community');
+      if (requestGeneration === requestGenerationRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load community');
+      }
     } finally {
-      if (!options?.silent) {
+      if (!options?.silent && requestGeneration === requestGenerationRef.current) {
         setIsLoading(false);
       }
     }
-  }, [appId, applyListResponse]);
+  }, [appId, applyListResponse, authStateKey]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || isLoading || !hasMorePosts(postsMeta)) {
       return;
     }
 
+    const requestGeneration = requestGenerationRef.current;
     setIsLoadingMore(true);
     setError('');
     try {
@@ -107,11 +115,18 @@ export function useAppCommunity({
         pageRef.current + 1,
         APP_COMMUNITY_POSTS_PAGE_SIZE,
       );
+      if (requestGeneration !== requestGenerationRef.current) {
+        return;
+      }
       applyListResponse(list, { append: true, previousItems: posts });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load community');
+      if (requestGeneration === requestGenerationRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load community');
+      }
     } finally {
-      setIsLoadingMore(false);
+      if (requestGeneration === requestGenerationRef.current) {
+        setIsLoadingMore(false);
+      }
     }
   }, [appId, applyListResponse, isLoading, isLoadingMore, posts, postsMeta]);
 
@@ -129,9 +144,18 @@ export function useAppCommunity({
     if (prevAuthStateKeyRef.current === authStateKey) {
       return;
     }
+    requestGenerationRef.current += 1;
     prevAuthStateKeyRef.current = authStateKey;
-    invalidateAppCommunitySessionCache(appId);
-    void reload({ silent: true });
+    setSummary(null);
+    setPosts([]);
+    setPostsMeta(null);
+    setSelectedPost(null);
+    setView('list');
+    setIsLoadingMore(false);
+    setIsSaving(false);
+    setError('');
+    pageRef.current = 1;
+    void reload();
   }, [appId, authStateKey, reload]);
 
   useEffect(() => {
@@ -147,7 +171,7 @@ export function useAppCommunity({
         return;
       }
       revisionRef.current = payload.revision;
-      invalidateAppCommunitySessionCache(appId);
+      invalidateAppCommunitySessionCache(appId, authStateKey);
       void reload({ silent: true });
     });
 
@@ -156,7 +180,7 @@ export function useAppCommunity({
         unsubscribeAppCommunityRevisionChannel(subscriptionKey);
       }
     };
-  }, [appId, reload]);
+  }, [appId, authStateKey, reload]);
 
   const handleAuthError = useCallback((err: unknown): boolean => {
     if (err instanceof MoabomShellAuthRequiredError) {
@@ -190,7 +214,7 @@ export function useAppCommunity({
       } else {
         await createAppCommunityReview(appId, payload);
       }
-      invalidateAppCommunitySessionCache(appId);
+      invalidateAppCommunitySessionCache(appId, authStateKey);
       setView('list');
       await reload();
     } catch (err) {
@@ -201,7 +225,7 @@ export function useAppCommunity({
     } finally {
       setIsSaving(false);
     }
-  }, [appId, handleAuthError, reload, summary?.my_review?.id]);
+  }, [appId, authStateKey, handleAuthError, reload, summary?.my_review?.id]);
 
   const removeMyReview = useCallback(async () => {
     const reviewId = summary?.my_review?.id;
@@ -212,7 +236,7 @@ export function useAppCommunity({
     setError('');
     try {
       await deleteAppCommunityReview(appId, reviewId);
-      invalidateAppCommunitySessionCache(appId);
+      invalidateAppCommunitySessionCache(appId, authStateKey);
       setView('list');
       await reload();
     } catch (err) {
@@ -223,7 +247,7 @@ export function useAppCommunity({
     } finally {
       setIsSaving(false);
     }
-  }, [appId, handleAuthError, reload, summary?.my_review?.id]);
+  }, [appId, authStateKey, handleAuthError, reload, summary?.my_review?.id]);
 
   const hasMyReview = Boolean(summary?.my_review?.id);
   const hasMore = hasMorePosts(postsMeta);

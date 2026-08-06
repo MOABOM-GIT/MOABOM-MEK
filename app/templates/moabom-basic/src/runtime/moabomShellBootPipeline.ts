@@ -14,10 +14,20 @@ import { handlerMap } from '../handlers';
 import { ensureMoabomShellBootLoaded } from './moabomShellBoot';
 import { ensureMoabomShellAuthPreloaded } from './moabomShellAuthPreload';
 import { awaitMoabomGeneratedAppLibraryPrefetch, prefetchMoabomGeneratedAppLibrary } from './moabomGeneratedAppLibraryLoad';
+import { prefetchMoabomUserShellState } from './moabomUserShellState';
 
 const BOOT_PERF_PREFIX = 'moabom:boot:';
 
-const logger = ((typeof window !== 'undefined' && (window as { G7Core?: { createLogger?: (n: string) => { log: (...a: unknown[]) => void; warn: (...a: unknown[]) => void } } }).G7Core?.createLogger?.('Template:moabom-boot')))
+/**
+ * 인증 확정이 느려도(콜드 `/api/auth/user`, 최대 8s) 앱 카탈로그·secondary 진행을
+ * 무한정 막지 않기 위한 상한. 사용자 상태 정확성은 `useMoabomShellAuth` 가
+ * auth preload 프라미스를 직접 await 해 보장한다.
+ */
+const AUTH_GATE_BUDGET_MS = 2_000;
+
+const logger = (typeof window !== 'undefined'
+  ? (window as { G7Core?: { createLogger?: (n: string) => { log: (...a: unknown[]) => void; warn: (...a: unknown[]) => void } } }).G7Core?.createLogger?.('Template:moabom-boot')
+  : undefined)
   ?? {
     log: (...args: unknown[]) => console.log('[Template:moabom-boot]', ...args),
     warn: (...args: unknown[]) => console.warn('[Template:moabom-boot]', ...args),
@@ -176,7 +186,7 @@ function scheduleIdle(task: () => void, timeoutMs: number): void {
     return;
   }
 
-  if ('requestIdleCallback' in window) {
+  if (typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(() => task(), { timeout: timeoutMs });
   } else {
     window.setTimeout(task, 0);
@@ -190,6 +200,9 @@ function registerTemplateHandlers(): void {
 
   let retryCount = 0;
   const maxRetries = 50;
+  const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
 
   const registerHandlers = () => {
     const actionDispatcher = (window as {
@@ -206,27 +219,24 @@ function registerTemplateHandlers(): void {
     }
 
     retryCount += 1;
-    if (retryCount <= maxRetries) {
-      window.setTimeout(registerHandlers, 100);
+    if (retryCount > maxRetries) {
+      logger.warn('ActionDispatcher not available — handlers-ready skipped');
+      advanceMoabomBootPhase('handlers-ready');
       return;
     }
 
-    logger.warn('ActionDispatcher not available — handlers-ready skipped');
-    advanceMoabomBootPhase('handlers-ready');
+    // 초기 ~500ms 는 rAF 로 빠르게 재시도(엔진 부트 직후 지연 축소), 이후 50ms.
+    const elapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now()) - startedAt;
+    if (elapsed < 500 && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(registerHandlers);
+      return;
+    }
+    window.setTimeout(registerHandlers, 50);
   };
 
   registerHandlers();
-}
-
-/**
- * catalog 은 홈 셸 first-paint 를 막지 않는다.
- * 단계만 통과시키고 library prefetch 는 백그라운드 — 앱 오픈 경로가 awaitMoabomGeneratedAppLibraryPrefetch 로 합류.
- */
-function runCatalogCriticalPhaseNonBlocking(): void {
-  advanceMoabomBootPhase('catalog-critical');
-  void awaitMoabomGeneratedAppLibraryPrefetch().catch((error) => {
-    logger.warn('generated-app-library prefetch failed (non-blocking).', error);
-  });
 }
 
 function runPwaIdlePhase(): void {
@@ -281,16 +291,32 @@ export function startMoabomShellBootPipeline(): void {
       // shell-boot + auth preload 병렬 — 직렬 waterfall 제거
       const bootPromise = ensureMoabomShellBootLoaded();
       const authPromise = ensureMoabomShellAuthPreloaded();
+      void prefetchMoabomUserShellState();
       await bootPromise;
       advanceMoabomBootPhase('shell-critical');
-      await authPromise;
-      advanceMoabomBootPhase('auth-ready');
-      // Auth 확정 후 library prefetch — sync 단계 prefetch 는 memberKey 도착 전 invalidate 와 이중 fetch
-      prefetchMoabomGeneratedAppLibrary();
 
-      // catalog 비차단 — secondary(알림 unread 등)를 library 완료 전에 진행
-      runCatalogCriticalPhaseNonBlocking();
+      // auth 확정 시 auth-ready 표식 (게스트·캐시된 경우 즉시 resolve).
+      void Promise.resolve(authPromise).then(() => advanceMoabomBootPhase('auth-ready'));
+
+      // 인증이 느려도 앱 카탈로그·secondary 를 최대 AUTH_GATE_BUDGET_MS 만 대기하고 진행한다.
+      await Promise.race([
+        Promise.resolve(authPromise),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, AUTH_GATE_BUDGET_MS);
+        }),
+      ]);
+
+      // catalog 단계만 통과 — library 는 secondary 시작 후 백그라운드 (unread/WS 와 RTT 경쟁 완화)
+      advanceMoabomBootPhase('catalog-critical');
       advanceMoabomBootPhase('secondary');
+
+      // library prefetch 는 memberKey 확정(auth 완료) 이후로 유지 — sync prefetch·catalog invalidate 경합 방지.
+      void Promise.resolve(authPromise).finally(() => {
+        prefetchMoabomGeneratedAppLibrary();
+        void awaitMoabomGeneratedAppLibraryPrefetch().catch((error) => {
+          logger.warn('generated-app-library prefetch failed (non-blocking).', error);
+        });
+      });
 
       // tertiary: 친구·알림·앱·공지 등 사용자 가시 데이터.
       // 과거 timeout 2000ms 는 first-paint 양보용이었으나 인터랙션 전체를 늦춰 제거.

@@ -3,7 +3,7 @@ import { Button } from '../../components/basic/Button';
 import { Div } from '../../components/basic/Div';
 import { Icon } from '../../components/basic/Icon';
 import { Span } from '../../components/basic/Span';
-import { APP_STACK_CLASS, APP_STACK_GRID_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
+import { APP_STACK_GRID_CLASS, APP_WINDOW_BODY_CLASS } from '../appShellTypography';
 import { AppWindowHeader } from './AppWindowHeader';
 
 /**

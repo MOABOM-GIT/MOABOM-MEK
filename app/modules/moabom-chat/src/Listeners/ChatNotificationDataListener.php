@@ -93,6 +93,7 @@ final class ChatNotificationDataListener implements HookListenerInterface
                 'sender_name' => $senderName !== '' ? $senderName : 'User #'.$sender->id,
                 'sender_uuid' => $sender->uuid,
                 'conversation_uuid' => $conversation->uuid,
+                'message_uuid' => $message->uuid,
                 'message_preview' => mb_substr($message->body, 0, 80),
             ],
             'context' => [

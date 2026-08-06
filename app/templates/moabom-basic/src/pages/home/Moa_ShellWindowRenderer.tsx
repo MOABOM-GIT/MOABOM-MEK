@@ -162,6 +162,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
         )}
       >
         <MyPageWindowContentLazy
+          key={authStateKey || 'guest'}
           initialTab={win.myPageInitialTab}
           currentUser={currentUser}
           isLoggedIn={isLoggedIn}
@@ -210,6 +211,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
         )}
       >
         <BoardWindowHostLazy
+          key={authStateKey || 'guest'}
           appId={win.appId}
           boardSlug={win.boardSlug ?? moaShellBoardSlugFromAppId(win.appId) ?? undefined}
           boardPostId={win.boardPostId}
@@ -231,7 +233,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
         <UserProfileWindowHostLazy
           key={profileSurfaceRemountKey(
             win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined,
-            win.id,
+            `${win.id}:${authStateKey || 'guest'}`,
           )}
           appId={win.appId}
           userUuid={win.userProfileUuid ?? moaShellUserProfileUuidFromAppId(win.appId) ?? undefined}
@@ -269,6 +271,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
           )}
         >
           <AppCommunityWindowLazy
+            key={authStateKey || 'guest'}
             serverId={communityServerId}
             appTitle={win.appCommunityTitle}
             authStateKey={authStateKey}
@@ -283,6 +286,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
   if (generatedServerId != null) {
     return (
       <GeneratedAppViewer
+        key={authStateKey || 'guest'}
         serverId={generatedServerId}
         authStateKey={authStateKey}
         onEditGeneratedApp={onEditGeneratedApp}
@@ -297,6 +301,7 @@ export const Moa_ShellWindowRenderer = memo(function Moa_ShellWindowRenderer({
   if (hasMoabomShellAppChunk(win.appId)) {
     return (
       <MoabomShellAppFromChunk
+        key={authStateKey || 'guest'}
         appId={win.appId}
         editGeneratedAppId={win.editGeneratedAppId}
         authStateKey={authStateKey}

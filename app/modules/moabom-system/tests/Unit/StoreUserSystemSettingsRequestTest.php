@@ -8,6 +8,26 @@ use Modules\Moabom\System\Tests\ModuleTestCase;
 
 class StoreUserSystemSettingsRequestTest extends ModuleTestCase
 {
+    public function test_push_notification_preference_accepts_boolean(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $this->assertSame(
+            ['sometimes', 'boolean'],
+            $rules['preferences.systemOptions.push']
+        );
+    }
+
+    public function test_notification_center_preference_accepts_boolean(): void
+    {
+        $rules = (new StoreUserSystemSettingsRequest)->rules();
+
+        $this->assertSame(
+            ['sometimes', 'boolean'],
+            $rules['preferences.systemOptions.notification_center']
+        );
+    }
+
     public function test_appearance_background_image_id_accepts_uploaded_uuid(): void
     {
         $rules = (new StoreUserSystemSettingsRequest)->rules();

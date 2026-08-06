@@ -7,7 +7,7 @@ use App\Models\User;
 use Modules\Moabom\Chat\Services\ChatService;
 
 /**
- * 수신자가 해당 메시지방에 포커스(열람) 중이면 database 알림 채널을 생략합니다.
+ * 수신자가 해당 메시지방에 포커스(열람) 중이거나 mute면 database·fcm 알림 채널을 생략합니다.
  */
 final class ChatNotificationChannelListener implements HookListenerInterface
 {
@@ -42,7 +42,7 @@ final class ChatNotificationChannelListener implements HookListenerInterface
         if ($conversationUuid && $this->chat->isConversationMutedForUser($notifiable, $conversationUuid)) {
             return array_values(array_filter(
                 $channels,
-                static fn (string $channel) => $channel !== 'database',
+                static fn (string $channel) => ! in_array($channel, ['database', 'fcm'], true),
             ));
         }
 
@@ -52,7 +52,7 @@ final class ChatNotificationChannelListener implements HookListenerInterface
 
         return array_values(array_filter(
             $channels,
-            static fn (string $channel) => $channel !== 'database',
+            static fn (string $channel) => ! in_array($channel, ['database', 'fcm'], true),
         ));
     }
 }

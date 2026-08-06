@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Moabom\GlobalSearch\Providers;
+namespace Modules\Moabom\Global\Search\Providers;
 
 use App\Extension\BaseModuleServiceProvider;
 

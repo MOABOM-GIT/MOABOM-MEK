@@ -51,4 +51,4 @@ export function derivePointPresetChoices(hexList: string[] | undefined | null): 
 /** SNS 내부용 임시 이메일 접미사 (moabom-social-auth 와 동일) */
 export const SYNTHETIC_EMAIL_SUFFIX = '@social-auth.invalid';
 
-export const ACTIVITY_FILTER_IDS = ['all', 'posts', 'comments', 'interactions'] as const;
+export const ACTIVITY_FILTER_IDS = ['all', 'posts', 'comments', 'interactions', 'reviews'] as const;

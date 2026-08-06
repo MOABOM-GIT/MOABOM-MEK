@@ -23,11 +23,31 @@ G7 확장 모델: `app/docs/extension/extension-manager.md`, `module-assets.md`.
 | 표면 | 정책 |
 |------|------|
 | **관리자** `moabom-admin_basic` | `MoabomTemplateComposer` — global 모듈 |
-| **사용자** `moabom-basic` | `MoabomUserExtensionBootPolicy` — deferred + auth-hardening global |
+| **사용자** `moabom-basic` | `MoabomUserSurfaceBootAssetPolicy` — 홈에서 forceDefer + auth-hardening |
 | Ghost | `MoabomUserBootDeferredAssetsGhostComposer` |
 | Prefetch | `sirsoftEcommerceLayoutPrefetch` — shop/mypage 진입 시 |
 
-env: `MOABOM_USER_SURFACE_*`, `MOABOM_BOOT_ASSET_GHOST*`.
+env: `MOABOM_BOOT_ASSET_GHOST*`, `config('moabom-system.user_surface_boot.*')`.
+
+## Realtime · 부트 제품 계약 (무한 리팩토링 방지 SSOT)
+
+로그인 중 알림·채팅 인박스 private 채널은 `setMoabomShellRealtimeUser` 로 유지
+(상대 메시지·친구요청 실시간). Presence WS(join/revision/friends 목록)는
+`presenceSurfaceActive`(접속/친구 탭) 시에만. 대화 conversation 채널은 채팅 패널 on-demand.
+
+| 구분 | 로그인 상시 | 탭/창 on-demand |
+|------|-------------|-----------------|
+| 알림·채팅 인박스 private WS | 유지 | — |
+| unread REST | secondary 1회 | 목록은 알람 탭 |
+| Presence 목록/join/revision | — | 접속·친구 탭 |
+| heartbeat | visible 탭만 120s | — |
+| credits(activity) | — | tertiary-idle |
+| weather / FCM | — | pwa-idle / tertiary |
+
+**금지:** 성능 이유로 로그인 알림/인박스 WS 를 끄지 말 것. 병목은 shell-boot/HTML RTT·504·fan-out.
+
+uuid 레이스: `bindMoabomShellRealtimeSession` — 토큰만 있고 uuid 미준비면 teardown 없이 ≤3s 재시도.
+친구 목록: 탭 OFF 시 stale 플래그만, 탭 ON/친구수락 시에만 friends REST 1회.
 
 ## TypeScript
 
@@ -42,6 +62,8 @@ env: `MOABOM_USER_SURFACE_*`, `MOABOM_BOOT_ASSET_GHOST*`.
 ## 부트
 
 `moabomShellBoot.ts` — `shell-boot` 선로드 후 개별 fetch 대체.
+공개 shell-boot 는 `Cache-Control: public, max-age=<moabom_public_boot_ttl>` + SW NetworkFirst(0.4s).
+생성앱 library prefetch 는 secondary 진입 이후 백그라운드.
 
 ## 검증
 

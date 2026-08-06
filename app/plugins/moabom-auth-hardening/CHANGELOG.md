@@ -4,6 +4,12 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [0.2.7] - 2026-08-05
+
+### Changed
+
+- 민감정보 마스킹 안내의 휴대폰 번호 문구를 연락처로 통일했습니다.
+
 ## [0.2.4] - 2026-05-14
 
 ### Changed

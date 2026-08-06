@@ -4,6 +4,13 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.1] - 2026-08-06
+
+### Added
+
+- 사용자가 마이페이지에서 광고성 시스템 알림 수신 동의를 별도로 조회·변경할 수 있도록 추가했습니다.
+- 마케팅으로 분류된 알림은 명시적인 사용자 동의가 있을 때만 발송되도록 보호합니다.
+
 ## [1.0.0] - 2026-07-01
 
 ### Added

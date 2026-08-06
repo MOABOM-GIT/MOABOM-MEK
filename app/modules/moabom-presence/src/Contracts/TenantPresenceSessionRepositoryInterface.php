@@ -28,6 +28,13 @@ interface TenantPresenceSessionRepositoryInterface
      */
     public function purgeGuestShadowsForVisitor(string $visitorId, array $legacySessionKeys): int;
 
+    /**
+     * 로그인 시 동일 마스크 IP guest 잔여 행 제거(현재 visitor 제외).
+     *
+     * @return array{visitor_ids: list<string>, session_keys: list<string>}
+     */
+    public function purgeGuestShadowsForMaskedIp(string $maskedIp, string $exceptVisitorId): array;
+
     public function deleteOtherSessionsForUser(int $userId, string $visitorId): int;
 
     public function pruneStale(\DateTimeInterface $before): int;
@@ -37,6 +44,16 @@ interface TenantPresenceSessionRepositoryInterface
     public function countConnectVisible(\DateTimeInterface $since): int;
 
     public function hasActiveSessionForUser(int $userId, \DateTimeInterface $since): bool;
+
+    public function supportsReachabilityLease(): bool;
+
+    public function hasReachableSessionForUser(int $userId, \DateTimeInterface $at): bool;
+
+    public function acknowledgeReachabilityForUser(
+        int $userId,
+        \DateTimeInterface $activeSince,
+        \DateTimeInterface $reachableUntil,
+    ): bool;
 
     public function findActiveSessionForUser(int $userId, \DateTimeInterface $since): ?TenantPresenceSession;
 
@@ -49,4 +66,14 @@ interface TenantPresenceSessionRepositoryInterface
      * @return Collection<int, TenantPresenceSession>
      */
     public function listActive(\DateTimeInterface $since, int $limit = 100): Collection;
+
+    /**
+     * @param  array<int, int>  $userIds
+     * @return Collection<int, TenantPresenceSession>
+     */
+    public function listActiveForUserIds(
+        \DateTimeInterface $since,
+        array $userIds,
+        int $limit = 100,
+    ): Collection;
 }

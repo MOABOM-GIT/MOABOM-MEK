@@ -9,10 +9,14 @@ use App\Services\LayoutService;
 use App\Services\TemplateService;
 use Illuminate\Support\Facades\Log;
 use Modules\Moabom\System\Services\MoabomShellRoutesFilter;
+use Modules\Moabom\System\Support\MoabomPublicApiCache;
+use Modules\Moabom\System\Support\MoabomPublicApiCacheKeys;
 
 /**
- * 홈 셸 critical 스냅샷 — config.json · home layout · shell routes 를 1회 조립.
+ * 홈 셸 critical 스냅샷 — config.json · home layout · (선택) shell routes.
  *
+ * Blade 인라인·shell-boot `critical` 은 config+home 만 필요하므로
+ * `buildConfigHomeOnly()` 로 routes 머지를 생략한다(캐시 미스 TTFB).
  * components.json 은 nginx 정적 서빙(디스크)이 SSOT. lang JSON 본문은 인라인하지 않는다.
  */
 final class MoabomShellCriticalSnapshot
@@ -22,6 +26,41 @@ final class MoabomShellCriticalSnapshot
         private readonly LayoutService $layoutService,
         private readonly MoabomShellRoutesFilter $shellRoutesFilter,
     ) {}
+
+    /**
+     * Blade / shell-boot critical 용 — config+home+cache_version 만 (routes 생략).
+     *
+     * @return array{
+     *   template: string,
+     *   cache_version: int,
+     *   config: array<string, mixed>|null,
+     *   home: array<string, mixed>|null
+     * }
+     */
+    public function buildConfigHomeOnly(string $templateIdentifier = 'moabom-basic'): array
+    {
+        $cacheVersion = ClearsTemplateCaches::getExtensionCacheVersion();
+
+        /** @var array{
+         *   template: string,
+         *   cache_version: int,
+         *   config: array<string, mixed>|null,
+         *   home: array<string, mixed>|null
+         * } $snapshot
+         */
+        $snapshot = MoabomPublicApiCache::rememberShared(
+            MoabomPublicApiCacheKeys::shellCritical($templateIdentifier, $cacheVersion),
+            MoabomPublicApiCacheKeys::shellCriticalSharedObject($templateIdentifier),
+            fn (): array => [
+                'template' => $templateIdentifier,
+                'cache_version' => $cacheVersion,
+                'config' => $this->resolveConfig($templateIdentifier, $cacheVersion),
+                'home' => $this->resolveHomeLayout($templateIdentifier),
+            ],
+        );
+
+        return $snapshot;
+    }
 
     /**
      * @return array{
@@ -34,13 +73,10 @@ final class MoabomShellCriticalSnapshot
      */
     public function build(string $templateIdentifier = 'moabom-basic'): array
     {
-        $cacheVersion = ClearsTemplateCaches::getExtensionCacheVersion();
+        $base = $this->buildConfigHomeOnly($templateIdentifier);
 
         return [
-            'template' => $templateIdentifier,
-            'cache_version' => $cacheVersion,
-            'config' => $this->resolveConfig($templateIdentifier, $cacheVersion),
-            'home' => $this->resolveHomeLayout($templateIdentifier),
+            ...$base,
             'shell_routes' => $this->resolveShellRoutes($templateIdentifier),
         ];
     }
@@ -57,14 +93,7 @@ final class MoabomShellCriticalSnapshot
      */
     public function buildInline(string $templateIdentifier = 'moabom-basic'): array
     {
-        $full = $this->build($templateIdentifier);
-
-        return [
-            'template' => $full['template'],
-            'cache_version' => $full['cache_version'],
-            'config' => $full['config'],
-            'home' => $full['home'],
-        ];
+        return $this->buildConfigHomeOnly($templateIdentifier);
     }
 
     /**

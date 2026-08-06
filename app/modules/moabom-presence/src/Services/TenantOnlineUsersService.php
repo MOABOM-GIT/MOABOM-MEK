@@ -21,12 +21,17 @@ final class TenantOnlineUsersService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function listOnlineUsers(?User $viewer, int $limit = 50): array
-    {
+    public function listOnlineUsers(
+        ?User $viewer,
+        int $limit = 50,
+        ?string $viewerMaskedIp = null,
+    ): array {
         $since = now()->subSeconds(PresenceHeartbeatService::ACTIVE_TTL_SECONDS);
+        $hideGuestIp = $viewer && $viewerMaskedIp ? $viewerMaskedIp : null;
         $sessions = PresenceConnectListNormalizer::dedupe(
             $this->tenantSessions->listConnectVisible($since, $limit * 3),
             $limit,
+            $hideGuestIp,
         );
 
         $userIds = $sessions
@@ -74,8 +79,6 @@ final class TenantOnlineUsersService
         }
 
         $since = now()->subSeconds(PresenceHeartbeatService::ACTIVE_TTL_SECONDS);
-        $sessions = $this->tenantSessions->listActive($since, $limit * 4);
-
         $friendRows = $this->friendships->listAcceptedForUser($viewer->id);
         $friendUserIds = $friendRows
             ->map(fn ($row) => (int) ($row->requester_id === $viewer->id ? $row->addressee_id : $row->requester_id))
@@ -87,11 +90,16 @@ final class TenantOnlineUsersService
             return [];
         }
 
+        // 전체 활성 세션을 가져와 PHP에서 거르지 않고 친구 ID를 SQL whereIn으로 제한한다.
+        $sessions = $this->tenantSessions->listActiveForUserIds(
+            $since,
+            $friendUserIds,
+            $limit * 2,
+        );
         $preferenceMap = $this->preferences->findForUsers($friendUserIds);
         $relationMap = array_fill_keys($friendUserIds, 'accepted');
 
         return $sessions
-            ->filter(fn (TenantPresenceSession $session) => $session->user_id && in_array((int) $session->user_id, $friendUserIds, true))
             ->map(fn (TenantPresenceSession $session) => $this->serializeSession(
                 $session,
                 $relationMap,

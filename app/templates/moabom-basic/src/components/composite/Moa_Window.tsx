@@ -91,9 +91,9 @@ export interface WindowProps {
   fitContentWidth?: number;
   /** 로그인↔회원가입처럼 같은 창 안에서 높이를 다시 맞출 때 */
   fitContentRemeasureKey?: string;
-  /** AI 앱 만들기(create-app) 창 전용 타이틀 크롬 */
-  titleBarVariant?: 'default' | 'create-app';
-  /** `titleBarVariant === 'create-app'` 일 때 회전 테두리용 CSS 변수 */
+  /** 브랜드 악센트 타이틀 바 (create-app / AI 스마트챗) */
+  titleBarVariant?: 'default' | 'create-app' | 'smart-chat';
+  /** branded 타이틀 테두리용 CSS 변수 */
   titleBarExtraStyle?: React.CSSProperties;
 }
 
@@ -580,6 +580,9 @@ const WindowComponent: React.FC<WindowProps> = ({
         ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex }
         : { position: 'fixed', left: position.x, top: position.y, width: size.width, height: size.height, zIndex };
 
+  const isBrandedTitleBar =
+    titleBarVariant === 'create-app' || titleBarVariant === 'smart-chat';
+
   return (
     <Div
       ref={windowRef}
@@ -595,10 +598,10 @@ const WindowComponent: React.FC<WindowProps> = ({
       <Div
         className={`moa-window-frame absolute inset-0 flex flex-col h-full w-full min-h-0 ${
           isEdgeToEdge ? 'moa-window-frame--maximized rounded-none' : 'rounded-2xl'
-        } ${titleBarVariant === 'create-app' ? 'overflow-visible' : 'overflow-hidden'}`}
+        } ${isBrandedTitleBar ? 'overflow-visible' : 'overflow-hidden'}`}
       >
         {/* 타이틀 바 */}
-        {titleBarVariant === 'create-app' ? (
+        {isBrandedTitleBar ? (
           <Div
             ref={titleBarRef}
             data-window-title-bar

@@ -59,7 +59,7 @@ export function isNonUserTemplateAssetPath(path: string): boolean {
 /** frontend-defaults — 짧은 TTL cache-first. 초기 셸 pending을 줄이고 저장 API와 분리한다. */
 const FRONTEND_DEFAULTS_PATH = '/api/modules/moabom-system/public/frontend-defaults';
 
-/** shell-boot — 부트 JSON 통합(프론트 fetch 패치가 개별 API를 대체). */
+/** shell-boot — SW StaleWhileRevalidate (재방문 캐시 즉시 + 백그라운드 재검증). */
 const SHELL_BOOT_PATH = '/api/modules/moabom-system/public/shell-boot';
 
 /** PWA version 엔드포인트 — SW가 가로채지 않고 브라우저 네트워크에 위임. Req 5.5. */
@@ -146,6 +146,9 @@ function isCoreBuildAsset(path: string): boolean {
  *   2. non-GET → `bypass`
  *   3. Authorization 헤더 존재 → `bypass` (Req 5.9 · 9.1)
  *   4. 경로별 규칙(정적 에셋 · 코어 번들 · CDN · 공개 레이아웃 · frontend-defaults)
+ *   4a. shell-boot → `stale-while-revalidate` (SW StaleWhileRevalidate SSOT)
+ *   4a2. frontend-defaults → `cache-first`
+ *   4b. CDN → `cache-first`
  *   5. HTML 문서 → `network-first`
  *   6. 그 외 → `bypass` (SW가 가로채지 않고 브라우저 기본 네트워크 사용)
  */
@@ -176,8 +179,14 @@ export function routeRequest(input: RouteInput): RouteDecision {
   const path = parsed.pathname;
   const host = parsed.host;
 
-  // 4a) shell-boot · frontend-defaults → 짧은 TTL cache-first
-  if (path === SHELL_BOOT_PATH || path === FRONTEND_DEFAULTS_PATH) {
+  // 4a) shell-boot → StaleWhileRevalidate — 재방문 시 캐시 즉시 반환 + 백그라운드 재검증.
+  //     콜드 최초 방문만 네트워크 대기, 이후 방문은 origin RTT 를 임계 경로에서 제거.
+  if (path === SHELL_BOOT_PATH) {
+    return { strategy: 'stale-while-revalidate', cacheKey: normalizeCacheKey(parsed) };
+  }
+
+  // 4a2) frontend-defaults → 짧은 TTL cache-first
+  if (path === FRONTEND_DEFAULTS_PATH) {
     return { strategy: 'cache-first', cacheKey: normalizeCacheKey(parsed) };
   }
 

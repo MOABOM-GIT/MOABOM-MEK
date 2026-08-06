@@ -138,6 +138,11 @@ export interface CreditOverview {
   balance: number;
   ranking_points?: number;
   level?: CreditLevelProgress;
+  attendance?: {
+    checked_today: boolean;
+    attendance_date: string;
+    next_available_at: string;
+  };
   summary: {
     total_earned: number;
     total_used: number;
@@ -171,7 +176,7 @@ export interface ApiAttendanceResponse {
 
 export interface ActivityItem {
   id: string;
-  type: 'post' | 'comment' | 'interaction';
+  type: 'post' | 'comment' | 'interaction' | 'review';
   type_label: string;
   icon?: string;
   title: string;
@@ -192,6 +197,7 @@ export interface ActivityOverview {
     posts_count: number;
     comments_count: number;
     interactions_count: number;
+    reviews_count?: number;
     likes_supported?: boolean;
   };
   items: ActivityItem[];
@@ -214,4 +220,9 @@ export interface ApiSimpleResponse {
   success?: boolean;
   message?: string;
   errors?: Record<string, string[] | string>;
+}
+
+export interface MarketingNotificationConsent {
+  enabled: boolean;
+  consented_at?: string | null;
 }

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.6] - 2026-08-04
+
+### Changed
+
+- `sw.template.js`: `shell-boot` 라우팅을 NetworkFirst(0.4s)에서 StaleWhileRevalidate 로 변경 — 재방문 시 캐시를 즉시 반환하고 백그라운드에서 재검증해 부트 임계 경로의 origin RTT 대기를 제거합니다.
+
+## [0.1.5] - 2026-07-13
+
+### Fixed
+
+- FCM 수신을 열린 셸에 전달해 실시간 채널 누락 시 알림 목록과 미읽음 수를 복구하도록 개선.
+- FCM 알림 클릭 시 전체 문서를 직접 이동하지 않고 기존 셸을 포커스한 뒤 앱 윈도우로 연결하도록 변경.
+
+## [0.1.4] - 2026-07-12
+
+### Added
+
+- Service Worker `push` / `notificationclick` — FCM·Web Push OS 알림 표시 및 클릭 시 앱 포커스/오픈
+
 ## [0.1.3] - 2026-05-14
 
 ### Changed

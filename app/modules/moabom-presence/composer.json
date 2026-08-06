@@ -2,7 +2,7 @@
     "name": "modules/moabom-presence",
     "description": "Presence and friends module for Gnuboard7 / Moabom",
     "type": "library",
-    "version": "0.1.25",
+    "version": "0.1.35",
     "license": "MIT",
     "autoload": {
         "psr-4": {

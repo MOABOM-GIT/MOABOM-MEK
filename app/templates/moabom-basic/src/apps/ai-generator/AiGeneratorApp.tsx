@@ -11,6 +11,11 @@ import {
   getCreateAppEditServerId,
   subscribeCreateAppEditServerId,
 } from 'moabom-create-app-edit';
+import {
+  consumeCreateAppHandoffPrompt,
+  getCreateAppHandoffPrompt,
+  subscribeCreateAppHandoffPrompt,
+} from 'moabom-create-app-prompt';
 import { notifyGeneratedAppSaved } from '../generatedAppEvents';
 import {
   detectObviousInfiniteLoopRisk,
@@ -97,8 +102,11 @@ const appTypeOptions: Array<{ value: AiAppType; labelKey: string }> = [
 
 const modelOptions = [
   { value: 'claude-sonnet', labelKey: 'moa_apps_ai.models.claude_sonnet' },
-  { value: 'gpt-chat-latest', labelKey: 'moa_apps_ai.models.gpt_chat_latest' },
-  { value: 'gemini-flash-lite', labelKey: 'moa_apps_ai.models.gemini_flash_lite' },
+  { value: 'claude-haiku', labelKey: 'moa_apps_ai.models.claude_haiku' },
+  { value: 'gpt-code', labelKey: 'moa_apps_ai.models.gpt_code' },
+  { value: 'gpt-code-mini', labelKey: 'moa_apps_ai.models.gpt_code_mini' },
+  { value: 'gemini-code', labelKey: 'moa_apps_ai.models.gemini_code' },
+  { value: 'gemini-code-lite', labelKey: 'moa_apps_ai.models.gemini_code_lite' },
 ];
 
 const inputClassName = APP_SHELL_INPUT_CLASS;
@@ -255,6 +263,13 @@ export function AiGeneratorApp() {
       setRemixSourceId(null);
       setLoadedSourceApp(null);
       prevEditServerIdRef.current = null;
+      const handoff = consumeCreateAppHandoffPrompt();
+      if (handoff) {
+        if (handoff.title) {
+          setTitle(handoff.title);
+        }
+        setPrompt(handoff.prompt);
+      }
       return;
     }
 
@@ -265,7 +280,7 @@ export function AiGeneratorApp() {
 
     void (async () => {
       try {
-        const app = await loadVisibleGeneratedAppSession(editServerId, authStateKey);
+        const app = await loadVisibleGeneratedAppSession(editServerId, authStateKey, { includeHtml: true });
         if (cancelled) {
           return;
         }
@@ -308,9 +323,28 @@ export function AiGeneratorApp() {
     };
   }, [authStateKey, editServerId, resetCreateForm, t]);
 
+  useEffect(() => {
+    return subscribeCreateAppHandoffPrompt(() => {
+      if (getCreateAppEditServerId()) {
+        return;
+      }
+      const handoff = consumeCreateAppHandoffPrompt();
+      if (handoff) {
+        if (handoff.title) {
+          setTitle(handoff.title);
+        }
+        setPrompt(handoff.prompt);
+      }
+    });
+  }, []);
+
   // 이어하기 세션이 있으면 배너 노출과 동시에 제목·프롬프트·설정을 폼에 복원한다.
+  // 스마트챗 핸드오프가 큐에 있으면 resume가 덮어쓰지 않는다.
   useEffect(() => {
     if (!resumeChecked || !resumeSession?.partial_raw || editServerId) {
+      return;
+    }
+    if (getCreateAppHandoffPrompt()) {
       return;
     }
     applyResumeFormFields(resumeSession);
@@ -517,7 +551,9 @@ export function AiGeneratorApp() {
   const handleInspectorPatch = (patchPrompt: string) => {
     setPrompt(patchPrompt);
     void (async () => {
-      if (isHtmlPaste || isWebsiteLink) {
+      // website_link 는 srcdoc 미리보기가 아니므로 요소선택 패치 불가.
+      // html_paste 는 생성앱과 동일하게 patch 스트림으로 수정한다.
+      if (isWebsiteLink) {
         return;
       }
       setError('');
@@ -628,7 +664,7 @@ export function AiGeneratorApp() {
       title: title.trim(),
       app_type: appType,
       tier: hidesAiControls ? 'standard' as const : appTier,
-      model_id: hidesAiControls ? null : modelId,
+      model_id: isWebsiteLink ? null : modelId,
       prompt: prompt.trim(),
       html: resolvedSaveHtml,
       metadata: mergeGeneratedAppMetadata(metadataBase, {
@@ -799,7 +835,18 @@ export function AiGeneratorApp() {
                   />
                 </Label>
               </>
-            ) : isHtmlPaste ? null : (
+            ) : isHtmlPaste ? (
+              <Label className="block">
+                <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_model')}</Div>
+                <Select
+                  className={APP_SHELL_SELECT_TRIGGER_CLASS}
+                  value={modelId}
+                  options={modelOptions.map(option => ({ value: option.value, label: t(option.labelKey) }))}
+                  onChange={(event) => setModelId(String(event.target.value))}
+                  disabled={isGenerationLocked}
+                />
+              </Label>
+            ) : (
               <>
                 <Label className="block">
                   <Div className={`mb-1 ${APP_SHELL_BODY_CLASS}`}>{t('moa_apps_ai.field_tier')}</Div>
@@ -872,7 +919,7 @@ export function AiGeneratorApp() {
                   : (isQueued ? t('moa_apps_ai.queue.waiting_button') : isStreaming ? t('moa_apps_ai.generating') : previewHtml ? t('moa_apps_ai.modify') : t('moa_apps_ai.generate'))}
               </Button>
             ) : null}
-            {!hidesAiControls && isStreaming ? (
+            {!isWebsiteLink && isStreaming ? (
               <Button type="button" variant="secondary" onClick={() => void stopGeneration()}>
                 {isQueued ? t('moa_apps_ai.queue.cancel') : t('moa_apps_ai.stop_generate')}
               </Button>
@@ -934,7 +981,7 @@ export function AiGeneratorApp() {
                 completeness={isStreaming ? streamingDraftView.completeness : persistPrepared.completeness}
                 onCodeChange={handleCodeChange}
                 onCodeCommit={handleCodeCommit}
-                codeScrollRef={codePanelRef}
+                codePanelRef={codePanelRef}
                 t={t}
                 pasteMode={isHtmlPaste}
               />
@@ -958,7 +1005,7 @@ export function AiGeneratorApp() {
             className={`moa-ai-preview-stage ${showCodePreviewPanel ? 'moa-ai-split-pane__preview' : ''}`}
             style={previewPaneStyle}
           >
-            {!hidesAiControls && !isWebsiteLink && !isHtmlPaste && iframePreviewHtml && !isGenerationLocked ? (
+            {!isWebsiteLink && iframePreviewHtml && !isGenerationLocked ? (
               <AiAppInspectorPanel
                 enabled
                 iframeRef={previewIframeRef}

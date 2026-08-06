@@ -20,11 +20,13 @@ import type {
   ApiAvatarResponse,
   ApiAttendanceResponse,
   CreditOverview,
+  MarketingNotificationConsent,
   ProfileApiPayload,
 } from './myPageTypes';
 
 const creditApi = createShellModuleApi('moabom-credit');
 const personalizationApi = createShellModuleApi('moabom-personalization');
+const appsApi = createShellModuleApi('moabom-apps');
 
 function shellModuleFailure<T>(error: unknown): MoabomApiResult<T> {
   if (error instanceof MoabomShellAuthRequiredError || error instanceof MoabomShellAuthExpiredError) {
@@ -83,6 +85,21 @@ export async function updateUserProfileApi(
   return moabomApiPut<ProfileApiPayload>('/api/me', body);
 }
 
+export async function fetchMarketingNotificationConsentApi(): Promise<MoabomApiResult<MarketingNotificationConsent>> {
+  return moabomApiGet<MarketingNotificationConsent>(
+    '/api/plugins/sirsoft-marketing/user/notification-consent',
+  );
+}
+
+export async function updateMarketingNotificationConsentApi(
+  enabled: boolean,
+): Promise<MoabomApiResult<MarketingNotificationConsent>> {
+  return moabomApiPut<MarketingNotificationConsent>(
+    '/api/plugins/sirsoft-marketing/user/notification-consent',
+    { enabled },
+  );
+}
+
 export async function fetchUserCreditsApi(
   params: { limit?: number; offset?: number } = {},
 ): Promise<MoabomApiResult<CreditOverview>> {
@@ -121,6 +138,23 @@ export async function fetchUserActivitiesApi(
   }
   return shellModuleResult(() =>
     personalizationApi<ActivityOverview>(`user/activities?${query.toString()}`),
+  );
+}
+
+export async function fetchUserAppReviewsApi(
+  params: { limit?: number; offset?: number } = {},
+): Promise<MoabomApiResult<ActivityOverview>> {
+  const query = new URLSearchParams();
+  if (params.limit != null) {
+    query.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    query.set('offset', String(params.offset));
+  }
+  const suffix = query.toString();
+
+  return shellModuleResult(() =>
+    appsApi<ActivityOverview>(`apps/community/reviews${suffix ? `?${suffix}` : ''}`),
   );
 }
 

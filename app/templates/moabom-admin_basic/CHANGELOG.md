@@ -4,6 +4,24 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.0-beta.22] - 2026-08-06
+
+### Fixed
+
+- 알림 채널 설정에서 저장되지 않은 신규 채널을 서버 계약과 동일하게 기본 ON으로 표시하고, 첫 클릭으로 OFF 설정을 저장할 수 있게 수정했습니다.
+
+## [1.0.0-beta.21] - 2026-08-05
+
+### Changed
+
+- 관리자 사용자 정보의 휴대폰번호 문구를 연락처로 통일했습니다.
+
+## [1.0.0-beta.20] - 2026-07-12
+
+### Fixed
+
+- G7 `sirsoft-admin_basic` #408 시맨틱 자산(`admin-page-content*`, `admin-card`, `flex-between` 등)이 Moabom admin CSS에 없어 게시판·페이지·이커머스·GDPR 관리 화면 레이아웃이 깨지던 문제를 수정. 업스트림 `main.css`의 `@layer components` + MEDIA QUERIES를 `g7-semantic.css`로 동기화해 원본 계약을 유지.
+
 ## [1.0.0-beta.19] - 2026-07-10
 
 ### Fixed

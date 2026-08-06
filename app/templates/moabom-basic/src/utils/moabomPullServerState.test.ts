@@ -19,7 +19,7 @@ import {
   queueSaveMoabomSystemSettings,
 } from './moabomSettingsSaveQueue';
 import { __resetMoabomShellOrderSaveQueueForTest } from './moabomShellOrderSaveQueue';
-import { STORAGE_KEY_ORDER } from '../shell/moaShellLayoutConstants';
+import { saveLocalMainAppOrder } from '../shell/moaShellAppOrder';
 import {
   addMainUnpinnedGeneratedId,
   setActiveMainUnpinnedScopeKey,
@@ -110,6 +110,7 @@ describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰�
 
     const result = await pullMoabomServerState({
       isLoggedIn: true,
+      memberKey: 'test-member',
       coreUserLanguage: 'ko',
       preserveShellPanelOpen: true,
     });
@@ -142,6 +143,7 @@ describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰�
 
     const result = await pullMoabomServerState({
       isLoggedIn: true,
+      memberKey: 'test-member',
       coreUserLanguage: 'ko',
       preserveShellPanelOpen: true,
     });
@@ -182,8 +184,8 @@ describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰�
     __resetMoabomSettingsSaveQueueForTest();
     __resetMoabomShellOrderSaveQueueForTest();
 
-    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(['hospital-info']));
-    addMainUnpinnedGeneratedId('generated-app-7');
+    saveLocalMainAppOrder(['hospital-info'], 'member:test-member');
+    addMainUnpinnedGeneratedId('generated-app-7', 'member:test-member');
 
     vi.mocked(loadMoabomSettingsPayloadForMerge).mockResolvedValue({
       defaults: {
@@ -206,6 +208,7 @@ describe('pullMoabomServerState — 저장 직후 구버전 settings 덮어쓰�
 
     const result = await pullMoabomServerState({
       isLoggedIn: true,
+      memberKey: 'test-member',
       coreUserLanguage: 'ko',
       preserveShellPanelOpen: true,
     });

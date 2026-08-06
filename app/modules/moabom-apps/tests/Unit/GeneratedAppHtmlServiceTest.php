@@ -48,6 +48,21 @@ class GeneratedAppHtmlServiceTest extends TestCase
         $this->assertStringContainsString('MoabomAppStorage', $out);
     }
 
+    public function test_harden_injects_backdrop_probe_with_gradient_support(): void
+    {
+        $service = new GeneratedAppHtmlService;
+        $html = '<!DOCTYPE html><html><head><title>x</title></head><body>ok</body></html>';
+
+        $out = $service->harden($html);
+
+        $this->assertStringContainsString('id="moabom-app-backdrop-probe"', $out);
+        $this->assertStringContainsString('__moabomBackdropProbe', $out);
+        $this->assertStringContainsString('backdrop-probe', $out);
+        $this->assertStringContainsString('backgroundImage', $out);
+        $this->assertStringContainsString('avgFromBackgroundImage', $out);
+        $this->assertStringContainsString('heartbeat-ping', $out);
+    }
+
     public function test_harden_skips_csp_when_already_present(): void
     {
         $service = new GeneratedAppHtmlService;

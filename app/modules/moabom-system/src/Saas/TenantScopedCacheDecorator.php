@@ -16,6 +16,7 @@ final class TenantScopedCacheDecorator implements CacheInterface
     public function __construct(
         private readonly CacheInterface $inner,
         private readonly TenantContext $tenantContext,
+        private readonly TenantExtensionRevisionResolver $extensionRevision,
     ) {}
 
     public function get(string $key, mixed $default = null): mixed
@@ -104,7 +105,7 @@ final class TenantScopedCacheDecorator implements CacheInterface
 
         return $wrapped instanceof self
             ? $wrapped
-            : new self($wrapped, $this->tenantContext);
+            : new self($wrapped, $this->tenantContext, $this->extensionRevision);
     }
 
     public function resolveKey(string $key): string
@@ -125,6 +126,13 @@ final class TenantScopedCacheDecorator implements CacheInterface
         $scope = $this->tenantContext->isPlatformRequest()
             ? 'platform'
             : ($this->tenantContext->tenantId() ?? '_unknown');
+
+        if (
+            str_starts_with($key, 'ext.modules.')
+            || str_starts_with($key, 'ext.plugins.')
+        ) {
+            $key .= ':revision:'.$this->extensionRevision->current();
+        }
 
         return 'saas:'.$scope.':'.$key;
     }

@@ -17,6 +17,7 @@
     "moabom-chat",
     "moabom-personalization",
     "moabom-apps",
+    "moabom-smart-chat",
     "moabom-cpap",
     "moabom-consulting",
     "moabom-global-search",
@@ -32,7 +33,10 @@
     "sirsoft-ckeditor5",
     "sirsoft-marketing",
     "sirsoft-tosspayments",
-    "sirsoft-verification"
+    "sirsoft-pay_kginicis",
+    "sirsoft-verification",
+    "sirsoft-verification_kginicis",
+    "sirsoft-gdpr"
   ],
   "post_bootstrap_artisan": {
     "module_sync_declarations": [
@@ -45,6 +49,7 @@
       "moabom-chat",
       "moabom-personalization",
       "moabom-apps",
+      "moabom-smart-chat",
       "moabom-cpap",
       "moabom-consulting",
       "moabom-global-search",

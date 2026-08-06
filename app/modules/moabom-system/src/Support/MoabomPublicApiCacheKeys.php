@@ -51,10 +51,71 @@ final class MoabomPublicApiCacheKeys
         );
     }
 
+    /**
+     * shell-boot 공유 스냅샷 GCS 오브젝트 경로.
+     *
+     * revision 을 경로에 넣지 않고 tenant/template/scope 단위로 고정한다.
+     * revision 검증은 오브젝트 내부 `cache_key` 로 수행하므로, revision·모듈 변경 시
+     * 같은 경로가 덮어써져 오브젝트 개수가 (tenant × template × scope) 로 유계 유지된다.
+     */
+    public static function shellBootSharedObject(string $template, string $scope): string
+    {
+        return sprintf(
+            'moabom/public-boot-cache/%s/%s/%s.json',
+            self::sanitizePathSegment(self::tenantScopeToken()),
+            self::sanitizePathSegment($template),
+            self::sanitizePathSegment($scope),
+        );
+    }
+
+    public static function shellCritical(string $template, int $extensionEpoch): string
+    {
+        return sprintf(
+            'moabom.public.shell_critical:v1:%s:%s:%d:%s:%s',
+            self::tenantScopeToken(),
+            $template,
+            $extensionEpoch,
+            self::coreSettingsRevisionToken(),
+            self::activeModulesToken(),
+        );
+    }
+
+    /**
+     * Blade와 shell-boot가 공유하는 config/home 스냅샷 경로.
+     *
+     * 변경 판정은 오브젝트 내부 cache_key가 담당하므로 경로 수는 tenant/template 단위로 제한한다.
+     */
+    public static function shellCriticalSharedObject(string $template): string
+    {
+        return sprintf(
+            'moabom/public-boot-cache/%s/%s/critical.json',
+            self::sanitizePathSegment(self::tenantScopeToken()),
+            self::sanitizePathSegment($template),
+        );
+    }
+
+    public static function shellAppsRegistry(string $template): string
+    {
+        return sprintf(
+            'moabom.public.shell_apps_registry:v1:%s:%s:%s',
+            self::tenantScopeToken(),
+            $template,
+            self::activeModulesToken(),
+        );
+    }
+
+    private static function sanitizePathSegment(string $value): string
+    {
+        $clean = preg_replace('/[^A-Za-z0-9_.-]/', '_', $value) ?? '';
+
+        return $clean !== '' ? $clean : '_';
+    }
+
     public static function templateRoutesShell(string $template, string $scope, string $routesVersion): string
     {
         return sprintf(
-            'moabom.public.template_routes_shell:%s:%s:%s:%s',
+            'moabom.public.template_routes_shell:%s:%s:%s:%s:%s',
+            self::tenantScopeToken(),
             $template,
             $scope,
             $routesVersion,

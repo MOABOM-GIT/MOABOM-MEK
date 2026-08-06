@@ -20,13 +20,23 @@ export type MoabomToastEnqueuePayload = {
   onDismiss?: () => void;
 };
 
+type G7CoreToastHost = {
+  state?: {
+    update?: (
+      updater: (prev: Record<string, unknown>) => Record<string, unknown>,
+    ) => void;
+  };
+  toast?: Record<string, unknown>;
+};
+
 let enqueueInstalled = false;
 
 export function installMoabomToastEnqueue(): void {
   if (enqueueInstalled || typeof window === 'undefined') return;
 
-  const G7Core = (window as { G7Core?: Record<string, unknown> }).G7Core;
-  if (!G7Core || typeof G7Core.state?.update !== 'function') return;
+  const G7Core = (window as { G7Core?: G7CoreToastHost }).G7Core;
+  const updateState = G7Core?.state?.update;
+  if (!G7Core || typeof updateState !== 'function') return;
 
   const toastApi = (G7Core.toast as Record<string, unknown> | undefined) ?? {};
   if (typeof toastApi.enqueue === 'function') {
@@ -36,7 +46,7 @@ export function installMoabomToastEnqueue(): void {
 
   toastApi.enqueue = (payload: MoabomToastEnqueuePayload): string => {
     const toastId = payload.id ?? `toast_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    G7Core.state!.update((prev: Record<string, unknown>) => {
+    updateState((prev: Record<string, unknown>) => {
       const currentToasts = Array.isArray(prev.toasts) ? prev.toasts : [];
 
       return {

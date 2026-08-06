@@ -57,6 +57,33 @@ return [
         ))),
     ],
 
+    // 홈 셸 compose 시 immediate→deferred 강제 이동 (shop 등 비홈은 유지)
+    'user_surface_boot' => [
+        'force_defer_modules' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('MOABOM_USER_SURFACE_FORCE_DEFER_MODULES', 'sirsoft-ecommerce'))
+        ))),
+        'force_defer_plugins' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env(
+                'MOABOM_USER_SURFACE_FORCE_DEFER_PLUGINS',
+                'sirsoft-ckeditor5,sirsoft-daum_postcode,sirsoft-pay_kginicis,sirsoft-verification_kginicis'
+            ))
+        ))),
+    ],
+
+    'queue_plane' => [
+        // legacy: web DB worker only, shadow: worker + task wake, active: task wake only
+        'mode' => (string) env('MOABOM_QUEUE_PLANE_MODE', 'legacy'),
+        'runtime_role' => (string) env('MOABOM_RUNTIME_ROLE', 'web'),
+        'project' => (string) env('MOABOM_CLOUD_TASKS_PROJECT', env('GOOGLE_CLOUD_PROJECT_ID', '')),
+        'location' => (string) env('MOABOM_CLOUD_TASKS_LOCATION', 'asia-northeast3'),
+        'queue' => (string) env('MOABOM_CLOUD_TASKS_QUEUE', 'smartmek'),
+        'target_url' => (string) env('MOABOM_QUEUE_TASK_TARGET_URL', ''),
+        'oidc_service_account' => (string) env('MOABOM_QUEUE_TASK_SERVICE_ACCOUNT', ''),
+        'oidc_audience' => (string) env('MOABOM_QUEUE_TASK_AUDIENCE', ''),
+    ],
+
     'saas' => [
         'enabled' => (bool) config('moabom-saas.enabled', false),
         'base_domain' => (string) config('moabom-saas.base_domain', 'mek360.com'),
